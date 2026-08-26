@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@40labs/design-tokens/tokens.css";
+@source "../../../packages/ui-components/src/**/*.{ts,tsx}";
 
 /* Elevation utilities — Tailwind v4 doesn't auto-generate shadow utilities
    from @theme the way it does color/radius/font, so these are defined

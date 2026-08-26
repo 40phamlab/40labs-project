@@ -52,3 +52,11 @@ you or the coding agent almost makes one of these mistakes.
    application layer, not the schema. Forgetting this breaks the
    "every PIN-gated action writes exactly one audit_log entry" rule
    silently.
+
+   10. **Tailwind v4 does not scan node_modules by default — including
+    workspace-symlinked packages.** Any package under packages/* that
+    contains className strings (ui-components, and eventually anything
+    else with JSX) needs an explicit @source directive added to
+    apps/core-desktop/src/App.css, or its Tailwind classes will be
+    silently dropped from the build with no error, no warning — they
+    just won't exist in the output CSS.

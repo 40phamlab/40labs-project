@@ -1,50 +1,61 @@
 import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
+import { Button, Card, Input, Toggle, KPITile } from "@40labs/ui-components";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const [darkToggle, setDarkToggle] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="min-h-screen p-8 flex flex-col gap-6">
+      <h1 className="font-heading text-2xl text-primary">
+        40LabsCore — UI Components Test
+      </h1>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      {/* KPI tiles */}
+      <div className="grid grid-cols-3 gap-4 max-w-2xl">
+        <KPITile label="Today's Sales" value="TZS 6,000" tone="primary" />
+        <KPITile label="Low Stock" value={1} tone="accent" />
+        <KPITile label="Expired" value={1} tone="danger" />
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+      {/* Card */}
+      <Card className="max-w-md">
+        <p className="font-ui text-sm">
+          This is a static display card — elevation-raised only, no hover.
+        </p>
+      </Card>
+
+      <Card interactive className="max-w-md" onClick={() => alert("Card clicked")}>
+        <p className="font-ui text-sm">
+          This is an interactive card — hover over me to see elevation-hover.
+        </p>
+      </Card>
+
+      {/* Input */}
+      <div className="max-w-sm">
+        <Input
+          label="Search medicine"
+          placeholder="Paracetamol..."
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+      </div>
+
+      {/* Buttons */}
+      <div className="flex gap-3">
+        <Button intent="primary">Primary</Button>
+        <Button intent="secondary">Secondary</Button>
+        <Button intent="danger">Danger</Button>
+      </div>
+
+      {/* Toggle */}
+      <Toggle
+        checked={darkToggle}
+        onChange={setDarkToggle}
+        label="Dark mode (test toggle, not wired yet)"
+      />
+    </div>
   );
 }
 
