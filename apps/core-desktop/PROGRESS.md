@@ -57,3 +57,10 @@ creation. `packages/types` not yet scaffolded.
       (validated against live SQLite engine, audit_log immutability
       triggers confirmed working, migration applied — dev.db created,
       confirmed via `sqlx migrate info`)
+
+   - [x] Mock data layer — apps/core-desktop/src/lib/mockData.ts
+      (type-checked clean against @40labs/types, 0 errors — covers all
+      15 entities: Business, Branch, User, PairedDevice, Customer,
+      Medicine, InventoryItem, StockAdjustment, Sale, FiscalReceipt,
+      LabOrder/Sample/Result/Report/TestCatalog, Supplier, PurchaseOrder,
+      AuditLogEntry — plus getMockDashboardSummary() aggregate)
