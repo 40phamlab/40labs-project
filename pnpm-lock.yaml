@@ -14,6 +14,12 @@ importers:
 
   apps/core-desktop:
     dependencies:
+      '@40labs/design-tokens':
+        specifier: workspace:*
+        version: link:../../packages/design-tokens
+      '@40labs/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.1

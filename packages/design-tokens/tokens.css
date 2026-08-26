@@ -1,0 +1,38 @@
+/* Source of truth for Tailwind v4 consumption.
+   Mirrors: packages/design-tokens/src/*.ts and
+   apps/core-desktop/CONTEXT/02-DESIGN-TOKENS.md
+   If this file and those ever disagree, treat it as a bug — update both together. */
+
+@theme {
+  /* Colors */
+  --color-primary: #16A34A;
+  --color-accent: #F97316;
+  --color-danger: #EF4444;
+  --color-surface: #F8FAFB;
+
+  /* Status colors — semantic, map 1:1 to the tokens above */
+  --color-in-stock: var(--color-primary);
+  --color-low-stock: var(--color-accent);
+  --color-expired: var(--color-danger);
+  --color-critical: var(--color-danger);
+  --color-synced: var(--color-primary);
+  --color-sync-pending: var(--color-accent);
+  --color-sync-failed: var(--color-danger);
+
+  /* Typography */
+  --font-heading: "Sora", sans-serif;
+  --font-ui: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Radius */
+  --radius-card: 12px;
+  --radius-input: 8px;
+
+  /* Elevation — "Clinical Claymorphism" (light mode only, dark mode TBD
+     per PROGRESS.md item #1 — do not add dark shadow values here yet) */
+  --shadow-elevation-flat: none;
+  --shadow-elevation-raised: 0 1px 2px rgba(16,24,32,0.06), 0 4px 10px rgba(16,24,32,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
+  --shadow-elevation-hover: 0 2px 4px rgba(16,24,32,0.08), 0 6px 16px rgba(16,24,32,0.10), inset 0 1px 0 rgba(255,255,255,0.7);
+  --shadow-elevation-pressed: inset 0 2px 4px rgba(16,24,32,0.15), inset 0 -1px 0 rgba(255,255,255,0.4);
+  --shadow-elevation-inset: inset 0 1px 3px rgba(16,24,32,0.12), inset 0 -1px 0 rgba(255,255,255,0.5);
+}
