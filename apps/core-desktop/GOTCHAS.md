@@ -45,3 +45,10 @@ you or the coding agent almost makes one of these mistakes.
    material texture, stop and check with Sairiamu first — that's a scope
    decision, not a styling default. Max 2 shadow layers per element;
    heavier stacking looks muddy and costs render performance for no gain.
+
+   9. **stock_adjustment.audit_log_id has no DB-level foreign key.** Insert
+   order requires writing audit_log first, then stock_adjustment
+   referencing it, inside one transaction — enforce this at the
+   application layer, not the schema. Forgetting this breaks the
+   "every PIN-gated action writes exactly one audit_log entry" rule
+   silently.

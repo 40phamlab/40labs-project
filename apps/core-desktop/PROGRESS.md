@@ -48,3 +48,12 @@ creation. `packages/types` not yet scaffolded.
    toggle) vs pure shadow-based depth language, no literal metaphors —
    blocks final AppearancePanel toggle component design. Default assumption
    (per Ade, pending confirmation): pure shadow language, no literal switch.
+
+   - [x] SQLite schema — infra/db/sqlite-schema/migrations/0001_init.sql
+      (validated against live SQLite engine, audit_log immutability
+      triggers confirmed working)
+
+   - [x] SQLite schema — infra/db/sqlite-schema/migrations/0001_init.sql
+      (validated against live SQLite engine, audit_log immutability
+      triggers confirmed working, migration applied — dev.db created,
+      confirmed via `sqlx migrate info`)
