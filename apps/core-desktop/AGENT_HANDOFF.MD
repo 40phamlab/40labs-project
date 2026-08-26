@@ -145,3 +145,9 @@ Web App are in MVP scope. Source docs: `/docs/prd/40Labs_PRD_v1_MVP.md`,
    sequence without asking. Full collaboration means visible
    collaboration — every material decision should be traceable to a
    point in the conversation where it was actually made, not assumed.
+
+✅ packages/ui-components — Button, Card, Input, Toggle, KPITile, all
+   using claymorphic elevation tokens, confirmed rendering correctly
+   in a real Tauri window (screenshot-verified). Tailwind v4 requires
+   an explicit @source directive in App.css to scan packages outside
+   apps/core-desktop's own tree — see GOTCHAS.md #10.
