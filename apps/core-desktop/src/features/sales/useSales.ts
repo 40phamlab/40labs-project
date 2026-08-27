@@ -99,6 +99,43 @@ export const useSaleCart = create<SaleCartState>((set, get) => ({
 }));
 
 /**
+ * Reusable hook to handle sale completion logic.
+ * Encapsulates calculation and persistence (mocked for MVP).
+ */
+export const useCompleteSale = () => {
+  const { lines, customer_id, payment_method, discount_amount, reset } = useSaleCart();
+
+  const subtotal = lines.reduce((sum, l) => sum + l.subtotal, 0);
+  const grandTotal = Math.max(0, subtotal - discount_amount);
+
+  const complete = () => {
+    if (lines.length === 0) return;
+
+    const saleData = {
+      lines,
+      customer_id,
+      payment_method,
+      discount_amount,
+      grand_total: grandTotal,
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log('Completing sale:', saleData);
+    // Real persistence (sqlx/Tauri) will be wired here in a later task.
+    reset();
+    alert('Sale Completed (Mock)');
+  };
+
+  return {
+    complete,
+    subtotal,
+    grandTotal,
+    discountAmount: discount_amount,
+    canComplete: lines.length > 0
+  };
+};
+
+/**
  * Hook to fetch historical sales records.
  * Read-only from mock data for MVP.
  */

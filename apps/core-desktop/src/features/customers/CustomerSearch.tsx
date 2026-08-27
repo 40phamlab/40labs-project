@@ -10,36 +10,43 @@ import { useCustomerList } from './useCustomers';
 
 interface CustomerSearchProps {
   onSelect: (customer: Customer | null) => void;
+  query?: string;
+  hideInput?: boolean;
 }
 
 /**
  * Single shared Customer Search component for the entire app.
  * Used in Sales/POS and Lab modules to identify or select a customer.
  */
-export function CustomerSearch({ onSelect }: CustomerSearchProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+export function CustomerSearch({ onSelect, query, hideInput }: CustomerSearchProps) {
+  const [internalQuery, setInternalQuery] = useState('');
+  const activeQuery = query !== undefined ? query : internalQuery;
   const { data: customers, isLoading } = useCustomerList();
 
   const filteredCustomers = useMemo(() => {
-    if (!customers || !searchQuery.trim()) return [];
+    if (!customers || !activeQuery.trim()) return [];
 
-    const query = searchQuery.toLowerCase();
-    return customers.filter(
-      (c) =>
-        c.full_name.toLowerCase().includes(query) ||
-        c.phone.includes(query)
+    const terms = activeQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    return customers.filter((c) =>
+      terms.every(
+        (term) =>
+          c.full_name.toLowerCase().includes(term) ||
+          c.phone.includes(term)
+      )
     );
-  }, [customers, searchQuery]);
+  }, [customers, activeQuery]);
 
   return (
     <div className="flex flex-col gap-4">
-      <Input
-        label="Search Customer"
-        placeholder="Enter name or phone number..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        autoComplete="off"
-      />
+      {!hideInput && (
+        <Input
+          label="Search Customer"
+          placeholder="Enter name or phone number..."
+          value={internalQuery}
+          onChange={(e) => setInternalQuery(e.target.value)}
+          autoComplete="off"
+        />
+      )}
 
       <div className="flex flex-col gap-2 max-h-96 overflow-y-auto">
         {/* Explicit Walk-in Option */}
@@ -81,9 +88,9 @@ export function CustomerSearch({ onSelect }: CustomerSearchProps) {
           ))
         )}
 
-        {!isLoading && searchQuery && filteredCustomers.length === 0 && (
+        {!isLoading && activeQuery && filteredCustomers.length === 0 && (
           <div className="p-4 text-center font-ui text-black/50">
-            No customers found matching "{searchQuery}"
+            No customers found matching "{activeQuery}"
           </div>
         )}
       </div>

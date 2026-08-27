@@ -1,6 +1,10 @@
 import React from 'react';
 import { useInventoryList } from '../inventory/useInventory';
 import { useSaleCart } from './useSales';
+import { CustomerPanel } from './CustomerPanel';
+import { ReceiptPreviewCard } from './ReceiptPreviewCard';
+import { CartPanel } from './CartPanel';
+import { MedicineSearchPanel } from './MedicineSearchPanel';
 
 /**
  * SalesScreen Component
@@ -36,9 +40,10 @@ export default function SalesScreen() {
         {/* Column 1: Customer Panel Slot */}
         <div
           data-slot="customer"
-          className="border-r border-black/5 flex flex-col overflow-hidden bg-surface/20"
+          className="border-r border-black/5 flex flex-col overflow-y-auto bg-surface/20"
         >
-          {/* Placeholder for Task 2 */}
+          <CustomerPanel />
+          <ReceiptPreviewCard />
         </div>
 
         {/* Column 2: Cart Panel Slot */}
@@ -46,7 +51,7 @@ export default function SalesScreen() {
           data-slot="cart"
           className="bg-white flex flex-col overflow-hidden"
         >
-          {/* Placeholder for Task 3 */}
+          <CartPanel />
         </div>
 
         {/* Column 3: Medicine Panel Slot */}
@@ -54,7 +59,7 @@ export default function SalesScreen() {
           data-slot="medicine"
           className="border-l border-black/5 flex flex-col overflow-hidden bg-surface/20"
         >
-          {/* Placeholder for Task 4 */}
+          <MedicineSearchPanel />
         </div>
 
       </div>
