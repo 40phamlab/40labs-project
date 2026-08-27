@@ -1,31 +1,25 @@
-// Source of truth for Tailwind v4 consumption.
-// Mirrors packages/design-tokens/src/*.ts and apps/core-desktop/CONTEXT/02-DESIGN-TOKENS.md.
-
+// Source of truth for Tailwind v4 consumption. Imported after Tailwind in App.css.
 @theme {
-  --color-primary: #16A34A;
-  --color-accent: #F97316;
+  --color-primary: #39B54A;
+  --color-accent: #F7931E;
   --color-danger: #EF4444;
-  --color-surface: #F1F5F2;
-  --color-surface-strong: #F8FAF8;
-
-  --color-in-stock: var(--color-primary);
-  --color-low-stock: var(--color-accent);
-  --color-expired: var(--color-danger);
-  --color-critical: var(--color-danger);
-  --color-synced: var(--color-primary);
-  --color-sync-pending: var(--color-accent);
-  --color-sync-failed: var(--color-danger);
-
+  --color-surface: #1A1A1A;
+  --color-surface-strong: #313131;
+  --color-panel: #4D4D4D;
+  --color-panel-strong: #494949;
+  --color-input: #666666;
+  --color-field: #BDCCD4;
+  --color-text: #D7D7D7;
+  --color-text-muted: #A9A9A9;
+  --color-border: #606060;
   --font-heading: "Sora", sans-serif;
   --font-ui: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-
-  --radius-card: 18px;
-  --radius-input: 14px;
-
+  --radius-card: 12px;
+  --radius-input: 8px;
   --shadow-elevation-flat: none;
-  --shadow-elevation-raised: 0 1px 2px rgba(16,24,32,0.05), 0 5px 14px rgba(16,24,32,0.07), inset 0 1px 0 rgba(255,255,255,0.55);
-  --shadow-elevation-hover: 0 2px 5px rgba(16,24,32,0.07), 0 8px 18px rgba(16,24,32,0.09), inset 0 1px 0 rgba(255,255,255,0.65);
-  --shadow-elevation-pressed: inset 0 2px 4px rgba(16,24,32,0.12), inset 0 -1px 0 rgba(255,255,255,0.35);
-  --shadow-elevation-inset: inset 0 1px 3px rgba(16,24,32,0.10), inset 0 -1px 0 rgba(255,255,255,0.45);
+  --shadow-elevation-raised: 0 2px 0 #252525, 0 5px 10px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.05);
+  --shadow-elevation-hover: 0 2px 0 #252525, 0 7px 14px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
+  --shadow-elevation-pressed: inset 0 2px 3px rgba(0,0,0,.32), inset 0 -1px 0 rgba(255,255,255,.04);
+  --shadow-elevation-inset: inset 0 2px 4px rgba(0,0,0,.26), inset 0 -1px 0 rgba(255,255,255,.04);
 }

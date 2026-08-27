@@ -2,28 +2,17 @@
 @import "@40labs/design-tokens/tokens.css";
 @source "../../../packages/ui-components/src/**/*.{ts,tsx}";
 
-/* Elevation utilities — Tailwind v4 doesn't auto-generate shadow utilities
-   from @theme the way it does color/radius/font, so these are defined
-   explicitly. Use these classes, not inline box-shadow, anywhere in the app. */
 @layer utilities {
-  .elevation-flat {
-    box-shadow: var(--shadow-elevation-flat);
-  }
-  .elevation-raised {
-    box-shadow: var(--shadow-elevation-raised);
-  }
-  .elevation-hover {
-    box-shadow: var(--shadow-elevation-hover);
-  }
-  .elevation-pressed {
-    box-shadow: var(--shadow-elevation-pressed);
-  }
-  .elevation-inset {
-    box-shadow: var(--shadow-elevation-inset);
-  }
+  .elevation-flat { box-shadow: var(--shadow-elevation-flat); }
+  .elevation-raised { box-shadow: var(--shadow-elevation-raised); }
+  .elevation-hover { box-shadow: var(--shadow-elevation-hover); }
+  .elevation-pressed { box-shadow: var(--shadow-elevation-pressed); }
+  .elevation-inset { box-shadow: var(--shadow-elevation-inset); }
 }
 
-body {
-  background-color: var(--color-surface);
-  font-family: var(--font-ui);
-}
+:root { color-scheme: dark; }
+html, body, #root { width: 100%; height: 100%; margin: 0; }
+body { background: var(--color-surface); color: var(--color-text); font-family: var(--font-ui); overflow: hidden; }
+button, input, select { font: inherit; }
+button { cursor: pointer; }
+* { scrollbar-color: var(--color-input) var(--color-surface-strong); scrollbar-width: thin; }

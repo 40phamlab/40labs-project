@@ -2,38 +2,5 @@ import { useMemo } from 'react';
 import type { PaymentMethod } from '@40labs/types';
 import { Button } from '@40labs/ui-components';
 import { useSaleCart } from './useSales';
-
-interface SaleSummaryPanelProps {
-  onCompleteSale?: () => Promise<boolean> | boolean;
-  completingSale?: boolean;
-}
-
-/** Bottom checkout summary for the customer-first POS layout. */
-export function SaleSummaryPanel({ onCompleteSale, completingSale = false }: SaleSummaryPanelProps) {
-  const { lines, payment_method, discount_amount, setPaymentMethod, setDiscountAmount, reset } = useSaleCart();
-  const subtotal = useMemo(() => lines.reduce((sum, line) => sum + line.subtotal, 0), [lines]);
-  const grandTotal = Math.max(0, subtotal - discount_amount);
-
-  const handleCompleteSale = async () => {
-    if (lines.length === 0) return;
-    const completed = await onCompleteSale?.();
-    if (completed === false) return;
-    console.log('Completing sale:', { lines, payment_method, discount_amount, grand_total: grandTotal, timestamp: new Date().toISOString() });
-    reset();
-    alert('Sale Completed (Mock)');
-  };
-
-  return (
-    <div className="shrink-0 border-t border-black/5 bg-surface px-6 py-5">
-      <div className="grid grid-cols-[1fr_auto] gap-6">
-        <div className="flex min-w-0 items-center gap-5">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/35">Subtotal</p><p className="mt-1 font-mono text-sm text-black/65">TZS {subtotal.toLocaleString()}</p></div>
-          <div><label htmlFor="sale-discount" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/35">Discount</label><input id="sale-discount" type="number" min="0" value={discount_amount || ''} onChange={(e) => setDiscountAmount(Math.max(0, Number(e.target.value) || 0))} placeholder="0" className="mt-1 block h-9 w-28 rounded-input bg-surface-strong px-3 font-mono text-xs elevation-inset focus:outline-none focus:ring-2 focus:ring-primary/30" /></div>
-          <div><label htmlFor="sale-payment" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-black/35">Payment</label><select id="sale-payment" value={payment_method} onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)} className="mt-1 block h-9 rounded-input bg-surface-strong px-3 text-xs font-ui elevation-inset focus:outline-none focus:ring-2 focus:ring-primary/30"><option value="cash">Cash</option><option value="mobile_money">Mobile Money</option><option value="card">Card</option><option value="credit">Credit</option></select></div>
-        </div>
-        <div className="text-right"><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-black/40">Grand total</p><p className="mt-1 font-heading text-2xl font-bold text-primary">{grandTotal.toLocaleString()} <span className="font-mono text-xs font-medium text-primary/70">TZS</span></p></div>
-      </div>
-      <div className="mt-4 flex gap-3"><Button intent="danger" size="lg" className="min-w-36" disabled={lines.length === 0} onClick={reset}>Delete</Button><Button size="lg" fullWidth disabled={lines.length === 0 || completingSale} loading={completingSale} onClick={handleCompleteSale}>Confirm Sale</Button></div>
-    </div>
-  );
-}
+interface Props{onCompleteSale?:()=>Promise<boolean>|boolean;completingSale?:boolean}
+export function SaleSummaryPanel({onCompleteSale,completingSale=false}:Props){const{lines,payment_method,discount_amount,setPaymentMethod,setDiscountAmount,reset}=useSaleCart();const subtotal=useMemo(()=>lines.reduce((s,l)=>s+l.subtotal,0),[lines]);const total=Math.max(0,subtotal-discount_amount);const finish=async()=>{if(!lines.length)return;const ok=await onCompleteSale?.();if(ok===false)return;console.log('Completing sale',{lines,payment_method,discount_amount,grand_total:total});reset();alert('Sale Completed (Mock)')};return <div className="shrink-0 border-t border-border bg-panel px-3 py-2"><div className="grid grid-cols-3 gap-3 text-[10px]"><div><p className="text-text-muted">line total</p><p className="font-mono text-text">{subtotal.toLocaleString()}</p></div><div><label className="text-text-muted">discount</label><input type="number" min="0" value={discount_amount||''} onChange={e=>setDiscountAmount(Math.max(0,Number(e.target.value)||0))} className="ml-2 w-16 rounded-input bg-input px-2 py-1 font-mono text-text elevation-inset focus:outline-none"/></div><div><label className="text-text-muted">payment</label><select value={payment_method} onChange={e=>setPaymentMethod(e.target.value as PaymentMethod)} className="ml-2 rounded-input bg-input px-2 py-1 text-text elevation-inset"><option value="cash">cash</option><option value="mobile_money">mobile money</option><option value="card">card</option><option value="credit">credit</option></select></div></div><div className="mt-1 flex items-center justify-between"><div><p className="text-[10px] text-text-muted">tax</p><p className="text-[10px] text-text-muted">grand total</p></div><p className="font-mono text-lg font-bold text-primary">{total.toLocaleString()}</p></div><div className="mt-2 flex gap-2"><Button intent="danger" size="sm" className="w-20" disabled={!lines.length} onClick={reset}>delete</Button><Button size="sm" fullWidth disabled={!lines.length||completingSale} loading={completingSale} onClick={finish}>confirm</Button></div></div>}

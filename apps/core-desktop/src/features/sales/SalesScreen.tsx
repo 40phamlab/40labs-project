@@ -1,210 +1,31 @@
-import React, { useMemo, useState } from 'react';
-import { Card } from '@40labs/ui-components';
-import { useInventoryList } from '../inventory/useInventory';
-import { CustomerSearch } from '../customers/CustomerSearch';
-import { useCustomer, useCreateCustomer } from '../customers/useCustomers';
-import { useSaleCart } from './useSales';
-<<<<<<< HEAD
-import { CustomerPanel } from './CustomerPanel';
-import { ReceiptPreviewCard } from './ReceiptPreviewCard';
-import { CartPanel } from './CartPanel';
-import { MedicineSearchPanel } from './MedicineSearchPanel';
-=======
-import { SaleCartTable } from './SaleCartTable';
-import { SaleSummaryPanel } from './SaleSummaryPanel';
-import type { Customer } from '@40labs/types';
->>>>>>> 945f5f3a8eda6d2b3932c2facdfa01f016b40f48
+import React,{useMemo,useState} from 'react';
+import {Card} from '@40labs/ui-components';
+import {useInventoryList} from '../inventory/useInventory';
+import {useCustomerList,useCustomer,useCreateCustomer} from '../customers/useCustomers';
+import {useSaleCart} from './useSales';
+import {SaleCartTable} from './SaleCartTable';
+import {SaleSummaryPanel} from './SaleSummaryPanel';
+import type {Customer} from '@40labs/types';
 
-/**
- * Sales/POS workspace.
- * Reference direction: customer-first left, cart center, inventory lookup right.
- * All surfaces use the project-wide soft/off-white palette rather than pure white.
- */
-export default function SalesScreen() {
-  const { data: inventory = [], isLoading } = useInventoryList();
-  const { lines, customer_id, addLine, setCustomer } = useSaleCart();
-  const [customerDraft, setCustomerDraft] = useState<{ full_name: string; phone: string } | null>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [medicineSearch, setMedicineSearch] = useState('');
-  const createCustomer = useCreateCustomer();
-
-  const { data: persistedCustomer } = useCustomer(customer_id);
-  const activeCustomer = selectedCustomer ?? persistedCustomer ?? null;
-
-  const filteredInventory = useMemo(() => {
-    const query = medicineSearch.trim().toLowerCase();
-    if (!query) return inventory;
-    return inventory.filter((item) =>
-      item.medicine.name.toLowerCase().includes(query) ||
-      item.medicine.generic_name.toLowerCase().includes(query) ||
-      item.batch_number.toLowerCase().includes(query)
-    );
-  }, [inventory, medicineSearch]);
-
-  const handleCustomerSelect = (customer: Customer | null) => {
-    setSelectedCustomer(customer);
-    setCustomerDraft(null);
-    setCustomer(customer?.id ?? null);
-  };
-
-  const handleGuestChange = (draft: { full_name: string; phone: string }) => {
-    setSelectedCustomer(null);
-    setCustomerDraft(draft);
-    setCustomer(null);
-  };
-
-  const handleCompleteSale = async (): Promise<boolean> => {
-    if (customer_id) return true;
-    if (!customerDraft?.full_name.trim() && !customerDraft?.phone.trim()) return true;
-    if (!customerDraft?.full_name.trim() || !customerDraft.phone.trim()) {
-      alert('Enter both customer name and phone, or continue as walk-in.');
-      return false;
-    }
-
-    const customer = await createCustomer.mutateAsync({
-      full_name: customerDraft.full_name.trim(),
-      phone: customerDraft.phone.trim(),
-      email: null,
-    });
-    setSelectedCustomer(customer);
-    setCustomerDraft(null);
-    setCustomer(customer.id);
-    return true;
-  };
-
-  return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface">
-      <header className="flex h-20 shrink-0 items-center gap-4 border-b border-black/5 bg-surface-strong px-7">
-        <div className="h-10 w-10 shrink-0 rounded-full bg-primary" aria-hidden="true" />
-        <div>
-          <p className="font-ui text-[11px] font-semibold uppercase tracking-[0.22em] text-black/40">Point of Sale</p>
-          <h1 className="font-heading text-2xl font-bold text-accent">Sales</h1>
-        </div>
-        <div className="ml-auto flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-ui font-medium text-primary">
-          <span className="h-2 w-2 rounded-full bg-primary" />
-          Offline-ready
-        </div>
-      </header>
-
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(290px,25%)_minmax(430px,1fr)_minmax(300px,27%)]">
-        <aside className="min-h-0 overflow-y-auto border-r border-black/5 bg-surface px-5 py-6">
-          <div className="mb-5">
-            <p className="font-ui text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Customer identification</p>
-            <h2 className="mt-1 font-heading text-xl font-semibold text-black/80">Who is buying?</h2>
-          </div>
-
-<<<<<<< HEAD
-        {/* Column 1: Customer Panel Slot */}
-        <div
-          data-slot="customer"
-          className="border-r border-black/5 flex flex-col overflow-y-auto bg-surface/20"
-        >
-          <CustomerPanel />
-          <ReceiptPreviewCard />
-        </div>
-
-        {/* Column 2: Cart Panel Slot */}
-        <div
-          data-slot="cart"
-          className="bg-white flex flex-col overflow-hidden"
-        >
-          <CartPanel />
-        </div>
-
-        {/* Column 3: Medicine Panel Slot */}
-        <div
-          data-slot="medicine"
-          className="border-l border-black/5 flex flex-col overflow-hidden bg-surface/20"
-        >
-          <MedicineSearchPanel />
-        </div>
-=======
-          <CustomerSearch
-            selectedCustomer={activeCustomer}
-            guestDraft={customerDraft}
-            onSelect={handleCustomerSelect}
-            onGuestChange={handleGuestChange}
-          />
-
-          {activeCustomer && (
-            <Card className="mt-5 border border-primary/10 bg-surface-strong p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-heading text-lg font-semibold text-black/80">{activeCustomer.full_name}</p>
-                  <p className="mt-1 font-mono text-xs text-black/45">{activeCustomer.phone}</p>
-                  {activeCustomer.email && <p className="mt-1 text-xs text-black/45">{activeCustomer.email}</p>}
-                </div>
-                <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-ui font-semibold uppercase tracking-wider text-primary">Registered</span>
-              </div>
-              {activeCustomer.outstanding_balance > 0 && (
-                <div className="mt-4 border-t border-black/5 pt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-ui text-black/45">Outstanding balance</span>
-                    <span className="font-mono text-sm font-bold text-accent">TZS {activeCustomer.outstanding_balance.toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
-            </Card>
-          )}
-
-          <Card className="mt-5 bg-surface-strong p-4">
-            <p className="font-ui text-[10px] font-semibold uppercase tracking-[0.18em] text-black/35">Sale customer rule</p>
-            <p className="mt-2 text-sm leading-5 text-black/55">A quick buyer does not need registration. If name and phone are entered, 40Labs saves the customer when the sale is confirmed.</p>
-          </Card>
-        </aside>
->>>>>>> 945f5f3a8eda6d2b3932c2facdfa01f016b40f48
-
-        <section className="flex min-h-0 min-w-0 flex-col bg-surface-strong">
-          <div className="flex h-20 shrink-0 items-center justify-between border-b border-black/5 px-7">
-            <div className="flex items-center gap-3">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-primary" aria-hidden="true">
-                <circle cx="8" cy="21" r="1" /><circle cx="19" cy="21" r="1" />
-                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-              </svg>
-              <h2 className="font-heading text-xl font-semibold text-black/75">Cart</h2>
-            </div>
-            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-ui font-semibold text-primary">{lines.length} {lines.length === 1 ? 'item' : 'items'}</span>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <SaleCartTable />
-          </div>
-
-          <SaleSummaryPanel onCompleteSale={handleCompleteSale} completingSale={createCustomer.isPending} />
-        </section>
-
-        <aside className="min-h-0 overflow-hidden border-l border-black/5 bg-surface px-5 py-6">
-          <div className="mb-5">
-            <p className="font-ui text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Inventory lookup</p>
-            <div className="relative mt-3">
-              <svg className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-black/30" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
-              <input value={medicineSearch} onChange={(e) => setMedicineSearch(e.target.value)} placeholder="Search medicine..." aria-label="Search medicine" className="h-12 w-full rounded-input bg-surface-strong pl-11 pr-4 font-ui text-sm text-black/75 elevation-inset placeholder:text-black/35 focus:outline-none focus:ring-2 focus:ring-primary/30" />
-            </div>
-          </div>
-
-          <div className="min-h-0 space-y-3 overflow-y-auto pr-1">
-            {isLoading && <p className="py-8 text-center text-sm text-black/40">Loading inventory...</p>}
-            {!isLoading && filteredInventory.length === 0 && <p className="py-8 text-center text-sm text-black/40">No medicines found.</p>}
-            {filteredInventory.map((item) => {
-              const lowStock = item.quantity <= item.low_stock_threshold;
-              const expired = new Date(item.expiry_date) < new Date();
-              return (
-                <Card key={item.id} interactive className="p-4" onClick={() => !expired && addLine(item.id, 1)}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0"><p className="truncate font-ui font-semibold text-black/80">{item.medicine.name}</p><p className="mt-1 text-xs italic text-black/35">{item.medicine.generic_name}</p></div>
-                    <span className="shrink-0 rounded-full bg-black/5 px-2 py-1 font-mono text-[10px] text-black/45">{item.quantity} {item.medicine.unit}s</span>
-                  </div>
-                  <div className="mt-4 flex items-end justify-between border-t border-black/5 pt-3">
-                    <div><p className="text-[10px] uppercase tracking-wider text-black/35">Batch</p><p className="mt-1 font-mono text-[11px] text-black/50">{item.batch_number}</p></div>
-                    <p className="font-mono text-sm font-bold text-primary">TZS {item.sell_price.toLocaleString()}</p>
-                  </div>
-                  {(lowStock || expired) && <div className="mt-3 flex gap-2">{lowStock && <span className="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-semibold text-accent">Low stock</span>}{expired && <span className="rounded-full bg-danger/10 px-2 py-1 text-[10px] font-semibold text-danger">Expired</span>}</div>}
-                </Card>
-              );
-            })}
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
+export default function SalesScreen(){
+ const{data:inventory=[],isLoading}=useInventoryList();const{data:customers=[]}=useCustomerList();const{lines,customer_id,addLine,setCustomer}=useSaleCart();
+ const[customerName,setCustomerName]=useState('');const[customerContact,setCustomerContact]=useState('');const[selected,setSelected]=useState<Customer|null>(null);const[draft,setDraft]=useState<{full_name:string;phone:string}|null>(null);const[medicineSearch,setMedicineSearch]=useState('');const createCustomer=useCreateCustomer();const{data:persisted}=useCustomer(customer_id);const customer=selected??persisted??null;
+ const matches=useMemo(()=>{const q=`${customerName} ${customerContact}`.trim().toLowerCase();if(!q)return[];return customers.filter(c=>c.full_name.toLowerCase().includes(q)||c.phone.toLowerCase().includes(q)||(c.email??'').toLowerCase().includes(q));},[customers,customerName,customerContact]);
+ const filteredInventory=useMemo(()=>{const q=medicineSearch.trim().toLowerCase();if(!q)return inventory;return inventory.filter(i=>i.medicine.name.toLowerCase().includes(q)||i.medicine.generic_name.toLowerCase().includes(q)||i.batch_number.toLowerCase().includes(q));},[inventory,medicineSearch]);
+ const selectCustomer=(c:Customer)=>{setSelected(c);setDraft(null);setCustomerName(c.full_name);setCustomerContact(c.phone);setCustomer(c.id)};
+ const changeCustomer=()=>{setSelected(null);setDraft(null);setCustomer(null);setCustomerName('');setCustomerContact('')};
+ const updateName=(v:string)=>{setSelected(null);setCustomer(null);setCustomerName(v);setDraft({full_name:v,phone:customerContact})};const updateContact=(v:string)=>{setSelected(null);setCustomer(null);setCustomerContact(v);setDraft({full_name:customerName,phone:v})};
+ const complete=async()=>{if(customer_id)return true;if(!draft?.full_name.trim()&&!draft?.phone.trim())return true;if(!draft?.full_name.trim()||!draft.phone.trim()){alert('Enter both customer name and phone, or continue as walk-in.');return false;}const c=await createCustomer.mutateAsync({full_name:draft.full_name.trim(),phone:draft.phone.trim(),email:null});selectCustomer(c);return true};
+ return <div className="h-full bg-surface text-text p-3 flex flex-col gap-2 overflow-hidden">
+  <header className="h-10 shrink-0 flex items-center gap-3 px-1"><div className="w-8 h-8 rounded-full bg-primary elevation-raised"/><h1 className="font-heading text-sm font-bold text-accent">Sales</h1></header>
+  <div className="grid min-h-0 flex-1 grid-cols-[minmax(205px,24%)_minmax(360px,1fr)_minmax(230px,27%)] gap-1.5">
+   <aside className="min-h-0 overflow-hidden rounded-card bg-panel p-2 elevation-raised flex flex-col">
+    <div className="shrink-0 space-y-2"><input value={customerName} onChange={e=>updateName(e.target.value)} placeholder="Customer’s name" className="h-8 w-full rounded-input bg-input px-3 text-xs text-text placeholder:text-text-muted elevation-inset focus:outline-none"/><input value={customerContact} onChange={e=>updateContact(e.target.value)} placeholder="Customer’s phone/email" className="h-8 w-full rounded-input bg-input px-3 text-xs text-text placeholder:text-text-muted elevation-inset focus:outline-none"/>{!customer&&!draft?.full_name&&!draft?.phone&&<p className="text-[9px] text-text-muted px-1">Search existing customer first. A new buyer can continue without registration.</p>}{!customer&&matches.length>0&&<div className="space-y-1">{matches.slice(0,3).map(c=><button key={c.id} onClick={()=>selectCustomer(c)} className="w-full rounded-input bg-panel-strong p-2 text-left elevation-raised"><p className="text-xs text-text">{c.full_name}</p><p className="text-[9px] font-mono text-text-muted">{c.phone}</p></button>)}</div>}</div>
+    <div className="min-h-0 flex-1 mt-2 rounded-card bg-field text-[#252525] p-3 overflow-y-auto">{customer?<><p className="text-sm font-semibold">{customer.full_name}</p><p className="mt-4 text-xs">phone</p><p className="text-xs font-mono">{customer.phone}</p>{customer.email&&<><p className="mt-3 text-xs">email</p><p className="text-xs">{customer.email}</p></>}<p className="mt-5 text-xs">Service</p><p className="mt-1 text-xs">Sales / Pharmacy</p><p className="mt-5 text-xs">Outstanding</p><p className="text-sm font-mono">TZS {customer.outstanding_balance.toLocaleString()}</p></>:<><p className="text-xs font-semibold">pharmacy name</p><p className="mt-5 text-xs">name</p><p className="mt-2 text-xs">phone</p><p className="mt-2 text-xs">email</p><p className="mt-5 text-xs">Service</p><p className="mt-1 text-xs">cost</p><p className="mt-5 text-xs">Description</p>{draft?.full_name&&<p className="mt-5 text-xs font-semibold">{draft.full_name}</p>}{draft?.phone&&<p className="mt-1 text-xs font-mono">{draft.phone}</p>}</>}</div>
+    <div className="mt-2 shrink-0 flex gap-1.5"><button onClick={changeCustomer} className="h-8 flex-1 rounded-input bg-panel-strong text-text-muted text-[10px] elevation-raised">{customer?'Change':'Walk-in'}</button><button onClick={()=>draft?.full_name&&draft.phone&&complete()} className="h-8 flex-[1.5] rounded-input bg-panel-strong text-text-muted text-[10px] elevation-raised">Send Report To Customer</button></div>
+   </aside>
+   <section className="min-h-0 flex flex-col rounded-card bg-panel elevation-raised overflow-hidden"><div className="h-10 shrink-0 px-3 flex items-center justify-between border-b border-border"><span className="font-heading text-sm font-semibold text-text">Cart</span><span className="rounded-full bg-primary px-2 py-1 text-[9px] text-surface font-semibold">{lines.length} ITEMS</span></div><div className="min-h-0 flex-1 overflow-y-auto p-2"><SaleCartTable/></div><SaleSummaryPanel onCompleteSale={complete} completingSale={createCustomer.isPending}/></section>
+   <aside className="min-h-0 rounded-card bg-panel elevation-raised p-2 flex flex-col overflow-hidden"><input value={medicineSearch} onChange={e=>setMedicineSearch(e.target.value)} placeholder="Search medicine..." className="h-8 shrink-0 w-full rounded-input bg-input px-3 text-xs text-text placeholder:text-text-muted elevation-inset focus:outline-none"/><button className="mt-2 h-8 shrink-0 rounded-full bg-primary elevation-raised" aria-label="Search medicine"/><div className="min-h-0 flex-1 overflow-y-auto mt-2 space-y-2">{isLoading?<p className="p-4 text-xs text-text-muted">Loading...</p>:filteredInventory.map(item=><Card key={item.id} interactive className="p-3 bg-panel-strong" onClick={()=>addLine(item.id,1)}><div className="flex justify-between gap-2"><div className="min-w-0"><p className="truncate text-xs font-semibold text-text">{item.medicine.name}</p><p className="truncate text-[9px] text-text-muted italic">{item.medicine.generic_name}</p></div><span className="font-mono text-[9px] text-text-muted">{item.quantity}</span></div><div className="mt-2 pt-2 border-t border-border flex justify-between"><span className="font-mono text-[9px] text-text-muted">Batch: {item.batch_number}</span><span className="font-mono text-xs font-bold text-primary">{item.sell_price.toLocaleString()}</span></div></Card>)}</div></aside>
+  </div>
+ </div>;
 }
