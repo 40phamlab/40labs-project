@@ -1,107 +1,14 @@
 // [PHASE: MVP]
-import type { SaleLine } from '@40labs/types';
 import { Button } from '@40labs/ui-components';
 import { useSaleCart } from './useSales';
 import { useInventoryList } from '../inventory/useInventory';
 
-/**
- * Cart table for the POS.
- * Displays line items, quantity management, and pricing.
- */
+/** Cart cards for the customer-first POS. */
 export function SaleCartTable() {
   const { lines, setQty, removeLine } = useSaleCart();
-  const { data: inventory } = useInventoryList();
+  const { data: inventory = [] } = useInventoryList();
 
-  if (lines.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center border-2 border-dashed border-black/5 rounded-card p-12">
-        <div className="text-center">
-          <p className="font-ui text-black/40">Cart is empty</p>
-          <p className="font-ui text-xs text-black/30 mt-1">Select medicines from the left to start</p>
-        </div>
-      </div>
-    );
-  }
+  if (lines.length === 0) return <div className="flex h-full min-h-48 items-center justify-center rounded-card border border-dashed border-black/10 bg-surface px-8"><div className="text-center"><div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">🛒</div><p className="font-ui font-medium text-black/55">Cart is empty</p><p className="mt-1 text-xs text-black/35">Search inventory on the right and click a medicine to add it.</p></div></div>;
 
-  return (
-    <div className="flex-1 overflow-auto">
-      <table className="w-full text-left border-separate border-spacing-y-2">
-        <thead className="sticky top-0 bg-white z-10">
-          <tr className="text-xs uppercase tracking-wider text-black/40 font-ui">
-            <th className="px-4 py-2 font-medium">Item</th>
-            <th className="px-4 py-2 font-medium">Qty</th>
-            <th className="px-4 py-2 font-medium text-right">Unit Price</th>
-            <th className="px-4 py-2 font-medium text-right">Subtotal</th>
-            <th className="px-4 py-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {lines.map((line) => {
-            const invItem = inventory?.find((i) => i.id === line.inventory_item_id);
-            return (
-              <tr key={line.id} className="bg-surface/50 elevation-raised rounded-card group">
-                <td className="px-4 py-3 rounded-l-card">
-                  <div className="flex flex-col">
-                    <span className="font-ui font-medium text-sm">
-                      {invItem?.medicine.name || 'Unknown Item'}
-                    </span>
-                    <span className="text-[10px] font-mono text-black/40">
-                      Batch: {invItem?.batch_number || 'N/A'}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      intent="secondary"
-                      className="!p-1 h-6 w-6 flex items-center justify-center"
-                      onClick={() => setQty(line.id, line.quantity - 1)}
-                    >
-                      -
-                    </Button>
-                    <span className="font-mono text-sm w-8 text-center">{line.quantity}</span>
-                    <Button
-                      size="sm"
-                      intent="secondary"
-                      className="!p-1 h-6 w-6 flex items-center justify-center"
-                      onClick={() => setQty(line.id, line.quantity + 1)}
-                    >
-                      +
-                    </Button>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-sm">
-                  {line.unit_price.toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-right font-mono text-sm font-bold">
-                  {line.subtotal.toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-right rounded-r-card">
-                  <button
-                    onClick={() => removeLine(line.id)}
-                    className="text-danger opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                    </svg>
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <div className="flex flex-col gap-3">{lines.map((line) => { const item = inventory.find((inventoryItem) => inventoryItem.id === line.inventory_item_id); if (!item) return null; return <div key={line.id} className="group flex items-center gap-4 rounded-card bg-surface p-4 elevation-raised"><div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-card bg-surface-strong text-black/20 elevation-inset">▦</div><div className="min-w-0 flex-1"><p className="truncate font-ui font-semibold text-black/80">{item.medicine.name}</p><p className="mt-1 text-xs text-black/40">Unit: <span className="font-mono">TZS {line.unit_price.toLocaleString()}</span></p></div><div className="flex items-center gap-2 rounded-full bg-surface-strong p-1 elevation-inset"><button type="button" onClick={() => setQty(line.id, line.quantity - 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-black/55 elevation-raised">−</button><span className="w-8 text-center font-mono text-sm font-semibold text-black/70">{line.quantity}</span><button type="button" onClick={() => setQty(line.id, line.quantity + 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white elevation-raised">+</button></div><p className="w-28 text-right font-mono text-base font-bold text-primary">{line.subtotal.toLocaleString()}</p><Button intent="danger" size="sm" className="!h-9 !w-9 !p-0 !rounded-full" onClick={() => removeLine(line.id)} aria-label={`Remove ${item.medicine.name}`}>×</Button></div>; })}</div>;
 }

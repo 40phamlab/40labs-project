@@ -1,47 +1,21 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Customer } from '@40labs/types';
 import { mockCustomers } from '../../lib/mockData';
 
-/**
- * Hook to fetch the full list of customers.
- * Read-only from mock data for MVP.
- */
-export const useCustomerList = () => {
-  return useQuery<Customer[]>({
-    queryKey: ['customers'],
-    queryFn: async () => {
-      // Direct read from mockData.ts as required.
-      return mockCustomers;
-    },
-  });
-};
+export const useCustomerList = () => useQuery<Customer[]>({ queryKey: ['customers'], queryFn: async () => [...mockCustomers] });
+export const useCustomer = (id: string | null) => useQuery<Customer | undefined>({ queryKey: ['customers', id], queryFn: async () => id ? mockCustomers.find((customer) => customer.id === id) : undefined, enabled: !!id });
+export const useDebtors = () => useQuery<Customer[]>({ queryKey: ['customers', 'debtors'], queryFn: async () => [...mockCustomers].filter((customer) => customer.outstanding_balance > 0).sort((a, b) => b.outstanding_balance - a.outstanding_balance) });
 
-/**
- * Hook to fetch a single customer by ID.
- * @param id The customer ID
- */
-export const useCustomer = (id: string | null) => {
-  return useQuery<Customer | undefined>({
-    queryKey: ['customers', id],
-    queryFn: async () => {
-      if (!id) return undefined;
-      return mockCustomers.find((c) => c.id === id);
+/** Mock seam for POST /customers; real SQLx/Tauri persistence replaces this mutation later. */
+export const useCreateCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: Pick<Customer, 'full_name' | 'phone' | 'email'>) => {
+      const now = new Date().toISOString();
+      const customer: Customer = { id: `cust_${Math.random().toString(36).slice(2, 10)}`, workspace_id: 'ws_dev_001', branch_id: 'br_dev_001', created_at: now, updated_at: now, full_name: input.full_name, phone: input.phone, email: input.email, outstanding_balance: 0, notes: null, amob_patient_id: null };
+      mockCustomers.push(customer);
+      return customer;
     },
-    enabled: !!id,
-  });
-};
-
-/**
- * Hook to fetch customers with an outstanding balance > 0.
- * Results are sorted by outstanding_balance in descending order.
- */
-export const useDebtors = () => {
-  return useQuery<Customer[]>({
-    queryKey: ['customers', 'debtors'],
-    queryFn: async () => {
-      return [...mockCustomers]
-        .filter((c) => c.outstanding_balance > 0)
-        .sort((a, b) => b.outstanding_balance - a.outstanding_balance);
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['customers'] }),
   });
 };

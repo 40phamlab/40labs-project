@@ -1,6 +1,6 @@
 export const radius = {
-  card: '12px',   // cards, panels
-  input: '8px',   // inputs, buttons, chips
+  card: '18px',
+  input: '14px',
 } as const;
 
 export type RadiusToken = keyof typeof radius;
