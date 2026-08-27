@@ -1,74 +1,57 @@
-import { useState } from 'react';
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Button } from '@40labs/ui-components';
+import { useNavStore } from './stores/useNavStore';
+import { AppSidebar } from './components/AppSidebar';
+import SalesScreen from './features/sales/SalesScreen';
 import { InventoryList } from './features/inventory/InventoryList';
-import SalesPOS from './features/sales/SalesPOS';
-import "./App.css";
+import './App.css';
 
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-    },
-  },
-});
+// Create a client for React Query
+const queryClient = new QueryClient();
 
 /**
- * [PHASE: MVP] Main Entry Point.
- * Contains a temporary navigation layer for dev preview.
- * Real routing (react-router) will replace the local state below in a later task.
+ * Main Application Root
+ * Handles high-level layout and screen switching based on useNavStore.
  */
-function App() {
-  const [activeView, setActiveView] = useState<'inventory' | 'sales'>('sales');
+export default function App() {
+  const activeScreen = useNavStore((state) => state.activeScreen);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-surface flex flex-col">
+      <div className="flex h-screen w-screen bg-surface font-ui overflow-hidden">
+        {/* Navigation Sidebar */}
+        <AppSidebar />
 
-        {/* TEMPORARY DEV NAV — DO NOT PORT TO PRODUCTION ROUTING */}
-        <nav className="h-14 bg-white border-b border-black/5 flex items-center px-6 gap-4 z-50">
-          <div className="flex items-center gap-2 mr-4">
-            <div className="w-6 h-6 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-xs">40</div>
-            <span className="font-heading font-bold text-sm tracking-tight text-black/80">40Labs / Core</span>
-          </div>
+        {/* Main Content Area */}
+        <main className="flex-1 relative overflow-hidden">
+          {activeScreen === 'sales' && <SalesScreen />}
+          {activeScreen === 'inventory' && <InventoryList />}
 
-          <Button
-            intent={activeView === 'inventory' ? 'primary' : 'secondary'}
-            size="sm"
-            onClick={() => setActiveView('inventory')}
-          >
-            Inventory
-          </Button>
-
-          <Button
-            intent={activeView === 'sales' ? 'primary' : 'secondary'}
-            size="sm"
-            onClick={() => setActiveView('sales')}
-          >
-            Sales / POS
-          </Button>
-
-          <div className="ml-auto text-[10px] font-mono text-black/30 uppercase tracking-widest">
-            MVP Preview Mode
-          </div>
-        </nav>
-
-        {/* Feature Render Surface */}
-        <main className="flex-1 overflow-hidden">
-          {activeView === 'inventory' ? (
-            <div className="p-6 h-full">
-              <InventoryList />
+          {/* Dashboard and other screens as placeholders */}
+          {activeScreen === 'dashboard' && (
+            <div className="p-10">
+              <h1 className="font-heading text-3xl font-bold text-black/80 mb-2">
+                Dashboard
+              </h1>
+              <p className="text-black/50">
+                Welcome to 40Labs Core. Select a module from the sidebar to begin.
+              </p>
             </div>
-          ) : (
-            <SalesPOS />
+          )}
+
+          {/* Fallback for undeveloped screens */}
+          {!['sales', 'inventory', 'dashboard'].includes(activeScreen) && (
+            <div className="p-10">
+              <h1 className="font-heading text-3xl font-bold text-black/80 mb-2 uppercase">
+                {activeScreen}
+              </h1>
+              <p className="text-black/50 italic">
+                This module is currently under development.
+              </p>
+            </div>
           )}
         </main>
-
       </div>
     </QueryClientProvider>
   );
 }
-
-export default App;

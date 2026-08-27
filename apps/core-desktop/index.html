@@ -5,10 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>40LabsCore</title>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        alert("Error: " + msg + "\nurl: " + url + "\nline: " + line);
+      };
+      window.addEventListener('unhandledrejection', function(event) {
+        alert("Unhandled Rejection: " + event.reason);
+      });
+    </script>
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="background: red; color: white; padding: 20px; text-align: center; font-weight: bold;">
+        HTML LOADED - WAITING FOR REACT...
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
