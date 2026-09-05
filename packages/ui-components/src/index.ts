@@ -25,6 +25,7 @@ export * from './forms/Radio';
 export * from './forms/Toggle';
 export * from './forms/Switch';
 export * from './forms/DateInput';
+export * from './forms/AuthSpecialtyInputs';
 
 // Feedback
 export * from './feedback/Spinner';
@@ -42,6 +43,9 @@ export * from './navigation/Tabs';
 export * from './navigation/SegmentedControl';
 export * from './navigation/Pagination';
 export * from './navigation/Menu';
+export * from './navigation/AppSidebarNav';
+export * from './navigation/ContextualSubNav';
+export * from './navigation/DashboardHeaderBar';
 
 // Overlays
 export * from './overlays/Modal';
@@ -68,3 +72,8 @@ export * from './data-display/DashboardComposites';
 export * from './data-display/ReceiptPreview';
 export * from './composites/Commerce';
 export * from './composites/SplitPaymentManager';
+export * from './composites/CartItemRow';
+export * from './composites/CartSummaryPanel';
+export * from './composites/OnboardingCarouselCard';
+export * from './composites/AuthFormCard';
+export * from './composites/AuthCompletionCards';

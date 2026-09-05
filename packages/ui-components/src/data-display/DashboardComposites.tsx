@@ -149,6 +149,54 @@ export const ChartPanel = ({ title, children, actions, className = '' }: Summary
   );
 };
 
+export interface QuickActionItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  permissionRequired?: string;
+  variant?: 'primary' | 'secondary' | 'neutral' | 'accent';
+}
+
+export interface QuickActionsGridProps {
+  actions: QuickActionItem[];
+  userPermissions?: string[];
+  className?: string;
+}
+
+export const QuickActionsGrid = ({ actions, userPermissions = [], className = '' }: QuickActionsGridProps) => {
+  const filteredActions = actions.filter(action =>
+    !action.permissionRequired || userPermissions.includes(action.permissionRequired)
+  );
+
+  return (
+    <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 ${className}`}>
+      {filteredActions.map((action) => (
+        <button
+          key={action.id}
+          onClick={action.onClick}
+          className={`
+            flex flex-col items-center justify-center gap-3 p-4 rounded-card bg-panel border border-border/50
+            elevation-raised hover:elevation-hover active:elevation-pressed transition-all group
+          `}
+        >
+          <div className={`
+            w-10 h-10 rounded-full flex items-center justify-center transition-colors
+            ${action.variant === 'accent' ? 'bg-accent/10 text-accent group-hover:bg-accent group-hover:text-surface' :
+              action.variant === 'primary' ? 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-surface' :
+              'bg-panel-strong text-text-muted group-hover:text-text'}
+          `}>
+            {action.icon}
+          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-text text-center leading-tight">
+            {action.label}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
 export interface QuickActionsProps {
   children: React.ReactNode;
   className?: string;

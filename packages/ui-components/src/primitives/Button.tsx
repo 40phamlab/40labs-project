@@ -1,11 +1,12 @@
 import * as React from 'react';
 import { Spinner } from '../feedback/Spinner';
 
-export type ButtonIntent = 'primary' | 'secondary' | 'neutral' | 'danger' | 'ghost';
+export type ButtonIntent = 'primary' | 'secondary' | 'neutral' | 'danger' | 'ghost' | 'accent';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   intent?: ButtonIntent;
+  variant?: ButtonIntent;
   size?: ButtonSize;
   fullWidth?: boolean;
   loading?: boolean;
@@ -16,6 +17,7 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 const intentClasses: Record<ButtonIntent, string> = {
   primary: 'bg-primary text-surface elevation-raised hover:elevation-hover active:elevation-pressed',
   secondary: 'bg-surface-strong text-primary border border-primary/20 elevation-raised hover:elevation-hover active:elevation-pressed',
+  accent: 'bg-accent text-surface elevation-raised hover:elevation-hover active:elevation-pressed',
   neutral: 'bg-panel-strong text-text elevation-raised hover:elevation-hover active:elevation-pressed',
   danger: 'bg-danger text-surface elevation-raised hover:elevation-hover active:elevation-pressed',
   ghost: 'bg-transparent text-text hover:bg-panel-strong/30 active:bg-panel-strong/50',
@@ -30,7 +32,8 @@ const sizeClasses: Record<ButtonSize, string> = {
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
-      intent = 'primary',
+      intent,
+      variant,
       size = 'md',
       fullWidth = false,
       loading = false,
@@ -43,7 +46,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref,
   ) => {
-    const intentClass = intentClasses[intent as ButtonIntent] || intentClasses.primary;
+    const finalIntent = variant || intent || 'primary';
+    const intentClass = intentClasses[finalIntent as ButtonIntent] || intentClasses.primary;
     const sizeClass = sizeClasses[size as ButtonSize] || sizeClasses.md;
 
     return (

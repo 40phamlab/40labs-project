@@ -1,5 +1,48 @@
 import React, { useState } from 'react';
-import { Settings, Pill, Package, Edit, Plus, Eye, EyeOff, Search, AlertTriangle, CheckCircle } from 'lucide-react';
+import {
+  Settings,
+  Pill,
+  Package,
+  Edit,
+  Plus,
+  Eye,
+  EyeOff,
+  Search,
+  AlertTriangle,
+  CheckCircle,
+  LayoutDashboard,
+  ShoppingBag,
+  ShoppingCart,
+  Users,
+  Globe,
+  BarChart3,
+  Calendar,
+  GraduationCap,
+  Bell,
+  Database,
+  ShieldCheck,
+  CloudUpload,
+  Layers,
+  FileText,
+  Truck,
+  History,
+  Download,
+  Share2,
+  MessageCircle,
+  Mail,
+  MessageSquare,
+  MapPin,
+  ChevronLeft,
+  ChevronRight,
+  Monitor,
+  HeartPulse,
+  Stethoscope,
+  ClipboardList,
+  Activity,
+  Microscope,
+  Baby,
+  Dna
+} from 'lucide-react';
 import {
   Button,
   IconButton,
@@ -115,6 +158,18 @@ import {
   OrderSummary,
   PaymentSummary,
   PaymentMethodSelector,
+  CartItemRow,
+  CartSummaryPanel,
+  OnboardingCarouselCard,
+  AuthFormCard,
+  TermsCheckboxGroup,
+  LocationGpsGroup,
+  AuthSuccessCard,
+  ChannelConnectList,
+  AppSidebarNav,
+  ContextualSubNav,
+  DashboardHeaderBar,
+  QuickActionsGrid,
 } from '@40labs/ui-components';
 
 export function ComponentLab() {
@@ -133,8 +188,14 @@ export function ComponentLab() {
   const [selectedCust, setSelectedCust] = useState<any>(null);
   const [payMethod, setPayMethod] = useState('cash');
   const [qty, setQty] = useState(1);
+  const [activeStep, setActiveStep] = useState(0);
 
   const [activeTab, setActiveTab] = useState('Overview');
+  const [activeRoute, setActiveRoute] = useState('dashboard');
+  const [activeSubRoute, setActiveSubRoute] = useState('business');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showSubNav, setShowSubNav] = useState(true);
+  const [fullScreenMode, setFullScreenMode] = useState(false);
   const [segValue, setSegValue] = useState('day');
   const [currentPage, setCurrentPage] = useState(1);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -142,6 +203,9 @@ export function ComponentLab() {
   const [sortKey, setSortKey] = useState('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [loadingDemo, setLoadingDemo] = useState(false);
+
+  // Payload Toggle for Layout Integration
+  const [activePayload, setActivePayload] = useState<'pharmacy' | 'hospital'>('pharmacy');
 
   // Phase 5 States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -177,17 +241,6 @@ export function ComponentLab() {
     { category: 'Sales', description: 'Add New Customer', keys: ['ALT', 'N'] },
   ];
 
-  const mockItems = [
-    { id: 1, name: 'Paracetamol' },
-    { id: 2, name: 'Amoxicillin' },
-    { id: 3, name: 'Ibuprofen' },
-  ];
-
-  const comboOptions = [
-    { label: 'Pharmacy A', value: 'a' },
-    { label: 'Pharmacy B', value: 'b' },
-  ];
-
   const mockData = [
     { id: 1, name: 'Paracetamol 500mg', stock: 124, price: 5.50, status: 'active', category: 'Analgesics' },
     { id: 2, name: 'Amoxicillin 250mg', stock: 42, price: 12.00, status: 'warning', category: 'Antibiotics' },
@@ -204,20 +257,224 @@ export function ComponentLab() {
     }
   ];
 
-  const handleSort = (key: string) => {
-    if (sortKey === key) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
+  // --- API PAYLOAD MOCKS ---
+
+  const pharmacyConfig = {
+    branding: {
+      brandName: "40LABS",
+      brandTagline: "PHARMACY",
+      logo: <Pill size={18} />,
+      themeColor: "#39B54A"
+    },
+    user: {
+      name: "Dr. Alex Z. (Pharmacist)",
+      role: "Super Admin",
+      permissions: ["can_sell", "can_manage_inventory", "can_view_reports", "can_manage_settings"]
+    },
+    navigation: [
+      { id: 'dashboard', label: 'Overview', icon: <LayoutDashboard size={20} />, route: '/dashboard' },
+      { id: 'sales', label: 'Point of Sale', icon: <ShoppingBag size={20} />, route: '/pos', badgeCount: 3, permissionRequired: 'can_sell' },
+      { id: 'inventory', label: 'Inventory', icon: <Pill size={20} />, route: '/stock', permissionRequired: 'can_manage_inventory' },
+      { id: 'reports', label: 'Analytics', icon: <BarChart3 size={20} />, route: '/reports', permissionRequired: 'can_view_reports' },
+    ],
+    settingsSubNav: [
+      {
+        id: 'biz',
+        title: 'Organization',
+        items: [
+          { id: 'business', label: 'Pharmacy Profile', icon: <Database size={16} /> },
+          { id: 'users', label: 'Staff Management', icon: <Users size={16} />, badgeCount: 4 }
+        ]
+      },
+      {
+        id: 'sys',
+        title: 'System',
+        items: [
+          { id: 'security', label: 'Security & Access', icon: <ShieldCheck size={16} /> },
+          { id: 'backup', label: 'Data Backup', icon: <CloudUpload size={16} /> }
+        ]
+      }
+    ],
+    header: {
+      indicators: [
+        { id: 'i1', label: 'Status', value: 'Live', color: 'primary' as const, type: 'dot' as const },
+        { id: 'i2', label: 'Orders', value: '142', icon: <ShoppingCart size={14} />, type: 'pill' as const }
+      ]
     }
   };
 
+  const hospitalConfig = {
+    branding: {
+      brandName: "AFYA BORA",
+      brandTagline: "HOSPITAL",
+      logo: <HeartPulse size={18} />,
+      themeColor: "#EF4444"
+    },
+    user: {
+      name: "Nurse Jane Smith",
+      role: "Ward Manager",
+      permissions: ["can_view_patients", "can_manage_wards", "can_view_records"]
+    },
+    navigation: [
+      { id: 'dashboard', label: 'Wards', icon: <Activity size={20} />, route: '/wards' },
+      { id: 'patients', label: 'Patients', icon: <Users size={20} />, route: '/patients', badgeCount: 12, permissionRequired: 'can_view_patients' },
+      { id: 'records', label: 'Medical Records', icon: <ClipboardList size={20} />, route: '/records', permissionRequired: 'can_view_records' },
+      { id: 'labs', label: 'Lab Results', icon: <Microscope size={20} />, route: '/labs' },
+      { id: 'pediatrics', label: 'Pediatrics', icon: <Baby size={20} />, route: '/peds' },
+    ],
+    settingsSubNav: [
+      {
+        id: 'hosp',
+        title: 'Clinical Config',
+        items: [
+          { id: 'wards', label: 'Ward Assignment', icon: <Database size={16} /> },
+          { id: 'staff', label: 'Doctor Roster', icon: <Stethoscope size={16} /> }
+        ]
+      },
+      {
+        id: 'adm',
+        title: 'Admin',
+        items: [
+          { id: 'billing', label: 'Billing Rules', icon: <FileText size={16} /> },
+          { id: 'compliance', label: 'HMO Compliance', icon: <ShieldCheck size={16} /> }
+        ]
+      }
+    ],
+    header: {
+      indicators: [
+        { id: 'h1', label: 'ER Load', value: 'High', color: 'danger' as const, type: 'pill' as const },
+        { id: 'h2', label: 'Surgeries', value: '08', icon: <Activity size={14} />, type: 'pill' as const }
+      ]
+    }
+  };
+
+  const config = activePayload === 'pharmacy' ? pharmacyConfig : hospitalConfig;
+
+  // --- FORM SCHEMAS ---
+
+  const signInSchema: any = {
+    id: 'sign-in',
+    title: 'Welcome Back',
+    subtitle: 'Enter your credentials to access the portal',
+    fields: [
+      { id: 'email', type: 'email', label: 'Email Address', placeholder: 'name@work.com' },
+      { id: 'pass', type: 'password', label: 'Password', placeholder: '••••••••' },
+      { id: 'rem', type: 'checkbox', label: 'Remember me on this device' }
+    ],
+    submitLabel: 'Sign In',
+    secondaryActions: [
+      { label: 'Forgot Password?', onClick: () => alert('Reset') }
+    ],
+    footerLink: { label: 'Contact Support', onClick: () => alert('Help') }
+  };
+
+  const registrationSchema: any = {
+    id: 'register',
+    title: 'Create Account',
+    subtitle: 'Join the 40Labs network today',
+    branding: { showLogoBadge: true },
+    fields: [
+      { id: 'biz', type: 'text', label: 'Business Name', placeholder: 'e.g. Afya Center' },
+      {
+        id: 'type',
+        type: 'select',
+        label: 'Type',
+        options: [
+          { label: 'Retail Pharmacy', value: 'retail' },
+          { label: 'Wholesale', value: 'wholesale' },
+          { label: 'Hospital', value: 'hospital' }
+        ]
+      },
+      { id: 'phone', type: 'tel', label: 'Phone', placeholder: '+255...' },
+    ],
+    submitLabel: 'Continue to Location',
+  };
+
+  const mfaSchema: any = {
+    id: 'mfa',
+    title: 'Verify Identity',
+    subtitle: 'A code was sent to your registered device',
+    fields: [
+      {
+        id: 'otp',
+        type: 'otp',
+        label: 'Verification Code',
+        placeholder: '000-000',
+        otpAction: { label: 'Resend via Email', onSend: () => alert('Code Resent!') }
+      }
+    ],
+    submitLabel: 'Verify & Authorize',
+    secondaryActions: [{ label: 'Use Security Key instead', onClick: () => alert('Key'), variant: 'secondary' }]
+  };
+
+  // --- DOMAIN API MOCKS ---
+
+  const mockCartItems: any[] = [
+    {
+      id: 'item-1',
+      name: 'Panadol Advance 500mg',
+      unitPrice: 2500,
+      quantity: 2,
+      unitType: 'Strip',
+      stockStatus: 'in-stock',
+      discountAmount: 100,
+      currencyCode: 'TZS'
+    },
+    {
+      id: 'item-2',
+      name: 'Amoxicillin 250mg',
+      unitPrice: 8000,
+      quantity: 1,
+      unitType: 'Bottle',
+      stockStatus: 'low-stock',
+      currencyCode: 'TZS'
+    }
+  ];
+
+  const mockCartSummary: any = {
+    subtotal: 13000,
+    discounts: [{ label: 'Member Promo', amount: 500 }],
+    taxes: [{ label: 'VAT', rate: 18, amount: 2250 }],
+    grandTotal: 14750,
+    currencyCode: 'TZS'
+  };
+
+  const mockQuickActions: any[] = [
+    { id: 'qa1', label: 'New Sale', icon: <ShoppingBag size={20} />, onClick: () => alert('New Sale'), variant: 'primary' },
+    { id: 'qa2', label: 'Stock In', icon: <Package size={20} />, onClick: () => alert('Stock In'), variant: 'accent' },
+    { id: 'qa3', label: 'Add Patient', icon: <Users size={20} />, onClick: () => alert('Add Patient'), permissionRequired: 'can_add_patient' },
+    { id: 'qa4', label: 'Reports', icon: <BarChart3 size={20} />, onClick: () => alert('Reports'), variant: 'neutral' },
+    { id: 'qa5', label: 'System Check', icon: <Activity size={20} />, onClick: () => alert('Diagnostics') },
+    { id: 'qa6', label: 'Sync Logs', icon: <History size={20} />, onClick: () => alert('Syncing...') },
+  ];
+
+  const mockMetrics: any[] = [
+    { title: 'Daily Revenue', value: 2450000, tone: 'primary', trendPercentage: 12, trendDirection: 'up', formatting: { prefix: 'TZS ' }, icon: <Activity size={18} /> },
+    { title: 'Pending Orders', value: 42, tone: 'accent', trendPercentage: 5, trendDirection: 'down', icon: <ShoppingCart size={18} /> },
+    { title: 'Low Stock SKU', value: 8, tone: 'danger', trendPercentage: 2, trendDirection: 'up', icon: <Package size={18} />, subtext: 'Critical items reaching zero' }
+  ];
+
   return (
     <div className="p-8 space-y-16 bg-surface min-h-screen text-text pb-32 overflow-y-auto h-full">
-      <header className="border-b border-border/20 pb-4">
-        <h1 className="text-3xl font-heading font-bold text-primary">40Labs Component Lab</h1>
-        <p className="text-text-muted mt-1">Component Isolation & Validation</p>
+      <header className="border-b border-border/20 pb-4 flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-primary">40Labs Component Lab</h1>
+          <p className="text-text-muted mt-1">Component Isolation & Validation</p>
+        </div>
+        <div className="flex bg-panel-strong/30 p-1 rounded-input">
+           <button
+             onClick={() => setActivePayload('pharmacy')}
+             className={`px-4 py-1.5 text-xs font-bold rounded-input transition-all ${activePayload === 'pharmacy' ? 'bg-primary text-surface elevation-raised' : 'text-text-muted'}`}
+           >
+             Pharmacy Tenant
+           </button>
+           <button
+             onClick={() => setActivePayload('hospital')}
+             className={`px-4 py-1.5 text-xs font-bold rounded-input transition-all ${activePayload === 'hospital' ? 'bg-danger text-surface elevation-raised' : 'text-text-muted'}`}
+           >
+             Hospital Admin
+           </button>
+        </div>
       </header>
 
       {/* 1. PRIMITIVES */}
@@ -378,7 +635,7 @@ export function ComponentLab() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Metric label="Daily Sales" value="TZS 2,450,000" trend={{value: 12, isUp: true}} />
-            <KPITile label="Total Orders" value="142" tone="primary" />
+            <KPITile title="Total Orders" value="142" tone="primary" />
             <Panel variant="raised" className="p-4 flex flex-col justify-center items-center">
               <p className="text-caption text-text-muted uppercase mb-2">Panel Utility</p>
               <div className="flex items-center gap-3">
@@ -651,86 +908,371 @@ export function ComponentLab() {
         </div>
       </section>
 
-      {/* 8. TRACKING & HISTORY */}
-      <section className="space-y-6 pb-32">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">8. Tracking & History</h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card>
-            <CardHeader>Prescription Lifecycle</CardHeader>
-            <CardBody>
-              <Timeline
-                items={[
-                  {
-                    id: 1,
-                    title: 'Prescription Issued',
-                    timestamp: '2023-10-27 09:00',
-                    description: 'Dr. Jane Smith issued electronic prescription for Amoxicillin.',
-                    status: 'completed',
-                    actor: 'System / Dr. Smith'
-                  },
-                  {
-                    id: 2,
-                    title: 'Dispensing Started',
-                    timestamp: '2023-10-27 10:15',
-                    description: 'Pharmacist has acknowledged and started picking the items.',
-                    status: 'completed',
-                    actor: 'Pharmacist Alex'
-                  },
-                  {
-                    id: 3,
-                    title: 'Quality Check',
-                    timestamp: '2023-10-27 10:45',
-                    description: 'Second-level batch verification and expiry validation.',
-                    status: 'pending',
-                    actor: 'Verification Bot'
-                  },
-                  {
-                    id: 4,
-                    title: 'Ready for Collection',
-                    timestamp: '--:--',
-                    description: 'Waiting for customer notification to be triggered.',
-                    status: 'future'
-                  }
-                ]}
-              />
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>Stock Movement Log</CardHeader>
-            <CardBody>
-              <Timeline
-                items={[
-                  {
-                    id: 101,
-                    title: 'Batch Received',
-                    timestamp: '2023-10-20',
-                    description: 'GRN-9982: 500 units of Paracetamol received into main store.',
-                    status: 'completed',
-                    actor: 'Store Mgr'
-                  },
-                  {
-                    id: 102,
-                    title: 'Batch Quarantined',
-                    timestamp: '2023-10-21',
-                    description: 'Temperature deviation reported during storage. Audit required.',
-                    status: 'error',
-                    actor: 'Sensor-Node-04'
-                  },
-                  {
-                    id: 103,
-                    title: 'Re-inspection Requested',
-                    timestamp: '2023-10-22',
-                    description: 'Manual inspection of samples to verify chemical integrity.',
-                    status: 'warning',
-                    actor: 'QA Officer'
-                  }
-                ]}
-              />
-            </CardBody>
-          </Card>
+      {/* 9. ONBOARDING & SETUP */}
+      <section className="space-y-6 pb-10">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">9. Onboarding & Setup</h2>
+        <div className="flex justify-center py-10 bg-panel-strong/20 rounded-[3rem] border border-border/5">
+          <OnboardingCarouselCard
+            title={
+              activeStep === 0 ? "Inventory Control" :
+              activeStep === 1 ? "Real-time Sales" :
+              "Clinical Insights"
+            }
+            features={
+              activeStep === 0 ? [
+                "Scan barcodes for lightning fast entry",
+                "Batch & expiry date tracking",
+                "Automated low-stock alerts"
+              ] : activeStep === 1 ? [
+                "Split-payment management",
+                "Integrated thermal printing",
+                "Offline transaction syncing"
+              ] : [
+                "Prescription validity checks",
+                "Drug interaction warnings",
+                "Patient compliance tracking"
+              ]
+            }
+            activeStep={activeStep}
+            totalSteps={3}
+            primaryAction={{
+              label: activeStep === 2 ? "Complete Setup" : "Next Feature",
+              onClick: () => setActiveStep((s) => (s + 1) % 3)
+            }}
+            secondaryAction={activeStep > 0 ? {
+              label: "Go Back",
+              onClick: () => setActiveStep((s) => (s - 1 + 3) % 3)
+            } : undefined}
+          />
         </div>
       </section>
+
+      {/* 11. AUTH FORM COMPOSITES (SCHEMA DRIVEN) */}
+      <section className="space-y-6 pb-32">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">11. Auth Form Composites (Schema Driven)</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Sign In Schema</h3>
+            <AuthFormCard
+              schema={signInSchema}
+              onSubmit={(d) => console.log('Login:', d)}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Registration Step 1</h3>
+            <AuthFormCard
+              schema={registrationSchema}
+              onSubmit={(d) => console.log('Register:', d)}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">MFA / OTP Schema</h3>
+            <AuthFormCard
+              schema={mfaSchema}
+              onSubmit={(d) => console.log('MFA:', d)}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* 12. AUTH SPECIALTY INPUTS (DYNAMIC) */}
+      <section className="space-y-6 pb-32">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">12. Auth Specialty Inputs (Dynamic)</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-5xl">
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Terms API Payload</h3>
+            <TermsCheckboxGroup
+              summary={<span>Unakubaliana na <strong>sera ya faragha</strong>?</span>}
+              fullText="Hapa kuna maelezo ya kina kutoka kwa API..."
+              expandLabel="Soma zaidi..."
+              collapseLabel="Funga"
+              groupName="terms_api"
+              options={[
+                { label: 'Kubali', value: 'yes' },
+                { label: 'Kataa', value: 'no' }
+              ]}
+              onOptionChange={(v) => console.log('TOS:', v)}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Dynamic Location Hierarchy</h3>
+            <div className="bg-panel-strong/20 p-6 rounded-card border border-border/10">
+              <LocationGpsGroup
+                levels={[
+                  { id: 'region', label: 'Region', placeholder: 'Select Region' },
+                  { id: 'district', label: 'District', placeholder: 'Select District' },
+                  { id: 'ward', label: 'Ward', placeholder: 'Enter Ward' }
+                ]}
+                gpsButtonLabel="Acquire GPS Coordinates"
+                gpsButtonIcon={<MapPin size={14} />}
+                onLocationChange={(id, v) => console.log(`Location ${id}:`, v)}
+                onGeolocate={async () => {
+                  await new Promise(r => setTimeout(r, 1000));
+                  return { lat: -6.7924, lng: 39.2083 };
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 13. AUTH COMPLETION CARDS */}
+      <section className="space-y-6 pb-32">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">13. Auth Completion Cards</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl">
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Account Success Card</h3>
+            <AuthSuccessCard
+              title="Congratulations!"
+              message={
+                <p>
+                  You have successfully opened a business account for <span className="text-primary font-semibold">Afya Bora Pharmacy</span>.
+                </p>
+              }
+              primaryAction={{ label: 'Anza', onClick: () => alert('Starting App...') }}
+              secondaryActions={[
+                { label: 'Download', onClick: () => alert('Downloading...'), icon: <Download size={16} /> },
+                { label: 'Share', onClick: () => alert('Sharing...'), icon: <Share2 size={16} /> }
+              ]}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Channel Connection List</h3>
+            <ChannelConnectList
+              title="Connect Channels"
+              subtitle="Reach your customers where they are by connecting your favorite channels."
+              channels={[
+                { id: 'whatsapp', name: 'WhatsApp', description: 'Send receipts via WhatsApp', icon: <MessageCircle size={20} /> },
+                { id: 'email', name: 'Email', description: 'Automated reports to email', icon: <Mail size={20} /> },
+                { id: 'sms', name: 'SMS', description: 'Quick alerts via SMS', icon: <MessageSquare size={20} /> },
+              ]}
+              onConnect={(id) => alert(`Connecting to ${id}...`)}
+              primaryAction={{ label: 'Anza', onClick: () => alert('Starting App...') }}
+              secondaryAction={{ label: 'Skip For Now', onClick: () => alert('Skipping...') }}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* 18. DYNAMIC DOMAIN COMPOSITES (API FEED) */}
+      <section className="space-y-6 pb-32">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">18. Dynamic Domain Composites (API Feed)</h2>
+        <div className="space-y-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+             <div className="lg:col-span-2 space-y-4">
+               <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Real-time Cart Feed</h3>
+               <div className="space-y-2 max-w-2xl">
+                 {mockCartItems.map((item) => (
+                   <CartItemRow
+                     key={item.id}
+                     item={item}
+                     onQuantityChange={(id, q) => console.log('Qty:', id, q)}
+                     onRemove={(id) => console.log('Remove:', id)}
+                   />
+                 ))}
+               </div>
+             </div>
+             <div className="space-y-4">
+               <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Summary API Payload</h3>
+               <CartSummaryPanel
+                 payload={mockCartSummary}
+                 onConfirm={() => alert('Confirmed')}
+                 onClear={() => alert('Cleared')}
+                 onHold={() => alert('On Hold')}
+               />
+             </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Dynamic Quick Actions (Role-Based)</h3>
+            <QuickActionsGrid
+              actions={mockQuickActions}
+              userPermissions={['can_add_patient']}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">KPI Metric Feed</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {mockMetrics.map((metric, idx) => (
+                <KPITile key={idx} {...metric} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 17. FULL APPLICATION LAYOUT INTEGRATION (API DRIVEN) */}
+      <section className="space-y-6 pb-64">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">17. Full Application Layout Integration (API Driven)</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 px-2">
+             <Button size="sm" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
+               Toggle Sidebar
+             </Button>
+             <Button size="sm" intent="neutral" onClick={() => setShowSubNav(!showSubNav)}>
+               Toggle Sub-Nav
+             </Button>
+             <Button size="sm" intent="accent" onClick={() => setFullScreenMode(true)}>
+               Enter Full-Screen Preview
+             </Button>
+          </div>
+
+          <div className="h-[800px] border-4 border-panel-strong rounded-[2rem] overflow-hidden shadow-surface-pop bg-surface relative group">
+             <DashboardShell
+               showSubNav={showSubNav}
+               sidebar={
+                 <AppSidebarNav
+                   activeRoute={activeRoute}
+                   collapsed={sidebarCollapsed}
+                   onNavigate={setActiveRoute}
+                   onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                   tenantBranding={config.branding}
+                   userProfile={config.user}
+                   items={config.navigation}
+                   pinnedBottomItems={[
+                     { id: 'settings', label: 'Settings', icon: <Settings size={20} /> }
+                   ]}
+                 />
+               }
+               header={
+                 <DashboardHeaderBar
+                   moduleTitle={activeRoute.toUpperCase()}
+                   statusIndicatorColor={activePayload === 'hospital' ? 'red' : 'green'}
+                   searchPlaceholder={activePayload === 'hospital' ? "Find patient by ID..." : "Search product..."}
+                   searchHotkeys={['CTRL', 'K']}
+                   statusIndicators={config.header.indicators}
+                   actionButtons={[
+                     { id: 'n1', icon: <Bell size={18} />, onClick: () => alert('Notifications'), hasBadge: true, badgeColor: activePayload === 'hospital' ? 'danger' : 'primary' }
+                   ]}
+                   onSearch={(q) => console.log('Global search:', q)}
+                 />
+               }
+               subNav={
+                 <ContextualSubNav
+                   sections={config.settingsSubNav}
+                   activeItemId={activeSubRoute}
+                   onSelect={setActiveSubRoute}
+                   userPermissions={config.user.permissions}
+                 />
+               }
+             >
+               <div className="space-y-8">
+                 <div className="flex items-center justify-between">
+                   <h2 className="text-2xl font-heading font-bold text-text capitalize">{activeRoute} Management</h2>
+                   <div className="flex gap-2">
+                     <Button intent="secondary" size="sm" leftIcon={<Plus size={16} />}>Create New</Button>
+                     <Button size="sm" leftIcon={<FileText size={16} />}>Export Report</Button>
+                   </div>
+                 </div>
+
+                 <KPIGrid>
+                   <KPICard
+                     title={activePayload === 'hospital' ? "Occupancy Rate" : "Total Revenue"}
+                     value={activePayload === 'hospital' ? "92%" : "TZS 4.2M"}
+                     trend={{value: 12, isUp: true}}
+                     tone="primary"
+                   />
+                   <KPICard title={activePayload === 'hospital' ? "Emergency" : "Active Orders"} value="24" tone="accent" />
+                   <KPICard title={activePayload === 'hospital' ? "Waiting Time" : "Low Stock Items"} value={activePayload === 'hospital' ? "15m" : "8"} tone="danger" />
+                 </KPIGrid>
+
+                 <Card>
+                   <CardHeader>Recent {activePayload === 'hospital' ? 'Patients' : 'Activity'}</CardHeader>
+                   <CardBody>
+                      <DataTable
+                        data={mockData}
+                        columns={columns}
+                      />
+                   </CardBody>
+                 </Card>
+               </div>
+             </DashboardShell>
+          </div>
+        </div>
+      </section>
+
+      {/* FULL SCREEN PREVIEW MODE */}
+      {fullScreenMode && (
+        <div className="fixed inset-0 z-[9999] bg-surface">
+           <div className="absolute top-4 right-4 z-[10000]">
+              <Button intent="danger" size="md" onClick={() => setFullScreenMode(false)}>Exit Preview</Button>
+           </div>
+           <DashboardShell
+             showSubNav={showSubNav}
+             sidebar={
+               <AppSidebarNav
+                 activeRoute={activeRoute}
+                 collapsed={sidebarCollapsed}
+                 onNavigate={setActiveRoute}
+                 onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                 tenantBranding={config.branding}
+                 userProfile={config.user}
+                 items={config.navigation}
+                 pinnedBottomItems={[
+                   { id: 'settings', label: 'Settings', icon: <Settings size={20} /> }
+                 ]}
+               />
+             }
+             header={
+               <DashboardHeaderBar
+                 moduleTitle={activeRoute.toUpperCase()}
+                 statusIndicatorColor={activePayload === 'hospital' ? 'red' : 'green'}
+                 searchPlaceholder={activePayload === 'hospital' ? "Find patient by ID..." : "Search product..."}
+                 searchHotkeys={['CTRL', 'K']}
+                 statusIndicators={config.header.indicators}
+                 actionButtons={[
+                   { id: 'n1', icon: <Bell size={18} />, onClick: () => alert('Notifications'), hasBadge: true, badgeColor: activePayload === 'hospital' ? 'danger' : 'primary' }
+                 ]}
+                 onSearch={(q) => console.log('Global search:', q)}
+               />
+             }
+             subNav={
+               <ContextualSubNav
+                 sections={config.settingsSubNav}
+                 activeItemId={activeSubRoute}
+                 onSelect={setActiveSubRoute}
+                 userPermissions={config.user.permissions}
+               />
+             }
+           >
+             <div className="space-y-8">
+               <div className="flex items-center justify-between">
+                 <h2 className="text-3xl font-heading font-bold text-text capitalize">{activeRoute} Management</h2>
+                 <div className="flex gap-3">
+                   <Button intent="secondary" leftIcon={<Plus size={18} />}>Create New</Button>
+                   <Button leftIcon={<FileText size={18} />}>Export Report</Button>
+                 </div>
+               </div>
+
+               <KPIGrid>
+                 <KPICard
+                   title={activePayload === 'hospital' ? "Occupancy Rate" : "Total Revenue"}
+                   value={activePayload === 'hospital' ? "92%" : "TZS 4.2M"}
+                   trend={{value: 12, isUp: true}}
+                   tone="primary"
+                 />
+                 <KPICard title={activePayload === 'hospital' ? "Emergency" : "Active Orders"} value="24" tone="accent" />
+                 <KPICard title={activePayload === 'hospital' ? "Waiting Time" : "Low Stock Items"} value={activePayload === 'hospital' ? "15m" : "8"} tone="danger" />
+               </KPIGrid>
+
+               <Card>
+                 <CardHeader>Recent {activePayload === 'hospital' ? 'Patients' : 'Activity'}</CardHeader>
+                 <CardBody>
+                    <DataTable
+                      data={mockData}
+                      columns={columns}
+                    />
+                 </CardBody>
+               </Card>
+             </div>
+           </DashboardShell>
+        </div>
+      )}
 
       {/* OVERLAYS (PORTALS) */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Standalone Modal">
