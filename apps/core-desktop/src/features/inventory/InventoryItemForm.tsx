@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AlertCircle } from 'lucide-react';
 import {
   Input,
   Button,
@@ -219,7 +220,10 @@ export function InventoryItemForm({
           {warnings.length > 0 && (
             <div className="bg-accent/10 border border-accent/20 p-3 rounded-input">
               {warnings.map((w, i) => (
-                <p key={i} className="text-xs text-accent font-ui font-medium">⚠️ {w}</p>
+                <p key={i} className="text-xs text-accent font-ui font-medium flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  {w}
+                </p>
               ))}
             </div>
           )}

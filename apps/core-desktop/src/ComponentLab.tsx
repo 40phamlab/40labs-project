@@ -100,7 +100,21 @@ import {
   UnitPackSelector,
   SplitPaymentManager,
   HotkeyBadge,
-  HotkeyModal
+  HotkeyModal,
+  PriceDisplay,
+  DiscountDisplay,
+  QuantityControl,
+  ProductRow,
+  ProductResult,
+  ProductSearch,
+  CartSummary,
+  Cart,
+  CustomerSelector,
+  CustomerSummary,
+  OrderStatus,
+  OrderSummary,
+  PaymentSummary,
+  PaymentMethodSelector,
 } from '@40labs/ui-components';
 
 export function ComponentLab() {
@@ -112,6 +126,13 @@ export function ComponentLab() {
   const [numpadValue, setNumpadValue] = useState('');
   const [selectedUnit, setSelectedUnit] = useState('Strip');
   const [isHotkeyModalOpen, setIsHotkeyModalOpen] = useState(false);
+
+  // Commerce Phase 7 States
+  const [prodSearch, setProdSearch] = useState('');
+  const [custSearch, setCustSearch] = useState('');
+  const [selectedCust, setSelectedCust] = useState<any>(null);
+  const [payMethod, setPayMethod] = useState('cash');
+  const [qty, setQty] = useState(1);
 
   const [activeTab, setActiveTab] = useState('Overview');
   const [segValue, setSegValue] = useState('day');
@@ -478,89 +499,154 @@ export function ComponentLab() {
             </QuickActions>
           </DashboardCard>
           <ChartPanel title="Standalone Chart Container">
-            [Chart Area]
+            <div className="h-48 flex items-center justify-center border border-dashed border-border/30 rounded-card">
+              <span className="text-text-muted text-xs italic">Chart Area</span>
+            </div>
           </ChartPanel>
         </div>
       </section>
 
-      {/* 7. COMMERCE & PRINT */}
-      <section className="space-y-6 pb-20">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">7. Commerce & Print</h2>
+      {/* 7. COMMERCE & SALES (PHASE 7) */}
+      <section className="space-y-6 pb-10">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">7. Commerce & Sales (Phase 7)</h2>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-accent italic underline decoration-accent/30">ProductCard Variants</h3>
-            <ProductCard
-              name="Paracetamol 500mg"
-              subtitle="Analgesic"
-              stock={120}
-              price="TZS 5,000"
-              info="Batch: AB123"
-            />
-            <ProductCard
-              name="Amoxicillin 250mg"
-              subtitle="Antibiotic"
-              stock={45}
-              price="TZS 12,000"
-              info="Batch: XY987"
-              onClick={() => alert('Clicked')}
-            />
+          {/* Column 1: Discovery & Controls */}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Discovery & Search</h3>
+              <ProductSearch
+                value={prodSearch}
+                onChange={setProdSearch}
+                results={prodSearch.length > 0 && (
+                  <>
+                    <ProductResult name="Panadol Advance 500mg" subtitle="Paracetamol • 20 Tabs" price="TZS 2,500" />
+                    <ProductResult name="Amoxicillin 250mg" subtitle="Antibiotic • 10 Caps" price="TZS 8,000" highlight />
+                  </>
+                )}
+              />
+              <div className="space-y-2">
+                <ProductRow name="Metformin 500mg" sku="MET-500" stock={120} price="TZS 15,000" onAdd={() => {}} />
+                <ProductRow name="Ibuprofen 400mg" sku="IBU-400" stock={85} price="TZS 2,200" onAdd={() => {}} />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Pricing & Quantity</h3>
+              <div className="flex flex-wrap gap-4 items-end bg-panel-strong/30 p-4 rounded-card border border-border/10">
+                <PriceDisplay amount="120,000" originalAmount="150,000" size="lg" />
+                <DiscountDisplay percentage={20} amount="30,000" label="Member Discount" />
+                <QuantityControl value={qty} onIncrement={() => setQty(qty + 1)} onDecrement={() => setQty(Math.max(0, qty - 1))} />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Product Card Variants</h3>
+              <ProductCard
+                name="Paracetamol 500mg"
+                subtitle="Analgesic"
+                stock={120}
+                price="TZS 5,000"
+                info="Batch: AB123"
+                onClick={() => {}}
+              />
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-accent italic underline decoration-accent/30">Entity Summary</h3>
-            <EntitySummaryPanel title="Customer Profile">
-              <InfoDetail label="Full Name" value="John Doe" />
-              <InfoDetail label="Phone" value="+255 123 456 789" monospace />
-              <InfoDetail label="Outstanding Balance" value="TZS 50,000" monospace />
-              <InfoDetail label="Last Visit" value="2023-10-27" />
-            </EntitySummaryPanel>
+          {/* Column 2: Cart & Payments */}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Cart</h3>
+              <Cart className="max-h-64 border border-border/20 shadow-xl">
+                <CartItem
+                  name="Panadol Advance 500mg"
+                  unitPrice="2,500"
+                  quantity={2}
+                  subtotal="5,000"
+                  onRemove={() => {}}
+                />
+                <CartItem
+                  name="Amoxicillin 250mg"
+                  unitPrice="8,000"
+                  quantity={1}
+                  subtotal="8,000"
+                  onRemove={() => {}}
+                />
+              </Cart>
+              <CartSummary
+                subtotal="13,000"
+                tax="2,340"
+                discount="500"
+                total="14,840"
+                onCheckout={() => addToast('Processing...', 'info')}
+              />
+            </div>
 
-            <h3 className="text-sm font-bold text-accent italic underline decoration-accent/30">Thermal Receipt Preview</h3>
-            <ReceiptPreview
-              businessName="40LABS PHARMACY"
-              businessAddress="123 Health St, Dar es Salaam, TZ"
-              businessPhone="+255 700 000 000"
-              orderId="ORD-2023-9981"
-              date="2023-10-27 14:30"
-              items={[
-                { name: 'Paracetamol 500mg', qty: 2, price: 5000, total: 10000 },
-                { name: 'Amoxicillin 250mg', qty: 1, price: 12000, total: 12000 },
-                { name: 'Surgical Mask (Box)', qty: 3, price: 2500, total: 7500 },
-              ]}
-              subtotal={29500}
-              tax={5310}
-              total={34810}
-            />
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Payment Flow</h3>
+              <PaymentMethodSelector selectedMethod={payMethod} onSelect={setPayMethod} />
+              <PaymentSummary
+                payments={[
+                  { method: 'Cash', amount: 'TZS 10,000', reference: 'CASH-882' },
+                  { method: 'Mobile Money', amount: 'TZS 4,840', reference: 'M-PESA: QWE123RTY' }
+                ]}
+                totalPaid="TZS 14,840"
+              />
+            </div>
           </div>
 
-          <div className="space-y-4">
-             <h3 className="text-sm font-bold text-accent italic underline decoration-accent/30">CartItem Variants</h3>
-            <CartItem
-              name="Paracetamol 500mg"
-              unitPrice="5,000"
-              quantity={2}
-              subtotal="10,000"
-              onIncrement={() => {}}
-              onDecrement={() => {}}
-              onRemove={() => {}}
-            />
+          {/* Column 3: CRM & Order Context */}
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Customer Selection</h3>
+              <CustomerSelector
+                searchQuery={custSearch}
+                onSearchChange={setCustSearch}
+                results={[
+                  { id: '1', full_name: 'John Doe', phone: '0712 345 678' },
+                  { id: '2', full_name: 'Jane Smith', phone: '0655 111 222' }
+                ]}
+                selectedCustomer={selectedCust}
+                onSelect={setSelectedCust}
+                onClearSelection={() => setSelectedCust(null)}
+                onWalkIn={() => addToast('Switched to Walk-in', 'neutral')}
+              />
+              <CustomerSummary customer={selectedCust} />
+            </div>
 
-            <h3 className="text-sm font-bold text-accent italic underline decoration-accent/30">Unit/Packaging Selector</h3>
-            <UnitPackSelector
-              totalBaseQuantity={450}
-              selectedUnitName={selectedUnit}
-              onChange={(u) => setSelectedUnit(u.unitName)}
-              units={[
-                { unitName: 'Box', conversionRate: 100, price: 45000 },
-                { unitName: 'Strip', conversionRate: 10, price: 5000 },
-                { unitName: 'Tab', conversionRate: 1, price: 600 },
-              ]}
-            />
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Order Summary</h3>
+              <OrderSummary
+                orderNumber="ORD-2023-9981"
+                date="2023-10-27 14:30"
+                status="completed"
+                itemCount={3}
+                total="TZS 14,840"
+              />
+              <div className="flex flex-wrap gap-2">
+                <OrderStatus status="pending" />
+                <OrderStatus status="completed" />
+                <OrderStatus status="processing" />
+              </div>
+            </div>
 
-            <h3 className="text-sm font-bold text-accent italic underline decoration-accent/30">Split Payment Manager</h3>
-            <Card className="p-4 bg-panel-strong">
-              <SplitPaymentManager totalAmount={34810} onPaymentsChange={(p) => console.log('Payments updated:', p)} />
-            </Card>
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Thermal Receipt</h3>
+              <ReceiptPreview
+                businessName="40LABS PHARMACY"
+                businessAddress="123 Health St, Dar es Salaam, TZ"
+                businessPhone="+255 700 000 000"
+                orderId="ORD-2023-9981"
+                date="2023-10-27 14:30"
+                items={[
+                  { name: 'Panadol Advance 500mg', qty: 2, price: 5000, total: 10000 },
+                  { name: 'Amoxicillin 250mg', qty: 1, price: 12000, total: 12000 },
+                ]}
+                subtotal={22000}
+                tax={3960}
+                total={25960}
+              />
+            </div>
           </div>
         </div>
       </section>

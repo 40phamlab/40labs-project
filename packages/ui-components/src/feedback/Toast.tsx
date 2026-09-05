@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 
 export type ToastIntent = 'info' | 'success' | 'warning' | 'danger';
 
@@ -34,10 +35,10 @@ export const Toast = ({ id, message, intent = 'info', duration = 3000, onClose }
       </div>
       <button
         onClick={() => onClose(id)}
-        className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface/20 transition-colors"
+        className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface/20 transition-colors text-text-muted"
         aria-label="Close toast"
       >
-        ×
+        <X size={14} />
       </button>
     </div>
   );
