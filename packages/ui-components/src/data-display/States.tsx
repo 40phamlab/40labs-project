@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { Spinner } from '../feedback/Spinner';
 import { Skeleton } from '../feedback/Skeleton';
 import { Table, TableHeader, TableBody, TableRow, TableCell } from './Table';
@@ -50,7 +51,9 @@ export const ErrorState = ({
 }) => {
   return (
     <div className="flex flex-col items-center justify-center p-12 text-center bg-danger/5 rounded-card border border-danger/20">
-      <div className="text-danger mb-4 text-2xl">⚠</div>
+      <div className="text-danger mb-4">
+        <AlertTriangle size={32} />
+      </div>
       <h3 className="text-sm font-bold text-text mb-1">{title}</h3>
       <p className="text-xs text-text-muted max-w-xs mb-6">{message}</p>
       {onRetry && (
@@ -76,7 +79,9 @@ export const SuccessState = ({
 }) => {
   return (
     <div className="flex flex-col items-center justify-center p-12 text-center bg-primary/5 rounded-card border border-primary/20">
-      <div className="text-primary mb-4 text-2xl">✓</div>
+      <div className="text-primary mb-4">
+        <CheckCircle size={32} />
+      </div>
       <h3 className="text-sm font-bold text-text mb-1">{title}</h3>
       <p className="text-xs text-text-muted max-w-xs">{message}</p>
       {action && <div className="mt-6">{action}</div>}

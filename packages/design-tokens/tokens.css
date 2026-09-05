@@ -25,4 +25,6 @@
   --shadow-elevation-hover: 0 2px 0 #252525, 0 7px 14px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
   --shadow-elevation-pressed: inset 0 2px 3px rgba(0,0,0,.32), inset 0 -1px 0 rgba(255,255,255,.04);
   --shadow-elevation-inset: inset 0 2px 4px rgba(0,0,0,.26), inset 0 -1px 0 rgba(255,255,255,.04);
+  --shadow-surface-pop: 0 4px 0 #252525, 0 8px 16px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08);
+  --shadow-inner-soft: inset 0 2px 4px rgba(0,0,0,.4), inset 0 -1px 0 rgba(255,255,255,.04);
 }

@@ -19,6 +19,10 @@ module.exports = {
     card: radius.card,
     input: radius.input
   },
+  boxShadow: {
+    'surface-pop': 'var(--shadow-surface-pop)',
+    'inner-soft': 'var(--shadow-inner-soft)',
+  },
   fontFamily: { 
     heading: [fonts.heading, 'sans-serif'],
     ui: [fonts.ui, 'sans-serif'],

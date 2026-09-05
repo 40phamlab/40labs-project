@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Minus, Plus, X } from 'lucide-react';
 import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
 
@@ -87,14 +88,14 @@ export const CartItem = ({
           onClick={onDecrement}
           className="w-6 h-5 rounded-full bg-panel text-text elevation-raised text-xs flex items-center justify-center hover:bg-panel-strong transition-colors"
         >
-          −
+          <Minus size={12} />
         </button>
         <span className="font-mono text-xs text-text">{quantity}</span>
         <button
           onClick={onIncrement}
           className="w-6 h-5 rounded-full bg-primary text-surface elevation-raised text-xs flex items-center justify-center hover:opacity-90 transition-opacity"
         >
-          +
+          <Plus size={12} />
         </button>
       </div>
       <span className="w-20 text-right font-mono text-xs text-primary">{subtotal}</span>
@@ -105,7 +106,7 @@ export const CartItem = ({
           className="!p-1 !w-6 !h-6 !min-w-0 !rounded-full"
           onClick={onRemove}
         >
-          ×
+          <X size={12} />
         </Button>
       )}
     </div>

@@ -8,6 +8,8 @@
   .elevation-hover { box-shadow: var(--shadow-elevation-hover); }
   .elevation-pressed { box-shadow: var(--shadow-elevation-pressed); }
   .elevation-inset { box-shadow: var(--shadow-elevation-inset); }
+  .shadow-surface-pop { box-shadow: var(--shadow-surface-pop); }
+  .shadow-inner-soft { box-shadow: var(--shadow-inner-soft); }
 }
 
 :root { color-scheme: dark; }

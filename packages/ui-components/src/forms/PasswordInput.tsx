@@ -1,3 +1,4 @@
+import { EyeClosed,LucideEye } from 'lucide-react';
 import * as React from 'react';
 
 export interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -20,7 +21,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
         <input
           {...props}
           ref={ref}
-          type={show ? 'text' : 'password'}
+          type={show ? `<${<EyeClosed/>}`:`${<LucideEye/>}`}
           className={`
             w-full bg-field/10 border rounded-input px-3 py-2 pr-10 text-sm text-text font-ui
             placeholder:text-text-muted/50 transition-all focus:outline-none focus:ring-2
@@ -34,7 +35,7 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
           className="absolute right-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-panel transition-colors text-text-muted"
           aria-label={show ? 'Hide password' : 'Show password'}
         >
-          {show ? '🙈' : '👁️'}
+          {show ? `${<EyeClosed/>}`:`${ <LucideEye/> }`}
         </button>
       </div>
     );

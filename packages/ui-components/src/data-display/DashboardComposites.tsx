@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 export interface TrendIndicatorProps {
   value: number;
@@ -10,8 +11,8 @@ export interface TrendIndicatorProps {
 export const TrendIndicator = ({ value, isUp, label, className = '' }: TrendIndicatorProps) => {
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
-      <span className={`text-[10px] font-bold ${isUp ? 'text-primary' : 'text-danger'}`}>
-        {isUp ? '↑' : '↓'} {value}%
+      <span className={`flex items-center gap-0.5 text-[10px] font-bold ${isUp ? 'text-primary' : 'text-danger'}`}>
+        {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />} {value}%
       </span>
       {label && <span className="text-[10px] text-text-muted">{label}</span>}
     </div>
@@ -63,8 +64,8 @@ export const KPICard = ({
           <div className="flex items-center gap-3">
             {trend && (
               <div className="flex items-center gap-1.5">
-                <span className={`text-[10px] font-bold ${trend.isUp ? 'text-primary' : 'text-danger'}`}>
-                  {trend.isUp ? '↑' : '↓'} {trend.value}%
+                <span className={`flex items-center gap-0.5 text-[10px] font-bold ${trend.isUp ? 'text-primary' : 'text-danger'}`}>
+                  {trend.isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />} {trend.value}%
                 </span>
               </div>
             )}
