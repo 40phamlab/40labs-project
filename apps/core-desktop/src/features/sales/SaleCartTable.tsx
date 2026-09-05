@@ -1,4 +1,38 @@
-import { Button } from '@40labs/ui-components';
+import { CartItem } from '@40labs/ui-components';
 import { useSaleCart } from './useSales';
 import { useInventoryList } from '../inventory/useInventory';
-export function SaleCartTable(){const{lines,setQty,removeLine}=useSaleCart();const{data:inventory=[]}=useInventoryList();if(!lines.length)return <div className="h-full min-h-32 rounded-card bg-panel-strong flex items-center justify-center text-xs text-text-muted">Cart is empty</div>;return <div className="space-y-2">{lines.map(line=>{const item=inventory.find(i=>i.id===line.inventory_item_id);if(!item)return null;return <div key={line.id} className="flex items-center gap-2 rounded-card bg-panel-strong p-2 elevation-raised"><div className="w-12 h-12 shrink-0 rounded-input bg-field elevation-inset"/><div className="min-w-0 flex-1"><p className="truncate text-xs text-text">{item.medicine.name}</p><p className="text-[10px] text-text-muted">Unit <span className="font-mono">{line.unit_price.toLocaleString()}</span></p></div><div className="flex flex-col items-center gap-1"><button onClick={()=>setQty(line.id,line.quantity-1)} className="w-6 h-5 rounded-full bg-panel text-text elevation-raised text-xs">−</button><span className="font-mono text-xs">{line.quantity}</span><button onClick={()=>setQty(line.id,line.quantity+1)} className="w-6 h-5 rounded-full bg-primary text-surface elevation-raised text-xs">+</button></div><span className="w-20 text-right font-mono text-xs text-primary">{line.subtotal.toLocaleString()}</span><Button intent="danger" size="sm" className="!p-1 !rounded-full" onClick={()=>removeLine(line.id)}>×</Button></div>})}</div>}
+
+export function SaleCartTable() {
+  const { lines, setQty, removeLine } = useSaleCart();
+  const { data: inventory = [] } = useInventoryList();
+
+  if (!lines.length) {
+    return (
+      <div className="h-full min-h-[128px] rounded-card bg-panel-strong flex items-center justify-center text-xs text-text-muted">
+        Cart is empty
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {lines.map((line) => {
+        const item = inventory.find((i) => i.id === line.inventory_item_id);
+        if (!item) return null;
+
+        return (
+          <CartItem
+            key={line.id}
+            name={item.medicine.name}
+            unitPrice={line.unit_price.toLocaleString()}
+            quantity={line.quantity}
+            subtotal={line.subtotal.toLocaleString()}
+            onIncrement={() => setQty(line.id, line.quantity + 1)}
+            onDecrement={() => setQty(line.id, line.quantity - 1)}
+            onRemove={() => removeLine(line.id)}
+          />
+        );
+      })}
+    </div>
+  );
+}

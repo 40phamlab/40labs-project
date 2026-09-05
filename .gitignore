@@ -1,3 +1,148 @@
 node_modules/*
 target/*
 dist/*
+
+# ==============================================================================
+# Dependency & Package Manager Caches
+# ==============================================================================
+node_modules/
+.npm/
+*-debug.log*
+*-error.log*
+.pnpm-debug.log*
+
+# ==============================================================================
+# Rust (Axum & Backend) Build Artifacts
+# ==============================================================================
+target/
+**/*.rs.bk
+Cargo.lock.visualstudio
+
+# ==============================================================================
+# Tauri App Build Artifacts
+# ==============================================================================
+# Catches the target directory if nested inside the Tauri app folder
+**/src-tauri/target/
+**/src-tauri/gen/
+**/src-tauri/binaries/
+
+# ==============================================================================
+# Monorepo Build Tools & Frontend Bundlers
+# ==============================================================================
+.turbo/
+.nx/
+dist/
+build/
+.out/
+.next/
+
+# ==============================================================================
+# Environment Variables & Sensitive Secrets (NEVER COMMIT)
+# ==============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.pfx
+*.secret
+
+# ==============================================================================
+# Operating System Garbage
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==============================================================================
+# IDEs & Editor Configuration
+# ==============================================================================
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+
+# ==============================================================================
+# Dependency & Package Manager Caches
+# ==============================================================================
+node_modules/
+.npm/
+*-debug.log*
+*-error.log*
+.pnpm-debug.log*
+
+# ==============================================================================
+# Rust (Axum & Backend) Build Artifacts
+# ==============================================================================
+target/
+**/*.rs.bk
+Cargo.lock.visualstudio
+
+# ==============================================================================
+# Tauri App Build Artifacts
+# ==============================================================================
+# Catches the target directory if nested inside the Tauri app folder
+**/src-tauri/target/
+**/src-tauri/gen/
+**/src-tauri/binaries/
+
+# ==============================================================================
+# Monorepo Build Tools & Frontend Bundlers
+# ==============================================================================
+.turbo/
+.nx/
+dist/
+build/
+.out/
+.next/
+
+# ==============================================================================
+# Environment Variables & Sensitive Secrets (NEVER COMMIT)
+# ==============================================================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.pfx
+*.secret
+
+# ==============================================================================
+# Operating System Garbage
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ==============================================================================
+# IDEs & Editor Configuration
+# ==============================================================================
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp

@@ -1,6 +1,100 @@
 import { useMemo } from 'react';
 import type { PaymentMethod } from '@40labs/types';
-import { Button } from '@40labs/ui-components';
+import { Button, Input, Select } from '@40labs/ui-components';
 import { useSaleCart } from './useSales';
-interface Props{onCompleteSale?:()=>Promise<boolean>|boolean;completingSale?:boolean}
-export function SaleSummaryPanel({onCompleteSale,completingSale=false}:Props){const{lines,payment_method,discount_amount,setPaymentMethod,setDiscountAmount,reset}=useSaleCart();const subtotal=useMemo(()=>lines.reduce((s,l)=>s+l.subtotal,0),[lines]);const total=Math.max(0,subtotal-discount_amount);const finish=async()=>{if(!lines.length)return;const ok=await onCompleteSale?.();if(ok===false)return;console.log('Completing sale',{lines,payment_method,discount_amount,grand_total:total});reset();alert('Sale Completed (Mock)')};return <div className="shrink-0 border-t border-border bg-panel px-3 py-2"><div className="grid grid-cols-3 gap-3 text-[10px]"><div><p className="text-text-muted">line total</p><p className="font-mono text-text">{subtotal.toLocaleString()}</p></div><div><label className="text-text-muted">discount</label><input type="number" min="0" value={discount_amount||''} onChange={e=>setDiscountAmount(Math.max(0,Number(e.target.value)||0))} className="ml-2 w-16 rounded-input bg-input px-2 py-1 font-mono text-text elevation-inset focus:outline-none"/></div><div><label className="text-text-muted">payment</label><select value={payment_method} onChange={e=>setPaymentMethod(e.target.value as PaymentMethod)} className="ml-2 rounded-input bg-input px-2 py-1 text-text elevation-inset"><option value="cash">cash</option><option value="mobile_money">mobile money</option><option value="card">card</option><option value="credit">credit</option></select></div></div><div className="mt-1 flex items-center justify-between"><div><p className="text-[10px] text-text-muted">tax</p><p className="text-[10px] text-text-muted">grand total</p></div><p className="font-mono text-lg font-bold text-primary">{total.toLocaleString()}</p></div><div className="mt-2 flex gap-2"><Button intent="danger" size="sm" className="w-20" disabled={!lines.length} onClick={reset}>delete</Button><Button size="sm" fullWidth disabled={!lines.length||completingSale} loading={completingSale} onClick={finish}>confirm</Button></div></div>}
+
+interface Props {
+  onCompleteSale?: () => Promise<boolean> | boolean;
+  completingSale?: boolean;
+}
+
+export function SaleSummaryPanel({ onCompleteSale, completingSale = false }: Props) {
+  const {
+    lines,
+    payment_method,
+    discount_amount,
+    setPaymentMethod,
+    setDiscountAmount,
+    reset,
+  } = useSaleCart();
+
+  const subtotal = useMemo(() => lines.reduce((s, l) => s + l.subtotal, 0), [lines]);
+  const total = Math.max(0, subtotal - discount_amount);
+
+  const finish = async () => {
+    if (!lines.length) return;
+    const ok = await onCompleteSale?.();
+    if (ok === false) return;
+    console.log('Completing sale', {
+      lines,
+      payment_method,
+      discount_amount,
+      grand_total: total,
+    });
+    reset();
+    alert('Sale Completed (Mock)');
+  };
+
+  return (
+    <div className="shrink-0 border-t border-border bg-panel px-3 py-2">
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <p className="text-caption text-text-muted">line total</p>
+          <p className="font-mono text-xs text-text">{subtotal.toLocaleString()}</p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-caption text-text-muted">discount</label>
+          <Input
+            type="number"
+            min="0"
+            value={discount_amount || ''}
+            onChange={(e) => setDiscountAmount(Math.max(0, Number(e.target.value) || 0))}
+            className="!h-7 !py-1 font-mono"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-caption text-text-muted">payment</label>
+          <Select
+            value={payment_method}
+            onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+            className="!h-7 !py-1"
+          >
+            <option value="cash">cash</option>
+            <option value="mobile_money">mobile money</option>
+            <option value="card">card</option>
+            <option value="credit">credit</option>
+          </Select>
+        </div>
+      </div>
+
+      <div className="mt-2 flex items-center justify-between">
+        <div>
+          <p className="text-caption text-text-muted">tax</p>
+          <p className="text-caption text-text-muted">grand total</p>
+        </div>
+        <p className="font-mono text-lg font-bold text-primary">{total.toLocaleString()}</p>
+      </div>
+
+      <div className="mt-2 flex gap-2">
+        <Button
+          intent="danger"
+          size="sm"
+          className="w-20"
+          disabled={!lines.length}
+          onClick={reset}
+        >
+          delete
+        </Button>
+        <Button
+          size="sm"
+          fullWidth
+          disabled={!lines.length || completingSale}
+          loading={completingSale}
+          onClick={finish}
+        >
+          confirm
+        </Button>
+      </div>
+    </div>
+  );
+}
