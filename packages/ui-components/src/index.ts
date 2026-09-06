@@ -1,5 +1,6 @@
 // Primitives
 export * from './primitives/Button';
+export * from './primitives/Avatar';
 export * from './primitives/IconButton';
 export * from './primitives/Badge';
 export * from './primitives/Separator';
@@ -41,6 +42,7 @@ export * from './navigation/TopBar';
 export * from './navigation/Breadcrumbs';
 export * from './navigation/Tabs';
 export * from './navigation/SegmentedControl';
+export * from './navigation/FilterTabs';
 export * from './navigation/Pagination';
 export * from './navigation/Menu';
 export * from './navigation/AppSidebarNav';
@@ -57,6 +59,8 @@ export * from './overlays/Tooltip';
 export * from './layout/Panel';
 export * from './layout/DashboardShell';
 export * from './layout/DashboardGrid';
+export * from './layout/SearchableListPanel';
+export * from './layout/TabbedListContainer';
 
 // Data Display
 export * from './data-display/KPITile';
@@ -68,6 +72,9 @@ export * from './data-display/Filters';
 export * from './data-display/StatusBadge';
 export * from './data-display/Metrics';
 export * from './data-display/List';
+export * from './data-display/InteractiveDataRow';
+export * from './data-display/CompactProductRow';
+export * from './data-display/GenericHistoryRow';
 export * from './data-display/DashboardComposites';
 export * from './data-display/ReceiptPreview';
 export * from './composites/Commerce';
@@ -77,3 +84,11 @@ export * from './composites/CartSummaryPanel';
 export * from './composites/OnboardingCarouselCard';
 export * from './composites/AuthFormCard';
 export * from './composites/AuthCompletionCards';
+export * from './composites/EntityProfileHeader';
+export * from './composites/ProductActionCard';
+export * from './pharmacy-widgets/ActionRequestCard';
+export * from './pharmacy-widgets/CategorySquare';
+export * from './pharmacy-widgets/ConfigToggleRow';
+export * from './onboarding-widgets/OnboardingActionButton';
+export * from './onboarding-widgets/HighlightableFeatureList';
+export * from './onboarding-widgets/CarouselPaginationDots';
