@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Customer, MedicineWithInventory } from '@40labs/types';
 import {
   FilterTabs,
   EntityProfileHeader,
@@ -15,6 +16,12 @@ import {
   OnboardingActionButton,
   HighlightableFeatureList,
   CarouselPaginationDots,
+  CustomerPicker,
+  CustomerSummary,
+  MedicinePicker,
+  MoneyDisplay,
+  QuantityStepper,
+  StockIndicator,
 } from '@40labs/ui-components';
 
 /**
@@ -26,6 +33,131 @@ export default function ComponentLabV2() {
   const [activeHistoryTab, setActiveHistoryTab] = useState('recently');
   const [activeCategory, setActiveCategory] = useState('1');
   const [activeDot, setActiveDot] = useState(1);
+
+  // CustomerPicker Demo States
+  const [selectedCust, setSelectedCust] = useState<Customer | null>(null);
+  const [pickerError, setPickerError] = useState<string | undefined>(undefined);
+
+  // MedicinePicker Demo States
+  const [selectedMed, setSelectedMed] = useState<MedicineWithInventory | null>(null);
+  const [showBatch, setShowBatch] = useState(false);
+  const [showExpiry, setShowExpiry] = useState(false);
+
+  // QuantityStepper Demo States
+  const [standardQty, setStandardQty] = useState(2);
+  const [packQty, setPackQty] = useState(2);
+  const unitsPerPack = 10;
+
+  const mockMedicines: MedicineWithInventory[] = [
+    {
+      id: 'm-1',
+      name: 'Amoxicillin 500mg',
+      generic_name: 'Amoxicillin Trihydrate',
+      category: 'Antibiotics',
+      unit: 'Capsule',
+      is_controlled_substance: false,
+      requires_prescription: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      inventory: {
+        id: 'inv-1',
+        medicine_id: 'm-1',
+        batch_number: 'AMX-2024-001',
+        expiry_date: '2025-12-31',
+        buy_price: 8000,
+        sell_price: 12500,
+        quantity: 120,
+        low_stock_threshold: 10,
+        cold_chain_required: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    },
+    {
+      id: 'm-2',
+      name: 'Paracetamol 500mg',
+      generic_name: 'Acetaminophen',
+      category: 'Analgesics',
+      unit: 'Tablet',
+      is_controlled_substance: false,
+      requires_prescription: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      inventory: {
+        id: 'inv-2',
+        medicine_id: 'm-2',
+        batch_number: 'PARA-992',
+        expiry_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(), // Expiring soon
+        buy_price: 1000,
+        sell_price: 1500,
+        quantity: 8, // Low stock
+        low_stock_threshold: 15,
+        cold_chain_required: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    },
+    {
+      id: 'm-3',
+      name: 'Tramadol 50mg',
+      generic_name: 'Tramadol Hydrochloride',
+      category: 'Opioids',
+      unit: 'Capsule',
+      is_controlled_substance: true,
+      requires_prescription: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      inventory: {
+        id: 'inv-3',
+        medicine_id: 'm-3',
+        batch_number: 'TRAM-007',
+        expiry_date: '2026-06-30',
+        buy_price: 5000,
+        sell_price: 7500,
+        quantity: 0, // Out of stock
+        low_stock_threshold: 5,
+        cold_chain_required: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+    }
+  ];
+
+  const mockCustomers: Customer[] = [
+    {
+      id: 'cust-1',
+      full_name: 'John Doe',
+      phone: '0712345678',
+      email: 'john@example.com',
+      outstanding_balance: 5000,
+      notes: '',
+      amob_patient_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 'cust-2',
+      full_name: 'Jane Smith',
+      phone: '0655111222',
+      email: null,
+      outstanding_balance: 0,
+      notes: '',
+      amob_patient_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: 'cust-3',
+      full_name: 'Bob Johnson',
+      phone: '0788999000',
+      email: 'bob@example.com',
+      outstanding_balance: 12500,
+      notes: '',
+      amob_patient_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  ];
 
   const [days, setDays] = useState([
     { day: 'Mon', active: true },
@@ -130,7 +262,7 @@ export default function ComponentLabV2() {
     },
   ];
 
-  const mockMedicines = [
+  const mockCompactMedicines = [
     {
       id: 'm1',
       name: 'Paracetamol',
@@ -181,6 +313,92 @@ export default function ComponentLabV2() {
   return (
     <div className="h-screen w-full bg-surface text-text overflow-y-auto scrollbar-thin">
       <div className="flex flex-col items-center p-12 gap-16 pb-40 max-w-7xl mx-auto">
+        {/* Primitives & Data Atoms Section */}
+        <div className="w-full max-w-xl space-y-8">
+          <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest text-center">
+            Primitives & Data Atoms
+          </h3>
+          <div className="bg-panel p-8 rounded-card elevation-raised space-y-6">
+            <div className="space-y-4">
+              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">MoneyDisplay Varieties</p>
+              <div className="flex flex-col gap-4 bg-panel-strong/30 p-6 rounded-input border border-border/10">
+                <div className="flex items-center justify-between border-b border-border/10 pb-2">
+                  <span className="text-xs text-text-muted">Standard</span>
+                  <MoneyDisplay amount={10000} />
+                </div>
+                <div className="flex items-center justify-between border-b border-border/10 pb-2">
+                  <span className="text-xs text-text-muted">Large (Strong)</span>
+                  <MoneyDisplay amount={1250000} emphasis="strong" />
+                </div>
+                <div className="flex items-center justify-between border-b border-border/10 pb-2">
+                  <span className="text-xs text-text-muted">Negative Colorized</span>
+                  <MoneyDisplay amount={-25000} colorize />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Compact (No Currency)</span>
+                  <MoneyDisplay amount={1250000} compact showCurrency={false} />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-border/10">
+              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">Quantity Stepper Atoms</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <p className="text-[9px] text-text-muted uppercase font-bold">Standard Unit Stepper (Max 8)</p>
+                  <div className="p-4 bg-panel-strong/30 rounded-input border border-border/10 flex justify-center">
+                    <QuantityStepper
+                      value={standardQty}
+                      onChange={setStandardQty}
+                      min={1}
+                      max={8}
+                      error={standardQty >= 8 ? "Maximum stock reached" : undefined}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-[9px] text-text-muted uppercase font-bold">Pack Stepper (Units: {packQty * unitsPerPack})</p>
+                  <div className="p-4 bg-panel-strong/30 rounded-input border border-border/10 flex justify-center">
+                    <QuantityStepper
+                      value={packQty}
+                      onChange={setPackQty}
+                      min={0}
+                      unit="Packs"
+                      size="lg"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stock Status Section */}
+        <div className="w-full max-w-xl space-y-8">
+          <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest text-center">
+            Stock Status Widgets
+          </h3>
+          <div className="bg-panel p-8 rounded-card elevation-raised">
+            <div className="space-y-6">
+              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">Inventory Health Indicators</p>
+              <div className="flex flex-col gap-4 bg-panel-strong/30 p-6 rounded-input border border-border/10">
+                <div className="flex items-center justify-between border-b border-border/10 pb-3">
+                  <span className="text-xs text-text-muted">High Stock Item</span>
+                  <StockIndicator quantity={120} />
+                </div>
+                <div className="flex items-center justify-between border-b border-border/10 pb-3">
+                  <span className="text-xs text-text-muted">Critical Level</span>
+                  <StockIndicator quantity={8} lowStockThreshold={15} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-text-muted">Depleted Stock</span>
+                  <StockIndicator quantity={0} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Onboarding Section */}
         <div className="w-full max-w-sm grid grid-cols-1 gap-12">
           <div className="space-y-6">
@@ -229,6 +447,124 @@ export default function ComponentLabV2() {
                   className="w-full"
                 />
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Medicine Selection Section */}
+        <div className="w-full max-w-xl space-y-8">
+          <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest text-center">
+            Medicine Picker Composite
+          </h3>
+
+          <div className="bg-panel p-8 rounded-card elevation-raised space-y-8">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold text-accent uppercase tracking-wider">
+                  Medicine Search & Inventory
+                </p>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={showBatch} onChange={e => setShowBatch(e.target.checked)} className="w-3 h-3" />
+                    <span className="text-[10px] text-text-muted font-bold uppercase">Show Batch</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={showExpiry} onChange={e => setShowExpiry(e.target.checked)} className="w-3 h-3" />
+                    <span className="text-[10px] text-text-muted font-bold uppercase">Show Expiry</span>
+                  </label>
+                </div>
+              </div>
+
+              <MedicinePicker
+                value={selectedMed}
+                onChange={setSelectedMed}
+                medicines={mockMedicines}
+                showBatch={showBatch}
+                showExpiry={showExpiry}
+                placeholder="Find medicine by name or generic..."
+              />
+
+              <div className="p-4 bg-panel-strong/30 rounded-input border border-border/10">
+                 <p className="text-[10px] text-text-muted uppercase font-bold mb-3 border-b border-border/20 pb-1">Selection Detail</p>
+                 {selectedMed ? (
+                   <div className="grid grid-cols-2 gap-y-3">
+                      <div>
+                        <p className="text-[9px] text-text-muted uppercase font-bold">Scientific Name</p>
+                        <p className="text-xs">{selectedMed.generic_name}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-text-muted uppercase font-bold">Category</p>
+                        <p className="text-xs">{selectedMed.category}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-text-muted uppercase font-bold">Stock Status</p>
+                        <Badge variant={selectedMed.inventory && selectedMed.inventory.quantity > 0 ? 'success' : 'danger'} size="sm">
+                          {selectedMed.inventory?.quantity ?? 0} {selectedMed.unit}s
+                        </Badge>
+                      </div>
+                      <div>
+                        <p className="text-[9px] text-text-muted uppercase font-bold">Price</p>
+                        <p className="text-xs font-mono font-bold text-primary">TZS {selectedMed.inventory?.sell_price.toLocaleString()}</p>
+                      </div>
+                   </div>
+                 ) : (
+                   <p className="text-xs text-text-muted italic text-center py-2">No medicine selected</p>
+                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Customer Selection Section */}
+        <div className="w-full max-w-xl space-y-8">
+          <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest text-center">
+            Customer Picker Composite
+          </h3>
+
+          <div className="bg-panel p-8 rounded-card elevation-raised space-y-10">
+            <div className="space-y-4">
+              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">
+                1. Standard Selection & Search
+              </p>
+              <CustomerPicker
+                value={selectedCust}
+                onChange={setSelectedCust}
+                customers={mockCustomers}
+                onWalkIn={() => setSelectedCust(null)}
+                onCreateCustomer={(data) => console.log('Create customer:', data)}
+              />
+              <CustomerSummary
+                customer={selectedCust}
+                isWalkIn={selectedCust === null}
+              />
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-border/10">
+              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">
+                2. Error State Demo
+              </p>
+              <CustomerPicker
+                onChange={() => {}}
+                customers={mockCustomers}
+                error={pickerError || "Failed to fetch customers from remote server"}
+              />
+              <button
+                onClick={() => setPickerError(pickerError ? undefined : "API Connection timeout")}
+                className="text-[10px] text-primary hover:underline font-bold"
+              >
+                Toggle Error State
+              </button>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-border/10">
+              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">
+                3. Loading State Demo
+              </p>
+              <CustomerPicker
+                onChange={() => {}}
+                loading={true}
+                placeholder="Synchronizing database..."
+              />
             </div>
           </div>
         </div>
@@ -347,7 +683,7 @@ export default function ComponentLabV2() {
             Compact Product Rows
           </h3>
           <div className="bg-panel p-4 rounded-card elevation-raised space-y-3">
-            {mockMedicines.map((m) => (
+            {mockCompactMedicines.map((m) => (
               <CompactProductRow
                 key={m.id}
                 product={m}

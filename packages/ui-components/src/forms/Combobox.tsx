@@ -15,6 +15,7 @@ export interface ComboboxProps {
   placeholder?: string;
   disabled?: boolean;
   error?: boolean | string;
+  renderOption?: (option: ComboboxOption) => React.ReactNode;
 }
 
 export function Combobox({
@@ -23,7 +24,8 @@ export function Combobox({
   onChange,
   placeholder = 'Select option...',
   disabled,
-  error
+  error,
+  renderOption
 }: ComboboxProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [query, setQuery] = React.useState('');
@@ -99,7 +101,7 @@ export function Combobox({
                     option.value === value ? 'bg-primary text-surface font-medium' : 'text-text hover:bg-panel'
                   ].join(' ')}
                 >
-                  {option.label}
+                  {renderOption ? renderOption(option) : option.label}
                 </li>
               ))}
             </ul>

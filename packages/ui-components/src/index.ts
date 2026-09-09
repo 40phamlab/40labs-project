@@ -6,6 +6,8 @@ export * from './primitives/Badge';
 export * from './primitives/Separator';
 export * from './primitives/Card';
 export * from './primitives/Hotkey';
+export * from './primitives/MoneyDisplay';
+export * from './primitives/QuantityStepper';
 
 // Forms
 export * from './forms/FormField';
@@ -92,3 +94,8 @@ export * from './pharmacy-widgets/ConfigToggleRow';
 export * from './onboarding-widgets/OnboardingActionButton';
 export * from './onboarding-widgets/HighlightableFeatureList';
 export * from './onboarding-widgets/CarouselPaginationDots';
+
+// Domain Widgets
+export * from './domain-widgets/CustomerPicker';
+export * from './domain-widgets/MedicinePicker';
+export * from './domain-widgets/StockIndicator';
