@@ -18,9 +18,17 @@ export const colors = {
   border: '#606060',
 } as const;
 
-
+export const darkColors = {
+  bg: '#0B0F0D',
+  raised: '#14532D',
+  highlight: '#16A34A',
+  accent: '#F97316',
+  text: '#F8FAFB',
+  textMuted: 'rgba(248,250,251,0.6)',
+} as const;
 
 export type ColorToken = keyof typeof colors;
+export type DarkColorToken = keyof typeof darkColors;
 
 export const statusColors = {
   inStock: colors.primary, lowStock: colors.accent, expired: colors.danger,

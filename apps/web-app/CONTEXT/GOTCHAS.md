@@ -12,17 +12,16 @@ Things that will bite you if you assume instead of checking.
    alongside the existing one, never overwritten. Don't assume dark tokens
    exist; check before importing.
 
-3. **Tailwind version unknown until verified.** `apps/web-app` has no
-   `tailwind.config.*` file, consistent with Tailwind v4's CSS-first `@theme`
-   approach — but this hasn't been confirmed against what `design-tokens` or
-   `ui-components` actually assume. Check the `tailwindcss` version in each
-   package's `package.json` before wiring tokens in; don't assume they match.
+3. **Shared Packages Specs.** Verified specifications for wiring:
+   - `@40labs/ui-components`: `main: "src/index.ts"`, `types: "src/index.ts"`, `peerDependencies: { "react": "^19.0.0" }`.
+   - `@40labs/design-tokens`: `main: "src/index.ts"`, `types: "src/index.ts"`, no peer deps.
+   - `@40labs/types`: `main: "src/index.ts"`, `types: "src/index.ts"`, no peer deps.
+   All three ship raw TypeScript source and MUST be added to `transpilePackages` in `next.config.ts`.
 
 4. **ui-components was built for core-desktop (Vite, client-only React).**
-   Components there may have zero `"use client"` directives and may assume
-   browser globals (`window`, `localStorage`) exist unconditionally. Before
-   importing one into web-app, check whether it needs a `"use client"`
-   boundary or a guard — don't assume it's portable as-is.
+   Components there have zero `"use client"` directives and may assume browser globals (`window`, `localStorage`) exist unconditionally. **Mandatory:** Wrap imports in a `"use client"` boundary or add the directive to the consuming file in `web-app`. Don't assume they are RSC-compatible.
+
+5. **Tailwind version confirmation.** `apps/web-app` uses Tailwind v4 (`tailwindcss: "^4"` in `package.json`). `ui-components` also depends on `tailwindcss: "^4.3.3"` (via `core-desktop` usage) and uses the `@theme` approach. Wiring is confirmed.
 
 5. **`packages/api-client` and `packages/i18n` are empty.** There is nothing to
    import from them yet. Don't reference them; use `mock-data/` instead.

@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  transpilePackages: [
+    "@40labs/ui-components",
+    "@40labs/design-tokens",
+    "@40labs/types",
+  ],
 };
 
 export default nextConfig;

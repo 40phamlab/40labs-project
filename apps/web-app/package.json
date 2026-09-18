@@ -1,5 +1,5 @@
 {
-  "name": "web-app",
+  "name": "@40labs/web-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,7 +11,11 @@
   "dependencies": {
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "@40labs/ui-components": "workspace:*",
+    "@40labs/design-tokens": "workspace:*",
+    "@40labs/types": "workspace:*",
+    "lucide-react": "^0.475.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

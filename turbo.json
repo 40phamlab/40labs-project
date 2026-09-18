@@ -14,6 +14,17 @@
     },
     "typecheck": {
       "dependsOn": ["^build"]
+    },
+    "@40labs/web-app#build": {
+      "dependsOn": ["^build"],
+      "outputs": [".next/**", "!.next/cache/**"]
+    },
+    "@40labs/web-app#dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "@40labs/web-app#lint": {
+      "dependsOn": ["^build"]
     }
   }
 }
