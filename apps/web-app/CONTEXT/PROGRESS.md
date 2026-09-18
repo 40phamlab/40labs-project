@@ -5,7 +5,7 @@
 - [x] Task 0.5 — Shared package wiring (ui-components, design-tokens, types wired + transpiled)
 - [x] Task 1 — Dark/skeuomorphic tokens added to packages/design-tokens
 - [x] Task 2 — Shared header/footer layout
-- [ ] Task 3 — Mock data layer
+- [x] Task 3 — Mock data layer
 - [ ] Task 4 — Home page sections
 - [ ] Task 5 — Stub pages (Products/Services/Blog/About)
 
