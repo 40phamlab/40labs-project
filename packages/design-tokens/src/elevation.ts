@@ -16,9 +16,10 @@ export const elevation = {
   innerSoft: 'inset 0 2px 4px rgba(0,0,0,.4), inset 0 -1px 0 rgba(255,255,255,.04)',
 } as const;
 
-export type ElevationToken = keyof typeof elevation;
+export const darkElevation = {
+  skeuOuter: '0 4px 12px rgba(0,0,0,0.45)',
+  skeuInset: 'inset 0 1px 0 rgba(255,255,255,0.12)',
+} as const;
 
-// TODO [dark-mode-elevation] [MVP]: dark variant blocked on
-// PROGRESS.md item #1 (dark-mode surface palette not yet locked).
-// Do not fill this in with guessed values.
-export const elevationDark: Partial<Record<ElevationToken, string>> = {};
+export type ElevationToken = keyof typeof elevation;
+export type DarkElevationToken = keyof typeof darkElevation;

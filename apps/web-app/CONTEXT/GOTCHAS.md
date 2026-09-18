@@ -6,11 +6,9 @@ Things that will bite you if you assume instead of checking.
    by the initial scaffold. Only the root `pnpm-workspace.yaml` should exist.
    Remove it (Task 0) — otherwise `packages/*` won't resolve as workspace deps.
 
-2. **design-tokens is light-theme only, today.** `packages/design-tokens`
-   currently defines a light theme (`Surface #F8FAFB`) built for core-desktop.
-   There is no dark/skeuomorphic theme yet — it must be ADDED as a new theme
-   alongside the existing one, never overwritten. Don't assume dark tokens
-   exist; check before importing.
+2. **Dark Theme Tokens are now available.** `packages/design-tokens`
+   defines `darkTokens` alongside the original `tokens` (light theme). Use 
+   `darkTokens` for the web app to match the skeuomorphic design spec.
 
 3. **Shared Packages Specs.** Verified specifications for wiring:
    - `@40labs/ui-components`: `main: "src/index.ts"`, `types: "src/index.ts"`, `peerDependencies: { "react": "^19.0.0" }`.
