@@ -71,8 +71,9 @@ export const SidebarItem = ({
   onClick,
   className = '',
 }: SidebarItemProps) => {
-  const baseClasses =
-    'flex items-center gap-3 px-3 py-2 rounded-input text-xs font-medium transition-all cursor-pointer select-none relative group';
+  const baseClasses = `flex items-center gap-3 px-3 py-2 ${
+    compact ? 'rounded-full' : 'rounded-input'
+  } text-xs font-medium transition-all cursor-pointer select-none relative group`;
   const activeClasses = 'bg-primary text-surface elevation-raised';
   const inactiveClasses = 'text-text-muted hover:text-text hover:bg-panel';
   const disabledClasses = 'opacity-50 cursor-not-allowed grayscale';

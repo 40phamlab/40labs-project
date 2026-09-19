@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { darkTokens, tokens } from '@40labs/design-tokens';
 
 export interface BackgroundGridProps {

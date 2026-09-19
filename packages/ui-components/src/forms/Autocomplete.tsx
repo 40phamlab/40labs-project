@@ -4,7 +4,7 @@ import * as React from 'react';
 import { Input, type InputProps } from './Input';
 import { Card } from '../primitives/Card';
 
-export interface AutocompleteProps<T> extends Omit<InputProps, 'onChange' | 'value'> {
+export interface AutocompleteProps<T> extends Omit<InputProps, 'onChange' | 'value' | 'onSelect'> {
   items: T[];
   onSelect: (item: T) => void;
   getDisplayValue: (item: T) => string;
@@ -58,7 +58,7 @@ export function Autocomplete<T>({
       setHighlightedIndex(prev => (prev > 0 ? prev - 1 : 0));
     } else if (e.key === 'Enter' && isOpen && highlightedIndex >= 0) {
       e.preventDefault();
-      const selected = filtered[highlightIndex];
+      const selected = filtered[highlightedIndex];
       if (selected) {
         onSelect(selected);
         setQuery(getDisplayValue(selected));

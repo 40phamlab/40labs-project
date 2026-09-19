@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Trash2, Image as ImageIcon } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
 import { QuantityControl } from './Commerce';
@@ -40,12 +39,6 @@ export const CartItemRow = ({
   if (!item) return null;
   const currency = item.currencyCode || 'TZS';
   const subtotal = (item.unitPrice * item.quantity) - (item.discountAmount || 0);
-
-  const stockStatusColors = {
-    'in-stock': 'bg-primary/20 text-primary',
-    'low-stock': 'bg-accent/20 text-accent',
-    'out-of-stock': 'bg-danger/20 text-danger',
-  };
 
   return (
     <div className={`flex items-center gap-3 p-2 rounded-card bg-panel-strong elevation-raised border border-border/10 ${className}`}>

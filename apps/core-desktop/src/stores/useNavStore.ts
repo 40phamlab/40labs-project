@@ -10,8 +10,12 @@ export type ScreenId =
   | 'inventory'
   | 'customers'
   | 'purchases'
-  | 'lab'
-  | 'settings';
+  | 'settings'
+  | 'scheduling'
+  | 'e-pharmacy'
+  | 'reports'
+  | 'education'
+  | 'notifications';
 
 interface NavState {
   activeScreen: ScreenId;

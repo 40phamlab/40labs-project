@@ -1,5 +1,3 @@
-import { BaseEntity } from './common';
-
 export type AuditAction =
   | 'stock_adjustment'
   | 'refund'

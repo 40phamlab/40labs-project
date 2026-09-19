@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 export interface SegmentedControlOption {
   label: string;
   value: string;

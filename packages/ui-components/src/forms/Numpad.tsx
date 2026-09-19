@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Delete } from 'lucide-react';
 
 export interface NumpadProps {

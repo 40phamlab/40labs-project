@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { Badge } from '../primitives/Badge';
 
 export interface StockIndicatorProps {

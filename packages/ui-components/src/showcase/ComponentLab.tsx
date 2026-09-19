@@ -1,20 +1,5 @@
 import {
-  Button,
-  IconButton,
-  Badge,
-  Separator,
   Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  Input,
-  Textarea,
-  Toggle,
-  Checkbox,
-  Select,
-  Spinner,
-  Skeleton,
-  Panel,
   PriceDisplay,
   DiscountDisplay,
   QuantityControl,
@@ -32,7 +17,7 @@ import {
   PaymentSummary,
   PaymentMethodSelector,
 } from '../index';
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export function ComponentLab() {
   const [qty, setQty] = useState(1);

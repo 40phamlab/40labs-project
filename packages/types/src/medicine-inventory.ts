@@ -29,3 +29,7 @@ export interface StockAdjustment extends BaseEntity {
   reason: string;
   audit_log_id: string; // every adjustment MUST produce an AuditLog entry
 }
+
+export interface MedicineWithInventory extends Medicine {
+  inventory?: InventoryItem;
+}

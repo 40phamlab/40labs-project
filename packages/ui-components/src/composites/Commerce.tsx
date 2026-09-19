@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { Minus, Plus, X, Search, User, Trash2, CheckCircle2, Clock, AlertCircle, CreditCard, Wallet, Banknote, ShoppingCart, Image as ImageIcon } from 'lucide-react';
+import { Minus, Plus, X, User, Trash2, CheckCircle2, Clock, AlertCircle, CreditCard, Wallet, Banknote, ShoppingCart, Image as ImageIcon } from 'lucide-react';
 import { Card } from '../primitives/Card';
 import { Button } from '../primitives/Button';
 import { Badge } from '../primitives/Badge';
-import { Input } from '../forms/Input';
 import { SearchInput } from '../forms/SearchInput';
 
 export interface PriceDisplayProps {

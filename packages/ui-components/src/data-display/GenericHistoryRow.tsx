@@ -11,7 +11,6 @@ export interface GenericHistoryRowProps {
  * A standardized row for history lists, mimicking the design's soft surface blocks.
  */
 export const GenericHistoryRow: React.FC<GenericHistoryRowProps> = ({
-  id,
   content,
   className = '',
 }) => {

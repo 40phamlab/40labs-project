@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 export interface PackagingUnit {
   unitName: string;
   conversionRate: number;

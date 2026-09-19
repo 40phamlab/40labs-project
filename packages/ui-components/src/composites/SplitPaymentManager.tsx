@@ -6,7 +6,6 @@ import { Button } from '../primitives/Button';
 import { IconButton } from '../primitives/IconButton';
 import { Input } from '../forms/Input';
 import { Select } from '../forms/Select';
-import { Card } from '../primitives/Card';
 
 export interface PaymentEntry {
   id: string;

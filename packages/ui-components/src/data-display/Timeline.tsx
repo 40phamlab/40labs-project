@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 export type TimelineStatus = 'completed' | 'pending' | 'future' | 'warning' | 'error';
 
 export interface TimelineItem {
@@ -22,9 +20,6 @@ export const Timeline = ({ items, className = '' }: TimelineProps) => {
       {items.map((item, index) => {
         const isLast = index === items.length - 1;
         const isCompleted = item.status === 'completed';
-        const isPending = item.status === 'pending';
-        const isError = item.status === 'error';
-        const isWarning = item.status === 'warning';
 
         // Node Styling
         const nodeBase = "relative z-10 w-4 h-4 rounded-full border-2 transition-all duration-200";

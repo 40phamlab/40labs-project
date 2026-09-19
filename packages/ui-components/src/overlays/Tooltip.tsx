@@ -4,7 +4,7 @@ import * as React from 'react';
 
 export interface TooltipProps {
   content: React.ReactNode;
-  children: React.ReactElement;
+  children: React.ReactElement<{ onClick?: React.MouseEventHandler }>;
   position?: 'top' | 'bottom' | 'left' | 'right';
   className?: string;
 }

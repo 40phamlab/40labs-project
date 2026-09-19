@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 export interface NotificationIndicatorProps {
   count?: number;
   className?: string;

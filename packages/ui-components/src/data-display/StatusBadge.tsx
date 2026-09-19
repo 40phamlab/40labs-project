@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 export type StatusType = 'active' | 'inactive' | 'pending' | 'error' | 'success' | 'warning';
 
 const statusMap: Record<StatusType, { variantClass: string; label: string }> = {

@@ -1,7 +1,6 @@
 import React from 'react';
 import { SearchInput } from '../forms/SearchInput';
 import { HotkeyBadge } from '../primitives/Hotkey';
-import { Button } from '../primitives/Button';
 
 export interface StatusIndicator {
   id: string;
@@ -36,13 +35,6 @@ const statusColorMap = {
   green: 'bg-primary',
   orange: 'bg-accent',
   red: 'bg-danger',
-};
-
-const indicatorColorMap = {
-  primary: 'text-primary',
-  accent: 'text-accent',
-  danger: 'text-danger',
-  'text-muted': 'text-text-muted',
 };
 
 const dotColorMap = {

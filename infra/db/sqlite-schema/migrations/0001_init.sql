@@ -71,6 +71,7 @@ CREATE TABLE app_user (
 
 -- Staff permission set — one row per staff user. SUDO users have no row
 -- here (app logic treats missing row = implicit all-permissions).
+-- workspace_id/branch_id intentionally omitted — inherited via app_user.id
 CREATE TABLE staff_permission_set (
   user_id TEXT PRIMARY KEY REFERENCES app_user(id),
   can_update_stock INTEGER NOT NULL DEFAULT 0 CHECK (can_update_stock IN (0,1)),
@@ -195,6 +196,7 @@ CREATE INDEX idx_sale_customer ON sale(customer_id);
 CREATE INDEX idx_sale_synced ON sale(synced_at); -- fast lookup of unsynced rows
 CREATE INDEX idx_sale_branch ON sale(workspace_id, branch_id);
 
+-- workspace_id/branch_id intentionally omitted — inherited via sale.id
 CREATE TABLE sale_line (
   id TEXT PRIMARY KEY,
   sale_id TEXT NOT NULL REFERENCES sale(id),
@@ -335,6 +337,7 @@ CREATE TABLE purchase_order (
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
 
+-- workspace_id/branch_id intentionally omitted — inherited via purchase_order.id
 CREATE TABLE purchase_order_line (
   id TEXT PRIMARY KEY,
   purchase_order_id TEXT NOT NULL REFERENCES purchase_order(id),
@@ -389,6 +392,7 @@ END;
 -- RESERVED — dormant until aMob / Web App ship (post-MVP)
 -- ============================================================
 
+-- workspace_id/branch_id intentionally omitted — inherited via business.id
 CREATE TABLE dormant_amob_profile (
   business_id TEXT PRIMARY KEY REFERENCES business(business_id),
   storefront_enabled INTEGER NOT NULL DEFAULT 0 CHECK (storefront_enabled IN (0,1)), -- always 0 in MVP
@@ -403,6 +407,7 @@ CREATE TABLE dormant_amob_profile (
   service_delivery INTEGER NOT NULL DEFAULT 0 CHECK (service_delivery IN (0,1))
 );
 
+-- workspace_id/branch_id intentionally omitted — inherited via business.id
 CREATE TABLE dormant_web_app_listing (
   business_id TEXT PRIMARY KEY REFERENCES business(business_id),
   listing_enabled INTEGER NOT NULL DEFAULT 0 CHECK (listing_enabled IN (0,1)), -- always 0 in MVP

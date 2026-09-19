@@ -1,9 +1,79 @@
+import * as React from 'react';
+import {
+  Home,
+  ShoppingCart,
+  Package,
+  Users,
+  ShoppingBag,
+  Stethoscope,
+  BarChart3,
+  Calendar,
+  GraduationCap,
+  Bell,
+  Settings
+} from 'lucide-react';
+import { AppSidebarNav } from '@40labs/ui-components';
+import { useNavStore, ScreenId } from './stores/useNavStore';
 import './App.css';
 
+const NAV_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: <Home size={20} /> },
+  { id: 'sales', label: 'Sales', icon: <ShoppingCart size={20} /> },
+  { id: 'inventory', label: 'Inventory', icon: <Package size={20} /> },
+  { id: 'purchases', label: 'Purchases', icon: <ShoppingBag size={20} /> },
+  { id: 'customers', label: 'Customers', icon: <Users size={20} /> },
+  { id: 'e-pharmacy', label: 'e-pharmacy', icon: <Stethoscope size={20} /> },
+  { id: 'reports', label: 'Reports', icon: <BarChart3 size={20} /> },
+  { id: 'scheduling', label: 'Scheduling', icon: <Calendar size={20} /> },
+  { id: 'education', label: 'Education', icon: <GraduationCap size={20} /> },
+  { id: 'notifications', label: 'Notifications', icon: <Bell size={20} /> },
+];
+
 export default function App() {
+  const activeScreen = useNavStore((s) => s.activeScreen);
+  const setActiveScreen = useNavStore((s) => s.setActiveScreen);
+  const [collapsed, setCollapsed] = React.useState(true);
+
+  const renderContent = () => {
+    if (activeScreen === 'inventory') {
+      return (
+        <div className="flex items-center justify-center h-full text-text-muted">
+          <p className="text-xl font-heading font-medium italic opacity-60">Inventory — next prompt will build this</p>
+        </div>
+      );
+    }
+
+    const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
+    return (
+      <div className="flex items-center justify-center h-full text-text-muted">
+        <p className="text-xl font-heading font-medium italic opacity-60">{label.replace('-', ' ')} — not built yet</p>
+      </div>
+    );
+  };
+
   return (
-    <div className="flex h-screen w-screen bg-surface text-text font-ui overflow-hidden items-center justify-center">
-      40LabsCore — awaiting first real feature screen
+    <div className="flex h-screen w-screen bg-surface text-text font-ui overflow-hidden">
+      <AppSidebarNav
+        activeRoute={activeScreen}
+        collapsed={collapsed}
+        onToggleCollapse={() => setCollapsed(!collapsed)}
+        onNavigate={(id) => setActiveScreen(id as ScreenId)}
+        items={NAV_ITEMS}
+        pinnedBottomItems={[
+          { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
+        ]}
+        tenantBranding={{
+          brandName: "40Labs",
+          brandTagline: "Core",
+          logo: <div className="text-xs font-bold">40</div>
+        }}
+      />
+      <main className="flex-1 overflow-hidden relative">
+        <div className="absolute inset-0 bg-panel/20 backdrop-blur-3xl -z-10" />
+        <div className="h-full w-full overflow-auto">
+          {renderContent()}
+        </div>
+      </main>
     </div>
   );
 }

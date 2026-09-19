@@ -1,12 +1,8 @@
 import * as React from 'react';
 import { Pill, AlertCircle, Calendar, Package } from 'lucide-react';
-import { Medicine, InventoryItem } from '@40labs/types';
+import { MedicineWithInventory } from '@40labs/types';
 import { Badge } from '../primitives/Badge';
 import { Combobox, ComboboxOption } from '../forms/Combobox';
-
-export interface MedicineWithInventory extends Medicine {
-  inventory?: InventoryItem;
-}
 
 export interface MedicinePickerProps {
   value?: MedicineWithInventory | null;
@@ -14,7 +10,7 @@ export interface MedicinePickerProps {
   placeholder?: string;
   disabled?: boolean;
   requireAvailableStock?: boolean;
-  searchFields?: ('name' | 'genericName' | 'sku' | 'barcode')[];
+  _searchFields?: ('name' | 'genericName' | 'sku' | 'barcode')[];
   showStock?: boolean;
   showPrice?: boolean;
   showBatch?: boolean;
@@ -34,7 +30,6 @@ export function MedicinePicker({
   placeholder = 'Search medicine...',
   disabled,
   requireAvailableStock = false,
-  searchFields = ['name', 'genericName'],
   showStock = true,
   showPrice = true,
   showBatch = false,
