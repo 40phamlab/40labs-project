@@ -40,15 +40,15 @@ export function SiteFooter() {
         ))}
 
         {/* Newsletter */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 md:col-span-1">
           <h4 className="font-heading font-bold text-sm uppercase tracking-wider" style={{ color: darkTokens.colors.text }}>
             Stay Updated
           </h4>
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <input
               type="email"
-              placeholder="subscribe to our news letter"
-              className="w-full h-11 px-5 text-xs focus:outline-none transition-shadow"
+              placeholder="Enter your email"
+              className="w-full h-11 px-6 text-xs focus:outline-none transition-shadow"
               style={{
                 backgroundColor: darkTokens.colors.bg,
                 color: darkTokens.colors.text,
@@ -59,13 +59,12 @@ export function SiteFooter() {
             />
             <Button
               type="submit"
-              size="md"
+              className="w-full !h-11 !px-6 !text-xs !font-bold"
               style={{
                 backgroundColor: '#000000',
                 color: '#ffffff',
                 borderRadius: darkTokens.radius.pill,
                 border: 'none',
-                fontWeight: 600,
               }}
             >
               Subscribe

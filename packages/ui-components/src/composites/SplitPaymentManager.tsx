@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from 'react';
 import { X, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '../primitives/Button';

@@ -25,6 +25,7 @@ export const darkColors = {
   accent: '#F97316',
   text: '#F8FAFB',
   textMuted: 'rgba(248,250,251,0.6)',
+  gridLines: 'rgba(255,255,255,0.03)',
 } as const;
 
 export type ColorToken = keyof typeof colors;

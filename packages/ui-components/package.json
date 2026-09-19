@@ -8,6 +8,7 @@
     "react": "^19.0.0"
   },
   "dependencies": {
-    "lucide-react": "^0.475.0"
+    "lucide-react": "^0.475.0",
+    "@40labs/design-tokens": "workspace:*"
   }
 }

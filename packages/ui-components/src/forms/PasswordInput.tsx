@@ -1,3 +1,5 @@
+"use client";
+
 import { EyeClosed,LucideEye } from 'lucide-react';
 import * as React from 'react';
 

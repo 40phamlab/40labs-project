@@ -16,7 +16,7 @@ export function HeroSearch() {
       {/* Pill Search Input */}
       <div className="w-full max-w-2xl relative group">
         <div
-          className="absolute left-6 top-1/2 -translate-y-1/2"
+          className="absolute left-8 top-1/2 -translate-y-1/2"
           style={{ color: darkTokens.colors.textMuted }}
         >
           <Search size={20} />
@@ -25,7 +25,7 @@ export function HeroSearch() {
           type="text"
           placeholder="search..."
           disabled
-          className="w-full h-16 pl-14 pr-6 text-sm transition-all cursor-not-allowed"
+          className="w-full h-16 pl-[72px] pr-8 text-sm transition-all cursor-not-allowed"
           style={{
             backgroundColor: darkTokens.colors.bg,
             color: darkTokens.colors.text,
@@ -43,6 +43,34 @@ export function HeroSearch() {
       >
         Access via: <span className="font-semibold" style={{ color: darkTokens.colors.text }}>Swahili</span>
       </p>
+
+      {/* Tool Pills */}
+      <div className="flex flex-col items-center mt-20">
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-6 opacity-40" style={{ color: darkTokens.colors.text }}>
+          Get Best Of Our Tools
+        </p>
+        <div className="flex items-center gap-4">
+          {[
+            { name: '40LabsCore', href: '#' },
+            { name: 'vLabs', href: '#' },
+            { name: 'aDesk', href: '#' },
+          ].map((tool) => (
+            <a
+              key={tool.name}
+              href={tool.href}
+              className="h-11 px-6 flex items-center justify-center text-xs font-bold transition-all hover:scale-105 active:scale-95"
+              style={{
+                backgroundColor: darkTokens.colors.highlight,
+                color: darkTokens.colors.text,
+                borderRadius: darkTokens.radius.pill,
+                boxShadow: darkTokens.elevation.skeuOuter,
+              }}
+            >
+              {tool.name}
+            </a>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }

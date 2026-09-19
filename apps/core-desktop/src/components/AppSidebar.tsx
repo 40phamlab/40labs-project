@@ -10,14 +10,39 @@ const PurchasesIcon = () => <Icon><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 
 const LabIcon = () => <Icon><path d="M10 2v7.3M14 9.3V2M8.5 2h7M14 9.3a6.5 6.5 0 1 1-4 0M5.5 16h13"/></Icon>;
 const SettingsIcon = () => <Icon><path d="M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.7l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7v.2a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.7v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2Z"/><circle cx="12" cy="12" r="3"/></Icon>;
 interface ScreenConfig { id: ScreenId; label: string; Icon: React.FC; }
+
 const SCREENS: ScreenConfig[] = [
- {id:'dashboard',label:'Dashboard',Icon:DashboardIcon},{id:'sales',label:'Sales',Icon:SalesIcon},{id:'inventory',label:'Inventory',Icon:InventoryIcon},{id:'customers',label:'Customers',Icon:CustomersIcon},{id:'purchases',label:'Purchases',Icon:PurchasesIcon},{id:'lab',label:'Lab',Icon:LabIcon},{id:'settings',label:'Settings',Icon:SettingsIcon}
+ {id:'dashboard',label:'Dashboard',Icon:DashboardIcon},
+ {id:'sales',label:'Sales',Icon:SalesIcon},
+ {id:'inventory',label:'Inventory',Icon:InventoryIcon},
+ {id:'customers',label:'Customers',Icon:CustomersIcon},
+ {id:'purchases',label:'Purchases',Icon:PurchasesIcon},
+    { id: 'lab', label: 'Lab', Icon: LabIcon },
+    { id: 'settings', label: 'Settings', Icon: SettingsIcon }
 ];
+
+
 export const AppSidebar: React.FC = () => {
- const activeScreen=useNavStore(s=>s.activeScreen); const setActiveScreen=useNavStore(s=>s.setActiveScreen);
+ const activeScreen=useNavStore(s=>s.activeScreen); 
+ const setActiveScreen=useNavStore(s=>s.setActiveScreen);
+ 
  return <aside className="w-[52px] h-full bg-surface border-r border-border/60 flex flex-col items-center py-2 gap-2 shrink-0">
   <div className="w-9 h-9 rounded-full bg-primary text-surface flex items-center justify-center font-heading font-bold text-sm elevation-raised mb-1">40</div>
-  <nav className="flex flex-col gap-2 w-full items-center">{SCREENS.map(({id,label,Icon:ItemIcon})=>{const active=activeScreen===id;return <button key={id} onClick={()=>setActiveScreen(id)} title={label} className={`relative w-9 h-9 rounded-input flex items-center justify-center transition-shadow duration-150 ${active?'bg-accent text-surface elevation-raised':'bg-panel text-text-muted hover:elevation-hover'}`}><ItemIcon/>{active&&<span className="absolute -left-2 w-1 h-5 rounded-r-full bg-accent"/>}</button>})}</nav>
+  <nav className="flex flex-col gap-2 w-full items-center">
+
+
+    {SCREENS.map(({id,label,Icon:ItemIcon})=>{const active=activeScreen===id;
+        return <button 
+        key={id} 
+        onClick={()=>setActiveScreen(id)} 
+        title={label} 
+        className={`relative w-9 h-9 rounded-input flex items-center justify-center transition-shadow duration-150 ${active?'bg-accent text-surface elevation-raised':'bg-panel text-text-muted hover:elevation-hover'}`}>
+            <ItemIcon/>
+            {active && <span className="absolute -left-2 w-1 h-5 rounded-r-full bg-accent" />}
+        </button>
+    })}
+         
+ </nav>
   <div className="mt-auto text-[7px] font-mono text-text-muted/40 uppercase tracking-[.2em]" style={{writingMode:'vertical-lr',transform:'rotate(180deg)'}}>40Labs Core</div>
  </aside>;
 };

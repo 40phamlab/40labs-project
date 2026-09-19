@@ -63,6 +63,7 @@ export * from './layout/DashboardShell';
 export * from './layout/DashboardGrid';
 export * from './layout/SearchableListPanel';
 export * from './layout/TabbedListContainer';
+export * from './layout/BackgroundGrid';
 
 // Data Display
 export * from './data-display/KPITile';

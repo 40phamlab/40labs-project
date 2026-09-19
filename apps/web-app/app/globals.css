@@ -11,6 +11,9 @@
   --color-text: #F8FAFB;
   --color-text-muted: rgba(248,250,251,0.6);
   --color-border: rgba(255,255,255,0.1);
+  --color-grid-lines: rgba(255,255,255,0.03);
+
+  --spacing-grid: 40px;
 
   --radius-card: 16px;
   --radius-pill: 9999px;
@@ -50,4 +53,21 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #16A34A;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
 }

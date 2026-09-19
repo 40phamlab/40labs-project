@@ -12,6 +12,7 @@ export const spacing = {
   lg: spacingBaseUnit * 6,   // 24px
   xl: spacingBaseUnit * 8,   // 32px
   xxl: spacingBaseUnit * 12, // 48px
+  grid: spacingBaseUnit * 10, // 40px
 } as const;
 
 export type SpacingToken = keyof typeof spacing;
