@@ -34,8 +34,8 @@ import type {
   AuditLogEntry,
 } from '@40labs/types';
 
-const WORKSPACE_ID = 'ws_dev_001';
-const BRANCH_ID = 'br_dev_001';
+export const WORKSPACE_ID = 'ws_dev_001';
+export const BRANCH_ID = 'br_dev_001';
 
 const now = new Date().toISOString();
 const daysAgo = (n: number) => new Date(Date.now() - n * 86400000).toISOString();
