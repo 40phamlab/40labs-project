@@ -23,9 +23,16 @@ adjust once reviewed, don't treat as final)
 ## Component specs (from reference screenshots)
 
 **Header** — full-width pill, `--radius-pill`, `--surface-dark-highlight` fill,
-~64px tall. Nav links: Home/Products/Services/Articles/Blog/About. Active link
+~64px tall (h-16). Nav links: Home/Products/Services/Articles/Blog/About. Active link
 = orange (`--accent-orange`), weight 600; inactive = `--text-on-dark-muted`.
-Right side: one small icon button + a dark pill "Sign Up" button (no-op for now).
+Right side actions: small icon buttons + a dark pill "Sign Up" button.
+- Sign Up button: h-10 (40px), px-5, text-sm, font-semibold, dark fill.
+- Positioning: Sign Up button is flush right; 12px (gap-3) between action items; 
+  32px (ml-8) gap between nav links group and actions group.
+- App Launcher: Grid icon button (LayoutGrid) to the left of Sign Up. Opens a 
+  dropdown grid of tool tiles. Dropdown styled with `--surface-dark-bg`, 
+  `--radius-card`, and `--shadow-skeu-outer`.
+- Vertically centered on the same baseline as nav links.
 
 **Hero + search** — centered "40Labs" wordmark ("40" orange, "Labs" white),
 below it a full-width pill search input (dark fill, placeholder "search...",

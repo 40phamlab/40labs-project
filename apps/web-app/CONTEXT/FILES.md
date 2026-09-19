@@ -20,7 +20,8 @@ apps/web-app/
 ├── components/
 │   ├── layout/
 │   │   ├── site-header.tsx           [new]
-│   │   └── site-footer.tsx           [new]
+│   │   ├── site-footer.tsx           [new]
+│   │   └── app-launcher-menu.tsx     [new]
 │   └── sections/
 │       ├── hero-search.tsx           [new]
 │       ├── feature-cards.tsx         [new]

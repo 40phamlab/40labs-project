@@ -6,11 +6,13 @@
 - [x] Task 1 — Dark/skeuomorphic tokens added to packages/design-tokens
 - [x] Task 2 — Shared header/footer layout
 - [x] Task 3 — Mock data layer
-- [ ] Task 4 — Home page sections
-- [ ] Task 5 — Stub pages (Products/Services/Blog/About)
+- [x] Task 4 — Home page sections
+- [x] Task 5 — Stub pages (Products/Services/Blog/About)
+- [x] Task 6 — Header Size & Position corrections
+- [x] Task 7 — App Launcher Menu implementation
 
 ## Log
-(date) — what was done, what was decided, what's still open
+(2026-09-19) — Completed initial setup and repo hygiene. Wired shared packages (ui-components, design-tokens, types) with Next.js transpilation. Added dark/skeuomorphic theme tokens. Built shared shell (SiteHeader/SiteFooter) and Home page sections. Created stub pages for Products, Services, Blog, and About with placeholder content blocks. Verified build and workspace resolution. Implemented App Launcher Menu with dropdown tools grid.
 
 ## Open questions
 (none yet — add here instead of guessing)

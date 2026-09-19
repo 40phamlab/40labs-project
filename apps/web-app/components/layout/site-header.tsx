@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { darkTokens } from '@40labs/design-tokens';
 import { Button, IconButton } from '@40labs/ui-components';
+import { AppLauncherMenu } from './app-launcher-menu';
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -35,48 +36,49 @@ export function SiteHeader() {
           <span style={{ color: darkTokens.colors.text }}>Labs</span>
         </Link>
 
-        {/* Nav Links */}
-        <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm transition-colors duration-200"
-                style={{
-                  color: isActive ? darkTokens.colors.accent : darkTokens.colors.textMuted,
-                  fontWeight: isActive ? 600 : 400,
-                }}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
+        {/* Nav Links & Actions Group */}
+        <div className="hidden md:flex items-center">
+          <nav className="flex items-center gap-8">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm transition-colors duration-200"
+                  style={{
+                    color: isActive ? darkTokens.colors.accent : darkTokens.colors.textMuted,
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
-          <IconButton
-            icon={<Search size={18} />}
-            label="Search"
-            variant="ghost"
-            style={{ color: darkTokens.colors.text }}
-          />
-          <Button
-            size="sm"
-            style={{
-              backgroundColor: darkTokens.colors.bg,
-              color: darkTokens.colors.text,
-              borderRadius: darkTokens.radius.pill,
-              border: 'none',
-              paddingLeft: '1.5rem',
-              paddingRight: '1.5rem',
-            }}
-            onClick={() => {}}
-          >
-            Sign Up
-          </Button>
+          {/* Actions */}
+          <div className="flex items-center gap-3 ml-8">
+            <IconButton
+              icon={<Search size={18} />}
+              label="Search"
+              intent="ghost"
+              style={{ color: darkTokens.colors.text }}
+            />
+            <AppLauncherMenu />
+            <Button
+              className="!h-10 !px-5 !text-sm !font-semibold"
+              style={{
+                backgroundColor: darkTokens.colors.bg,
+                color: darkTokens.colors.text,
+                borderRadius: darkTokens.radius.pill,
+                border: 'none',
+              }}
+              onClick={() => {}}
+            >
+              Sign Up
+            </Button>
+          </div>
         </div>
       </div>
     </header>
