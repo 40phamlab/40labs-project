@@ -23,7 +23,7 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
   }, [selected, onAdd]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-2">
       <MedicinePicker
         value={selected}
         onChange={setSelected}
@@ -31,14 +31,16 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
         requireAvailableStock
         showStock
         showPrice
+        placeholder="Search medicine..."
       />
       <Button
         intent="primary"
         fullWidth
         disabled={!selected}
         onClick={handleAdd}
+        className="rounded-full !h-12 border-none shadow-surface-pop"
       >
-        Add to Cart
+        {/* No text as per wireframe redesign */}
       </Button>
     </div>
   );

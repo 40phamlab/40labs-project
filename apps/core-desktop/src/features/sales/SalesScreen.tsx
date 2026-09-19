@@ -189,13 +189,6 @@ export const SalesScreen: React.FC = () => {
 
       {/* Middle Column - Cart & Totals */}
       <div className="flex flex-col gap-6 overflow-hidden">
-        <div className="flex flex-col gap-2 shrink-0">
-          <h1 className="text-xl font-bold text-text">Sales & Dispensing</h1>
-          <p className="text-xs text-text-muted">
-            Manage line items, apply discounts, and confirm transactions.
-          </p>
-        </div>
-
         <div className="flex-1 overflow-hidden bg-panel/30 rounded-card border border-border/50 p-4">
           <SaleCartList
             lines={cart}
@@ -206,6 +199,7 @@ export const SalesScreen: React.FC = () => {
 
         <div className="shrink-0">
           <SaleTotalsBar
+            lineTotal={cart.length}
             subtotal={cartSummary.subtotal}
             discount={discount}
             tax={cartSummary.tax}
@@ -221,15 +215,10 @@ export const SalesScreen: React.FC = () => {
 
       {/* Right Column - Medicine Search */}
       <div className="flex flex-col gap-4">
-        <div className="bg-panel/30 rounded-card border border-border/50 p-4">
-          <h2 className="text-sm font-bold mb-4 uppercase tracking-wider opacity-50 px-1">
-            Find Medicine
-          </h2>
-          <MedicineSearchPanel
-            medicines={medicinesWithInventory}
-            onAdd={handleAddToCart}
-          />
-        </div>
+        <MedicineSearchPanel
+          medicines={medicinesWithInventory}
+          onAdd={handleAddToCart}
+        />
       </div>
     </div>
   );

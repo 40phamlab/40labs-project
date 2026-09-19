@@ -1,6 +1,5 @@
-import { Trash2, Image as ImageIcon } from 'lucide-react';
-import { IconButton } from '../primitives/IconButton';
-import { QuantityControl } from './Commerce';
+import { Trash2, Image as ImageIcon, Plus, Minus } from 'lucide-react';
+import { Button } from '../primitives/Button';
 
 export interface CartItemModel {
   id: string | number;
@@ -27,7 +26,7 @@ const defaultFormatter = (value: number, currency: string) =>
 
 /**
  * CartItemRow composite component for rendering drug/item entries in a commerce cart.
- * Refactored for dynamic API models supporting unit types and stock statuses.
+ * Redesigned for vertical controls and stacked layout.
  */
 export const CartItemRow = ({
   item,
@@ -41,59 +40,88 @@ export const CartItemRow = ({
   const subtotal = (item.unitPrice * item.quantity) - (item.discountAmount || 0);
 
   return (
-    <div className={`flex items-center gap-3 p-2 rounded-card bg-panel-strong elevation-raised border border-border/10 ${className}`}>
-      {/* Thumbnail */}
-      <div className="w-12 h-12 shrink-0 rounded-input bg-field elevation-inset overflow-hidden flex items-center justify-center relative">
+    <div className={`flex items-start gap-4 p-3 rounded-card bg-panel-strong elevation-raised border border-border/10 ${className}`}>
+      {/* Large Square Thumbnail */}
+      <div className="w-24 h-24 shrink-0 rounded-card bg-field elevation-inset overflow-hidden flex items-center justify-center relative border border-border/5">
         {item.thumbnailUrl ? (
           <img src={item.thumbnailUrl} alt={item.name} className="w-full h-full object-cover" />
         ) : (
-          <ImageIcon size={18} className="text-text-muted/30" />
+          <div className="flex flex-col items-center gap-1 opacity-20">
+            <ImageIcon size={32} className="text-text-muted" />
+            <span className="text-[8px] font-bold uppercase tracking-tighter">No Image</span>
+          </div>
         )}
         {item.stockStatus && (
-          <div className={`absolute top-0 right-0 w-2 h-2 rounded-full border border-surface ${item.stockStatus === 'in-stock' ? 'bg-primary' : item.stockStatus === 'low-stock' ? 'bg-accent' : 'bg-danger'}`} />
+          <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full border-2 border-surface shadow-sm ${
+            item.stockStatus === 'in-stock' ? 'bg-primary' :
+            item.stockStatus === 'low-stock' ? 'bg-accent' : 'bg-danger'
+          }`} />
         )}
       </div>
 
-      {/* Item Details */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-semibold text-text truncate leading-tight">{item.name}</p>
-          {item.unitType && (
-            <span className="px-1 py-0.5 rounded-sm bg-panel text-[8px] font-bold text-text-muted uppercase">
-              {item.unitType}
-            </span>
-          )}
+      {/* Middle: Stacked Details */}
+      <div className="flex-1 flex flex-col gap-1 min-w-0 pt-1">
+        <h4 className="text-sm font-bold text-text truncate leading-tight">
+          {item.name}
+        </h4>
+
+        <div className="flex flex-col gap-0.5 mt-1">
+          <p className="text-[10px] font-medium text-text-muted flex items-center gap-1">
+            <span className="opacity-50 uppercase tracking-widest text-[8px]">Qty:</span>
+            <span className="text-text">{item.quantity} {item.unitType}</span>
+          </p>
+          <p className="text-[10px] font-medium text-text-muted flex items-center gap-1">
+            <span className="opacity-50 uppercase tracking-widest text-[8px]">Price:</span>
+            <span className="font-mono text-text">{currencyFormatter(item.unitPrice, currency)}</span>
+          </p>
         </div>
-        <p className="text-[10px] text-text-muted font-mono uppercase tracking-tighter mt-0.5">
-          Unit: {currencyFormatter(item.unitPrice, currency)}
-        </p>
+
+        <div className="mt-auto pt-2">
+          <p className="text-[9px] text-text-muted uppercase tracking-[0.2em] font-bold opacity-50">
+            Subtotal
+          </p>
+          <p className="text-base font-mono font-bold text-primary leading-none mt-0.5">
+            {currencyFormatter(subtotal, currency)}
+          </p>
+        </div>
       </div>
 
-      {/* Stepper Control */}
-      <QuantityControl
-        value={item.quantity}
-        onIncrement={() => onQuantityChange(item.id, item.quantity + 1)}
-        onDecrement={() => onQuantityChange(item.id, Math.max(0, item.quantity - 1))}
-        size="sm"
-      />
+      {/* Right: Vertical Controls */}
+      <div className="flex flex-col gap-3 shrink-0 h-full justify-between min-w-[80px]">
+        {/* Vertical Stepper */}
+        <div className="flex flex-col items-center bg-panel rounded-lg p-1 border border-border/20 shadow-sm">
+          <button
+            onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+            className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-panel-strong text-primary transition-all active:scale-90"
+          >
+            <Plus size={18} />
+          </button>
 
-      {/* Calculated Subtotal */}
-      <div className="w-24 text-right">
-        <p className="text-[10px] text-text-muted uppercase tracking-widest text-[8px] opacity-50">Total</p>
-        <p className="text-xs font-mono font-bold text-primary">
-          {currencyFormatter(subtotal, currency)}
-        </p>
+          <div className="h-8 flex items-center justify-center">
+            <span className="font-mono font-black text-sm text-text">
+              {item.quantity}
+            </span>
+          </div>
+
+          <button
+            onClick={() => onQuantityChange(item.id, Math.max(0, item.quantity - 1))}
+            className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-panel-strong text-text transition-all active:scale-90"
+          >
+            <Minus size={18} />
+          </button>
+        </div>
+
+        {/* Remove Button */}
+        <Button
+          intent="neutral"
+          size="sm"
+          fullWidth
+          className="rounded-full !bg-text !text-surface border-none !text-[9px] !h-7 uppercase tracking-widest font-bold shadow-surface-pop hover:shadow-none transition-shadow"
+          onClick={() => onRemove(item.id)}
+        >
+          Remove
+        </Button>
       </div>
-
-      {/* Remove Action */}
-      <IconButton
-        icon={<Trash2 size={14} />}
-        label="Remove item"
-        intent="ghost"
-        size="sm"
-        className="hover:text-danger"
-        onClick={() => onRemove(item.id)}
-      />
     </div>
   );
 };
