@@ -15,6 +15,7 @@ import {
 import { AppSidebarNav } from '@40labs/ui-components';
 import { useNavStore, ScreenId } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
+import { SalesScreen } from './features/sales/SalesScreen';
 import './App.css';
 
 const NAV_ITEMS = [
@@ -38,6 +39,10 @@ export default function App() {
   const renderContent = () => {
     if (activeScreen === 'inventory') {
       return <InventoryScreen />;
+    }
+
+    if (activeScreen === 'sales') {
+      return <SalesScreen />;
     }
 
     const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
