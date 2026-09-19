@@ -57,9 +57,9 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="w-full overflow-x-auto rounded-card border border-border bg-surface-strong">
+    <div className="w-full overflow-x-auto overflow-y-visible rounded-card border border-border bg-surface-strong">
       <table className="w-full text-left border-collapse">
-        <thead className="bg-panel-strong border-b border-border">
+        <thead className="sticky top-0 z-10 bg-panel-strong border-b border-border">
           <tr>
             {onSelectRow && (
               <th className="w-10 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-text-muted">

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 
 export interface MenuItemProps {
   label: string;
@@ -67,35 +68,82 @@ export interface DropdownProps {
 }
 
 export const Dropdown = ({ trigger, children, isOpen, onClose, className = '' }: DropdownProps) => {
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLDivElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = React.useState({ top: 0, left: 0 });
+
+  const updatePosition = React.useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+      });
+    }
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (isOpen) {
+      updatePosition();
+    }
+  }, [isOpen, updatePosition]);
 
   React.useEffect(() => {
-    if (isOpen && onClose) {
+    if (isOpen) {
+      window.addEventListener('scroll', updatePosition, true);
+      window.addEventListener('resize', updatePosition);
+
       const handleClickOutside = (event: MouseEvent) => {
-        if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-          onClose();
+        const target = event.target as Node;
+        const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(target);
+        const isOutsideMenu = menuRef.current && !menuRef.current.contains(target);
+
+        if (isOutsideTrigger && isOutsideMenu) {
+          onClose?.();
         }
       };
+
       const handleEsc = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') onClose();
+        if (event.key === 'Escape') {
+          onClose?.();
+        }
       };
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleEsc);
+
+      if (onClose) {
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEsc);
+      }
+
       return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-        document.removeEventListener('keydown', handleEsc);
+        window.removeEventListener('scroll', updatePosition, true);
+        window.removeEventListener('resize', updatePosition);
+        if (onClose) {
+          document.removeEventListener('mousedown', handleClickOutside);
+          document.removeEventListener('keydown', handleEsc);
+        }
       };
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, updatePosition]);
 
   return (
-    <div ref={containerRef} className={`relative inline-block ${className}`}>
+    <div ref={triggerRef} className={`relative inline-block ${className}`}>
       {trigger}
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 z-50 animate-in fade-in slide-in-from-top-1 duration-200">
-          <Menu>{children}</Menu>
-        </div>
-      )}
+      {isOpen &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              position: 'absolute',
+              top: coords.top,
+              left: coords.left,
+              zIndex: 9999,
+            }}
+            className="animate-in fade-in slide-in-from-top-1 duration-200"
+          >
+            <Menu>{children}</Menu>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

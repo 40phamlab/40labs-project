@@ -1,12 +1,109 @@
 import * as React from 'react';
-import { DataTable, StatusBadge, type ColumnDefinition } from '@40labs/ui-components';
+import {
+  DataTable,
+  StatusBadge,
+  type ColumnDefinition,
+  IconButton,
+  DropdownMenu,
+  DropdownMenuItem,
+} from '@40labs/ui-components';
+import {
+  MoreVertical,
+  Info,
+  Pencil,
+  Bookmark,
+  MessageCircle,
+  Truck,
+  Trash2,
+} from 'lucide-react';
 import { type MedicineWithInventory } from './InventoryScreen';
 
 interface InventoryTableProps {
   data: MedicineWithInventory[];
+  onDelete: (id: string) => void;
 }
 
-export const InventoryTable: React.FC<InventoryTableProps> = ({ data }) => {
+const RowActions = ({
+  item,
+  onDelete,
+}: {
+  item: MedicineWithInventory;
+  onDelete: (id: string) => void;
+}) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  return (
+    <DropdownMenu
+      isOpen={isOpen}
+      onClose={() => setIsOpen(false)}
+      trigger={
+        <IconButton
+          icon={<MoreVertical size={16} />}
+          label="Actions"
+          intent="ghost"
+          size="sm"
+          onClick={() => setIsOpen(!isOpen)}
+        />
+      }
+    >
+      <DropdownMenuItem
+        label="Info"
+        icon={<Info size={14} />}
+        onClick={() => {
+          console.log('TODO: Info', item.id);
+          setIsOpen(false);
+        }}
+      />
+      <DropdownMenuItem
+        label="Edit"
+        icon={<Pencil size={14} />}
+        onClick={() => {
+          console.log('TODO: Edit', item.id);
+          setIsOpen(false);
+        }}
+      />
+      <DropdownMenuItem
+        label="Mark"
+        icon={<Bookmark size={14} />}
+        onClick={() => {
+          console.log('TODO: Mark', item.id);
+          setIsOpen(false);
+        }}
+      />
+      <DropdownMenuItem
+        label="Ask"
+        icon={<MessageCircle size={14} />}
+        onClick={() => {
+          console.log('TODO: Ask', item.id);
+          setIsOpen(false);
+        }}
+      />
+      <div className="h-px bg-border my-1 mx-1" />
+      <DropdownMenuItem
+        label="Supplier"
+        icon={<Truck size={14} />}
+        onClick={() => {
+          console.log('TODO: Supplier', item.id);
+          setIsOpen(false);
+        }}
+      />
+      <DropdownMenuItem
+        label="Delete"
+        icon={<Trash2 size={14} />}
+        variant="danger"
+        onClick={() => {
+          onDelete(item.id);
+          setIsOpen(false);
+        }}
+      />
+    </DropdownMenu>
+  );
+};
+
+export const InventoryTable: React.FC<InventoryTableProps> = ({
+  data,
+  onDelete,
+}) => {
   const columns: ColumnDefinition<MedicineWithInventory>[] = [
     {
       key: 'name',
@@ -14,7 +111,11 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ data }) => {
       render: (item) => {
         const isExpired = new Date(item.expiry_date) < new Date();
         return (
-          <span className={isExpired ? 'text-danger font-bold' : ''}>
+          <span
+            className={
+              isExpired ? 'text-danger font-bold' : ''
+            }
+          >
             {item.medicine.name}
           </span>
         );
@@ -45,7 +146,8 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ data }) => {
       key: 'expiry_date',
       header: 'Expire',
       render: (item) => {
-        const isExpired = new Date(item.expiry_date) < new Date();
+        const isExpired =
+          new Date(item.expiry_date) < new Date();
         const dateStr = item.expiry_date.slice(0, 10);
         return isExpired ? (
           <StatusBadge status="error" label={dateStr} />
@@ -66,6 +168,14 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({ data }) => {
         <span className="text-[10px] font-bold uppercase tracking-tight text-text-muted">
           {item.medicine.unit}
         </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      width: '48px',
+      render: (item) => (
+        <RowActions item={item} onDelete={onDelete} />
       ),
     },
   ];

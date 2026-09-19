@@ -101,8 +101,21 @@
 
 
 import * as React from 'react';
-import { ChartContainer, Button } from '@40labs/ui-components';
-import { mockMedicines, mockInventoryItems } from '../../lib/mockData';
+import {
+  ChartContainer,
+  Button,
+  IconButton,
+} from '@40labs/ui-components';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  EyeOff,
+} from 'lucide-react';
+import {
+  mockMedicines,
+  mockInventoryItems,
+} from '../../lib/mockData';
 import type { Medicine, InventoryItem } from '@40labs/types';
 import { InventoryTable } from './InventoryTable';
 import { InventorySidebar } from './InventorySidebar';
@@ -116,6 +129,8 @@ export const InventoryScreen: React.FC = () => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filterExpired, setFilterExpired] = React.useState(false);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [searchPanelOpen, setSearchPanelOpen] = React.useState(false);
+  const [graphVisible, setGraphVisible] = React.useState(true);
 
   /**
    * Build the initial inventory data safely.
@@ -189,36 +204,105 @@ export const InventoryScreen: React.FC = () => {
     setIsModalOpen(false);
   }, []);
 
+  const handleDeleteItem = React.useCallback(
+    (id: string) => {
+      setData((previousData) =>
+        previousData.filter((item) => item.id !== id)
+      );
+      // Question to Sairiamu: Should stock deletion be PIN-gated?
+      // SPEC/inventory.md doesn't explicitly mark it as such yet.
+    },
+    []
+  );
+
   return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] gap-6 overflow-hidden p-6">
+    <div className="relative flex h-full w-full overflow-y-auto p-6 gap-6 custom-scrollbar">
       {/* Main column */}
-      <div className="flex min-h-0 flex-col gap-6 overflow-hidden">
-        <div className="shrink-0">
-          <h1 className="text-xl font-bold text-text">
-            Inventory Management
-          </h1>
+      <div className="relative flex min-w-0 flex-1 flex-col gap-6">
+        <div className="shrink-0 flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-text">
+              Inventory Management
+            </h1>
 
-          <p className="text-xs text-text-muted">
-            Track and manage your stock levels, batches, and expirations.
-          </p>
-        </div>
-
-        <ChartContainer className="flex h-64 shrink-0 items-center justify-center border-dashed bg-panel-strong/20">
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-sm font-bold uppercase tracking-widest opacity-50">
-              Stock Trends Graph
-            </span>
-
-            <p className="max-w-xs text-center text-[10px] leading-relaxed opacity-40">
-              Real-time visualization of stock levels, category distribution,
-              and upcoming expirations will be wired here.
+            <p className="text-xs text-text-muted">
+              Track and manage your stock levels, batches, and expirations.
             </p>
           </div>
-        </ChartContainer>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden rounded-card border border-border/50 bg-panel/30 p-4 shadow-sm">
-          <div className="min-h-0 flex-1 overflow-auto">
-            <InventoryTable data={filteredData} />
+          {/* Sidebar Toggle Button */}
+          <div className="absolute -right-3 top-24 z-20">
+            <IconButton
+              icon={
+                searchPanelOpen ? (
+                  <ChevronRight size={16} />
+                ) : (
+                  <ChevronLeft size={16} />
+                )
+              }
+              label={
+                searchPanelOpen
+                  ? 'Close sidebar'
+                  : 'Open sidebar'
+              }
+              intent="neutral"
+              size="sm"
+              className="shadow-surface-pop border border-border/50"
+              onClick={() =>
+                setSearchPanelOpen(!searchPanelOpen)
+              }
+            />
+          </div>
+        </div>
+
+        {/* Graph Section */}
+        <div
+          className={`flex shrink-0 flex-col gap-2 transition-all duration-200 overflow-hidden ${
+            graphVisible ? 'h-72' : 'h-10'
+          }`}
+        >
+          <div className="flex items-center gap-2 px-1">
+            <IconButton
+              icon={
+                graphVisible ? (
+                  <Eye size={14} />
+                ) : (
+                  <EyeOff size={14} />
+                )
+              }
+              label={
+                graphVisible ? 'Hide graph' : 'Show graph'
+              }
+              intent="ghost"
+              size="sm"
+              onClick={() =>
+                setGraphVisible(!graphVisible)
+              }
+            />
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+              Stock Trends Graph
+            </span>
+          </div>
+
+          {graphVisible && (
+            <ChartContainer className="flex-1 flex items-center justify-center border-dashed bg-panel-strong/20">
+              <div className="flex flex-col items-center gap-2">
+                <p className="max-w-xs text-center text-[10px] leading-relaxed opacity-40">
+                  Real-time visualization of stock levels,
+                  category distribution, and upcoming
+                  expirations will be wired here.
+                </p>
+              </div>
+            </ChartContainer>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4 rounded-card border border-border/50 bg-panel/30 p-4 shadow-sm">
+          <div className="w-full">
+            <InventoryTable
+              data={filteredData}
+              onDelete={handleDeleteItem}
+            />
           </div>
 
           <div className="flex shrink-0 justify-end border-t border-border/30 pt-2">
@@ -235,15 +319,23 @@ export const InventoryScreen: React.FC = () => {
       </div>
 
       {/* Sidebar */}
-      <div className="min-h-0 overflow-y-auto pr-2 custom-scrollbar">
-        <InventorySidebar
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          filterExpired={filterExpired}
-          onToggleExpired={() =>
-            setFilterExpired((previous) => !previous)
-          }
-        />
+      <div
+        className={`transition-all duration-200 overflow-hidden ${
+          searchPanelOpen
+            ? 'w-[300px] opacity-100'
+            : 'w-0 opacity-0 -ml-6'
+        }`}
+      >
+        <div className="w-[300px] min-h-0 overflow-y-auto pr-2 custom-scrollbar">
+          <InventorySidebar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterExpired={filterExpired}
+            onToggleExpired={() =>
+              setFilterExpired((previous) => !previous)
+            }
+          />
+        </div>
       </div>
 
       {/* New stock modal */}
