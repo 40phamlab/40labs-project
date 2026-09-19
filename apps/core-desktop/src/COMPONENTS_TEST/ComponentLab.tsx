@@ -3,28 +3,17 @@ import {
   Settings,
   Pill,
   Package,
-  Edit,
   Plus,
-  Eye,
-  EyeOff,
-  Search,
-  AlertTriangle,
-  CheckCircle,
   LayoutDashboard,
   ShoppingBag,
   ShoppingCart,
   Users,
-  Globe,
   BarChart3,
-  Calendar,
-  GraduationCap,
   Bell,
   Database,
   ShieldCheck,
   CloudUpload,
-  Layers,
   FileText,
-  Truck,
   History,
   Download,
   Share2,
@@ -32,16 +21,12 @@ import {
   Mail,
   MessageSquare,
   MapPin,
-  ChevronLeft,
-  ChevronRight,
-  Monitor,
   HeartPulse,
   Stethoscope,
   ClipboardList,
   Activity,
   Microscope,
-  Baby,
-  Dna
+  Baby
 } from 'lucide-react';
 import {
   Button,
@@ -51,14 +36,12 @@ import {
   Card,
   CardHeader,
   CardBody,
-  CardFooter,
   Panel,
   Spinner,
   Skeleton,
   Field,
   FieldLabel,
   FieldHint,
-  FieldError,
   Input,
   SearchInput,
   NumberInput,
@@ -67,81 +50,36 @@ import {
   PasswordInput,
   Textarea,
   Select,
-  Combobox,
-  Autocomplete,
   Checkbox,
   Radio,
   Toggle,
   Switch,
   DateInput,
-  Sidebar,
-  SidebarSection,
-  SidebarItem,
-  TopBar,
   Breadcrumbs,
   Tabs,
   Tab,
   SegmentedControl,
   Pagination,
-  DropdownMenu,
-  DropdownMenuItem,
-  Menu,
-  MenuItem,
   NotificationIndicator,
   DataTable,
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableCell,
-  SortableHeader,
-  FilterBar,
-  FilterChip,
-  EmptyState,
-  LoadingState,
-  ErrorState,
-  SuccessState,
-  SkeletonTable,
-  StatusBadge,
-  KeyValue,
-  Metric,
-  KPITile,
-  StatGroup,
   List,
   ListItem,
   Alert,
-  InlineAlert,
   Progress,
   Modal,
   Drawer,
-  ConfirmDialog,
-  AlertDialog,
   Tooltip,
-  Popover,
   ToastContainer,
   DashboardShell,
-  DashboardHeader,
-  DashboardToolbar,
-  DashboardGrid,
-  DashboardSection,
   DashboardCard,
   KPIGrid,
   KPICard,
-  TrendIndicator,
-  SummaryPanel,
-  ActivityPanel,
   ChartPanel,
-  ChartContainer,
   QuickActions,
   ProductCard,
   CartItem,
-  InfoDetail,
-  EntitySummaryPanel,
   Numpad,
   ReceiptPreview,
-  Timeline,
-  UnitPackSelector,
-  SplitPaymentManager,
   HotkeyBadge,
   HotkeyModal,
   PriceDisplay,
@@ -170,16 +108,20 @@ import {
   ContextualSubNav,
   DashboardHeaderBar,
   QuickActionsGrid,
+  KPITile,
+  EmptyState,
+  LoadingState,
+  ErrorState,
+  SuccessState,
+  SkeletonTable,
+  StatusBadge,
+  Metric,
 } from '@40labs/ui-components';
 
 export function ComponentLab() {
-  const [searchValue, setSearchValue] = useState('');
-  const [autoValue, setAutoValue] = useState('');
-  const [comboValue, setComboValue] = useState<string | number>('');
   const [toggleVal, setToggleVal] = useState(true);
   const [switchVal, setSwitchVal] = useState(false);
   const [numpadValue, setNumpadValue] = useState('');
-  const [selectedUnit, setSelectedUnit] = useState('Strip');
   const [isHotkeyModalOpen, setIsHotkeyModalOpen] = useState(false);
 
   // Commerce Phase 7 States
@@ -190,28 +132,16 @@ export function ComponentLab() {
   const [qty, setQty] = useState(1);
   const [activeStep, setActiveStep] = useState(0);
 
-  const [activeTab, setActiveTab] = useState('Overview');
   const [activeRoute, setActiveRoute] = useState('dashboard');
   const [activeSubRoute, setActiveSubRoute] = useState('business');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showSubNav, setShowSubNav] = useState(true);
   const [fullScreenMode, setFullScreenMode] = useState(false);
-  const [segValue, setSegValue] = useState('day');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  const [sortKey, setSortKey] = useState('name');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [loadingDemo, setLoadingDemo] = useState(false);
-
-  // Payload Toggle for Layout Integration
   const [activePayload, setActivePayload] = useState<'pharmacy' | 'hospital'>('pharmacy');
 
   // Phase 5 States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [toasts, setToasts] = useState<any[]>([]);
 
   const addToast = (message: string, intent: any = 'info') => {
@@ -578,11 +508,11 @@ export function ComponentLab() {
                   </div>
                   <div className="flex items-center gap-6">
                     <div className="flex items-center gap-2">
-                      <Switch />
+                      <Switch checked={switchVal} onChange={setSwitchVal} />
                       <span className="text-xs">Switch</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Toggle />
+                      <Toggle checked={toggleVal} onChange={setToggleVal} />
                       <span className="text-xs">Toggle</span>
                     </div>
                   </div>
@@ -1142,12 +1072,12 @@ export function ComponentLab() {
                header={
                  <DashboardHeaderBar
                    moduleTitle={activeRoute.toUpperCase()}
-                   statusIndicatorColor={activePayload === 'hospital' ? 'red' : 'green'}
-                   searchPlaceholder={activePayload === 'hospital' ? "Find patient by ID..." : "Search product..."}
+                   statusIndicatorColor={activeRoute === 'hospital' ? 'red' : 'green'}
+                   searchPlaceholder={activeRoute === 'hospital' ? "Find patient by ID..." : "Search product..."}
                    searchHotkeys={['CTRL', 'K']}
                    statusIndicators={config.header.indicators}
                    actionButtons={[
-                     { id: 'n1', icon: <Bell size={18} />, onClick: () => alert('Notifications'), hasBadge: true, badgeColor: activePayload === 'hospital' ? 'danger' : 'primary' }
+                     { id: 'n1', icon: <Bell size={18} />, onClick: () => alert('Notifications'), hasBadge: true, badgeColor: activeRoute === 'hospital' ? 'danger' : 'primary' }
                    ]}
                    onSearch={(q) => console.log('Global search:', q)}
                  />
@@ -1221,12 +1151,12 @@ export function ComponentLab() {
              header={
                <DashboardHeaderBar
                  moduleTitle={activeRoute.toUpperCase()}
-                 statusIndicatorColor={activePayload === 'hospital' ? 'red' : 'green'}
-                 searchPlaceholder={activePayload === 'hospital' ? "Find patient by ID..." : "Search product..."}
+                 statusIndicatorColor={activeRoute === 'hospital' ? 'red' : 'green'}
+                 searchPlaceholder={activeRoute === 'hospital' ? "Find patient by ID..." : "Search product..."}
                  searchHotkeys={['CTRL', 'K']}
                  statusIndicators={config.header.indicators}
                  actionButtons={[
-                   { id: 'n1', icon: <Bell size={18} />, onClick: () => alert('Notifications'), hasBadge: true, badgeColor: activePayload === 'hospital' ? 'danger' : 'primary' }
+                   { id: 'n1', icon: <Bell size={18} />, onClick: () => alert('Notifications'), hasBadge: true, badgeColor: activeRoute === 'hospital' ? 'danger' : 'primary' }
                  ]}
                  onSearch={(q) => console.log('Global search:', q)}
                />
@@ -1242,7 +1172,7 @@ export function ComponentLab() {
            >
              <div className="space-y-8">
                <div className="flex items-center justify-between">
-                 <h2 className="text-3xl font-heading font-bold text-text capitalize">{activeRoute} Management</h2>
+                 <h3 className="text-3xl font-heading font-bold text-text capitalize">{activeRoute} Management</h3>
                  <div className="flex gap-3">
                    <Button intent="secondary" leftIcon={<Plus size={18} />}>Create New</Button>
                    <Button leftIcon={<FileText size={18} />}>Export Report</Button>

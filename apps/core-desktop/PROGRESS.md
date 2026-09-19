@@ -4,15 +4,16 @@ Update this file at the end of every work session. This is the single
 place to check "where are we" without re-reading every SPEC file.
 
 ## Current phase
-MVP — pre-implementation. No feature code written yet as of this file's
-creation. `packages/types` not yet scaffolded.
+MVP — pre-implementation of first feature. UI components and shared
+infrastructure baseline is now clean and type-checked.
 
 ## Build order status
-- [ ] `packages/types` scaffolded
-- [ ] `packages/design-tokens` scaffolded (mirrors CONTEXT/02-DESIGN-TOKENS.md)
-- [ ] API design pass — services/api-core route contract (MVP + scale-shaped)
-- [ ] SQLite schema — infra/db/sqlite-schema
-- [ ] Inventory feature
+- [x] `packages/types` scaffolded (canonical 15 entities)
+- [x] `packages/design-tokens` scaffolded (claymorphic shadows + tailwind v4)
+- [x] SQLite schema — infra/db/sqlite-schema (triggers validated, doc drift fixed)
+- [x] Mock data layer — apps/core-desktop/src/lib/mockData.ts
+- [x] UI Component library — packages/ui-components (strict resolution baseline)
+- [ ] Inventory feature (Next)
 - [ ] Sales/POS feature
 - [ ] Customers feature
 - [ ] Purchases feature
@@ -27,8 +28,8 @@ creation. `packages/types` not yet scaffolded.
 3. Discount PIN-gate threshold value — blocks sales-pos.md refund/discount logic.
 4. Sign In/Role screen intent — blocks deferred-auth.md unblock (see that file).
 5. Max offline fiscal buffering window with TRA — blocks FiscalReceipt outbox
-   retry/expiry logic (open compliance question, needs direct TRA confirmation
-   per PRD/business docs).
+   retry/expiry logic (open compliance question, needs direct TRA confirmation).
+6. COMPONENTS_TEST/ build exclusion strategy — currently left in-tree.
 
 ## Known copy fixes queued (non-blocking, fix during build)
 - "TFDA" → "TMDA" (Settings/Compliance panel)
@@ -44,23 +45,12 @@ creation. `packages/types` not yet scaffolded.
 - Insurance/SHA claims — Phase 2+
 - Regional (KE/UG/RW) compliance — Phase 3
 
-6. Literal skeuomorphic elements (e.g. a physical-switch-style dark/light
-   toggle) vs pure shadow-based depth language, no literal metaphors —
-   blocks final AppearancePanel toggle component design. Default assumption
-   (per Ade, pending confirmation): pure shadow language, no literal switch.
-
-   - [x] SQLite schema — infra/db/sqlite-schema/migrations/0001_init.sql
-      (validated against live SQLite engine, audit_log immutability
-      triggers confirmed working)
-
-   - [x] SQLite schema — infra/db/sqlite-schema/migrations/0001_init.sql
-      (validated against live SQLite engine, audit_log immutability
-      triggers confirmed working, migration applied — dev.db created,
-      confirmed via `sqlx migrate info`)
-
-   - [x] Mock data layer — apps/core-desktop/src/lib/mockData.ts
-      (type-checked clean against @40labs/types, 0 errors — covers all
-      15 entities: Business, Branch, User, PairedDevice, Customer,
-      Medicine, InventoryItem, StockAdjustment, Sale, FiscalReceipt,
-      LabOrder/Sample/Result/Report/TestCatalog, Supplier, PurchaseOrder,
-      AuditLogEntry — plus getMockDashboardSummary() aggregate)
+## Completed Infrastructure Tasks
+- [x] Monorepo scaffold (pnpm + turbo + cargo)
+- [x] Tauri v2 / React 19 baseline
+- [x] SQLite immutability triggers (audit_log)
+- [x] Type resolution for strict pnpm mode
+- [x] MedicineWithInventory canonicalization
+- [x] Component Sandbox migration to COMPONENTS_TEST/
+- [x] Cleanup of unused features/ v0 code (archived to features-v0/)
+- [x] Clean baseline tsc pass (0 errors)

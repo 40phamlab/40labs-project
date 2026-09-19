@@ -6,7 +6,7 @@ detailed checklist; this file is the fast-orientation summary a new
 Claude session (or coding agent) reads to get productive in one pass
 instead of re-deriving context from scratch.
 
-Last updated: 2026-08-26 · Updated by: Ade (Claude)
+Last updated: 2025-02-23 · Updated by: Ade (Claude)
 
 ---
 
@@ -40,10 +40,11 @@ Web App are in MVP scope. Source docs: `/docs/prd/40Labs_PRD_v1_MVP.md`,
    `tokens.css` (`@theme` block for Tailwind v4 consumption).
 ✅ `packages/types` — canonical TypeScript types, 15 entities, all
    carrying `workspace_id`/`branch_id` per the non-negotiable rule.
+   `MedicineWithInventory` canonicalized in `packages/types/src/medicine-inventory.ts`.
 ✅ `infra/db/sqlite-schema/migrations/0001_init.sql` — 23 tables,
    validated against a live SQLite engine, audit_log immutability
-   triggers proven to block UPDATE/DELETE. Migration applied,
-   `dev.db` exists, confirmed via `sqlx migrate info`.
+   triggers proven to block UPDATE/DELETE. Documentation added for
+   `workspace_id`/`branch_id` inheritance.
 ✅ `sqlx` chosen over `rusqlite` (async fit with Tauri commands,
    compile-time query checking, same crate will drive Postgres sync
    later). Both `.env` files in place:
@@ -52,21 +53,23 @@ Web App are in MVP scope. Source docs: `/docs/prd/40Labs_PRD_v1_MVP.md`,
 ✅ `apps/core-desktop/src/lib/mockData.ts` — full mock-API seam,
    type-checked clean against `@40labs/types` (0 errors), covers all
    15 entities plus `getMockDashboardSummary()` computed aggregate.
-   Every React Query hook should read from here until real Tauri
-   commands exist.
-✅ `pnpm tauri dev` confirmed working end-to-end.
+✅ `packages/ui-components` — Button, Card, Input, Toggle, KPITile, all
+   using claymorphic elevation tokens, confirmed rendering correctly
+   in a real Tauri window (screenshot-verified). Dependency resolution
+   fixed for strict pnpm mode.
+✅ Component Sandbox — `ComponentLab.tsx` and `ComponentLabV2.tsx` moved
+   to `apps/core-desktop/src/COMPONENTS_TEST/`. App shell (`App.tsx`)
+   is now a placeholder awaiting first feature screen.
+✅ Build baseline clean — zero `tsc` errors across `@40labs/core-desktop`
+   and all workspace packages. `pnpm tauri dev` confirmed working.
 
 ## Next up (in order — do not reorder without asking Sairiamu)
-1. **`packages/ui-components`** — Button, Card, Input, Toggle, KPITile
-   with the 4 claymorphic elevation states (raised/hover/pressed/inset).
-   Build standalone, prove the elevation tokens work, BEFORE wiring
-   into any feature screen.
-2. **Inventory feature** (`apps/core-desktop/src/features/inventory/`)
+1. **Inventory feature** (`apps/core-desktop/src/features/inventory/`)
    — first real screen, reads from `mockData.ts`. Per
    `CONTEXT/SPEC/inventory.md`.
-3. Then: Sales/POS → Customers → Purchases → Lab → Dashboard (built
+2. Then: Sales/POS → Customers → Purchases → Lab → Dashboard (built
    LAST, reads from everything above) → Settings.
-4. `services/api-core` (Rust/Axum) is DEFERRED — build UI against mock
+3. `services/api-core` (Rust/Axum) is DEFERRED — build UI against mock
    data first, design real API routes once the UI reveals what shapes
    are actually needed. Do not start this prematurely.
 
@@ -83,6 +86,8 @@ Web App are in MVP scope. Source docs: `/docs/prd/40Labs_PRD_v1_MVP.md`,
 - `sqlx`, not `rusqlite`.
 - Money = INTEGER (smallest unit), never REAL/float, everywhere.
 - IDs = TEXT (UUID), never AUTOINCREMENT.
+- `workspace_id`/`branch_id` inheritance: lines and sub-entities inherit
+  scope from parents, no separate columns (documented in SQL schema).
 
 ## Open decisions genuinely still blocking something (see PROGRESS.md for full list)
 1. Dark-mode surface palette — blocks dark-mode elevation shadow values.
@@ -91,6 +96,8 @@ Web App are in MVP scope. Source docs: `/docs/prd/40Labs_PRD_v1_MVP.md`,
 4. Max offline fiscal buffering window (TRA compliance question) —
    blocks FiscalReceipt retry/expiry logic.
 5. Sign In/Role screen intent — blocks deferred-auth.md unblock.
+6. `COMPONENTS_TEST/` build exclusion — whether to exclude from production
+   `tsc` path later (currently left in-tree).
 
 ## Environment notes for whoever picks this up
 - Sairiamu is on Windows (PowerShell, OneDrive-synced desktop path,
@@ -145,9 +152,3 @@ Web App are in MVP scope. Source docs: `/docs/prd/40Labs_PRD_v1_MVP.md`,
    sequence without asking. Full collaboration means visible
    collaboration — every material decision should be traceable to a
    point in the conversation where it was actually made, not assumed.
-
-✅ packages/ui-components — Button, Card, Input, Toggle, KPITile, all
-   using claymorphic elevation tokens, confirmed rendering correctly
-   in a real Tauri window (screenshot-verified). Tailwind v4 requires
-   an explicit @source directive in App.css to scan packages outside
-   apps/core-desktop's own tree — see GOTCHAS.md #10.

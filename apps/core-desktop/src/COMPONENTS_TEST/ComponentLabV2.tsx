@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Customer, MedicineWithInventory } from '@40labs/types';
 import {
   FilterTabs,
@@ -22,6 +22,7 @@ import {
   MoneyDisplay,
   QuantityStepper,
   StockIndicator,
+  Badge,
 } from '@40labs/ui-components';
 
 /**
@@ -51,6 +52,8 @@ export default function ComponentLabV2() {
   const mockMedicines: MedicineWithInventory[] = [
     {
       id: 'm-1',
+      workspace_id: 'ws-demo-1',
+      branch_id: 'branch-demo-1',
       name: 'Amoxicillin 500mg',
       generic_name: 'Amoxicillin Trihydrate',
       category: 'Antibiotics',
@@ -61,6 +64,8 @@ export default function ComponentLabV2() {
       updated_at: new Date().toISOString(),
       inventory: {
         id: 'inv-1',
+        workspace_id: 'ws-demo-1',
+        branch_id: 'branch-demo-1',
         medicine_id: 'm-1',
         batch_number: 'AMX-2024-001',
         expiry_date: '2025-12-31',
@@ -75,6 +80,8 @@ export default function ComponentLabV2() {
     },
     {
       id: 'm-2',
+      workspace_id: 'ws-demo-1',
+      branch_id: 'branch-demo-1',
       name: 'Paracetamol 500mg',
       generic_name: 'Acetaminophen',
       category: 'Analgesics',
@@ -85,6 +92,8 @@ export default function ComponentLabV2() {
       updated_at: new Date().toISOString(),
       inventory: {
         id: 'inv-2',
+        workspace_id: 'ws-demo-1',
+        branch_id: 'branch-demo-1',
         medicine_id: 'm-2',
         batch_number: 'PARA-992',
         expiry_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(), // Expiring soon
@@ -99,6 +108,8 @@ export default function ComponentLabV2() {
     },
     {
       id: 'm-3',
+      workspace_id: 'ws-demo-1',
+      branch_id: 'branch-demo-1',
       name: 'Tramadol 50mg',
       generic_name: 'Tramadol Hydrochloride',
       category: 'Opioids',
@@ -109,6 +120,8 @@ export default function ComponentLabV2() {
       updated_at: new Date().toISOString(),
       inventory: {
         id: 'inv-3',
+        workspace_id: 'ws-demo-1',
+        branch_id: 'branch-demo-1',
         medicine_id: 'm-3',
         batch_number: 'TRAM-007',
         expiry_date: '2026-06-30',
@@ -134,6 +147,8 @@ export default function ComponentLabV2() {
       amob_patient_id: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      workspace_id: 'ws-demo-1',
+      branch_id: 'branch-demo-1',
     },
     {
       id: 'cust-2',
@@ -145,6 +160,8 @@ export default function ComponentLabV2() {
       amob_patient_id: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      workspace_id: 'ws-demo-1',
+      branch_id: 'branch-demo-1',
     },
     {
       id: 'cust-3',
@@ -156,6 +173,8 @@ export default function ComponentLabV2() {
       amob_patient_id: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      workspace_id: 'ws-demo-1',
+      branch_id: 'branch-demo-1',
     },
   ];
 
