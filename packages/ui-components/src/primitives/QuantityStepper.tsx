@@ -3,6 +3,8 @@ import { Minus, Plus } from 'lucide-react';
 import { IconButton } from './IconButton';
 import { NumberInput } from '../forms/NumberInput';
 
+export type QuantityStepperSize = 'sm' | 'md' | 'lg';
+
 export interface QuantityStepperProps {
   value: number;
   min?: number;
@@ -13,7 +15,7 @@ export interface QuantityStepperProps {
   onChange: (value: number) => void;
   unit?: string;
   error?: string;
-  size?: 'sm' | 'md' | 'lg';
+  size?: QuantityStepperSize;
   className?: string;
 }
 
@@ -56,13 +58,13 @@ export const QuantityStepper: React.FC<QuantityStepperProps> = ({
   const isDecrementDisabled = disabled || (min !== undefined && value <= min);
   const isIncrementDisabled = disabled || (max !== undefined && value >= max);
 
-  const containerSizes = {
+  const containerSizes: Record<QuantityStepperSize, string> = {
     sm: 'gap-1',
     md: 'gap-2',
     lg: 'gap-3',
   };
 
-  const inputSizes = {
+  const inputSizes: Record<QuantityStepperSize, string> = {
     sm: '!h-8 !w-14 !text-xs',
     md: '!h-10 !w-20 !text-sm',
     lg: '!h-12 !w-24 !text-base',

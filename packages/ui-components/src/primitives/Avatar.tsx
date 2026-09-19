@@ -1,10 +1,9 @@
 import * as React from 'react';
 
-export interface AvatarProps {
+export interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   src?: string;
   name: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  className?: string;
 }
 
 const sizeClasses = {
@@ -19,6 +18,7 @@ export const Avatar = ({
   name,
   size = 'md',
   className = '',
+  ...props
 }: AvatarProps) => {
   const initials = name
     .split(' ')
@@ -33,6 +33,7 @@ export const Avatar = ({
         relative shrink-0 flex items-center justify-center rounded-full bg-panel-strong overflow-hidden elevation-raised
         ${sizeClasses[size]} ${className}
       `}
+      {...props}
     >
       {src ? (
         <img src={src} alt={name} className="w-full h-full object-cover" />

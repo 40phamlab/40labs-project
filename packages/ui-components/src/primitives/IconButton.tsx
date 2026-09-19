@@ -1,22 +1,25 @@
 import * as React from 'react';
 
+export type IconButtonIntent = 'primary' | 'secondary' | 'neutral' | 'danger' | 'ghost';
+export type IconButtonSize = 'sm' | 'md' | 'lg';
+
 export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: React.ReactNode;
   label: string;
-  intent?: 'primary' | 'secondary' | 'neutral' | 'danger' | 'ghost';
-  size?: 'sm' | 'md' | 'lg';
+  intent?: IconButtonIntent;
+  size?: IconButtonSize;
   loading?: boolean;
 }
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ icon, label, className = '', size = 'md', intent = 'primary', loading, ...props }, ref) => {
-    const sizeClasses = {
+    const sizeClasses: Record<IconButtonSize, string> = {
       sm: 'w-8 h-8 text-xs',
       md: 'w-10 h-10 text-sm',
       lg: 'w-12 h-12 text-base',
     };
 
-    const intentClasses = {
+    const intentClasses: Record<IconButtonIntent, string> = {
       primary: 'bg-primary text-surface elevation-raised hover:elevation-hover active:elevation-pressed',
       secondary: 'bg-surface-strong text-primary border border-primary/20 elevation-raised hover:elevation-hover active:elevation-pressed',
       neutral: 'bg-panel-strong text-text elevation-raised hover:elevation-hover active:elevation-pressed',

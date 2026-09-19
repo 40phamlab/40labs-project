@@ -1,12 +1,11 @@
 import * as React from 'react';
 import { Modal } from '../overlays/Modal';
 
-export interface HotkeyBadgeProps {
+export interface HotkeyBadgeProps extends React.HTMLAttributes<HTMLElement> {
   children: React.ReactNode;
-  className?: string;
 }
 
-export const HotkeyBadge = ({ children, className = '' }: HotkeyBadgeProps) => {
+export const HotkeyBadge = ({ children, className = '', ...props }: HotkeyBadgeProps) => {
   return (
     <kbd
       className={`
@@ -17,6 +16,7 @@ export const HotkeyBadge = ({ children, className = '' }: HotkeyBadgeProps) => {
         shadow-[inset_0_-1px_0_rgba(255,255,255,0.05),0_1px_0_rgba(0,0,0,0.5)]
         ${className}
       `}
+      {...props}
     >
       {children}
     </kbd>
