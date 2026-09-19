@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { AppSidebarNav } from '@40labs/ui-components';
 import { useNavStore, ScreenId } from './stores/useNavStore';
+import { InventoryScreen } from './features/inventory/InventoryScreen';
 import './App.css';
 
 const NAV_ITEMS = [
@@ -36,11 +37,7 @@ export default function App() {
 
   const renderContent = () => {
     if (activeScreen === 'inventory') {
-      return (
-        <div className="flex items-center justify-center h-full text-text-muted">
-          <p className="text-xl font-heading font-medium italic opacity-60">Inventory — next prompt will build this</p>
-        </div>
-      );
+      return <InventoryScreen />;
     }
 
     const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
