@@ -36,6 +36,7 @@ export const SalesScreen: React.FC = () => {
   const [discount, setDiscount] = React.useState(0);
   const [paymentMethod, setPaymentMethod] = React.useState('cash');
   const [storePanelOpen, setStorePanelOpen] = React.useState(true);
+  const [customerPanelOpen, setCustomerPanelOpen] = React.useState(true);
   const [saveCustomer, setSaveCustomer] = React.useState(true);
   const [confirmedSale, setConfirmedSale] = React.useState<ConfirmedSaleData | null>(null);
 
@@ -185,9 +186,27 @@ export const SalesScreen: React.FC = () => {
 
   return (
     <div className="p-6 h-full w-full overflow-hidden">
-      <Card className="elevation-raised rounded-card h-full w-full p-6 flex gap-6 overflow-hidden bg-panel">
+      <Card className="elevation-raised rounded-card h-full w-full p-6 flex gap-6 overflow-hidden bg-panel relative">
+        {/* Customer Panel Open Toggle Button when closed */}
+        {!customerPanelOpen && (
+          <div className="absolute left-2 top-2 z-20">
+            <IconButton
+              icon={<ChevronRight size={16} />}
+              label="Open customer panel"
+              intent="neutral"
+              size="sm"
+              className="shadow-surface-pop border border-border/50"
+              onClick={() => setCustomerPanelOpen(true)}
+            />
+          </div>
+        )}
+
         {/* Left Column - Customer & Report */}
-        <div className="w-[300px] shrink-0 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
+        <div
+          className={`transition-all duration-200 overflow-hidden flex flex-col shrink-0 ${
+            customerPanelOpen ? 'w-[300px] opacity-100' : 'w-0 opacity-0 -ml-6'
+          }`}
+        >
           <CustomerReportPanel
             customers={mockCustomers}
             selectedCustomer={selectedCustomer}
@@ -204,6 +223,7 @@ export const SalesScreen: React.FC = () => {
             onSend={handleSendReportReset}
             saveCustomer={saveCustomer}
             onSaveCustomerChange={setSaveCustomer}
+            onToggleCollapse={() => setCustomerPanelOpen(false)}
           />
         </div>
 

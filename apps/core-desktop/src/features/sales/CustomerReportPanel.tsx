@@ -23,6 +23,7 @@ export interface CustomerReportPanelProps {
   onSend: () => void;
   saveCustomer: boolean;
   onSaveCustomerChange: (v: boolean) => void;
+  onToggleCollapse?: () => void;
 }
 
 export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
@@ -35,9 +36,9 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
   onSend,
   saveCustomer,
   onSaveCustomerChange,
+  onToggleCollapse,
 }) => {
   const [sent, setSent] = React.useState(false);
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
 
   const handleSend = () => {
     setSent(true);
@@ -54,13 +55,15 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
         <h2 className="text-sm font-bold text-text uppercase tracking-wider">
           Customer & Report
         </h2>
-        <IconButton
-          icon={isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
-          label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
-          intent="ghost"
-          size="sm"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-        />
+        {onToggleCollapse && (
+          <IconButton
+            icon={<ChevronDown size={16} />}
+            label="Hide panel"
+            intent="ghost"
+            size="sm"
+            onClick={onToggleCollapse}
+          />
+        )}
       </div>
 
       {/* CustomerPicker component is always visible */}
@@ -83,9 +86,8 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
         )}
       </div>
 
-      {/* Conditional contents hidden if panel is collapsed */}
-      {!isCollapsed && (
-        <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
+      {/* Conditional contents */}
+      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
           {confirmedSale ? (
             <>
               <Card className="flex flex-col gap-1 p-4 !bg-panel/20 border-border/20 elevation-flat shadow-none shrink-0">
@@ -155,7 +157,6 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
             </div>
           )}
         </div>
-      )}
     </div>
   );
 };
