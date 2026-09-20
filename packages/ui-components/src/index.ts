@@ -47,6 +47,8 @@ export * from './navigation/SegmentedControl';
 export * from './navigation/FilterTabs';
 export * from './navigation/Pagination';
 export * from './navigation/Menu';
+export * from './navigation/MenuBar';
+export * from './navigation/TopMenuBar';
 export * from './navigation/AppSidebarNav';
 export * from './navigation/ContextualSubNav';
 export * from './navigation/DashboardHeaderBar';

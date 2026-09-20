@@ -34,7 +34,6 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
             label="Expired"
             isActive={filterExpired}
             onClick={onToggleExpired}
-            className="w-full h-auto"
           />
           <CategorySquare
             label="Stock off"

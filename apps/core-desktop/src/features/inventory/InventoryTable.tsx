@@ -1,9 +1,8 @@
-import * as React from 'react';
-import {
   DataTable,
   StatusBadge,
   type ColumnDefinition,
   IconButton,
+  Button,
   DropdownMenu,
   DropdownMenuItem,
 } from '@40labs/ui-components';
@@ -162,6 +161,11 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       className: 'font-mono',
     },
     {
+      key: 'supplier',
+      header: 'Supplier',
+      render: (item: any) => item.medicine.supplier_name ?? '—',
+    },
+    {
       key: 'metric',
       header: 'Metric',
       render: (item) => (
@@ -173,9 +177,22 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     {
       key: 'actions',
       header: '',
-      width: '48px',
+      width: '140px',
       render: (item) => (
-        <RowActions item={item} onDelete={onDelete} />
+        <div className="flex items-center gap-2 justify-end">
+          <Button
+            intent="neutral"
+            size="sm"
+            className="rounded-full px-4"
+            onClick={() => {
+              // TODO: [Phase — Inventory] wire to useAdjustStock / re-open NewStockModal pre-filled, PIN-gated
+              console.log('TODO: Re-fill', item.id);
+            }}
+          >
+            Re-fill
+          </Button>
+          <RowActions item={item} onDelete={onDelete} />
+        </div>
       ),
     },
   ];

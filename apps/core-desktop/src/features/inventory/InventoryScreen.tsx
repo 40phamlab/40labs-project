@@ -105,6 +105,7 @@ import {
   ChartContainer,
   Button,
   IconButton,
+  Card,
 } from '@40labs/ui-components';
 import {
   ChevronLeft,
@@ -216,96 +217,100 @@ export const InventoryScreen: React.FC = () => {
   );
 
   return (
-    <div className="relative flex h-full w-full overflow-y-auto p-6 gap-6 custom-scrollbar">
-      {/* Main column */}
-      <div className="relative flex min-w-0 flex-1 flex-col gap-6">
-        <div className="shrink-0 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-text">
-              Inventory Management
-            </h1>
+    <div className="p-6 h-full w-full overflow-hidden">
+      <Card className="elevation-raised rounded-card h-full w-full p-6 flex gap-6 overflow-hidden bg-panel">
+        {/* Main column */}
+        <div className="relative flex min-w-0 flex-1 flex-col gap-6 h-full overflow-hidden">
+          <div className="shrink-0 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-text">
+                Inventory Management
+              </h1>
 
-            <p className="text-xs text-text-muted">
-              Track and manage your stock levels, batches, and expirations.
-            </p>
+              <p className="text-xs text-text-muted">
+                Track and manage your stock levels, batches, and expirations.
+              </p>
+            </div>
+
+            {/* Sidebar Toggle Button */}
+            <div className="absolute -right-3 top-24 z-20">
+              <IconButton
+                icon={
+                  searchPanelOpen ? (
+                    <ChevronRight size={16} />
+                  ) : (
+                    <ChevronLeft size={16} />
+                  )
+                }
+                label={
+                  searchPanelOpen
+                    ? 'Close sidebar'
+                    : 'Open sidebar'
+                }
+                intent="neutral"
+                size="sm"
+                className="shadow-surface-pop border border-border/50"
+                onClick={() =>
+                  setSearchPanelOpen(!searchPanelOpen)
+                }
+              />
+            </div>
           </div>
 
-          {/* Sidebar Toggle Button */}
-          <div className="absolute -right-3 top-24 z-20">
-            <IconButton
-              icon={
-                searchPanelOpen ? (
-                  <ChevronRight size={16} />
-                ) : (
-                  <ChevronLeft size={16} />
-                )
-              }
-              label={
-                searchPanelOpen
-                  ? 'Close sidebar'
-                  : 'Open sidebar'
-              }
-              intent="neutral"
-              size="sm"
-              className="shadow-surface-pop border border-border/50"
-              onClick={() =>
-                setSearchPanelOpen(!searchPanelOpen)
-              }
-            />
-          </div>
-        </div>
+          {/* Graph Section */}
+          <div
+            className={`flex shrink-0 flex-col gap-2 transition-all duration-200 overflow-hidden ${
+              graphVisible ? 'h-72' : 'h-10'
+            }`}
+          >
+            <div className="flex items-center gap-2 px-1">
+              <IconButton
+                icon={
+                  graphVisible ? (
+                    <Eye size={14} />
+                  ) : (
+                    <EyeOff size={14} />
+                  )
+                }
+                label={
+                  graphVisible ? 'Hide graph' : 'Show graph'
+                }
+                intent="ghost"
+                size="sm"
+                onClick={() =>
+                  setGraphVisible(!graphVisible)
+                }
+              />
+              <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">
+                Stock Trends Graph
+              </span>
+            </div>
 
-        {/* Graph Section */}
-        <div
-          className={`flex shrink-0 flex-col gap-2 transition-all duration-200 overflow-hidden ${
-            graphVisible ? 'h-72' : 'h-10'
-          }`}
-        >
-          <div className="flex items-center gap-2 px-1">
-            <IconButton
-              icon={
-                graphVisible ? (
-                  <Eye size={14} />
-                ) : (
-                  <EyeOff size={14} />
-                )
-              }
-              label={
-                graphVisible ? 'Hide graph' : 'Show graph'
-              }
-              intent="ghost"
-              size="sm"
-              onClick={() =>
-                setGraphVisible(!graphVisible)
-              }
-            />
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-50">
-              Stock Trends Graph
-            </span>
+            {graphVisible && (
+              <ChartContainer className="flex-1 flex items-center justify-center border-dashed bg-panel-strong">
+                <div className="flex flex-col items-center gap-2">
+                  <p className="max-w-xs text-center text-[10px] leading-relaxed opacity-40">
+                    Real-time visualization of stock levels,
+                    category distribution, and upcoming
+                    expirations will be wired here.
+                  </p>
+                </div>
+              </ChartContainer>
+            )}
           </div>
 
-          {graphVisible && (
-            <ChartContainer className="flex-1 flex items-center justify-center border-dashed bg-panel-strong/20">
-              <div className="flex flex-col items-center gap-2">
-                <p className="max-w-xs text-center text-[10px] leading-relaxed opacity-40">
-                  Real-time visualization of stock levels,
-                  category distribution, and upcoming
-                  expirations will be wired here.
-                </p>
-              </div>
-            </ChartContainer>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-4 rounded-card border border-border/50 bg-panel/30 p-4 shadow-sm">
-          <div className="w-full">
-            <InventoryTable
-              data={filteredData}
-              onDelete={handleDeleteItem}
-            />
+          {/* Table region — this is the ONLY scrolling area now */}
+          <div className="flex-1 min-h-0 flex flex-col gap-4 rounded-card border border-border/50 bg-panel-strong/60 p-4 shadow-sm overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+              <InventoryTable
+                data={filteredData}
+                onDelete={handleDeleteItem}
+              />
+            </div>
           </div>
 
-          <div className="flex shrink-0 justify-end border-t border-border/30 pt-2">
+          {/* Add Stock — pulled OUT of the scrolling block, always visible */}
+          <div className="shrink-0 flex justify-end pt-2 border-t border-border/30">
             <Button
               type="button"
               intent="neutral"
@@ -316,34 +321,34 @@ export const InventoryScreen: React.FC = () => {
             </Button>
           </div>
         </div>
-      </div>
 
-      {/* Sidebar */}
-      <div
-        className={`transition-all duration-200 overflow-hidden ${
-          searchPanelOpen
-            ? 'w-[300px] opacity-100'
-            : 'w-0 opacity-0 -ml-6'
-        }`}
-      >
-        <div className="w-[300px] min-h-0 overflow-y-auto pr-2 custom-scrollbar">
-          <InventorySidebar
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            filterExpired={filterExpired}
-            onToggleExpired={() =>
-              setFilterExpired((previous) => !previous)
-            }
-          />
+        {/* Sidebar */}
+        <div
+          className={`transition-all duration-200 overflow-hidden shrink-0 h-full ${
+            searchPanelOpen
+              ? 'w-[300px] opacity-100'
+              : 'w-0 opacity-0 -ml-6'
+          }`}
+        >
+          <div className="w-[300px] h-full overflow-y-auto pr-2 custom-scrollbar">
+            <InventorySidebar
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              filterExpired={filterExpired}
+              onToggleExpired={() =>
+                setFilterExpired((previous) => !previous)
+              }
+            />
+          </div>
         </div>
-      </div>
 
-      {/* New stock modal */}
-      <NewStockModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        onAdd={handleAddItem}
-      />
+        {/* New stock modal */}
+        <NewStockModal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onAdd={handleAddItem}
+        />
+      </Card>
     </div>
   );
 };

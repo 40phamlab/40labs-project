@@ -74,10 +74,17 @@ export const Dropdown = ({ trigger, children, isOpen, onClose, className = '' }:
 
   const updatePosition = React.useCallback(() => {
     if (triggerRef.current) {
+      const MENU_WIDTH_ESTIMATE = 176; // min-w-[160px] + comfortable margin
+      const EDGE_PADDING = 8;
       const rect = triggerRef.current.getBoundingClientRect();
+      const wouldOverflowRight =
+        rect.left + MENU_WIDTH_ESTIMATE > window.innerWidth - EDGE_PADDING;
+
       setCoords({
         top: rect.bottom + window.scrollY + 4,
-        left: rect.left + window.scrollX,
+        left: wouldOverflowRight
+          ? rect.right + window.scrollX - MENU_WIDTH_ESTIMATE // anchor from the right edge, open leftward
+          : rect.left + window.scrollX, // default: open rightward
       });
     }
   }, []);

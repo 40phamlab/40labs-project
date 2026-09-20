@@ -22,7 +22,7 @@ export const CategorySquare: React.FC<CategorySquareProps> = ({
     <button
       onClick={onClick}
       className={`
-        aspect-square w-16 h-16 flex items-center justify-center p-2
+        w-full h-20 flex items-center justify-center p-2
         rounded-card transition-all duration-200
         ${
           isActive

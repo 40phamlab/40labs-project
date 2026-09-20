@@ -59,7 +59,7 @@ export function AppSidebarNav({
   return (
     <Sidebar
       compact={collapsed}
-      className={`h-screen border-none shadow-surface-pop z-20 ${
+      className={`h-full border-none shadow-surface-pop z-20 ${
         collapsed ? 'bg-surface' : 'bg-surface-strong'
       }`}
     >

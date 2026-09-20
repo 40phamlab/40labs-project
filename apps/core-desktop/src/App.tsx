@@ -12,7 +12,8 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
-import { AppSidebarNav } from '@40labs/ui-components';
+import { AppSidebarNav, TopMenuBar } from '@40labs/ui-components';
+import { TitleBar } from './components/TitleBar';
 import { useNavStore, ScreenId } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
 import { SalesScreen } from './features/sales/SalesScreen';
@@ -54,28 +55,36 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-surface text-text font-ui overflow-hidden">
-      <AppSidebarNav
-        activeRoute={activeScreen}
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(!collapsed)}
-        onNavigate={(id) => setActiveScreen(id as ScreenId)}
-        items={NAV_ITEMS}
-        pinnedBottomItems={[
-          { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
-        ]}
-        tenantBranding={{
-          brandName: "40Labs",
-          brandTagline: "Core",
-          logo: <div className="text-xs font-bold">40</div>
-        }}
-      />
-      <main className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 bg-panel/20 backdrop-blur-3xl -z-10" />
-        <div className="h-full w-full overflow-auto">
-          {renderContent()}
+    <div className="flex flex-col h-screen w-screen bg-surface text-text font-ui overflow-hidden">
+      <div className="flex bg-surface-strong border-b border-border items-center">
+        <div className="flex-1">
+          <TopMenuBar
+            brandName="40Labs"
+            onHelpClick={() => console.log('Help clicked')}
+            onUpdateClick={() => console.log('Update clicked')}
+          />
         </div>
-      </main>
+        <TitleBar />
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        <AppSidebarNav
+          activeRoute={activeScreen}
+          collapsed={collapsed}
+          onToggleCollapse={() => setCollapsed(!collapsed)}
+          onNavigate={(id) => setActiveScreen(id as ScreenId)}
+          items={NAV_ITEMS}
+          pinnedBottomItems={[
+            { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
+          ]}
+        />
+        <main className="flex-1 overflow-hidden relative">
+          <div className="absolute inset-0 bg-panel/20 backdrop-blur-3xl -z-10" />
+          <div className="h-full w-full overflow-auto">
+            {renderContent()}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

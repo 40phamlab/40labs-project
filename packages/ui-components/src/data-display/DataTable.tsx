@@ -71,7 +71,7 @@ export function DataTable<T>({
                 key={col.key}
                 style={{ width: col.width }}
                 className={`
-                  px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-text-muted
+                  px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-text-muted whitespace-nowrap
                   ${col.sortable && onSort ? 'cursor-pointer hover:text-text transition-colors select-none' : ''}
                   ${col.className || ''}
                 `}

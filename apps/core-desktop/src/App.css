@@ -19,3 +19,35 @@ body { background: var(--color-surface); color: var(--color-text); font-family: 
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 * { scrollbar-color: var(--color-input) var(--color-surface-strong); scrollbar-width: thin; }
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-input) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-input);
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+.custom-scrollbar::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
