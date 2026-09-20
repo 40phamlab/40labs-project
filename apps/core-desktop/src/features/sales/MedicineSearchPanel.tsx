@@ -1,47 +1,129 @@
 import * as React from 'react';
-import { MedicinePicker, Button } from '@40labs/ui-components';
+import { ChevronRight, RefreshCw } from 'lucide-react';
+import { SearchInput, IconButton, ProductRow } from '@40labs/ui-components';
 import { MedicineWithInventory } from '@40labs/types';
+import { mockSales } from '../../lib/mockData';
 
 export interface MedicineSearchPanelProps {
   medicines: MedicineWithInventory[];
   onAdd: (medicine: MedicineWithInventory) => void;
+  onToggleCollapse?: () => void;
 }
 
 export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
   medicines,
   onAdd,
+  onToggleCollapse,
 }) => {
-  const [selected, setSelected] = React.useState<MedicineWithInventory | null>(
-    null
-  );
+  const [query, setQuery] = React.useState('');
+  const [refreshTrigger, setRefreshTrigger] = React.useState(0);
 
-  const handleAdd = React.useCallback(() => {
-    if (selected) {
-      onAdd(selected);
-      setSelected(null);
-    }
-  }, [selected, onAdd]);
+  // Compute frequency ranking from mockSales
+  const rankedMedicines = React.useMemo(() => {
+    const frequencyMap: Record<string, number> = {};
+
+    mockSales.forEach((sale) => {
+      if (sale.lines) {
+        sale.lines.forEach((line) => {
+          if (line.medicine_id) {
+            frequencyMap[line.medicine_id] = (frequencyMap[line.medicine_id] || 0) + line.quantity;
+          }
+        });
+      }
+    });
+
+    return [...medicines].sort((a, b) => {
+      const countA = frequencyMap[a.id] || 0;
+      const countB = frequencyMap[b.id] || 0;
+
+      if (countB !== countA) {
+        return countB - countA; // Descending by sale frequency
+      }
+
+      // Alphabetical sorting if frequencies match
+      return a.name.localeCompare(b.name);
+    });
+  }, [medicines, refreshTrigger]);
+
+  // Filter list by query text if non-empty
+  const filteredMedicines = React.useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return rankedMedicines;
+
+    return rankedMedicines.filter((m) => {
+      const nameMatch = m.name.toLowerCase().includes(normalized);
+      const genericMatch = m.generic_name?.toLowerCase().includes(normalized);
+      return nameMatch || genericMatch;
+    });
+  }, [rankedMedicines, query]);
+
+  const handleRefresh = React.useCallback(() => {
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
 
   return (
-    <div className="flex flex-col gap-2">
-      <MedicinePicker
-        value={selected}
-        onChange={setSelected}
-        medicines={medicines}
-        requireAvailableStock
-        showStock
-        showPrice
-        placeholder="Search medicine..."
-      />
-      <Button
-        intent="primary"
-        fullWidth
-        disabled={!selected}
-        onClick={handleAdd}
-        className="rounded-full !h-12 border-none shadow-surface-pop"
-      >
-        {/* No text as per wireframe redesign */}
-      </Button>
+    <div className="flex flex-col gap-4 bg-surface-strong border border-border/50 rounded-card p-4 elevation-inset h-full overflow-hidden w-[300px]">
+      {/* Header Row */}
+      <div className="flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-bold text-text uppercase tracking-wider">
+            Medicines Store
+          </h2>
+          <IconButton
+            icon={<RefreshCw size={12} />}
+            label="Refresh rankings"
+            intent="ghost"
+            size="sm"
+            onClick={handleRefresh}
+          />
+        </div>
+        {onToggleCollapse && (
+          <IconButton
+            icon={<ChevronRight size={16} />}
+            label="Hide panel"
+            intent="ghost"
+            size="sm"
+            onClick={onToggleCollapse}
+          />
+        )}
+      </div>
+
+      {/* Search Input and lists */}
+      <div className="shrink-0">
+        <SearchInput
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search medicine..."
+          className="!h-10 w-full"
+        />
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col gap-2 custom-scrollbar">
+        {filteredMedicines.length === 0 ? (
+          <div className="text-center text-xs text-text-muted italic py-8">
+            No matching medicines found.
+          </div>
+        ) : (
+          filteredMedicines.map((medicine) => {
+            const inv = medicine.inventory;
+            const stockLabel = inv !== undefined ? `${inv.quantity} ${medicine.unit || 'units'}` : '0 units';
+            const priceLabel = inv !== undefined ? `TZS ${inv.sell_price.toLocaleString()}` : 'N/A';
+
+            return (
+              <ProductRow
+                key={medicine.id}
+                name={medicine.name}
+                sku={medicine.generic_name}
+                stock={stockLabel}
+                price={priceLabel}
+                onAdd={() => onAdd(medicine)}
+              />
+            );
+          })
+        )}
+
+        {/* TODO: [UX] confirm double-click semantics with Sairiamu */}
+      </div>
     </div>
   );
 };

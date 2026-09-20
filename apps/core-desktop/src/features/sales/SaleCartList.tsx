@@ -27,7 +27,7 @@ export const SaleCartList: React.FC<SaleCartListProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
+    <div className="flex h-full flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
       {lines.map((line) => {
         const { medicine, quantity } = line;
         const inv = medicine.inventory;

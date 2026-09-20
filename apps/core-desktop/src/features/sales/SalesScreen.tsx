@@ -10,8 +10,10 @@ import {
 import { MedicineWithInventory, Customer, Sale } from '@40labs/types';
 import { MedicineSearchPanel } from './MedicineSearchPanel';
 import { SaleCartList, SaleCartLine } from './SaleCartList';
-import { CustomerReportPanel } from './CustomerReportPanel';
+import { CustomerReportPanel, ConfirmedSaleData } from './CustomerReportPanel';
 import { SaleTotalsBar } from './SaleTotalsBar';
+import { IconButton, Card } from '@40labs/ui-components';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const SalesScreen: React.FC = () => {
   // Prep the data for MedicinePicker
@@ -27,12 +29,15 @@ export const SalesScreen: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(
     null
   );
-  const [walkInInfo, setWalkInInfo] = React.useState<{
+  const [manualEntry, setManualEntry] = React.useState<{
     full_name: string;
     phone: string;
-  } | null>(null);
+  }>({ full_name: '', phone: '' });
   const [discount, setDiscount] = React.useState(0);
   const [paymentMethod, setPaymentMethod] = React.useState('cash');
+  const [storePanelOpen, setStorePanelOpen] = React.useState(true);
+  const [saveCustomer, setSaveCustomer] = React.useState(true);
+  const [confirmedSale, setConfirmedSale] = React.useState<ConfirmedSaleData | null>(null);
 
   const dispensedUser = mockUsers[0]; // Mock session user
 
@@ -99,22 +104,22 @@ export const SalesScreen: React.FC = () => {
     let customerId: string | null = selectedCustomer?.id || null;
 
     // Handle walk-in info persistence
-    if (!selectedCustomer && walkInInfo?.full_name) {
+    if (!selectedCustomer && manualEntry.full_name && saveCustomer) {
       const newCustomer: Customer = {
         id: `cust_new_${Date.now()}`,
         workspace_id: WORKSPACE_ID,
         branch_id: BRANCH_ID,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        full_name: walkInInfo.full_name,
-        phone: walkInInfo.phone,
+        full_name: manualEntry.full_name,
+        phone: manualEntry.phone,
         email: null,
         outstanding_balance: 0,
         notes: 'Created from walk-in sales flow',
         amob_patient_id: null,
       };
       // In a real app, we'd persist this to DB/API here.
-      console.log('[SalesScreen] Created new customer from walk-in:', newCustomer);
+      console.log('[SalesScreen] Created new customer from manual entry:', newCustomer);
       customerId = newCustomer.id;
     }
 
@@ -146,80 +151,115 @@ export const SalesScreen: React.FC = () => {
 
     console.log('[SalesScreen] Sale completed:', newSale);
 
-    // Reset flow
+    // Set confirmed sale data for the report card
+    setConfirmedSale({
+      customerLabel: selectedCustomer?.full_name || manualEntry.full_name || 'Walk-in',
+      phone: selectedCustomer?.phone || manualEntry.phone || 'N/A',
+      email: selectedCustomer?.email || '',
+      service: dispensedUser.full_name,
+      cost: cartSummary.grandTotal,
+      description: cartSummary.itemNames.join(', ') || 'No items',
+    });
+
+    // Reset commerce state immediately for next transaction
     setCart([]);
     setDiscount(0);
-    setSelectedCustomer(null);
-    setWalkInInfo(null);
     setPaymentMethod('cash');
 
     alert(`Sale completed successfully! Total: TZS ${newSale.grand_total.toLocaleString()}`);
+  };
+
+  const handleSendReportReset = () => {
+    // Transaction fully closed only after report is sent or dismissed
+    setConfirmedSale(null);
+    setSelectedCustomer(null);
+    setManualEntry({ full_name: '', phone: '' });
   };
 
   const handleDelete = () => {
     setCart([]);
     setDiscount(0);
     setPaymentMethod('cash');
+    setConfirmedSale(null);
   };
 
   return (
-    <div className="grid grid-cols-[300px_1fr_300px] gap-6 p-6 h-full overflow-hidden">
-      {/* Left Column - Customer & Report */}
-      <div className="flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
-        <CustomerReportPanel
-          customers={mockCustomers}
-          selectedCustomer={selectedCustomer}
-          onSelectCustomer={(c) => {
-            setSelectedCustomer(c);
-            if (c) setWalkInInfo(null);
-          }}
-          walkInInfo={walkInInfo}
-          onWalkInInfo={(info) => {
-            setWalkInInfo(info);
-            setSelectedCustomer(null);
-          }}
-          dispensedByName={dispensedUser.full_name}
-          cartSummary={{
-            itemNames: cartSummary.itemNames,
-            grandTotal: cartSummary.grandTotal,
-          }}
-          canSend={canConfirm && (!!selectedCustomer || !!walkInInfo)}
-        />
-      </div>
-
-      {/* Middle Column - Cart & Totals */}
-      <div className="flex flex-col gap-6 overflow-hidden">
-        <div className="flex-1 overflow-hidden bg-panel/30 rounded-card border border-border/50 p-4">
-          <SaleCartList
-            lines={cart}
-            onQuantityChange={handleQuantityChange}
-            onRemove={handleRemoveItem}
+    <div className="p-6 h-full w-full overflow-hidden">
+      <Card className="elevation-raised rounded-card h-full w-full p-6 flex gap-6 overflow-hidden bg-panel">
+        {/* Left Column - Customer & Report */}
+        <div className="w-[300px] shrink-0 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
+          <CustomerReportPanel
+            customers={mockCustomers}
+            selectedCustomer={selectedCustomer}
+            onSelectCustomer={(c) => {
+              setSelectedCustomer(c);
+              if (c) setManualEntry({ full_name: '', phone: '' });
+            }}
+            manualEntry={manualEntry}
+            onManualEntryChange={(info) => {
+              setManualEntry(info);
+              setSelectedCustomer(null);
+            }}
+            confirmedSale={confirmedSale}
+            onSend={handleSendReportReset}
+            saveCustomer={saveCustomer}
+            onSaveCustomerChange={setSaveCustomer}
           />
         </div>
 
-        <div className="shrink-0">
-          <SaleTotalsBar
-            lineTotal={cart.length}
-            subtotal={cartSummary.subtotal}
-            discount={discount}
-            tax={cartSummary.tax}
-            grandTotal={cartSummary.grandTotal}
-            paymentMethod={paymentMethod}
-            onPaymentMethodChange={setPaymentMethod}
-            onConfirm={handleConfirm}
-            onDelete={handleDelete}
-            disabled={!canConfirm}
+        {/* Middle Column - Cart & Totals */}
+        <div className="relative flex-1 min-w-0 flex flex-col gap-6 overflow-hidden">
+          {/* Store Open Toggle Button when closed */}
+          {!storePanelOpen && (
+            <div className="absolute right-2 top-2 z-20">
+              <IconButton
+                icon={<ChevronLeft size={16} />}
+                label="Open store panel"
+                intent="neutral"
+                size="sm"
+                className="shadow-surface-pop border border-border/50"
+                onClick={() => setStorePanelOpen(true)}
+              />
+            </div>
+          )}
+
+          <div className="flex-1 min-h-0 overflow-hidden bg-surface-strong rounded-card border border-border/50 p-4 elevation-inset">
+            <SaleCartList
+              lines={cart}
+              onQuantityChange={handleQuantityChange}
+              onRemove={handleRemoveItem}
+            />
+          </div>
+
+          <div className="shrink-0">
+            <SaleTotalsBar
+              subtotal={cartSummary.subtotal}
+              discount={discount}
+              onDiscountChange={setDiscount}
+              tax={cartSummary.tax}
+              grandTotal={cartSummary.grandTotal}
+              paymentMethod={paymentMethod as any}
+              onPaymentMethodChange={setPaymentMethod as any}
+              onConfirm={handleConfirm}
+              onDelete={handleDelete}
+              disabled={!canConfirm}
+            />
+          </div>
+        </div>
+
+        {/* Right Column - Medicine Search */}
+        <div
+          className={`transition-all duration-200 overflow-hidden flex flex-col shrink-0 ${
+            storePanelOpen ? 'w-[300px] opacity-100' : 'w-0 opacity-0 -ml-6'
+          }`}
+        >
+          <MedicineSearchPanel
+            medicines={medicinesWithInventory}
+            onAdd={handleAddToCart}
+            onToggleCollapse={() => setStorePanelOpen(false)}
           />
         </div>
-      </div>
-
-      {/* Right Column - Medicine Search */}
-      <div className="flex flex-col gap-4">
-        <MedicineSearchPanel
-          medicines={medicinesWithInventory}
-          onAdd={handleAddToCart}
-        />
-      </div>
+      </Card>
     </div>
   );
 };
