@@ -1,4 +1,6 @@
 import * as React from 'react';
+import { RotateCcw } from 'lucide-react';
+import { IconButton } from '../primitives/IconButton';
 
 export interface FilterChipProps {
   label: string;
@@ -30,22 +32,45 @@ export interface FilterBarProps {
   children: React.ReactNode;
   onClearAll?: () => void;
   className?: string;
+  clearAllVariant?: 'link' | 'button';
 }
 
-export const FilterBar = ({ children, onClearAll, className = '' }: FilterBarProps) => {
+export const FilterBar = ({
+  children,
+  onClearAll,
+  className = '',
+  clearAllVariant = 'link',
+}: FilterBarProps) => {
   return (
-    <div className={`flex flex-wrap items-center gap-2 p-2 bg-panel-strong/30 rounded-card border border-border/50 ${className}`}>
-      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest mr-2 ml-1">Filters</span>
+    <div
+      className={`flex flex-wrap items-center gap-2 p-2 bg-panel-strong/30 rounded-card border border-border/50 ${className}`}
+    >
+      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest mr-2 ml-1">
+        Filters
+      </span>
       <div className="flex flex-wrap items-center gap-2 flex-1">
         {children}
       </div>
       {onClearAll && (
-        <button
-          onClick={onClearAll}
-          className="text-[10px] font-bold text-text-muted hover:text-text uppercase tracking-wider px-2 py-1 transition-colors"
-        >
-          Clear All
-        </button>
+        <>
+          {clearAllVariant === 'button' ? (
+            <IconButton
+              icon={<RotateCcw size={14} />}
+              label="Reset filters"
+              intent="neutral"
+              size="sm"
+              onClick={onClearAll}
+              className="ml-2"
+            />
+          ) : (
+            <button
+              onClick={onClearAll}
+              className="text-[10px] font-bold text-text-muted hover:text-text uppercase tracking-wider px-2 py-1 transition-colors"
+            >
+              Clear All
+            </button>
+          )}
+        </>
       )}
     </div>
   );

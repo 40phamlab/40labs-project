@@ -7,7 +7,7 @@ Single shared Customer record across POS and Lab — no duplicate patient
 records per module (PRD Requirement P0-7).
 
 ## Components
-- CustomerList (Today / Last Month / All / Reserved tabs — per design draft)
+- CustomerList (Today / Last Month / All / Reserved — static KPI row, non-interactive; confirmed by Sairiamu)
 - CustomerProfile (purchase history + lab history in one view)
 - DebtorsView / BalancesView (credit tracking)
 - CustomerSearch — see sales-pos.md, this is the canonical instance

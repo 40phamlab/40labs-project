@@ -17,6 +17,7 @@ import { TitleBar } from './components/TitleBar';
 import { useNavStore, ScreenId } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
 import { SalesScreen } from './features/sales/SalesScreen';
+import { CustomersScreen } from './features/customers/CustomersScreen';
 import './App.css';
 
 const NAV_ITEMS = [
@@ -38,20 +39,24 @@ export default function App() {
   const [collapsed, setCollapsed] = React.useState(true);
 
   const renderContent = () => {
-    if (activeScreen === 'inventory') {
-      return <InventoryScreen />;
+    switch (activeScreen) {
+      case 'inventory':
+        return <InventoryScreen />;
+      case 'sales':
+        return <SalesScreen />;
+      case 'customers':
+        return <CustomersScreen />;
+      default: {
+        const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
+        return (
+          <div className="flex items-center justify-center h-full text-text-muted">
+            <p className="text-xl font-heading font-medium italic opacity-60">
+              {label.replace('-', ' ')} — not built yet
+            </p>
+          </div>
+        );
+      }
     }
-
-    if (activeScreen === 'sales') {
-      return <SalesScreen />;
-    }
-
-    const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
-    return (
-      <div className="flex items-center justify-center h-full text-text-muted">
-        <p className="text-xl font-heading font-medium italic opacity-60">{label.replace('-', ' ')} — not built yet</p>
-      </div>
-    );
   };
 
   return (
