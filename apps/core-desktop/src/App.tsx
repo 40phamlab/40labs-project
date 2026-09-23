@@ -5,6 +5,7 @@ import {
   Package,
   Users,
   ShoppingBag,
+  FlaskConical,
   Stethoscope,
   BarChart3,
   Calendar,
@@ -18,6 +19,8 @@ import { useNavStore, ScreenId } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
 import { SalesScreen } from './features/sales/SalesScreen';
 import { CustomersScreen } from './features/customers/CustomersScreen';
+import { PurchasesScreen } from './features/purchases/PurchasesScreen';
+import { LabScreen } from './features/lab/LabScreen';
 import './App.css';
 
 const NAV_ITEMS = [
@@ -26,6 +29,7 @@ const NAV_ITEMS = [
   { id: 'inventory', label: 'Inventory', icon: <Package size={20} /> },
   { id: 'purchases', label: 'Purchases', icon: <ShoppingBag size={20} /> },
   { id: 'customers', label: 'Customers', icon: <Users size={20} /> },
+  { id: 'lab', label: 'Lab', icon: <FlaskConical size={20} /> },
   { id: 'e-pharmacy', label: 'e-pharmacy', icon: <Stethoscope size={20} /> },
   { id: 'reports', label: 'Reports', icon: <BarChart3 size={20} /> },
   { id: 'scheduling', label: 'Scheduling', icon: <Calendar size={20} /> },
@@ -46,6 +50,10 @@ export default function App() {
         return <SalesScreen />;
       case 'customers':
         return <CustomersScreen />;
+      case 'purchases':
+        return <PurchasesScreen />;
+      case 'lab':
+        return <LabScreen />;
       default: {
         const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
         return (

@@ -125,6 +125,18 @@ importers:
         specifier: ^5
         version: 5.8.3
 
+  packages/api-client:
+    dependencies:
+      '@40labs/types':
+        specifier: workspace:*
+        version: link:../types
+      '@tanstack/react-query':
+        specifier: ^5.66.0
+        version: 5.102.3(react@19.2.8)
+      react:
+        specifier: ^19.1.0
+        version: 19.2.8
+
   packages/design-tokens: {}
 
   packages/types: {}

@@ -23,3 +23,7 @@ export interface PurchaseOrder extends BaseEntity {
   approved_by_user_id: string | null; // PIN-gated if above owner-set threshold
   submitted_at: string | null; // null while draft/offline-queued
 }
+
+export interface SupplierFollow extends BaseEntity {
+  supplier_id: string; // Supplier.id — workspace_id (BaseEntity) is the follower
+}

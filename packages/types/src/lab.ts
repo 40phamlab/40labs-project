@@ -1,6 +1,7 @@
 import { BaseEntity } from './common';
 
-export type LabOrderStatus = 'pending' | 'sample_collected' | 'result_entered' | 'report_ready' | 'unsolved';
+export type LabOrderStatus = 'pending' | 'sample_collected' | 'result_entered' | 'report_ready' | 'unsolved' | 'cancelled';
+export type LabSampleStatus = 'collected' | 'insufficient' | 'declined' | 'used' | 'removed';
 
 export interface LabOrder extends BaseEntity {
   customer_id: string; // same shared Customer entity as Sales
@@ -15,6 +16,7 @@ export interface LabSample extends BaseEntity {
   collected_by_user_id: string;
   collected_at: string;
   sample_label: string;
+  status: LabSampleStatus;
 }
 
 export interface LabResult extends BaseEntity {

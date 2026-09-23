@@ -10,6 +10,7 @@ export type ScreenId =
   | 'inventory'
   | 'customers'
   | 'purchases'
+  | 'lab'
   | 'settings'
   | 'scheduling'
   | 'e-pharmacy'
