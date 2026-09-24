@@ -1,18 +1,21 @@
-// No custom spacing system — Tailwind's default 4px-base scale is used
-// directly in className strings. This file exists only so code that needs
-// a spacing value in JS/TS (not Tailwind classes) has one place to read it
-// from, instead of a second parallel scale getting invented ad hoc.
+// Source of truth for 40Labs Design Tokens: Spacing Scale
+// Dense 4px base scale for clinical desktop layouts.
 
 export const spacingBaseUnit = 4; // px
 
 export const spacing = {
-  xs: spacingBaseUnit * 1,   // 4px
-  sm: spacingBaseUnit * 2,   // 8px
-  md: spacingBaseUnit * 4,   // 16px
-  lg: spacingBaseUnit * 6,   // 24px
-  xl: spacingBaseUnit * 8,   // 32px
-  xxl: spacingBaseUnit * 12, // 48px
-  grid: spacingBaseUnit * 10, // 40px
+  '3xs': '2px',
+  '2xs': '4px',
+  xs: '6px',
+  sm: '8px',
+  md: '12px',
+  lg: '16px',
+  xl: '20px',
+  '2xl': '24px',
+  '3xl': '32px',
+  '4xl': '40px',
+  '5xl': '48px',
+  grid: 40, // 40px grid spacing for background patterns
 } as const;
 
 export type SpacingToken = keyof typeof spacing;

@@ -1,10 +1,48 @@
 // Tailwind v4 bridge for the dark 40Labs desktop theme.
-const { colors, radius, fonts } = require('./src/index.ts');
+const { colors, radius, fonts, spacing, elevation } = require('./index.ts');
+
 module.exports = {
   colors: {
+    'app-bg': colors.appBg,
+    'top-chrome': colors.topChrome,
+    sidebar: colors.sidebar,
+    'surface-primary': colors.surfacePrimary,
+    'surface-secondary': colors.surfaceSecondary,
+    'surface-elevated': colors.surfaceElevated,
+    'surface-hover': colors.surfaceHover,
+    'surface-active': colors.surfaceActive,
+    'surface-selected': colors.surfaceSelected,
+    'surface-disabled': colors.surfaceDisabled,
+    'border-subtle': colors.borderSubtle,
+    'border-default': colors.borderDefault,
+    'border-strong': colors.borderStrong,
+    'border-focus': colors.borderFocus,
+    'border-selected': colors.borderSelected,
+    divider: colors.divider,
+    'text-primary': colors.textPrimary,
+    'text-secondary': colors.textSecondary,
+    'text-muted': colors.textMuted,
+    'text-disabled': colors.textDisabled,
+    'action-primary': colors.actionPrimary,
+    'action-primary-hover': colors.actionPrimaryHover,
+    'action-primary-active': colors.actionPrimaryActive,
+    success: colors.success,
+    'success-bg': colors.successBg,
+    'success-border': colors.successBorder,
+    warning: colors.warning,
+    'warning-bg': colors.warningBg,
+    'warning-border': colors.warningBorder,
+    danger: colors.danger,
+    'danger-bg': colors.dangerBg,
+    'danger-border': colors.dangerBorder,
+    info: colors.info,
+    'info-bg': colors.infoBg,
+    'info-border': colors.infoBorder,
+    'focus-ring': colors.focusRing,
+
+    // Legacy aliases
     primary: colors.primary,
     accent: colors.accent,
-    danger: colors.danger,
     surface: colors.surface,
     'surface-strong': colors.surfaceStrong,
     panel: colors.panel,
@@ -12,20 +50,22 @@ module.exports = {
     input: colors.input,
     field: colors.field,
     text: colors.text,
-    'text-muted': colors.textMuted,
     border: colors.border,
   },
   borderRadius: {
+    none: radius.none,
+    xs: radius.xs,
+    sm: radius.sm,
+    md: radius.md,
+    lg: radius.lg,
     card: radius.card,
-    input: radius.input
+    input: radius.input,
+    full: radius.full,
   },
-  boxShadow: {
-    'surface-pop': 'var(--shadow-surface-pop)',
-    'inner-soft': 'var(--shadow-inner-soft)',
-  },
-  fontFamily: { 
+  boxShadow: elevation,
+  fontFamily: {
     heading: [fonts.heading, 'sans-serif'],
     ui: [fonts.ui, 'sans-serif'],
-    mono: [fonts.mono, 'monospace']
+    mono: [fonts.mono, 'monospace'],
   },
 };

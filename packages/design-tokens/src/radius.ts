@@ -1,12 +1,15 @@
-export const radius = {
-  card: '12px',
-  input: '8px',
-} as const;
+// Source of truth for 40Labs Design Tokens: Border Radius
+// Clinical, dense desktop-first rounded scale.
 
-export const darkRadius = {
-  pill: '9999px',
-  card: '16px',
+export const radius = {
+  none: '0px',
+  xs: '2px',
+  sm: '4px',
+  md: '6px',
+  lg: '8px',
+  card: '8px',
+  input: '6px',
+  full: '9999px',
 } as const;
 
 export type RadiusToken = keyof typeof radius;
-export type DarkRadiusToken = keyof typeof darkRadius;

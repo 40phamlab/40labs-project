@@ -1,31 +1,95 @@
 /* Source of truth for Tailwind v4 consumption. */
 @theme {
-  --color-primary: #16A34A;
-  --color-accent: #F97316;
-  --color-danger: #EF4444;
+  /* Application Shell */
+  --color-app-bg: #0B0F0D;
+  --color-top-chrome: #121815;
+  --color-sidebar: #121815;
+
+  /* Solid Surfaces */
+  --color-surface-primary: #1A221E;
+  --color-surface-secondary: #222C27;
+  --color-surface-elevated: #2A3630;
+  --color-surface-hover: #26322C;
+  --color-surface-active: #2E3C35;
+  --color-surface-selected: #1E382B;
+  --color-surface-disabled: #161E1A;
+
+  /* Surface Legacy Aliases */
   --color-surface: #0B0F0D;
   --color-surface-strong: #121815;
   --color-panel: #1A221E;
   --color-panel-strong: #222C27;
   --color-input: #161E1A;
   --color-field: #161E1A;
-  --color-text-on-field: #F8FAFB;
-  --color-text: #F8FAFB;
-  --color-text-muted: #94A3B8;
-  --color-border: #28362E;
+
+  /* Borders & Dividers */
+  --color-border-subtle: #243029;
+  --color-border-default: #28362E;
   --color-border-strong: #384B41;
+  --color-border-focus: #16A34A;
+  --color-border-selected: #22C55E;
+  --color-border: #28362E;
+  --color-divider: #243029;
+
+  /* Typography Colors */
+  --color-text-primary: #F8FAFB;
+  --color-text-secondary: #CBD5E1;
+  --color-text-muted: #94A3B8;
+  --color-text-disabled: #52635A;
+  --color-text-inverse: #0B0F0D;
+  --color-text: #F8FAFB;
+  --color-text-on-field: #F8FAFB;
+
+  /* Primary Action & Semantics */
+  --color-action-primary: #16A34A;
+  --color-action-primary-hover: #15803D;
+  --color-action-primary-active: #166534;
+  --color-primary: #16A34A;
+  --color-accent: #F97316;
+
+  --color-success: #16A34A;
+  --color-success-bg: #12281C;
+  --color-success-border: #1A4D2E;
+
+  --color-warning: #F97316;
+  --color-warning-bg: #2C1D11;
+  --color-warning-border: #5C2D0C;
+
+  --color-danger: #EF4444;
+  --color-danger-bg: #2B1718;
+  --color-danger-border: #5C1D1F;
+
+  --color-info: #0EA5E9;
+  --color-info-bg: #102331;
+  --color-info-border: #154562;
+
+  --color-focus-ring: #16A34A;
+
+  /* Fonts */
   --font-heading: "Sora", sans-serif;
   --font-ui: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --font-size-tiny: 9px;
-  --font-size-caption: 10px;
-  --radius-card: 12px;
-  --radius-input: 8px;
+
+  /* Border Radii */
+  --radius-none: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-card: 8px;
+  --radius-input: 6px;
+  --radius-full: 9999px;
+
+  /* Elevation & Shadows */
+  --shadow-flat: none;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.6);
   --shadow-elevation-flat: none;
-  --shadow-elevation-raised: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
-  --shadow-elevation-hover: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
-  --shadow-elevation-pressed: inset 0 2px 4px rgba(0,0,0,0.6);
-  --shadow-elevation-inset: inset 0 1px 3px rgba(0,0,0,0.5);
-  --shadow-surface-pop: 0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
-  --shadow-inner-soft: inset 0 2px 4px rgba(0,0,0,0.5);
+  --shadow-elevation-raised: 0 2px 8px rgba(0,0,0,0.5);
+  --shadow-elevation-hover: 0 4px 12px rgba(0,0,0,0.6);
+  --shadow-elevation-pressed: inset 0 2px 4px rgba(0,0,0,0.7);
+  --shadow-elevation-inset: inset 0 1px 3px rgba(0,0,0,0.6);
+  --shadow-surface-pop: 0 4px 16px rgba(0,0,0,0.7);
+  --shadow-inner-soft: inset 0 2px 4px rgba(0,0,0,0.6);
 }
