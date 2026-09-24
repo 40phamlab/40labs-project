@@ -50,16 +50,9 @@ const mockExtendedSuppliers: ExtendedSupplier[] = mockSuppliers.map((s) => ({
   ...s,
   name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
   region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
-  contacts: {
-    mobile: '+255 754 889 000',
-    email: 'info@kibopharma.co.tz',
-    whatsapp: '+255 754 889 000',
-  },
-  address: {
-    region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
-    district: 'Kinondoni',
-    place: 'Kijitonyama',
-  },
+  phone: '+255 754 889 000',
+  email: 'info@kibopharma.co.tz',
+  whatsapp: '+255 754 889 000',
   business: {
     name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
     address: {
@@ -131,17 +124,10 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
           tra_verified: true,
           name: 'Selected Supplier',
           region: 'Tanzania',
-          contacts: {
-            mobile: '+255 700 000 000',
-            email: 'contact@supplier.co.tz',
-            whatsapp: '+255 700 000 000',
-          },
-          address: {
-            region: 'Dar es Salaam',
-            district: 'Ilala',
-            place: 'Kariakoo',
-          },
-        }
+          phone: '+255 700 000 000',
+          email: 'contact@supplier.co.tz',
+          whatsapp: '+255 700 000 000',
+        } as ExtendedSupplier
       );
     }
     return mockExtendedSuppliers[0];
@@ -368,13 +354,11 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
   // WhatsApp Communication Handler
   const handleCommunicate = React.useCallback((productName: string) => {
-    const whatsappNumber = supplier.contacts?.whatsapp || supplier.whatsapp || supplier.contacts?.mobile || supplier.phone;
+    const whatsappNumber = supplier.whatsapp || supplier.phone;
     if (whatsappNumber) {
       const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
       const message = encodeURIComponent(`Hello, I am inquiring about reordering ${productName}.`);
       window.open(`https://wa.me/${cleanNumber}?text=${message}`, '_blank');
-    } else {
-      alert('No WhatsApp contact information available for this supplier.');
     }
   }, [supplier]);
 
@@ -385,8 +369,8 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
   // Supplier info & verification flags
   const supplierName = supplier.business?.name || supplier.name || 'Supplier Storefront';
-  const mobile = supplier.contacts?.mobile || supplier.phone || '+255 700 000 000';
-  const whatsapp = supplier.contacts?.whatsapp || supplier.whatsapp;
+  const mobile = supplier.phone || '+255 700 000 000';
+  const whatsapp = supplier.whatsapp;
   const phoneFormatted = whatsapp
     ? `${mobile} | WhatsApp: ${whatsapp}`
     : mobile;

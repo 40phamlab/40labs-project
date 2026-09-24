@@ -41,13 +41,13 @@ export function MedicinePicker({
   const options: MedicineOption[] = React.useMemo(() => {
     return medicines
       .filter((m) => {
-        if (requireAvailableStock && (!m.inventory || m.inventory.quantity <= 0)) {
+        if (requireAvailableStock && m.quantity <= 0) {
           return false;
         }
         return true;
       })
       .map((m) => ({
-        label: m.name,
+        label: m.medicine.name,
         value: m.id,
         medicine: m,
       }));
@@ -71,11 +71,11 @@ export function MedicinePicker({
   const renderMedicineOption = (option: ComboboxOption) => {
     const medOption = option as MedicineOption;
     const m = medOption.medicine;
-    const qty = m.inventory?.quantity ?? 0;
-    const price = m.inventory?.sell_price ?? 0;
-    const batch = m.inventory?.batch_number;
-    const expiry = m.inventory?.expiry_date;
-    const threshold = m.inventory?.low_stock_threshold ?? 10;
+    const qty = m.quantity;
+    const price = m.sell_price;
+    const batch = m.batch_number;
+    const expiry = m.expiry_date;
+    const threshold = m.low_stock_threshold;
 
     const stockVariant = getStockVariant(qty, threshold);
     const expiring = isExpiringSoon(expiry);
@@ -88,11 +88,11 @@ export function MedicinePicker({
           </div>
           <div className="min-w-0">
             <p className="text-xs font-bold truncate leading-tight">
-              {m.name}
+              {m.medicine.name}
             </p>
-            {m.generic_name && (
+            {m.medicine.generic_name && (
               <p className="text-[10px] text-text-muted truncate italic">
-                {m.generic_name}
+                {m.medicine.generic_name}
               </p>
             )}
           </div>

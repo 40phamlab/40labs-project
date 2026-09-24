@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { CustomerPicker, Card, Button, Checkbox, IconButton } from '@40labs/ui-components';
 import { Customer } from '@40labs/types';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { mockBusiness } from '../../lib/mockData';
 
 export interface ConfirmedSaleData {

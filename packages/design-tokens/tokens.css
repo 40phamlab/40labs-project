@@ -1,18 +1,19 @@
-/* Source of truth for Tailwind v4 consumption. Imported after Tailwind in App.css. */
+/* Source of truth for Tailwind v4 consumption. */
 @theme {
-  --color-primary: #39B54A;
-  --color-accent: #F7931E;
+  --color-primary: #16A34A;
+  --color-accent: #F97316;
   --color-danger: #EF4444;
-  --color-surface: #1A1A1A;
-  --color-surface-strong: #313131;
-  --color-panel: #4D4D4D;
-  --color-panel-strong: #494949;
-  --color-input: #666666;
-  --color-field: #BDCCD4;
-  --color-text-on-field: #252525;
-  --color-text: #D7D7D7;
-  --color-text-muted: #A9A9A9;
-  --color-border: #606060;
+  --color-surface: #0B0F0D;
+  --color-surface-strong: #121815;
+  --color-panel: #1A221E;
+  --color-panel-strong: #222C27;
+  --color-input: #161E1A;
+  --color-field: #161E1A;
+  --color-text-on-field: #F8FAFB;
+  --color-text: #F8FAFB;
+  --color-text-muted: #94A3B8;
+  --color-border: #28362E;
+  --color-border-strong: #384B41;
   --font-heading: "Sora", sans-serif;
   --font-ui: "Inter", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
@@ -21,10 +22,10 @@
   --radius-card: 12px;
   --radius-input: 8px;
   --shadow-elevation-flat: none;
-  --shadow-elevation-raised: 0 2px 0 #252525, 0 5px 10px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.05);
-  --shadow-elevation-hover: 0 2px 0 #252525, 0 7px 14px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
-  --shadow-elevation-pressed: inset 0 2px 3px rgba(0,0,0,.32), inset 0 -1px 0 rgba(255,255,255,.04);
-  --shadow-elevation-inset: inset 0 2px 4px rgba(0,0,0,.26), inset 0 -1px 0 rgba(255,255,255,.04);
-  --shadow-surface-pop: 0 4px 0 #252525, 0 8px 16px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08);
-  --shadow-inner-soft: inset 0 2px 4px rgba(0,0,0,.4), inset 0 -1px 0 rgba(255,255,255,.04);
+  --shadow-elevation-raised: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+  --shadow-elevation-hover: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+  --shadow-elevation-pressed: inset 0 2px 4px rgba(0,0,0,0.6);
+  --shadow-elevation-inset: inset 0 1px 3px rgba(0,0,0,0.5);
+  --shadow-surface-pop: 0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  --shadow-inner-soft: inset 0 2px 4px rgba(0,0,0,0.5);
 }

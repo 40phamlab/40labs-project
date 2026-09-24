@@ -17,8 +17,6 @@ export interface InventoryItem extends BaseEntity {
   sell_price: number;  // TZS
   quantity: number;
   low_stock_threshold: number;
-  // Reserved — Good Storage & Distribution Practices Regs 2021, not required
-  // for MVP dispensing flow, but field must exist so it's not a later migration.
   cold_chain_required: boolean;
 }
 
@@ -30,6 +28,6 @@ export interface StockAdjustment extends BaseEntity {
   audit_log_id: string; // every adjustment MUST produce an AuditLog entry
 }
 
-export interface MedicineWithInventory extends Medicine {
-  inventory?: InventoryItem;
+export interface MedicineWithInventory extends InventoryItem {
+  medicine: Medicine;
 }

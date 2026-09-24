@@ -94,8 +94,7 @@ export default function App() {
             { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
           ]}
         />
-        <main className="flex-1 overflow-hidden relative">
-          <div className="absolute inset-0 bg-panel/20 backdrop-blur-3xl -z-10" />
+        <main className="flex-1 overflow-hidden relative bg-surface">
           <div className="h-full w-full overflow-auto">
             {renderContent()}
           </div>

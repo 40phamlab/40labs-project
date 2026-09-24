@@ -33,15 +33,14 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
     });
 
     return [...medicines].sort((a, b) => {
-      const countA = frequencyMap[a.id] || 0;
-      const countB = frequencyMap[b.id] || 0;
+      const countA = frequencyMap[a.medicine_id] || 0;
+      const countB = frequencyMap[b.medicine_id] || 0;
 
       if (countB !== countA) {
         return countB - countA; // Descending by sale frequency
       }
 
-      // Alphabetical sorting if frequencies match
-      return a.name.localeCompare(b.name);
+      return a.medicine.name.localeCompare(b.medicine.name);
     });
   }, [medicines, refreshTrigger]);
 
@@ -51,8 +50,8 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
     if (!normalized) return rankedMedicines;
 
     return rankedMedicines.filter((m) => {
-      const nameMatch = m.name.toLowerCase().includes(normalized);
-      const genericMatch = m.generic_name?.toLowerCase().includes(normalized);
+      const nameMatch = m.medicine.name.toLowerCase().includes(normalized);
+      const genericMatch = m.medicine.generic_name?.toLowerCase().includes(normalized);
       return nameMatch || genericMatch;
     });
   }, [rankedMedicines, query]);
@@ -62,7 +61,7 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
   }, []);
 
   return (
-    <div className="flex flex-col gap-4 bg-surface-strong border border-border/50 rounded-card p-4 elevation-inset h-full overflow-hidden w-[300px]">
+    <div className="flex flex-col gap-4 bg-panel-strong border border-border/50 rounded-card p-4 elevation-inset h-full overflow-hidden w-[300px]">
       {/* Header Row */}
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -88,7 +87,7 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
         )}
       </div>
 
-      {/* Search Input and lists */}
+      {/* Search Input */}
       <div className="shrink-0">
         <SearchInput
           value={query}
@@ -104,25 +103,22 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
             No matching medicines found.
           </div>
         ) : (
-          filteredMedicines.map((medicine) => {
-            const inv = medicine.inventory;
-            const stockLabel = inv !== undefined ? `${inv.quantity} ${medicine.unit || 'units'}` : '0 units';
-            const priceLabel = inv !== undefined ? `TZS ${inv.sell_price.toLocaleString()}` : 'N/A';
+          filteredMedicines.map((item) => {
+            const stockLabel = `${item.quantity} ${item.medicine.unit || 'units'}`;
+            const priceLabel = `TZS ${item.sell_price.toLocaleString()}`;
 
             return (
               <ProductRow
-                key={medicine.id}
-                name={medicine.name}
-                sku={medicine.generic_name}
+                key={item.id}
+                name={item.medicine.name}
+                sku={item.medicine.generic_name ?? undefined}
                 stock={stockLabel}
                 price={priceLabel}
-                onAdd={() => onAdd(medicine)}
+                onAdd={() => onAdd(item)}
               />
             );
           })
         )}
-
-        {/* TODO: [UX] confirm double-click semantics with Sairiamu */}
       </div>
     </div>
   );

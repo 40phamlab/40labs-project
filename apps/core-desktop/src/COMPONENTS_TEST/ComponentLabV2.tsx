@@ -37,7 +37,7 @@ export default function ComponentLabV2() {
 
   // CustomerPicker Demo States
   const [selectedCust, setSelectedCust] = useState<Customer | null>(null);
-  const [pickerError, setPickerError] = useState<string | undefined>(undefined);
+  const [manualEntry, setManualEntry] = useState({ full_name: '', phone: '' });
 
   // MedicinePicker Demo States
   const [selectedMed, setSelectedMed] = useState<MedicineWithInventory | null>(null);
@@ -51,89 +51,89 @@ export default function ComponentLabV2() {
 
   const mockMedicines: MedicineWithInventory[] = [
     {
-      id: 'm-1',
+      id: 'inv-1',
       workspace_id: 'ws-demo-1',
       branch_id: 'branch-demo-1',
-      name: 'Amoxicillin 500mg',
-      generic_name: 'Amoxicillin Trihydrate',
-      category: 'Antibiotics',
-      unit: 'Capsule',
-      is_controlled_substance: false,
-      requires_prescription: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      inventory: {
-        id: 'inv-1',
+      medicine_id: 'm-1',
+      batch_number: 'AMX-2024-001',
+      expiry_date: '2025-12-31',
+      buy_price: 8000,
+      sell_price: 12500,
+      quantity: 120,
+      low_stock_threshold: 10,
+      cold_chain_required: false,
+      medicine: {
+        id: 'm-1',
         workspace_id: 'ws-demo-1',
         branch_id: 'branch-demo-1',
-        medicine_id: 'm-1',
-        batch_number: 'AMX-2024-001',
-        expiry_date: '2025-12-31',
-        buy_price: 8000,
-        sell_price: 12500,
-        quantity: 120,
-        low_stock_threshold: 10,
-        cold_chain_required: false,
+        name: 'Amoxicillin 500mg',
+        generic_name: 'Amoxicillin Trihydrate',
+        category: 'Antibiotics',
+        unit: 'Capsule',
+        is_controlled_substance: false,
+        requires_prescription: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }
+      },
     },
     {
-      id: 'm-2',
+      id: 'inv-2',
       workspace_id: 'ws-demo-1',
       branch_id: 'branch-demo-1',
-      name: 'Paracetamol 500mg',
-      generic_name: 'Acetaminophen',
-      category: 'Analgesics',
-      unit: 'Tablet',
-      is_controlled_substance: false,
-      requires_prescription: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      inventory: {
-        id: 'inv-2',
+      medicine_id: 'm-2',
+      batch_number: 'PARA-992',
+      expiry_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
+      buy_price: 1000,
+      sell_price: 1500,
+      quantity: 8,
+      low_stock_threshold: 15,
+      cold_chain_required: false,
+      medicine: {
+        id: 'm-2',
         workspace_id: 'ws-demo-1',
         branch_id: 'branch-demo-1',
-        medicine_id: 'm-2',
-        batch_number: 'PARA-992',
-        expiry_date: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(), // Expiring soon
-        buy_price: 1000,
-        sell_price: 1500,
-        quantity: 8, // Low stock
-        low_stock_threshold: 15,
-        cold_chain_required: false,
+        name: 'Paracetamol 500mg',
+        generic_name: 'Acetaminophen',
+        category: 'Analgesics',
+        unit: 'Tablet',
+        is_controlled_substance: false,
+        requires_prescription: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }
+      },
     },
     {
-      id: 'm-3',
+      id: 'inv-3',
       workspace_id: 'ws-demo-1',
       branch_id: 'branch-demo-1',
-      name: 'Tramadol 50mg',
-      generic_name: 'Tramadol Hydrochloride',
-      category: 'Opioids',
-      unit: 'Capsule',
-      is_controlled_substance: true,
-      requires_prescription: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      inventory: {
-        id: 'inv-3',
+      medicine_id: 'm-3',
+      batch_number: 'TRAM-007',
+      expiry_date: '2026-06-30',
+      buy_price: 5000,
+      sell_price: 7500,
+      quantity: 0,
+      low_stock_threshold: 5,
+      cold_chain_required: false,
+      medicine: {
+        id: 'm-3',
         workspace_id: 'ws-demo-1',
         branch_id: 'branch-demo-1',
-        medicine_id: 'm-3',
-        batch_number: 'TRAM-007',
-        expiry_date: '2026-06-30',
-        buy_price: 5000,
-        sell_price: 7500,
-        quantity: 0, // Out of stock
-        low_stock_threshold: 5,
-        cold_chain_required: false,
+        name: 'Tramadol 50mg',
+        generic_name: 'Tramadol Hydrochloride',
+        category: 'Opioids',
+        unit: 'Capsule',
+        is_controlled_substance: true,
+        requires_prescription: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }
-    }
+      },
+    },
   ];
 
   const mockCustomers: Customer[] = [
@@ -509,21 +509,21 @@ export default function ComponentLabV2() {
                    <div className="grid grid-cols-2 gap-y-3">
                       <div>
                         <p className="text-[9px] text-text-muted uppercase font-bold">Scientific Name</p>
-                        <p className="text-xs">{selectedMed.generic_name}</p>
+                        <p className="text-xs">{selectedMed.medicine.generic_name}</p>
                       </div>
                       <div>
                         <p className="text-[9px] text-text-muted uppercase font-bold">Category</p>
-                        <p className="text-xs">{selectedMed.category}</p>
+                        <p className="text-xs">{selectedMed.medicine.category}</p>
                       </div>
                       <div>
                         <p className="text-[9px] text-text-muted uppercase font-bold">Stock Status</p>
-                        <Badge variant={selectedMed.inventory && selectedMed.inventory.quantity > 0 ? 'success' : 'danger'} size="sm">
-                          {selectedMed.inventory?.quantity ?? 0} {selectedMed.unit}s
+                        <Badge variant={selectedMed.quantity > 0 ? 'success' : 'danger'} size="sm">
+                          {selectedMed.quantity} {selectedMed.medicine.unit}s
                         </Badge>
                       </div>
                       <div>
                         <p className="text-[9px] text-text-muted uppercase font-bold">Price</p>
-                        <p className="text-xs font-mono font-bold text-primary">TZS {selectedMed.inventory?.sell_price.toLocaleString()}</p>
+                        <p className="text-xs font-mono font-bold text-primary">TZS {selectedMed.sell_price.toLocaleString()}</p>
                       </div>
                    </div>
                  ) : (
@@ -547,42 +547,14 @@ export default function ComponentLabV2() {
               </p>
               <CustomerPicker
                 value={selectedCust}
-                onChange={setSelectedCust}
+                manualEntry={manualEntry}
+                onSelectCustomer={setSelectedCust}
+                onManualEntryChange={setManualEntry}
                 customers={mockCustomers}
-                onWalkIn={() => setSelectedCust(null)}
-                onCreateCustomer={(data) => console.log('Create customer:', data)}
               />
               <CustomerSummary
                 customer={selectedCust}
                 isWalkIn={selectedCust === null}
-              />
-            </div>
-
-            <div className="space-y-4 pt-4 border-t border-border/10">
-              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">
-                2. Error State Demo
-              </p>
-              <CustomerPicker
-                onChange={() => {}}
-                customers={mockCustomers}
-                error={pickerError || "Failed to fetch customers from remote server"}
-              />
-              <button
-                onClick={() => setPickerError(pickerError ? undefined : "API Connection timeout")}
-                className="text-[10px] text-primary hover:underline font-bold"
-              >
-                Toggle Error State
-              </button>
-            </div>
-
-            <div className="space-y-4 pt-4 border-t border-border/10">
-              <p className="text-[10px] font-bold text-accent uppercase tracking-wider">
-                3. Loading State Demo
-              </p>
-              <CustomerPicker
-                onChange={() => {}}
-                loading={true}
-                placeholder="Synchronizing database..."
               />
             </div>
           </div>

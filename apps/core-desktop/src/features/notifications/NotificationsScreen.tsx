@@ -1,18 +1,20 @@
 import * as React from 'react';
 import { ConfirmDialog } from '@40labs/ui-components';
-import { mockNotifications } from '../../lib/mockData';
-import type { Notification } from '@40labs/types';
 import { NotificationsListPanel } from './NotificationsListPanel';
 import { NotificationDetailPanel } from './NotificationDetailPanel';
 import { NotificationsOverviewPanel } from './NotificationsOverviewPanel';
+import { useNotificationsStore } from '../../stores/useNotificationsStore';
 
 export const NotificationsScreen: React.FC = () => {
-  const [notifications, setNotifications] = React.useState<Notification[]>(mockNotifications);
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const notifications = useNotificationsStore((s) => s.notifications);
+  const selectedId = useNotificationsStore((s) => s.selectedNotificationId);
+  const setSelectedId = useNotificationsStore((s) => s.setSelectedNotificationId);
+  const markAsRead = useNotificationsStore((s) => s.markAsRead);
+  const archiveNotification = useNotificationsStore((s) => s.archiveNotification);
+
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
 
-  // Filter out archived notifications for active list/overview views
   const activeNotifications = React.useMemo(() => {
     return notifications.filter((n) => n.status !== 'archived');
   }, [notifications]);
@@ -22,54 +24,35 @@ export const NotificationsScreen: React.FC = () => {
     return notifications.find((n) => n.id === selectedId) || null;
   }, [notifications, selectedId]);
 
-  const handleMarkAsRead = React.useCallback((id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, status: 'read' } : n))
-    );
-  }, []);
-
-  const handleArchive = React.useCallback(
-    (id: string) => {
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, status: 'archived' } : n))
-      );
-      if (selectedId === id) {
-        setSelectedId(null);
-      }
-    },
-    [selectedId]
-  );
-
   const handleConfirmDelete = React.useCallback(() => {
     if (deleteTargetId) {
-      handleArchive(deleteTargetId);
+      archiveNotification(deleteTargetId);
+      if (selectedId === deleteTargetId) {
+        setSelectedId(null);
+      }
     }
     setDeleteTargetId(null);
-  }, [deleteTargetId, handleArchive]);
+  }, [deleteTargetId, archiveNotification, selectedId, setSelectedId]);
 
   const handleSelectNotification = React.useCallback(
     (id: string) => {
       setSelectedId(id);
-      handleMarkAsRead(id);
+      markAsRead(id);
     },
-    [handleMarkAsRead]
+    [setSelectedId, markAsRead]
   );
 
   const handleSendReply = React.useCallback((id: string, replyText: string) => {
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const replyFormatted = `\n\n--- You replied (${timestamp}) ---\n${replyText}`;
 
-    setNotifications((prev) =>
-      prev.map((n) =>
+    useNotificationsStore.setState((state) => ({
+      notifications: state.notifications.map((n) =>
         n.id === id
-          ? {
-              ...n,
-              body: (n.body || '') + replyFormatted,
-              status: 'read',
-            }
+          ? { ...n, body: (n.body || '') + replyFormatted, status: 'read' }
           : n
-      )
-    );
+      ),
+    }));
   }, []);
 
   return (
@@ -77,7 +60,7 @@ export const NotificationsScreen: React.FC = () => {
       {/* Page Header */}
       <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-xl font-bold text-text">Notifications Center</h1>
+          <h1 className="text-xl font-bold text-text font-heading">Notifications Center</h1>
           <p className="text-xs text-text-muted">
             Track alerts, government notices, customer inquiries, and business communications.
           </p>
@@ -86,7 +69,7 @@ export const NotificationsScreen: React.FC = () => {
 
       {/* Two-Pane Shell */}
       <div className="flex flex-row gap-6 flex-1 min-h-0 overflow-hidden">
-        {/* Left List Pane (Persistent) */}
+        {/* Left List Pane */}
         <div className="w-1/3 min-w-[320px] h-full overflow-hidden">
           <NotificationsListPanel
             notifications={activeNotifications}
@@ -103,8 +86,8 @@ export const NotificationsScreen: React.FC = () => {
           {selectedNotification ? (
             <NotificationDetailPanel
               notification={selectedNotification}
-              onMarkAsRead={handleMarkAsRead}
-              onArchive={handleArchive}
+              onMarkAsRead={markAsRead}
+              onArchive={archiveNotification}
               onDelete={(id) => setDeleteTargetId(id)}
               onSendReply={handleSendReply}
             />

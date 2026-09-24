@@ -2,9 +2,12 @@
   "name": "40labs-monorepo",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.24.0",
+  "type": "module",
   "scripts": {
     "dev": "turbo run dev",
-    "build": "turbo run build"
+    "build": "turbo run build",
+    "test": "node --test tests/*.test.ts"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

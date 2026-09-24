@@ -11,19 +11,14 @@ import {
   Store,
   Shield,
   History,
-  CheckCircle2,
   AlertTriangle,
   Clock,
   User as UserIcon,
   Activity,
   DollarSign,
 } from 'lucide-react';
-import type { LabOrder, LabSample, LabResult, TestCatalogEntry, Customer, LabOrderStatus, LabSampleStatus } from '@40labs/types';
+import type { LabResult, TestCatalogEntry, Customer } from '@40labs/types';
 import {
-  mockLabOrders,
-  mockLabSamples,
-  mockLabResults,
-  mockTestCatalog,
   mockCustomers,
   mockUsers,
   mockAuditLog,
@@ -31,6 +26,7 @@ import {
 import { LabDashboard } from './LabDashboard';
 import { LabOrdersList } from './LabOrdersList';
 import { LabSamplesList } from './LabSamplesList';
+import { useLabStore } from '../../stores/useLabStore';
 
 export type LabTab =
   | 'dashboard'
@@ -79,38 +75,26 @@ const LAB_SUBNAV_SECTIONS: SubNavSection[] = [
 export const LabScreen: React.FC = () => {
   const [activeLabTab, setActiveLabTab] = React.useState<LabTab>('samples');
 
-  // Shared state across lab module
-  const [orders, setOrders] = React.useState<LabOrder[]>(mockLabOrders);
-  const [samples, setSamples] = React.useState<LabSample[]>(mockLabSamples);
-  const [results, setResults] = React.useState<LabResult[]>(mockLabResults);
-  const [testCatalog, setTestCatalog] = React.useState<TestCatalogEntry[]>(mockTestCatalog);
-  const [customers, setCustomers] = React.useState<Customer[]>(mockCustomers);
+  const orders = useLabStore((s) => s.orders);
+  const samples = useLabStore((s) => s.samples);
+  const results = useLabStore((s) => s.results);
+  const testCatalog = useLabStore((s) => s.catalog);
+  const [customers] = React.useState<Customer[]>(mockCustomers);
 
-  const handleAddOrder = React.useCallback((newOrder: LabOrder, newCustomer?: Customer) => {
-    setOrders((prev) => [newOrder, ...prev]);
-    if (newCustomer) {
-      setCustomers((prev) => [newCustomer, ...prev]);
-    }
+  const handleAddOrder = React.useCallback((newOrder: any, _newCustomer?: Customer) => {
+    useLabStore.getState().createOrder(newOrder.customer_id, newOrder.test_catalog_id);
   }, []);
 
-  const handleUpdateOrderStatus = React.useCallback((orderId: string, newStatus: LabOrderStatus) => {
-    setOrders((prev) =>
-      prev.map((order) =>
-        order.id === orderId
-          ? { ...order, status: newStatus, updated_at: new Date().toISOString() }
-          : order
-      )
-    );
+  const handleUpdateOrderStatus = React.useCallback((orderId: string, newStatus: any) => {
+    useLabStore.setState((state) => ({
+      orders: state.orders.map((o) => (o.id === orderId ? { ...o, status: newStatus, updated_at: new Date().toISOString() } : o)),
+    }));
   }, []);
 
-  const handleUpdateSampleStatus = React.useCallback((sampleId: string, newStatus: LabSampleStatus) => {
-    setSamples((prev) =>
-      prev.map((sample) =>
-        sample.id === sampleId
-          ? { ...sample, status: newStatus, updated_at: new Date().toISOString() }
-          : sample
-      )
-    );
+  const handleUpdateSampleStatus = React.useCallback((sampleId: string, newStatus: any) => {
+    useLabStore.setState((state) => ({
+      samples: state.samples.map((s) => (s.id === sampleId ? { ...s, status: newStatus, updated_at: new Date().toISOString() } : s)),
+    }));
   }, []);
 
   // Columns for Results view

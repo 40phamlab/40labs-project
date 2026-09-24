@@ -17,7 +17,7 @@ import {
   Truck,
   Trash2,
 } from 'lucide-react';
-import { type MedicineWithInventory } from './InventoryScreen';
+import { type MedicineWithInventory } from '@40labs/types';
 
 interface InventoryTableProps {
   data: MedicineWithInventory[];

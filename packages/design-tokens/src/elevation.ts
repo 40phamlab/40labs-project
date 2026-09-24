@@ -1,24 +1,19 @@
-// Source of truth: apps/core-desktop/CONTEXT/02-DESIGN-TOKENS.md → Elevation
-// "Clinical Claymorphism" — tactile depth, not literal skeuomorphism.
-// Dark-mode values are PLACEHOLDERS — see PROGRESS.md item #1.
+// Source of truth for 40Labs Design Tokens: Elevation
+// Tactile solid surface depth for dark desktop interface.
 
 export const elevation = {
   flat: 'none',
-  raised:
-    '0 1px 2px rgba(16,24,32,0.06), 0 4px 10px rgba(16,24,32,0.08), inset 0 1px 0 rgba(255,255,255,0.6)',
-  hover:
-    '0 2px 4px rgba(16,24,32,0.08), 0 6px 16px rgba(16,24,32,0.10), inset 0 1px 0 rgba(255,255,255,0.7)',
-  pressed:
-    'inset 0 2px 4px rgba(16,24,32,0.15), inset 0 -1px 0 rgba(255,255,255,0.4)',
-  inset:
-    'inset 0 1px 3px rgba(16,24,32,0.12), inset 0 -1px 0 rgba(255,255,255,0.5)',
-  surfacePop: '0 4px 0 #252525, 0 8px 16px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.08)',
-  innerSoft: 'inset 0 2px 4px rgba(0,0,0,.4), inset 0 -1px 0 rgba(255,255,255,.04)',
+  raised: '0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)',
+  hover: '0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)',
+  pressed: 'inset 0 2px 4px rgba(0,0,0,0.6)',
+  inset: 'inset 0 1px 3px rgba(0,0,0,0.5)',
+  surfacePop: '0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08)',
+  innerSoft: 'inset 0 2px 4px rgba(0,0,0,0.5)',
 } as const;
 
 export const darkElevation = {
-  skeuOuter: '0 4px 12px rgba(0,0,0,0.45)',
-  skeuInset: 'inset 0 1px 0 rgba(255,255,255,0.12)',
+  skeuOuter: '0 4px 12px rgba(0,0,0,0.5)',
+  skeuInset: 'inset 0 1px 0 rgba(255,255,255,0.08)',
 } as const;
 
 export type ElevationToken = keyof typeof elevation;

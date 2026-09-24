@@ -11,8 +11,7 @@ import {
   DateInput,
 } from '@40labs/ui-components';
 import { mockMedicines } from '../../lib/mockData';
-import { type Medicine, type InventoryItem } from '@40labs/types';
-import { type MedicineWithInventory } from './InventoryScreen';
+import { type Medicine, type InventoryItem, type MedicineWithInventory } from '@40labs/types';
 
 interface NewStockModalProps {
   isOpen: boolean;
