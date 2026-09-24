@@ -21,6 +21,7 @@ import { SalesScreen } from './features/sales/SalesScreen';
 import { CustomersScreen } from './features/customers/CustomersScreen';
 import { PurchasesScreen } from './features/purchases/PurchasesScreen';
 import { LabScreen } from './features/lab/LabScreen';
+import { NotificationsScreen } from './features/notifications/NotificationsScreen';
 import './App.css';
 
 const NAV_ITEMS = [
@@ -54,6 +55,8 @@ export default function App() {
         return <PurchasesScreen />;
       case 'lab':
         return <LabScreen />;
+      case 'notifications':
+        return <NotificationsScreen />;
       default: {
         const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
         return (
