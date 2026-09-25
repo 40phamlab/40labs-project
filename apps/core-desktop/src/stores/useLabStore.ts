@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { LabOrder, LabSample, LabResult, TestCatalogEntry } from '@40labs/types';
-import { labApi } from '../api/labApi';
+import { lab } from '../api';
 
 interface LabState {
   orders: LabOrder[];
@@ -19,10 +19,10 @@ interface LabState {
 }
 
 export const useLabStore = create<LabState>((set) => ({
-  orders: labApi.getOrders(),
-  samples: labApi.getSamples(),
-  results: labApi.getResults(),
-  catalog: labApi.getCatalog(),
+  orders: lab.listOrders(),
+  samples: lab.listSamples(),
+  results: lab.listResults(),
+  catalog: lab.listCatalog(),
   selectedOrderId: null,
   activeTab: 'orders',
 
@@ -30,7 +30,7 @@ export const useLabStore = create<LabState>((set) => ({
   setActiveTab: (activeTab) => set({ activeTab }),
 
   createOrder: (customerId, testCatalogId) => {
-    const newOrder = labApi.createOrder(customerId, testCatalogId);
+    const newOrder = lab.createOrder(customerId, testCatalogId);
 
     set((state) => ({
       orders: [newOrder, ...state.orders],
@@ -41,7 +41,7 @@ export const useLabStore = create<LabState>((set) => ({
   },
 
   collectSample: (orderId, sampleLabel) => {
-    const newSample = labApi.collectSample(orderId, sampleLabel);
+    const newSample = lab.collectSample(orderId, sampleLabel);
     const now = new Date().toISOString();
 
     set((state) => ({
@@ -55,7 +55,7 @@ export const useLabStore = create<LabState>((set) => ({
   },
 
   enterResult: (orderId, value, referenceRange, isOutOfRange) => {
-    const newResult = labApi.enterResult(orderId, value, referenceRange, isOutOfRange);
+    const newResult = lab.enterResult(orderId, value, referenceRange, isOutOfRange);
     const now = new Date().toISOString();
 
     set((state) => ({

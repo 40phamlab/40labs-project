@@ -5,7 +5,17 @@ let usersStore: User[] = [...initialUsers];
 let devicesStore: PairedDevice[] = [...initialPairedDevices];
 
 export const usersApi = {
-  getUsers: (): User[] => [...usersStore],
+  list: (): User[] => [...usersStore],
 
-  getPairedDevices: (): PairedDevice[] => [...devicesStore],
+  get: (id: string): User | null => {
+    return usersStore.find((u) => u.id === id) || null;
+  },
+
+  listPairedDevices: (): PairedDevice[] => [...devicesStore],
+
+  // Backwards compatibility aliases
+  getUsers: (): User[] => usersApi.list(),
+  getPairedDevices: (): PairedDevice[] => usersApi.listPairedDevices(),
 };
+
+export const users = usersApi;

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { TabbedListContainer, OrderSummary } from '@40labs/ui-components';
 import { ShoppingBag } from 'lucide-react';
 import type { PurchaseOrder } from '@40labs/types';
-import { mockPurchaseOrders } from '../../lib/mockData';
+import { purchasesApi } from '../../api';
 
 export interface PurchaseHistoryPanelProps {
   purchaseOrders?: PurchaseOrder[];
@@ -11,11 +11,15 @@ export interface PurchaseHistoryPanelProps {
 }
 
 export const PurchaseHistoryPanel: React.FC<PurchaseHistoryPanelProps> = ({
-  purchaseOrders = mockPurchaseOrders,
+  purchaseOrders: purchaseOrdersProp,
   onSelectOrder,
   className = '',
 }) => {
   const [activeTab, setActiveTab] = React.useState('recently');
+
+  const purchaseOrders = React.useMemo(() => {
+    return purchaseOrdersProp || purchasesApi.list();
+  }, [purchaseOrdersProp]);
 
   const pendingOrders = React.useMemo(() => {
     return purchaseOrders.filter((po) => po.status === 'pending' || po.status === 'draft');

@@ -1,5 +1,4 @@
 import * as React from 'react';
-import { mockCustomers, mockUsers } from '../../lib/mockData';
 import type { MedicineWithInventory } from '@40labs/types';
 import { MedicineSearchPanel } from './MedicineSearchPanel';
 import { SaleCartList } from './SaleCartList';
@@ -9,9 +8,12 @@ import { IconButton, Card } from '@40labs/ui-components';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSalesStore } from '../../stores/useSalesStore';
 import { useInventoryStore } from '../../stores/useInventoryStore';
+import { useCustomersStore } from '../../stores/useCustomersStore';
+import { usersApi } from '../../api';
 
 export const SalesScreen: React.FC = () => {
   const inventoryItems = useInventoryStore((s) => s.items);
+  const customers = useCustomersStore((s) => s.customers);
 
   const cart = useSalesStore((s) => s.cart);
   const selectedCustomer = useSalesStore((s) => s.selectedCustomer);
@@ -36,7 +38,8 @@ export const SalesScreen: React.FC = () => {
   const [saveCustomer, setSaveCustomer] = React.useState(true);
   const [confirmedSale, setConfirmedSale] = React.useState<ConfirmedSaleData | null>(null);
 
-  const dispensedUser = mockUsers[0];
+  const users = usersApi.list();
+  const dispensedUser = users[0] || { full_name: 'Pharmacy Staff' };
 
   const subtotal = React.useMemo(() => {
     return cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
@@ -114,7 +117,7 @@ export const SalesScreen: React.FC = () => {
           }`}
         >
           <CustomerReportPanel
-            customers={mockCustomers}
+            customers={customers}
             selectedCustomer={selectedCustomer}
             onSelectCustomer={(c) => {
               setSelectedCustomer(c);

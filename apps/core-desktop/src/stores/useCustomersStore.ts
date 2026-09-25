@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Customer } from '@40labs/types';
-import { customersApi, AddCustomerPayload } from '../api/customersApi';
+import { customers, AddCustomerPayload } from '../api';
 
 export type { AddCustomerPayload };
 
@@ -19,7 +19,7 @@ interface CustomersState {
 }
 
 export const useCustomersStore = create<CustomersState>((set) => ({
-  customers: customersApi.getCustomers(),
+  customers: customers.list(),
   searchTerm: '',
   selectedCustomerId: null,
   isAddModalOpen: false,
@@ -29,7 +29,7 @@ export const useCustomersStore = create<CustomersState>((set) => ({
   setAddModalOpen: (isAddModalOpen) => set({ isAddModalOpen }),
 
   addCustomer: (payload) => {
-    const newCustomer = customersApi.addCustomer(payload);
+    const newCustomer = customers.create(payload);
 
     set((state) => ({
       customers: [newCustomer, ...state.customers],
@@ -41,7 +41,7 @@ export const useCustomersStore = create<CustomersState>((set) => ({
   },
 
   updateCustomerNotes: (id, notes) => {
-    customersApi.updateCustomerNotes(id, notes);
+    customers.updateCustomerNotes(id, notes);
     set((state) => ({
       customers: state.customers.map((c) =>
         c.id === id ? { ...c, notes, updated_at: new Date().toISOString() } : c

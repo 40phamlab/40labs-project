@@ -2,21 +2,7 @@ import * as React from 'react';
 import { SearchableListPanel, IconButton } from '@40labs/ui-components';
 import { ChevronRight } from 'lucide-react';
 import { SupplierListItem, ExtendedSupplier } from './SupplierListItem';
-import { mockSuppliers } from '../../lib/mockData';
-
-const defaultMockExtendedSuppliers: ExtendedSupplier[] = mockSuppliers.map((s) => ({
-  ...s,
-  name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
-  region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
-  business: {
-    name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
-    address: {
-      region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
-      district: 'Kinondoni',
-      place: 'Kijitonyama',
-    },
-  },
-}));
+import { purchasesApi } from '../../api';
 
 export interface SupplierSearchPanelProps {
   suppliers?: ExtendedSupplier[];
@@ -27,13 +13,31 @@ export interface SupplierSearchPanelProps {
 }
 
 export const SupplierSearchPanel: React.FC<SupplierSearchPanelProps> = ({
-  suppliers = defaultMockExtendedSuppliers,
+  suppliers: suppliersProp,
   selectedSupplierId,
   onSelectSupplier,
   onToggleCollapse,
   className = '',
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
+
+  const suppliers = React.useMemo(() => {
+    if (suppliersProp) return suppliersProp;
+    const baseSuppliers = purchasesApi.listSuppliers();
+    return baseSuppliers.map((s) => ({
+      ...s,
+      name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
+      region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
+      business: {
+        name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
+        address: {
+          region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
+          district: 'Kinondoni',
+          place: 'Kijitonyama',
+        },
+      },
+    })) as ExtendedSupplier[];
+  }, [suppliersProp]);
 
   const filteredSuppliers = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

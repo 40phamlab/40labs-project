@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { MedicineWithInventory } from '@40labs/types';
-import { inventoryApi, AddStockPayload } from '../api/inventoryApi';
+import { inventory, AddStockPayload } from '../api';
 
 export type { AddStockPayload };
 
@@ -25,7 +25,7 @@ interface InventoryState {
 }
 
 export const useInventoryStore = create<InventoryState>((set) => ({
-  items: inventoryApi.getMedicinesWithInventory(),
+  items: inventory.list(),
   searchTerm: '',
   filterExpired: false,
   isModalOpen: false,
@@ -39,7 +39,7 @@ export const useInventoryStore = create<InventoryState>((set) => ({
   setSearchPanelOpen: (searchPanelOpen) => set({ searchPanelOpen }),
 
   addItem: (payload) => {
-    const newItem = inventoryApi.addStock(payload);
+    const newItem = inventory.create(payload);
     set((state) => ({
       items: [newItem, ...state.items],
       isModalOpen: false,
@@ -47,14 +47,14 @@ export const useInventoryStore = create<InventoryState>((set) => ({
   },
 
   deleteItem: (id) => {
-    inventoryApi.deleteItem(id);
+    inventory.delete(id);
     set((state) => ({
       items: state.items.filter((item) => item.id !== id),
     }));
   },
 
   updateQuantity: (id, delta) => {
-    inventoryApi.updateQuantity(id, delta);
+    inventory.updateQuantity(id, delta);
     set((state) => ({
       items: state.items.map((item) => {
         if (item.id !== id) return item;

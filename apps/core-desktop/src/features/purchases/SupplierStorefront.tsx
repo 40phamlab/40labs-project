@@ -14,7 +14,7 @@ import {
 import { ShoppingBag, CheckCircle2, Tag, Lock, ArrowLeft } from 'lucide-react';
 import type { PurchaseOrder } from '@40labs/types';
 import { ExtendedSupplier } from './SupplierListItem';
-import { WORKSPACE_ID, BRANCH_ID, mockPurchaseOrders, mockSuppliers } from '../../lib/mockData';
+import { purchasesApi, pharmaciesApi } from '../../api';
 
 export interface StorefrontProduct {
   id: string;
@@ -45,23 +45,6 @@ export interface SupplierStorefrontProps {
   onClose?: () => void;
   className?: string;
 }
-
-const mockExtendedSuppliers: ExtendedSupplier[] = mockSuppliers.map((s) => ({
-  ...s,
-  name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
-  region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
-  phone: '+255 754 889 000',
-  email: 'info@kibopharma.co.tz',
-  whatsapp: '+255 754 889 000',
-  business: {
-    name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
-    address: {
-      region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
-      district: 'Kinondoni',
-      place: 'Kijitonyama',
-    },
-  },
-}));
 
 const defaultProducts: StorefrontProduct[] = [
   {
@@ -102,21 +85,44 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   supplierId,
   supplier: supplierProp,
   products = defaultProducts,
-  purchaseOrders = mockPurchaseOrders,
+  purchaseOrders: purchaseOrdersProp,
   onViewProfile,
   onOrderCreated,
   onBack,
   onClose,
   className = '',
 }) => {
+  const purchaseOrders = React.useMemo(() => {
+    return purchaseOrdersProp || purchasesApi.list();
+  }, [purchaseOrdersProp]);
+
   const supplier = React.useMemo(() => {
     if (supplierProp) return supplierProp;
+
+    const baseSuppliers = purchasesApi.listSuppliers();
+    const extendedSuppliers: ExtendedSupplier[] = baseSuppliers.map((s) => ({
+      ...s,
+      name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
+      region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
+      phone: '+255 754 889 000',
+      email: 'info@kibopharma.co.tz',
+      whatsapp: '+255 754 889 000',
+      business: {
+        name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
+        address: {
+          region: s.id === 'supplier_001' ? 'Dar es Salaam' : 'Arusha',
+          district: 'Kinondoni',
+          place: 'Kijitonyama',
+        },
+      },
+    }));
+
     if (supplierId) {
       return (
-        mockExtendedSuppliers.find((s) => s.id === supplierId) || {
+        extendedSuppliers.find((s) => s.id === supplierId) || {
           id: supplierId,
-          workspace_id: WORKSPACE_ID,
-          branch_id: BRANCH_ID,
+          workspace_id: pharmaciesApi.getBusiness().id || 'ws_dev_001',
+          branch_id: 'br_dev_001',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
           business_id: 'AFYA-9999',
@@ -130,7 +136,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
         } as ExtendedSupplier
       );
     }
-    return mockExtendedSuppliers[0];
+    return extendedSuppliers[0];
   }, [supplierProp, supplierId]);
 
   const [activeTab, setActiveTab] = React.useState('products');
@@ -146,8 +152,6 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   const [isPinVerified, setIsPinVerified] = React.useState(false);
   const [isOrderConfirmed, setIsOrderConfirmed] = React.useState(false);
 
-  // TODO: [reason: threshold not yet decided] [phase: pre-launch]
-  // PurchaseOrder approval above an owner-set threshold must be PIN-gated. Read threshold from config.
   const OWNER_APPROVAL_THRESHOLD = 500000; // TZS threshold
 
   const handleBack = React.useCallback(() => {
@@ -155,10 +159,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     else if (onClose) onClose();
   }, [onBack, onClose]);
 
-  // Query GET /suppliers/followed on load to set follow state
   React.useEffect(() => {
-    // Phase 4A sync endpoint call mock check
-    // GET /suppliers/followed
     setIsFollowed(false);
   }, [supplier.id]);
 
@@ -168,19 +169,16 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
     try {
       if (nextState) {
-        // POST /suppliers/:id/follow
         console.log(`[SupplierStorefront] POST /suppliers/${supplier.id}/follow`);
       } else {
-        // DELETE /suppliers/:id/follow
         console.log(`[SupplierStorefront] DELETE /suppliers/${supplier.id}/follow`);
       }
     } catch (error) {
       console.error('Failed to toggle follow status:', error);
-      setIsFollowed(!nextState); // Rollback on error
+      setIsFollowed(!nextState);
     }
   }, [isFollowed, supplier.id]);
 
-  // Product Add to Local Cart
   const handleAddToCart = React.useCallback((productId: string) => {
     const targetProduct = products.find((p) => p.id === productId);
     if (!targetProduct) return;
@@ -222,7 +220,6 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     setCart([]);
   }, []);
 
-  // Compute Cart Financials
   const subtotal = React.useMemo(() => {
     return cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
   }, [cart]);
@@ -230,24 +227,18 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   const grandTotal = subtotal;
 
   const createDraftOrder = React.useCallback(() => {
-    // Offline draft creation via SQLite without requiring immediate network connectivity
-    const newDraftPO: PurchaseOrder = {
-      id: `po_draft_${Date.now()}`,
-      workspace_id: supplier.workspace_id || WORKSPACE_ID,
-      branch_id: supplier.branch_id || BRANCH_ID,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      supplier_id: supplier.id,
-      status: 'draft',
-      lines: cart.map((item) => ({
+    const newDraftPO: PurchaseOrder = purchasesApi.create(
+      supplier.id,
+      cart.map((item) => ({
         medicine_id: item.id,
         quantity: item.quantity,
         unit_cost: item.unitPrice,
-      })),
-      total_cost: grandTotal,
-      approved_by_user_id: isPinVerified ? 'user_001_sudo' : null,
-      submitted_at: null, // null while draft/offline-queued
-    };
+      }))
+    );
+
+    if (isPinVerified) {
+      purchasesApi.update(newDraftPO.id, { approved_by_user_id: 'user_001_sudo' });
+    }
 
     console.log('[SupplierStorefront] Created draft PurchaseOrder:', newDraftPO);
     if (onOrderCreated) {
@@ -258,7 +249,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     setIsOrderConfirmed(true);
     setIsPinModalOpen(false);
     setPinCode('');
-  }, [cart, grandTotal, isPinVerified, supplier, onOrderCreated]);
+  }, [cart, isPinVerified, supplier, onOrderCreated]);
 
   const handleConfirmOrder = React.useCallback(() => {
     if (cart.length === 0) return;
@@ -283,7 +274,6 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     }
   }, [pinCode, createDraftOrder]);
 
-  // Deals Tab — Data Sourcing (READ-ONLY derived view from GET /purchase-orders?supplier_id={id})
   const supplierDeals = React.useMemo(() => {
     const supplierPOs = purchaseOrders.filter((po) => po.supplier_id === supplier.id);
 
@@ -324,7 +314,6 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     return dealEntries;
   }, [purchaseOrders, supplier.id, products]);
 
-  // Reorder handler for Deals tab
   const handleAddDealToCart = React.useCallback((medicineId: string, unitPrice: number, productName: string) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === medicineId);
@@ -348,11 +337,9 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
       ];
     });
 
-    // Automatically switch active tab to 'cart'
     setActiveTab('cart');
   }, [products]);
 
-  // WhatsApp Communication Handler
   const handleCommunicate = React.useCallback((productName: string) => {
     const whatsappNumber = supplier.whatsapp || supplier.phone;
     if (whatsappNumber) {
@@ -362,12 +349,8 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     }
   }, [supplier]);
 
-  // More Info Fallback Handler for Deals
-  const handleMoreInfo = React.useCallback((_poId: string, _medicineId: string) => {
-    // TODO: [reason: no PO detail view built yet] [phase: post-4B]
-  }, []);
+  const handleMoreInfo = React.useCallback((_poId: string, _medicineId: string) => {}, []);
 
-  // Supplier info & verification flags
   const supplierName = supplier.business?.name || supplier.name || 'Supplier Storefront';
   const mobile = supplier.phone || '+255 700 000 000';
   const whatsapp = supplier.whatsapp;

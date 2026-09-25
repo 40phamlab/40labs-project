@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Notification } from '@40labs/types';
-import { notificationsApi } from '../api/notificationsApi';
+import { notifications } from '../api';
 
 interface NotificationsState {
   notifications: Notification[];
@@ -14,7 +14,7 @@ interface NotificationsState {
 }
 
 export const useNotificationsStore = create<NotificationsState>((set) => ({
-  notifications: notificationsApi.getNotifications(),
+  notifications: notifications.list(),
   selectedNotificationId: null,
   activeCategory: 'all',
 
@@ -22,7 +22,7 @@ export const useNotificationsStore = create<NotificationsState>((set) => ({
   setActiveCategory: (activeCategory) => set({ activeCategory }),
 
   markAsRead: (id) => {
-    notificationsApi.markAsRead(id);
+    notifications.markAsRead(id);
     set((state) => ({
       notifications: state.notifications.map((n) =>
         n.id === id ? { ...n, status: 'read', updated_at: new Date().toISOString() } : n
@@ -31,7 +31,7 @@ export const useNotificationsStore = create<NotificationsState>((set) => ({
   },
 
   archiveNotification: (id) => {
-    notificationsApi.archiveNotification(id);
+    notifications.archive(id);
     set((state) => ({
       notifications: state.notifications.map((n) =>
         n.id === id ? { ...n, status: 'archived', updated_at: new Date().toISOString() } : n

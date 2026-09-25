@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Modal, Button, Select, CustomerPicker } from '@40labs/ui-components';
 import type { Customer, TestCatalogEntry, LabOrder } from '@40labs/types';
-import { WORKSPACE_ID, BRANCH_ID } from '../../lib/mockData';
+import { pharmaciesApi } from '../../api';
 
 export interface NewLabOrderModalProps {
   isOpen: boolean;
@@ -50,6 +50,10 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
 
     let customerId = selectedCustomer?.id;
     let newCustomer: Customer | undefined;
+
+    const business = pharmaciesApi.getBusiness();
+    const WORKSPACE_ID = business.id || 'ws_dev_001';
+    const BRANCH_ID = 'br_dev_001';
 
     if (!customerId) {
       if (!manualEntry.full_name.trim()) {

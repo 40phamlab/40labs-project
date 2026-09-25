@@ -18,15 +18,12 @@ import {
   DollarSign,
 } from 'lucide-react';
 import type { LabResult, TestCatalogEntry, Customer } from '@40labs/types';
-import {
-  mockCustomers,
-  mockUsers,
-  mockAuditLog,
-} from '../../lib/mockData';
+import { customersApi, usersApi, auditApi } from '../../api';
 import { LabDashboard } from './LabDashboard';
 import { LabOrdersList } from './LabOrdersList';
 import { LabSamplesList } from './LabSamplesList';
 import { useLabStore } from '../../stores/useLabStore';
+import { useCustomersStore } from '../../stores/useCustomersStore';
 
 export type LabTab =
   | 'dashboard'
@@ -79,7 +76,10 @@ export const LabScreen: React.FC = () => {
   const samples = useLabStore((s) => s.samples);
   const results = useLabStore((s) => s.results);
   const testCatalog = useLabStore((s) => s.catalog);
-  const [customers] = React.useState<Customer[]>(mockCustomers);
+  const customers = useCustomersStore((s) => s.customers);
+
+  const users = usersApi.list();
+  const auditLogs = auditApi.list();
 
   const handleAddOrder = React.useCallback((newOrder: any, _newCustomer?: Customer) => {
     useLabStore.getState().createOrder(newOrder.customer_id, newOrder.test_catalog_id);
@@ -356,7 +356,7 @@ export const LabScreen: React.FC = () => {
             </div>
             <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3 w-full">
               <div className="flex flex-col gap-2">
-                {mockUsers.map((user) => (
+                {users.map((user) => (
                   <div key={user.id} className="flex justify-between items-center p-3 bg-panel rounded-card border border-border/40 text-xs">
                     <div className="flex items-center gap-3">
                       <UserIcon size={16} className="text-primary" />
@@ -384,7 +384,7 @@ export const LabScreen: React.FC = () => {
             </div>
             <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3 w-full">
               <div className="flex flex-col gap-2 text-xs">
-                {mockAuditLog.map((log) => (
+                {auditLogs.map((log) => (
                   <div key={log.id} className="p-3 bg-panel rounded-card border border-border/40 flex justify-between items-center">
                     <div>
                       <p className="font-bold text-text">{log.action}</p>

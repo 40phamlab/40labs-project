@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Customer, MedicineWithInventory, Sale, SaleLine } from '@40labs/types';
-import { salesApi } from '../api/salesApi';
+import { sales } from '../api';
 
 export interface CartItem {
   inventoryItem: MedicineWithInventory;
@@ -33,7 +33,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   selectedCustomer: null,
   paymentMethod: 'cash',
   discountAmount: 0,
-  completedSales: salesApi.getSales(),
+  completedSales: sales.list(),
 
   addToCart: (item) => set((state) => {
     const existingIndex = state.cart.findIndex(
@@ -79,7 +79,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       is_prescription_dispense: item.inventoryItem.medicine.requires_prescription,
     }));
 
-    const newSale = salesApi.createSale({
+    const newSale = sales.create({
       customerId: selectedCustomer ? selectedCustomer.id : null,
       lines,
       paymentMethod,

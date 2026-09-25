@@ -8,12 +8,24 @@ export interface AddCustomerPayload {
   notes?: string;
 }
 
+export interface UpdateCustomerPayload {
+  fullName?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+  outstandingBalance?: number;
+}
+
 let customersStore: Customer[] = [...initialCustomers];
 
 export const customersApi = {
-  getCustomers: (): Customer[] => [...customersStore],
+  list: (): Customer[] => [...customersStore],
 
-  addCustomer: (payload: AddCustomerPayload): Customer => {
+  get: (id: string): Customer | null => {
+    return customersStore.find((c) => c.id === id) || null;
+  },
+
+  create: (payload: AddCustomerPayload): Customer => {
     const now = new Date().toISOString();
     const newCustomer: Customer = {
       id: `cust_${Date.now()}`,
@@ -33,17 +45,42 @@ export const customersApi = {
     return newCustomer;
   },
 
-  updateCustomerNotes: (id: string, notes: string): Customer | null => {
+  update: (id: string, updates: UpdateCustomerPayload): Customer | null => {
     const index = customersStore.findIndex((c) => c.id === id);
     if (index === -1) return null;
 
+    const existing = customersStore[index];
     const updated: Customer = {
-      ...customersStore[index],
-      notes,
+      ...existing,
+      full_name: updates.fullName ?? existing.full_name,
+      phone: updates.phone ?? existing.phone,
+      email: updates.email !== undefined ? updates.email : existing.email,
+      notes: updates.notes !== undefined ? updates.notes : existing.notes,
+      outstanding_balance: updates.outstandingBalance ?? existing.outstanding_balance,
       updated_at: new Date().toISOString(),
     };
 
     customersStore[index] = updated;
     return updated;
   },
+
+  updateCustomerNotes: (id: string, notes: string): Customer | null => {
+    return customersApi.update(id, { notes });
+  },
+
+  delete: (id: string): boolean => {
+    const initialLen = customersStore.length;
+    customersStore = customersStore.filter((c) => c.id !== id);
+    return customersStore.length < initialLen;
+  },
+
+  archive: (id: string): boolean => {
+    return customersApi.delete(id);
+  },
+
+  // Backwards compatibility aliases
+  getCustomers: (): Customer[] => customersApi.list(),
+  addCustomer: (payload: AddCustomerPayload): Customer => customersApi.create(payload),
 };
+
+export const customers = customersApi;

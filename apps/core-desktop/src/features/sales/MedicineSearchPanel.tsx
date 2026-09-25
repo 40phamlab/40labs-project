@@ -2,7 +2,7 @@ import * as React from 'react';
 import { ChevronRight, RefreshCw } from 'lucide-react';
 import { SearchInput, IconButton, ProductRow } from '@40labs/ui-components';
 import { MedicineWithInventory } from '@40labs/types';
-import { mockSales } from '../../lib/mockData';
+import { salesApi } from '../../api';
 
 export interface MedicineSearchPanelProps {
   medicines: MedicineWithInventory[];
@@ -18,11 +18,12 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
   const [query, setQuery] = React.useState('');
   const [refreshTrigger, setRefreshTrigger] = React.useState(0);
 
-  // Compute frequency ranking from mockSales
+  // Compute frequency ranking from salesApi
   const rankedMedicines = React.useMemo(() => {
     const frequencyMap: Record<string, number> = {};
+    const salesList = salesApi.list();
 
-    mockSales.forEach((sale) => {
+    salesList.forEach((sale) => {
       if (sale.lines) {
         sale.lines.forEach((line) => {
           if (line.medicine_id) {

@@ -8,15 +8,23 @@ export interface CreateSalePayload {
   discountAmount: number;
 }
 
+export interface UpdateSalePayload {
+  paymentMethod?: 'cash' | 'mobile_money' | 'card' | 'credit';
+  discountAmount?: number;
+  syncedAt?: string | null;
+}
+
 let salesStore: Sale[] = [...initialSales];
 let fiscalReceiptsStore: FiscalReceipt[] = [...initialFiscalReceipts];
 
 export const salesApi = {
-  getSales: (): Sale[] => [...salesStore],
+  list: (): Sale[] => [...salesStore],
 
-  getFiscalReceipts: (): FiscalReceipt[] => [...fiscalReceiptsStore],
+  get: (id: string): Sale | null => {
+    return salesStore.find((s) => s.id === id) || null;
+  },
 
-  createSale: (payload: CreateSalePayload): Sale => {
+  create: (payload: CreateSalePayload): Sale => {
     const now = new Date().toISOString();
     const saleId = `sale_${Date.now()}`;
 
@@ -48,4 +56,36 @@ export const salesApi = {
     salesStore = [newSale, ...salesStore];
     return newSale;
   },
+
+  update: (id: string, updates: UpdateSalePayload): Sale | null => {
+    const index = salesStore.findIndex((s) => s.id === id);
+    if (index === -1) return null;
+
+    const existing = salesStore[index];
+    const updatedSale: Sale = {
+      ...existing,
+      payment_method: updates.paymentMethod ?? existing.payment_method,
+      discount_amount: updates.discountAmount ?? existing.discount_amount,
+      synced_at: updates.syncedAt !== undefined ? updates.syncedAt : existing.synced_at,
+      updated_at: new Date().toISOString(),
+    };
+
+    salesStore[index] = updatedSale;
+    return updatedSale;
+  },
+
+  delete: (id: string): boolean => {
+    const initialLen = salesStore.length;
+    salesStore = salesStore.filter((s) => s.id !== id);
+    return salesStore.length < initialLen;
+  },
+
+  listFiscalReceipts: (): FiscalReceipt[] => [...fiscalReceiptsStore],
+
+  // Backwards compatibility aliases
+  getSales: (): Sale[] => salesApi.list(),
+  getFiscalReceipts: (): FiscalReceipt[] => salesApi.listFiscalReceipts(),
+  createSale: (payload: CreateSalePayload): Sale => salesApi.create(payload),
 };
+
+export const sales = salesApi;

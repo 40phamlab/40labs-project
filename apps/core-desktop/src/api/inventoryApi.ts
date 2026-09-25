@@ -14,7 +14,16 @@ export interface AddStockPayload {
   lowStockThreshold: number;
 }
 
-// Dev state for inventory API
+export interface UpdateStockPayload {
+  batchNumber?: string;
+  expiryDate?: string;
+  buyPrice?: number;
+  sellPrice?: number;
+  quantity?: number;
+  lowStockThreshold?: number;
+}
+
+// In-memory devData store hidden behind boundary
 let medicinesStore: Medicine[] = [...initialMedicines];
 let inventoryStore: InventoryItem[] = [...initialInventoryItems];
 
@@ -27,15 +36,31 @@ function combineMedicineWithInventory(items: InventoryItem[], medicines: Medicin
 }
 
 export const inventoryApi = {
-  getMedicines: (): Medicine[] => [...medicinesStore],
-
-  getInventoryItems: (): InventoryItem[] => [...inventoryStore],
-
-  getMedicinesWithInventory: (): MedicineWithInventory[] => {
+  list: (): MedicineWithInventory[] => {
     return combineMedicineWithInventory(inventoryStore, medicinesStore);
   },
 
-  addStock: (payload: AddStockPayload): MedicineWithInventory => {
+  listMedicines: (): Medicine[] => [...medicinesStore],
+
+  listInventoryItems: (): InventoryItem[] => [...inventoryStore],
+
+  get: (id: string): MedicineWithInventory | null => {
+    const item = inventoryStore.find((i) => i.id === id);
+    if (!item) return null;
+    const medicine = medicinesStore.find((m) => m.id === item.medicine_id);
+    if (!medicine) return null;
+    return { ...item, medicine };
+  },
+
+  getMedicine: (id: string): Medicine | null => {
+    return medicinesStore.find((m) => m.id === id) || null;
+  },
+
+  getInventoryItem: (id: string): InventoryItem | null => {
+    return inventoryStore.find((i) => i.id === id) || null;
+  },
+
+  create: (payload: AddStockPayload): MedicineWithInventory => {
     const medicineId = `med_dev_${Date.now()}`;
     const inventoryId = `inv_dev_${Date.now()}`;
     const now = new Date().toISOString();
@@ -79,8 +104,27 @@ export const inventoryApi = {
     };
   },
 
-  deleteItem: (id: string): void => {
-    inventoryStore = inventoryStore.filter((item) => item.id !== id);
+  update: (id: string, updates: UpdateStockPayload): MedicineWithInventory | null => {
+    const index = inventoryStore.findIndex((i) => i.id === id);
+    if (index === -1) return null;
+
+    const existing = inventoryStore[index];
+    const updatedItem: InventoryItem = {
+      ...existing,
+      batch_number: updates.batchNumber ?? existing.batch_number,
+      expiry_date: updates.expiryDate ?? existing.expiry_date,
+      buy_price: updates.buyPrice ?? existing.buy_price,
+      sell_price: updates.sellPrice ?? existing.sell_price,
+      quantity: updates.quantity ?? existing.quantity,
+      low_stock_threshold: updates.lowStockThreshold ?? existing.low_stock_threshold,
+      updated_at: new Date().toISOString(),
+    };
+
+    inventoryStore[index] = updatedItem;
+    const medicine = medicinesStore.find((m) => m.id === updatedItem.medicine_id);
+    if (!medicine) return null;
+
+    return { ...updatedItem, medicine };
   },
 
   updateQuantity: (id: string, delta: number): InventoryItem | null => {
@@ -98,4 +142,21 @@ export const inventoryApi = {
     inventoryStore[index] = updatedItem;
     return updatedItem;
   },
+
+  delete: (id: string): boolean => {
+    const initialLen = inventoryStore.length;
+    inventoryStore = inventoryStore.filter((item) => item.id !== id);
+    return inventoryStore.length < initialLen;
+  },
+
+  // Backwards compatibility aliases
+  getMedicines: (): Medicine[] => inventoryApi.listMedicines(),
+  getInventoryItems: (): InventoryItem[] => inventoryApi.listInventoryItems(),
+  getMedicinesWithInventory: (): MedicineWithInventory[] => inventoryApi.list(),
+  addStock: (payload: AddStockPayload): MedicineWithInventory => inventoryApi.create(payload),
+  deleteItem: (id: string): void => {
+    inventoryApi.delete(id);
+  },
 };
+
+export const inventory = inventoryApi;

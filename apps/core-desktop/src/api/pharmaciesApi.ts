@@ -8,7 +8,17 @@ let branchesStore: Branch[] = [...initialBranches];
 export const pharmaciesApi = {
   getBusiness: (): Business => ({ ...businessStore }),
 
-  getAllBusinesses: (): Business[] => [...businessesStore],
+  listBusinesses: (): Business[] => [...businessesStore],
 
-  getBranches: (): Branch[] => [...branchesStore],
+  listBranches: (): Branch[] => [...branchesStore],
+
+  getBranch: (id: string): Branch | null => {
+    return branchesStore.find((b) => b.id === id) || null;
+  },
+
+  // Backwards compatibility aliases
+  getAllBusinesses: (): Business[] => pharmaciesApi.listBusinesses(),
+  getBranches: (): Branch[] => pharmaciesApi.listBranches(),
 };
+
+export const pharmacies = pharmaciesApi;

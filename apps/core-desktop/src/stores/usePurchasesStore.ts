@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { PurchaseOrder, Supplier } from '@40labs/types';
-import { purchasesApi } from '../api/purchasesApi';
+import { purchases } from '../api';
 
 interface PurchasesState {
   purchaseOrders: PurchaseOrder[];
@@ -16,14 +16,14 @@ interface PurchasesState {
 }
 
 export const usePurchasesStore = create<PurchasesState>((set) => ({
-  purchaseOrders: purchasesApi.getPurchaseOrders(),
-  suppliers: purchasesApi.getSuppliers(),
+  purchaseOrders: purchases.list(),
+  suppliers: purchases.listSuppliers(),
   selectedPOId: null,
 
   setSelectedPOId: (selectedPOId) => set({ selectedPOId }),
 
   createPurchaseOrder: (supplierId, lines) => {
-    const newPO = purchasesApi.createPurchaseOrder(supplierId, lines);
+    const newPO = purchases.create(supplierId, lines);
 
     set((state) => ({
       purchaseOrders: [newPO, ...state.purchaseOrders],
@@ -34,7 +34,7 @@ export const usePurchasesStore = create<PurchasesState>((set) => ({
   },
 
   approvePurchaseOrder: (poId) => {
-    purchasesApi.approvePurchaseOrder(poId);
+    purchases.approve(poId);
     const now = new Date().toISOString();
 
     set((state) => ({

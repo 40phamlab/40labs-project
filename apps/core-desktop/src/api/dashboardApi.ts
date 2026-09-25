@@ -5,3 +5,5 @@ export type { DashboardSummary };
 export const dashboardApi = {
   getSummary: (): DashboardSummary => getInitialDashboardSummary(),
 };
+
+export const dashboard = dashboardApi;

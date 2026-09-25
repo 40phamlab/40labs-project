@@ -4,5 +4,14 @@ import { initialAuditLog } from '../devData';
 let auditLogStore: AuditLogEntry[] = [...initialAuditLog];
 
 export const auditApi = {
-  getAuditLog: (): AuditLogEntry[] => [...auditLogStore],
+  list: (): AuditLogEntry[] => [...auditLogStore],
+
+  get: (id: string): AuditLogEntry | null => {
+    return auditLogStore.find((a) => a.id === id) || null;
+  },
+
+  // Backwards compatibility aliases
+  getAuditLog: (): AuditLogEntry[] => auditApi.list(),
 };
+
+export const audit = auditApi;

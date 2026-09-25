@@ -10,7 +10,7 @@ import {
   CurrencyInput,
   DateInput,
 } from '@40labs/ui-components';
-import { mockMedicines } from '../../lib/mockData';
+import { inventoryApi } from '../../api';
 import { type Medicine, type InventoryItem, type MedicineWithInventory } from '@40labs/types';
 
 interface NewStockModalProps {
@@ -19,20 +19,30 @@ interface NewStockModalProps {
   onAdd: (newItem: MedicineWithInventory) => void;
 }
 
-const CATEGORIES = Array.from(new Set(mockMedicines.map((m) => m.category)));
 const UNITS = ['pack', 'tablet', 'bottle', 'sachet'];
 
 export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, onAdd }) => {
+  const categories = React.useMemo(() => {
+    const medicines = inventoryApi.listMedicines();
+    return Array.from(new Set(medicines.map((m) => m.category)));
+  }, [isOpen]);
+
   const [formData, setFormData] = React.useState({
     name: '',
-    category: CATEGORIES[0] || '',
+    category: categories[0] || 'Analgesics',
     quantity: '1',
     buy_price: '0',
     sell_price: '0',
-    unit: UNITS[0] || '',
+    unit: UNITS[0] || 'pack',
     batch: 'BATCH-' + Math.floor(Math.random() * 1000),
     expiry_date: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
   });
+
+  React.useEffect(() => {
+    if (categories.length > 0 && !categories.includes(formData.category)) {
+      setFormData((prev) => ({ ...prev, category: categories[0] }));
+    }
+  }, [categories]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -45,7 +55,6 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
     e.preventDefault();
     if (!isFormValid) return;
 
-    // Placeholder session context (matches mockData.ts)
     const WORKSPACE_ID = 'ws_dev_001';
     const BRANCH_ID = 'br_dev_001';
     const now = new Date().toISOString();
@@ -86,16 +95,15 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
       medicine: newMedicine,
     });
 
-    // Reset form and close
     setFormData({
       name: '',
-      category: CATEGORIES[0] || '',
-      quantity: '',
-      buy_price: '',
-      sell_price: '',
-      unit: UNITS[0] || '',
-      batch: '',
-      expiry_date: '',
+      category: categories[0] || 'Analgesics',
+      quantity: '1',
+      buy_price: '0',
+      sell_price: '0',
+      unit: UNITS[0] || 'pack',
+      batch: 'BATCH-' + Math.floor(Math.random() * 1000),
+      expiry_date: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
     });
     onClose();
   };
@@ -134,7 +142,7 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
           <Field>
             <FieldLabel required>Category</FieldLabel>
             <Select name="category" value={formData.category} onChange={handleChange}>
-              {CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
@@ -143,7 +151,7 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
           </Field>
 
           <Field>
-            <FieldLabel required>Quntity</FieldLabel>
+            <FieldLabel required>Quantity</FieldLabel>
             <NumberInput
               name="quantity"
               value={formData.quantity}
@@ -189,7 +197,7 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
           </Field>
 
           <Field>
-            <FieldLabel required>batch</FieldLabel>
+            <FieldLabel required>Batch</FieldLabel>
             <Input
               name="batch"
               value={formData.batch}
@@ -212,4 +220,3 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
     </Modal>
   );
 };
-
