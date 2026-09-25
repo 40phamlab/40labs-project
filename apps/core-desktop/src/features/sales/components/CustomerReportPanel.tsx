@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { Card, Button, Checkbox, IconButton } from '@40labs/ui-components';
-import { CustomerPicker } from '../customers/CustomerPicker';
+import { CustomerPicker } from '../../customers/components/CustomerPicker';
 import { Customer } from '@40labs/types';
 import { ChevronDown } from 'lucide-react';
-import { pharmaciesApi } from '../../api';
+import { pharmaciesApi } from '../../../api';
 
 export interface ConfirmedSaleData {
   customerLabel: string;

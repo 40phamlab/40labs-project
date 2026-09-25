@@ -48,35 +48,39 @@ export function AppSidebarNav({
   pinnedBottomItems = [],
   userProfile,
   tenantBranding,
-  collapseLabel = 'Collapse',
-  expandLabel = 'Expand',
+  collapseLabel = 'Collapse sidebar',
+  expandLabel = 'Expand sidebar',
 }: AppSidebarNavProps) {
-  // Filter items based on user permissions if userProfile is provided
-  const filteredItems = items.filter(item =>
-    !item.permissionRequired || (userProfile?.permissions.includes(item.permissionRequired))
+  const filteredItems = items.filter(
+    (item) =>
+      !item.permissionRequired ||
+      userProfile?.permissions.includes(item.permissionRequired)
   );
 
   return (
-    <Sidebar
-      compact={collapsed}
-      className={`h-full border-none shadow-surface-pop z-20 ${
-        collapsed ? 'bg-surface' : 'bg-surface-strong'
-      }`}
-    >
-      <div className="flex items-center justify-between p-4 mb-4">
-        {!collapsed && tenantBranding && (
-          <div className="flex items-center gap-2">
-            {tenantBranding.logo && (
+    <Sidebar compact={collapsed} className="h-full bg-sidebar border-r border-border">
+      {/* Top Header / Branding & Collapse Button */}
+      <div className={`flex items-center h-12 px-3 border-b border-border-subtle ${
+        collapsed ? 'justify-center' : 'justify-between'
+      }`}>
+        {!collapsed && (
+          <div className="flex items-center gap-2 min-w-0">
+            {tenantBranding?.logo ? (
               <div
-                className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-surface elevation-raised"
-                style={{ backgroundColor: tenantBranding.themeColor }}
+                className="w-6 h-6 rounded bg-action-primary flex items-center justify-center text-text-inverse font-bold text-xs shrink-0"
+                style={tenantBranding.themeColor ? { backgroundColor: tenantBranding.themeColor } : undefined}
               >
                 {tenantBranding.logo}
               </div>
+            ) : null}
+            {tenantBranding?.brandName && (
+              <span className="font-heading font-bold text-xs tracking-tight text-text-primary truncate">
+                {tenantBranding.brandName}{' '}
+                {tenantBranding.brandTagline && (
+                  <span className="text-action-primary font-normal">{tenantBranding.brandTagline}</span>
+                )}
+              </span>
             )}
-            <span className="font-heading font-bold text-sm tracking-tight text-text">
-              {tenantBranding.brandName} {tenantBranding.brandTagline && <span className="text-primary">{tenantBranding.brandTagline}</span>}
-            </span>
           </div>
         )}
         <IconButton
@@ -84,12 +88,12 @@ export function AppSidebarNav({
           onClick={onToggleCollapse}
           intent="ghost"
           size="sm"
-          className={collapsed ? 'mx-auto' : ''}
           label={collapsed ? expandLabel : collapseLabel}
         />
       </div>
 
-      <SidebarSection className="flex-1 overflow-y-auto no-scrollbar">
+      {/* Primary Navigation Section */}
+      <SidebarSection className="flex-1 overflow-y-auto no-scrollbar py-2">
         {filteredItems.map((item) => (
           <SidebarItem
             key={item.id}
@@ -98,20 +102,14 @@ export function AppSidebarNav({
             active={activeRoute === item.id}
             onClick={() => onNavigate(item.id)}
             badge={item.badgeCount}
-            className={`
-              mb-1 transition-all duration-200
-              ${activeRoute === item.id
-                ? 'rounded-full scale-105 shadow-surface-pop'
-                : 'hover:rounded-full'
-              }
-            `}
           />
         ))}
       </SidebarSection>
 
-      <div className="mt-auto space-y-1">
+      {/* Pinned Bottom Items & User Profile */}
+      <div className="mt-auto shrink-0 border-t border-border-subtle">
         {pinnedBottomItems.length > 0 && (
-          <SidebarSection className="border-t border-border/10 pt-4 pb-2">
+          <SidebarSection className="py-2">
             {pinnedBottomItems.map((item) => (
               <SidebarItem
                 key={item.id}
@@ -120,31 +118,40 @@ export function AppSidebarNav({
                 active={activeRoute === item.id}
                 onClick={() => onNavigate(item.id)}
                 badge={item.badgeCount}
-                className={`
-                  transition-all duration-200
-                  ${activeRoute === item.id
-                    ? 'rounded-full scale-105 shadow-surface-pop'
-                    : 'hover:rounded-full'
-                  }
-                `}
               />
             ))}
           </SidebarSection>
         )}
 
-        {userProfile && !collapsed && (
-          <div className="p-4 border-t border-border/10 flex items-center gap-3">
-             <div className="w-8 h-8 rounded-full bg-panel-strong flex items-center justify-center overflow-hidden">
-                {userProfile.avatarUrl ? (
-                  <img src={userProfile.avatarUrl} alt={userProfile.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-[10px] font-bold text-text-muted">{userProfile.name.charAt(0)}</span>
-                )}
-             </div>
-             <div className="min-w-0 flex-1">
-                <p className="text-xs font-bold text-text truncate">{userProfile.name}</p>
-                <p className="text-[10px] text-text-muted truncate">{userProfile.role}</p>
-             </div>
+        {userProfile && (
+          <div
+            className={`p-2.5 border-t border-border-subtle flex items-center gap-2.5 ${
+              collapsed ? 'justify-center' : ''
+            }`}
+          >
+            <div className="w-7 h-7 rounded-full bg-surface-elevated flex items-center justify-center overflow-hidden shrink-0 border border-border-subtle">
+              {userProfile.avatarUrl ? (
+                <img
+                  src={userProfile.avatarUrl}
+                  alt={userProfile.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-[10px] font-bold text-text-secondary">
+                  {userProfile.name.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </div>
+            {!collapsed && (
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-text-primary truncate leading-tight">
+                  {userProfile.name}
+                </p>
+                <p className="text-[10px] text-text-muted truncate leading-tight">
+                  {userProfile.role}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

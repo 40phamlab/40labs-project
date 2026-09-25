@@ -14,12 +14,6 @@ interface CustomerDetailDrawerProps {
   onClose: () => void;
 }
 
-/**
- * CustomerDetailDrawer
- *
- * Side drawer for viewing detailed customer profile information.
- * This is the central hub for customer-specific history and balance management.
- */
 export const CustomerDetailDrawer: React.FC<CustomerDetailDrawerProps> = ({
   customer,
   isOpen,

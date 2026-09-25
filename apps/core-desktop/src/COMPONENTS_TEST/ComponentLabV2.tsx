@@ -6,13 +6,13 @@ import {
   MoneyDisplay,
   QuantityStepper,
 } from '@40labs/ui-components';
-import { CustomerPicker } from '../features/customers/CustomerPicker';
-import { MedicinePicker } from '../features/sales/MedicinePicker';
-import { StockIndicator } from '../features/inventory/StockIndicator';
-import { ConfigToggleRow } from '../features/sales/ConfigToggleRow';
-import { CategorySquare } from '../features/inventory/CategorySquare';
-import { CompactProductRow } from '../features/purchases/CompactProductRow';
-import { ProductActionCard } from '../features/purchases/ProductActionCard';
+import { CustomerPicker } from '../features/customers/components/CustomerPicker';
+import { MedicinePicker } from '../features/sales/components/MedicinePicker';
+import { StockIndicator } from '../features/inventory/components/StockIndicator';
+import { ConfigToggleRow } from '../features/sales/components/ConfigToggleRow';
+import { CategorySquare } from '../features/inventory/components/CategorySquare';
+import { CompactProductRow } from '../features/purchases/components/CompactProductRow';
+import { ProductActionCard } from '../features/purchases/components/ProductActionCard';
 
 export default function ComponentLabV2() {
   const [activePoFilter, setActivePoFilter] = useState('all');

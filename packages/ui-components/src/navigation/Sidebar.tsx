@@ -9,8 +9,8 @@ export interface SidebarProps {
 export const Sidebar = ({ children, compact, className = '' }: SidebarProps) => {
   return (
     <aside
-      className={`flex flex-col h-full bg-surface-strong border-r border-border transition-all duration-300 ${
-        compact ? 'w-16' : 'w-64'
+      className={`flex flex-col h-full bg-sidebar border-r border-border transition-[width] duration-200 ease-in-out select-none ${
+        compact ? 'w-16' : 'w-60'
       } ${className}`}
     >
       {React.Children.map(children, (child) => {
@@ -32,9 +32,9 @@ export interface SidebarSectionProps {
 
 export const SidebarSection = ({ title, children, compact, className = '' }: SidebarSectionProps) => {
   return (
-    <div className={`py-4 ${className}`}>
+    <div className={`py-2 ${className}`}>
       {title && !compact && (
-        <h3 className="px-4 mb-2 text-[10px] font-bold uppercase tracking-wider text-text-muted truncate">
+        <h3 className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted truncate select-none">
           {title}
         </h3>
       )}
@@ -65,53 +65,68 @@ export const SidebarItem = ({
   icon,
   label,
   badge,
-  active,
-  disabled,
-  compact,
+  active = false,
+  disabled = false,
+  compact = false,
   onClick,
   className = '',
 }: SidebarItemProps) => {
-  const baseClasses = `flex items-center gap-3 px-3 py-2 ${
-    compact ? 'rounded-full' : 'rounded-input'
-  } text-xs font-medium transition-all cursor-pointer select-none relative group`;
-  const activeClasses = 'bg-primary text-surface elevation-raised';
-  const inactiveClasses = 'text-text-muted hover:text-text hover:bg-panel';
-  const disabledClasses = 'opacity-50 cursor-not-allowed grayscale';
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.();
+    }
+  };
 
   return (
-    <div
-      role="button"
-      tabIndex={disabled ? -1 : 0}
+    <button
+      type="button"
+      disabled={disabled}
       onClick={!disabled ? onClick : undefined}
+      onKeyDown={handleKeyDown}
       title={compact ? label : undefined}
+      aria-current={active ? 'page' : undefined}
       className={`
-        ${baseClasses}
-        ${active ? activeClasses : inactiveClasses}
-        ${disabled ? disabledClasses : ''}
-        ${compact ? 'justify-center px-0 w-12 mx-auto' : ''}
+        w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium
+        transition-colors duration-150 outline-none relative group select-none
+        focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar
+        ${
+          active
+            ? 'bg-surface-selected text-text-primary font-semibold border-l-2 border-action-primary pl-2'
+            : 'text-text-muted hover:text-text-primary hover:bg-surface-hover'
+        }
+        ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+        ${compact ? 'justify-center px-0 w-10 mx-auto border-l-0' : ''}
         ${className}
       `}
     >
-      {icon && <span className="w-5 h-5 flex items-center justify-center shrink-0">{icon}</span>}
-      {!compact && <span className="flex-1 truncate">{label}</span>}
+      {icon && (
+        <span className="w-5 h-5 flex items-center justify-center shrink-0 text-current">
+          {icon}
+        </span>
+      )}
+      {!compact && (
+        <span className="flex-1 text-left truncate">{label}</span>
+      )}
       {!compact && badge !== undefined && (
         <span
           className={`
-          inline-flex items-center justify-center px-1.5 py-0 rounded-full font-bold uppercase tracking-wider text-[9px]
-          ${active ? 'bg-surface text-primary' : 'bg-primary/20 text-primary border border-primary/30'}
-        `}
+            inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none
+            ${
+              active
+                ? 'bg-action-primary text-text-inverse'
+                : 'bg-surface-elevated text-text-secondary border border-border-subtle'
+            }
+          `}
         >
           {badge}
         </span>
       )}
       {compact && badge !== undefined && (
-        <div className="absolute -top-1 -right-1">
-          <span className="inline-flex items-center justify-center min-w-[12px] h-3 px-1 rounded-full bg-danger text-[8px] font-bold text-surface elevation-raised">
-            {badge}
-          </span>
-        </div>
+        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-danger" />
       )}
-    </div>
+    </button>
   );
 };
 

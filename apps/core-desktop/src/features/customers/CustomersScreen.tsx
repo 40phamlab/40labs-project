@@ -1,10 +1,10 @@
 import * as React from 'react';
 import { Card } from '@40labs/ui-components';
-import { CustomerStatsBar } from './CustomerStatsBar';
-import { CustomerFilterBar } from './CustomerFilterBar';
-import { CustomerList } from './CustomerList';
-import { AddCustomerModal } from './AddCustomerModal';
-import { CustomerDetailDrawer } from './CustomerDetailDrawer';
+import { CustomerStatsBar } from './components/CustomerStatsBar';
+import { CustomerFilterBar } from './components/CustomerFilterBar';
+import { CustomerList } from './components/CustomerList';
+import { AddCustomerModal } from './components/AddCustomerModal';
+import { CustomerDetailDrawer } from './components/CustomerDetailDrawer';
 import { useCustomers } from '../../hooks/useCustomers';
 
 export const CustomersScreen: React.FC = () => {

@@ -55,6 +55,8 @@ export * from './overlays/ConfirmDialog';
 export * from './overlays/Tooltip';
 
 // Layout
+export * from './layout/AppShell';
+export * from './layout/PageViewport';
 export * from './layout/Panel';
 export * from './layout/DashboardShell';
 export * from './layout/DashboardGrid';
@@ -73,6 +75,4 @@ export * from './data-display/StatusBadge';
 export * from './data-display/Metrics';
 export * from './data-display/List';
 export * from './data-display/DashboardComposites';
-
-// Composites
-export * from './composites/EntityProfileHeader';
+export * from './data-display/EntityProfileHeader';

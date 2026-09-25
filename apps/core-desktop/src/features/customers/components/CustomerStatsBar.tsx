@@ -26,7 +26,6 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Current Month start to determine previous calendar month
     const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
@@ -53,9 +52,7 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({
 
   return (
     <div className="flex items-center justify-between gap-6 p-4 bg-panel rounded-card border border-border/50 elevation-raised shadow-sm">
-      {/* LEFT: stats cluster, vertically centered against the right column's full height */}
       <div className="flex items-center gap-4">
-        {/* Today / Last Month / All / Reserved — tight group with dividers */}
         <div className="flex items-center divide-x divide-border/40">
           {kpis.map((kpi) => (
             <div className="flex flex-col px-4 first:pl-0" key={kpi.label}>
@@ -66,7 +63,6 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({
             </div>
           ))}
         </div>
-        {/* Debtors / Payables — separate cluster, label+value INLINE per row, stacked as 2 rows, not centered-stack like the KPIs */}
         <div className="flex flex-col gap-1 pl-4 border-l border-border/40">
           <div className="flex items-center gap-2 text-xs">
             <span className="font-bold text-text-muted uppercase tracking-widest">
@@ -83,7 +79,6 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({
         </div>
       </div>
 
-      {/* RIGHT: stacked column, not inline */}
       <div className="flex flex-col items-end gap-2">
         <SearchInput
           className="w-64"

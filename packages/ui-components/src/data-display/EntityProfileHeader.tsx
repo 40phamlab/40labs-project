@@ -1,7 +1,7 @@
 import React from 'react';
 import { Avatar } from '../primitives/Avatar';
 import { Button, ButtonIntent } from '../primitives/Button';
-import { StatusBadge, StatusType } from '../data-display/StatusBadge';
+import { StatusBadge, StatusType } from './StatusBadge';
 import { Badge } from '../primitives/Badge';
 
 export interface EntityProfileAction {

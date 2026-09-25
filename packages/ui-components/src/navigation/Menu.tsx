@@ -1,15 +1,14 @@
-"use client";
-
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 
 export interface MenuItemProps {
-  label: string;
+  label: React.ReactNode;
   icon?: React.ReactNode;
   badge?: string | number;
   onClick?: () => void;
   disabled?: boolean;
   variant?: 'default' | 'danger';
+  className?: string;
 }
 
 export const MenuItem = ({
@@ -17,26 +16,40 @@ export const MenuItem = ({
   icon,
   badge,
   onClick,
-  disabled,
+  disabled = false,
   variant = 'default',
+  className = '',
 }: MenuItemProps) => {
   const variantClasses =
     variant === 'danger'
-      ? 'text-danger hover:bg-danger/10'
-      : 'text-text hover:bg-panel hover:text-primary';
+      ? 'text-danger hover:bg-danger-bg focus-visible:bg-danger-bg'
+      : 'text-text-primary hover:bg-surface-hover hover:text-text-primary focus-visible:bg-surface-hover';
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.();
+    }
+  };
 
   return (
     <button
-      onClick={!disabled ? onClick : undefined}
+      type="button"
       disabled={disabled}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-medium transition-colors ${variantClasses} ${
-        disabled ? 'opacity-50 cursor-not-allowed' : ''
-      }`}
+      onClick={!disabled ? onClick : undefined}
+      onKeyDown={handleKeyDown}
+      className={`
+        w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-medium outline-none transition-colors
+        ${variantClasses}
+        ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+        ${className}
+      `}
     >
-      {icon && <span className="w-4 h-4 flex items-center justify-center shrink-0">{icon}</span>}
+      {icon && <span className="w-4 h-4 flex items-center justify-center shrink-0 text-current">{icon}</span>}
       <span className="flex-1 text-left truncate">{label}</span>
       {badge !== undefined && (
-        <span className="ml-auto shrink-0 px-1.5 py-0 rounded-full bg-panel-strong text-text-muted font-bold uppercase tracking-wider text-[9px]">
+        <span className="ml-auto shrink-0 px-1.5 py-0.5 rounded-full bg-surface-primary text-text-secondary font-bold text-[9px]">
           {badge}
         </span>
       )}
@@ -52,7 +65,7 @@ export interface MenuProps {
 export const Menu = ({ children, className = '' }: MenuProps) => {
   return (
     <div
-      className={`min-w-[160px] py-1 bg-surface-strong border border-border rounded-input elevation-raised overflow-hidden ${className}`}
+      className={`min-w-[180px] py-1 bg-surface-elevated border border-border rounded-md shadow-md overflow-hidden ${className}`}
     >
       {children}
     </div>
@@ -74,18 +87,23 @@ export const Dropdown = ({ trigger, children, isOpen, onClose, className = '' }:
 
   const updatePosition = React.useCallback(() => {
     if (triggerRef.current) {
-      const MENU_WIDTH_ESTIMATE = 176; // min-w-[160px] + comfortable margin
-      const EDGE_PADDING = 8;
       const rect = triggerRef.current.getBoundingClientRect();
-      const wouldOverflowRight =
-        rect.left + MENU_WIDTH_ESTIMATE > window.innerWidth - EDGE_PADDING;
+      const menuWidth = 200;
+      const menuHeight = 240;
+      const padding = 8;
 
-      setCoords({
-        top: rect.bottom + window.scrollY + 4,
-        left: wouldOverflowRight
-          ? rect.right + window.scrollX - MENU_WIDTH_ESTIMATE // anchor from the right edge, open leftward
-          : rect.left + window.scrollX, // default: open rightward
-      });
+      let top = rect.bottom + 4;
+      let left = rect.left;
+
+      if (left + menuWidth > window.innerWidth - padding) {
+        left = Math.max(padding, window.innerWidth - menuWidth - padding);
+      }
+
+      if (top + menuHeight > window.innerHeight - padding) {
+        top = Math.max(padding, rect.top - menuHeight - 4);
+      }
+
+      setCoords({ top, left });
     }
   }, []);
 
@@ -116,18 +134,14 @@ export const Dropdown = ({ trigger, children, isOpen, onClose, className = '' }:
         }
       };
 
-      if (onClose) {
-        document.addEventListener('mousedown', handleClickOutside);
-        document.addEventListener('keydown', handleEsc);
-      }
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEsc);
 
       return () => {
         window.removeEventListener('scroll', updatePosition, true);
         window.removeEventListener('resize', updatePosition);
-        if (onClose) {
-          document.removeEventListener('mousedown', handleClickOutside);
-          document.removeEventListener('keydown', handleEsc);
-        }
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('keydown', handleEsc);
       };
     }
   }, [isOpen, onClose, updatePosition]);
@@ -140,12 +154,11 @@ export const Dropdown = ({ trigger, children, isOpen, onClose, className = '' }:
           <div
             ref={menuRef}
             style={{
-              position: 'absolute',
-              top: coords.top,
-              left: coords.left,
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
               zIndex: 9999,
             }}
-            className="animate-in fade-in slide-in-from-top-1 duration-200"
           >
             <Menu>{children}</Menu>
           </div>,

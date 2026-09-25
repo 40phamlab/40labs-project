@@ -2,7 +2,7 @@ import * as React from 'react';
 import { SearchableListPanel, IconButton } from '@40labs/ui-components';
 import { ChevronRight } from 'lucide-react';
 import { SupplierListItem, ExtendedSupplier } from './SupplierListItem';
-import { usePurchases } from '../../hooks/usePurchases';
+import { usePurchases } from '../../../hooks/usePurchases';
 
 export interface SupplierSearchPanelProps {
   suppliers?: ExtendedSupplier[];

@@ -21,7 +21,7 @@ import {
   Send,
 } from 'lucide-react';
 import type { Notification, NotificationCategory } from '@40labs/types';
-import { CAN_REPLY_BY_CATEGORY } from './replyPolicy';
+import { CAN_REPLY_BY_CATEGORY } from '../replyPolicy';
 
 export interface NotificationDetailPanelProps {
   notification?: Notification | null;

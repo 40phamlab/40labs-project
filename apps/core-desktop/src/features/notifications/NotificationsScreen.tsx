@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { ConfirmDialog } from '@40labs/ui-components';
-import { NotificationsListPanel } from './NotificationsListPanel';
-import { NotificationDetailPanel } from './NotificationDetailPanel';
-import { NotificationsOverviewPanel } from './NotificationsOverviewPanel';
+import { NotificationsListPanel } from './components/NotificationsListPanel';
+import { NotificationDetailPanel } from './components/NotificationDetailPanel';
+import { NotificationsOverviewPanel } from './components/NotificationsOverviewPanel';
 import { useNotifications } from '../../hooks/useNotifications';
 
 export const NotificationsScreen: React.FC = () => {

@@ -19,12 +19,6 @@ const TIME_OPTIONS = [
 
 const STATIC_OPTIONS = [{ value: 'all', label: 'All' }];
 
-/**
- * CustomerFilterBar
- *
- * Secondary filter row for CRM-style segmentation.
- * Renders as a nested distinct panel with the title on top and filters gathered tightly right-aligned.
- */
 export const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
   timeRange,
   onTimeRangeChange,

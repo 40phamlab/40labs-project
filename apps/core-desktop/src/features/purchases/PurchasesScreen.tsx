@@ -1,7 +1,7 @@
 import React from 'react';
-import { SupplierSearchPanel } from './SupplierSearchPanel';
-import { PurchaseHistoryPanel } from './PurchaseHistoryPanel';
-import { SupplierStorefront } from './SupplierStorefront';
+import { SupplierSearchPanel } from './components/SupplierSearchPanel';
+import { PurchaseHistoryPanel } from './components/PurchaseHistoryPanel';
+import { SupplierStorefront } from './components/SupplierStorefront';
 import { usePurchases } from '../../hooks/usePurchases';
 
 export const PurchasesScreen: React.FC = () => {

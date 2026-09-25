@@ -9,13 +9,13 @@ import {
 } from '@40labs/ui-components';
 import { CompactProductRow } from './CompactProductRow';
 import { ProductActionCard } from './ProductActionCard';
-import { CartItemRow } from '../sales/CartItemRow';
-import { CartSummaryPanel } from '../sales/CartSummaryPanel';
+import { CartItemRow } from '../../sales/components/CartItemRow';
+import { CartSummaryPanel } from '../../sales/components/CartSummaryPanel';
 import { ShoppingBag, CheckCircle2, Tag, Lock, ArrowLeft } from 'lucide-react';
 import type { PurchaseOrder } from '@40labs/types';
 import { ExtendedSupplier } from './SupplierListItem';
-import { usePurchases } from '../../hooks/usePurchases';
-import { pharmaciesApi } from '../../api';
+import { usePurchases } from '../../../hooks/usePurchases';
+import { pharmaciesApi } from '../../../api';
 
 export interface StorefrontProduct {
   id: string;

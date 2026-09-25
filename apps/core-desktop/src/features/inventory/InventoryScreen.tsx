@@ -1,9 +1,9 @@
 import * as React from 'react';
 import { ChartContainer, Button, IconButton, Card } from '@40labs/ui-components';
 import { ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
-import { InventoryTable } from './InventoryTable';
-import { InventorySidebar } from './InventorySidebar';
-import { NewStockModal } from './NewStockModal';
+import { InventoryTable } from './components/InventoryTable';
+import { InventorySidebar } from './components/InventorySidebar';
+import { NewStockModal } from './components/NewStockModal';
 import { useInventory } from '../../hooks/useInventory';
 
 export const InventoryScreen: React.FC = () => {

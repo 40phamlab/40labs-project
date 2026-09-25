@@ -3,7 +3,7 @@ import { TabbedListContainer } from '@40labs/ui-components';
 import { OrderSummary } from './OrderSummary';
 import { ShoppingBag } from 'lucide-react';
 import type { PurchaseOrder } from '@40labs/types';
-import { usePurchases } from '../../hooks/usePurchases';
+import { usePurchases } from '../../../hooks/usePurchases';
 
 export interface PurchaseHistoryPanelProps {
   purchaseOrders?: PurchaseOrder[];

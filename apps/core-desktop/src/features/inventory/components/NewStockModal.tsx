@@ -10,7 +10,7 @@ import {
   CurrencyInput,
   DateInput,
 } from '@40labs/ui-components';
-import { useInventory } from '../../hooks/useInventory';
+import { useInventory } from '../../../hooks/useInventory';
 import { type Medicine, type InventoryItem, type MedicineWithInventory } from '@40labs/types';
 
 interface NewStockModalProps {

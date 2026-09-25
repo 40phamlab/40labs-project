@@ -1,9 +1,9 @@
 import * as React from 'react';
 import type { MedicineWithInventory } from '@40labs/types';
-import { MedicineSearchPanel } from './MedicineSearchPanel';
-import { SaleCartList } from './SaleCartList';
-import { CustomerReportPanel, ConfirmedSaleData } from './CustomerReportPanel';
-import { SaleTotalsBar } from './SaleTotalsBar';
+import { MedicineSearchPanel } from './components/MedicineSearchPanel';
+import { SaleCartList } from './components/SaleCartList';
+import { CustomerReportPanel, ConfirmedSaleData } from './components/CustomerReportPanel';
+import { SaleTotalsBar } from './components/SaleTotalsBar';
 import { IconButton, Card } from '@40labs/ui-components';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSales } from '../../hooks/useSales';

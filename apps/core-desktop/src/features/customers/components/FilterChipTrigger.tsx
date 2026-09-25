@@ -16,12 +16,6 @@ interface FilterChipTriggerProps {
   disabled?: boolean;
 }
 
-/**
- * FilterChipTrigger
- *
- * A compact inline dropdown filter control matching image 3 guidelines.
- * Displays as text with a small chevron, only listing value details when non-default.
- */
 export const FilterChipTrigger: React.FC<FilterChipTriggerProps> = ({
   label,
   selectedValue,

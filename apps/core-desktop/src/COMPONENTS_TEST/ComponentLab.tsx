@@ -74,11 +74,11 @@ import {
   LoadingState,
   StatusBadge,
 } from '@40labs/ui-components';
-import { Numpad } from '../features/sales/Numpad';
-import { ReceiptPreview } from '../features/sales/ReceiptPreview';
-import { CartItemRow } from '../features/sales/CartItemRow';
-import { CartSummaryPanel } from '../features/sales/CartSummaryPanel';
-import { ProductRow } from '../features/sales/ProductRow';
+import { Numpad } from '../features/sales/components/Numpad';
+import { ReceiptPreview } from '../features/sales/components/ReceiptPreview';
+import { CartItemRow } from '../features/sales/components/CartItemRow';
+import { CartSummaryPanel } from '../features/sales/components/CartSummaryPanel';
+import { ProductRow } from '../features/sales/components/ProductRow';
 
 export function ComponentLab() {
   const [toggleVal, setToggleVal] = useState(true);

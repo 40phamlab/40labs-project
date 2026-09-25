@@ -5,10 +5,15 @@ export interface TopBarProps {
   className?: string;
 }
 
+/**
+ * TopBar
+ *
+ * Solid top navigation chrome bar with standard height and crisp border.
+ */
 export const TopBar = ({ children, className = '' }: TopBarProps) => {
   return (
     <header
-      className={`h-16 flex items-center px-6 bg-surface border-b border-border elevation-flat ${className}`}
+      className={`h-10 flex items-center px-3 bg-top-chrome border-b border-border select-none shrink-0 ${className}`}
     >
       {children}
     </header>

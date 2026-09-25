@@ -18,9 +18,9 @@ import {
   DollarSign,
 } from 'lucide-react';
 import type { LabResult, TestCatalogEntry, Customer } from '@40labs/types';
-import { LabDashboard } from './LabDashboard';
-import { LabOrdersList } from './LabOrdersList';
-import { LabSamplesList } from './LabSamplesList';
+import { LabDashboard } from './components/LabDashboard';
+import { LabOrdersList } from './components/LabOrdersList';
+import { LabSamplesList } from './components/LabSamplesList';
 import { useLab } from '../../hooks/useLab';
 import { useCustomers } from '../../hooks/useCustomers';
 
