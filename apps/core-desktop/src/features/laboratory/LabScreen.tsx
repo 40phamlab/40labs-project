@@ -1,5 +1,15 @@
 import * as React from 'react';
-import { ContextualSubNav, SubNavSection, DataTable, ColumnDefinition, Badge, KPITile } from '@40labs/ui-components';
+import {
+  PageViewport,
+  PageHeader,
+  PageContent,
+  ContextualSubNav,
+  SubNavSection,
+  DataTable,
+  ColumnDefinition,
+  Badge,
+  KPITile,
+} from '@40labs/ui-components';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -421,22 +431,29 @@ export const LabScreen: React.FC = () => {
   };
 
   return (
-    <div className="p-6 w-full min-h-full">
-      <div className="p-6 flex gap-6 w-full min-h-full rounded-card bg-panel elevation-raised border border-border/50">
-        {/* Left SubNav */}
-        <div className="w-60 shrink-0 border-r border-border/40 pr-4">
-          <ContextualSubNav
-            sections={LAB_SUBNAV_SECTIONS}
-            activeItemId={activeLabTab}
-            onSelect={(id) => setActiveLabTab(id as LabTab)}
-          />
-        </div>
+    <PageViewport>
+      <PageHeader
+        title="Laboratory Management"
+        subtitle="Diagnostic test catalog, sample requisitions, result entry, and quality control."
+      />
 
-        {/* Main Content Pane */}
-        <div className="flex-1 min-w-0">
-          {renderContent()}
+      <PageContent scrollable={false} padding="normal">
+        <div className="flex gap-6 w-full h-full overflow-hidden">
+          {/* Left SubNav */}
+          <div className="w-60 shrink-0 border-r border-border/40 pr-4 h-full overflow-y-auto custom-scrollbar">
+            <ContextualSubNav
+              sections={LAB_SUBNAV_SECTIONS}
+              activeItemId={activeLabTab}
+              onSelect={(id) => setActiveLabTab(id as LabTab)}
+            />
+          </div>
+
+          {/* Main Content Pane */}
+          <div className="flex-1 min-w-0 h-full overflow-y-auto custom-scrollbar">
+            {renderContent()}
+          </div>
         </div>
-      </div>
-    </div>
+      </PageContent>
+    </PageViewport>
   );
 };

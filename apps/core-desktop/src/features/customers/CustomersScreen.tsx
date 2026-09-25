@@ -1,5 +1,13 @@
 import * as React from 'react';
-import { Card } from '@40labs/ui-components';
+import {
+  PageViewport,
+  PageHeader,
+  PageToolbar,
+  PageContent,
+  Button,
+  SearchInput,
+} from '@40labs/ui-components';
+import { Plus } from 'lucide-react';
 import { CustomerStatsBar } from './components/CustomerStatsBar';
 import { CustomerFilterBar } from './components/CustomerFilterBar';
 import { CustomerList } from './components/CustomerList';
@@ -56,8 +64,44 @@ export const CustomersScreen: React.FC = () => {
   }, [setSearchTerm]);
 
   return (
-    <div className="p-6 h-full w-full overflow-hidden">
-      <Card className="elevation-raised rounded-card h-full w-full p-6 flex flex-col gap-6 overflow-hidden bg-panel">
+    <PageViewport>
+      {/* Header */}
+      <PageHeader
+        title="Customer Management"
+        subtitle="Manage customer profiles, directory search, and purchasing histories."
+        actions={
+          <Button
+            intent="primary"
+            leftIcon={<Plus size={16} />}
+            onClick={() => setAddModalOpen(true)}
+          >
+            Add Customer
+          </Button>
+        }
+      />
+
+      {/* Toolbar */}
+      <PageToolbar
+        left={
+          <CustomerFilterBar
+            timeRange={timeRange}
+            onTimeRangeChange={setTimeRange}
+            onClearAll={handleClearAll}
+          />
+        }
+        right={
+          <SearchInput
+            className="w-64"
+            placeholder="Search name or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onClear={() => setSearchTerm('')}
+          />
+        }
+      />
+
+      {/* Content - ONE controlled content scroll region */}
+      <PageContent scrollable={true} padding="normal">
         <CustomerStatsBar
           customers={customers}
           searchTerm={searchTerm}
@@ -65,20 +109,15 @@ export const CustomersScreen: React.FC = () => {
           onAddClick={() => setAddModalOpen(true)}
         />
 
-        <CustomerFilterBar
-          timeRange={timeRange}
-          onTimeRangeChange={setTimeRange}
-          onClearAll={handleClearAll}
-        />
-
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 min-h-0">
           <CustomerList
             customers={filteredCustomers}
             onViewDetails={setSelectedCustomerId}
           />
         </div>
-      </Card>
+      </PageContent>
 
+      {/* Modals & Drawers */}
       <AddCustomerModal
         isOpen={isAddModalOpen}
         onClose={() => setAddModalOpen(false)}
@@ -97,6 +136,6 @@ export const CustomersScreen: React.FC = () => {
         isOpen={!!selectedCustomerId}
         onClose={() => setSelectedCustomerId(null)}
       />
-    </div>
+    </PageViewport>
   );
 };

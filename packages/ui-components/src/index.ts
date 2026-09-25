@@ -57,6 +57,9 @@ export * from './overlays/Tooltip';
 // Layout
 export * from './layout/AppShell';
 export * from './layout/PageViewport';
+export * from './layout/PageHeader';
+export * from './layout/PageToolbar';
+export * from './layout/PageContent';
 export * from './layout/Panel';
 export * from './layout/DashboardShell';
 export * from './layout/DashboardGrid';

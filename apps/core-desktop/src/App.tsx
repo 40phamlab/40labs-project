@@ -13,7 +13,7 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
-import { AppShell, AppSidebarNav, TopMenuBar, PageViewport } from '@40labs/ui-components';
+import { AppShell, AppSidebarNav, TopMenuBar, PageViewport, PageHeader, PageContent } from '@40labs/ui-components';
 import { TitleBar } from './components/TitleBar';
 import { useNavStore, ScreenId } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
@@ -60,11 +60,17 @@ export default function App() {
       default: {
         const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
         return (
-          <div className="flex items-center justify-center h-full text-text-muted">
-            <p className="text-xl font-heading font-medium italic opacity-60">
-              {label.replace('-', ' ')} — not built yet
-            </p>
-          </div>
+          <PageViewport>
+            <PageHeader
+              title={label.replace('-', ' ')}
+              subtitle="This feature area is scheduled for upcoming development."
+            />
+            <PageContent
+              isEmpty
+              emptyTitle={`${label.replace('-', ' ')} Module`}
+              emptyMessage="This module is currently under development and will be available soon."
+            />
+          </PageViewport>
         );
       }
     }
@@ -98,9 +104,7 @@ export default function App() {
 
   return (
     <AppShell topBar={topBarElement} sidebar={sidebarElement}>
-      <PageViewport>
-        {renderContent()}
-      </PageViewport>
+      {renderContent()}
     </AppShell>
   );
 }

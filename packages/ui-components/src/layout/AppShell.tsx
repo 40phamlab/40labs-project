@@ -8,6 +8,8 @@ export interface AppShellProps {
   /** Main application content viewport or PageViewport component */
   children: React.ReactNode;
   className?: string;
+  /** Minimum desktop width (default 1024px) */
+  minWidth?: number | string;
 }
 
 /**
@@ -15,20 +17,25 @@ export interface AppShellProps {
  *
  * Core application shell container establishing a single consistent layout model.
  * Solid dark background, solid top chrome, solid sidebar, and isolated main viewport.
+ * Standardizes minimum desktop width behavior and global layout structure.
  */
 export function AppShell({
   topBar,
   sidebar,
   children,
   className = '',
+  minWidth = 1024,
 }: AppShellProps) {
+  const minWidthStyle = typeof minWidth === 'number' ? `${minWidth}px` : minWidth;
+
   return (
     <div
       className={`flex flex-col h-screen w-screen bg-app-bg text-text-primary font-ui overflow-hidden select-none ${className}`}
+      style={{ minWidth: minWidthStyle }}
     >
       {/* Top Chrome Header */}
       {topBar && (
-        <header className="shrink-0 w-full z-30 bg-top-chrome border-b border-border">
+        <header className="shrink-0 w-full z-30 bg-top-chrome border-b border-border min-h-[40px]">
           {topBar}
         </header>
       )}
