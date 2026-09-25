@@ -1,4 +1,4 @@
-import { Badge } from '../primitives/Badge';
+import { Badge } from '@40labs/ui-components';
 
 export interface StockIndicatorProps {
   quantity: number;
@@ -9,11 +9,6 @@ export interface StockIndicatorProps {
   showLabel?: boolean;
 }
 
-/**
- * StockIndicator
- * A domain-specific widget for displaying stock levels with status badges.
- * Reuses existing Badge primitives and follows centralized threshold rules.
- */
 export function StockIndicator({
   quantity,
   lowStockThreshold = 10,
@@ -21,7 +16,6 @@ export function StockIndicator({
   showQuantity = true,
   showLabel = true,
 }: StockIndicatorProps) {
-  // Threshold evaluation logic centralized here
   const getStatusInfo = () => {
     let resolvedStatus = status;
 

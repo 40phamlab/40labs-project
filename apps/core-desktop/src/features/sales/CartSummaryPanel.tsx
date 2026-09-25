@@ -1,5 +1,4 @@
-import { Button } from '../primitives/Button';
-import { HotkeyBadge } from '../primitives/Hotkey';
+import { Button, HotkeyBadge } from '@40labs/ui-components';
 
 export interface DiscountEntry {
   label: string;
@@ -33,10 +32,6 @@ export interface CartSummaryPanelProps {
 const defaultFormatter = (value: number, currency: string) =>
   `${currency} ${value.toLocaleString()}`;
 
-/**
- * CartSummaryPanel composite component for transaction breakdowns and final checkout actions.
- * Refactored for dynamic API payloads supporting multiple discounts, tax rates and custom actions.
- */
 export const CartSummaryPanel = ({
   payload,
   onConfirm,
@@ -50,7 +45,6 @@ export const CartSummaryPanel = ({
 
   return (
     <div className={`p-4 bg-panel rounded-card elevation-raised border border-border/10 flex flex-col gap-6 ${className}`}>
-      {/* Financial Breakdown */}
       <div className="space-y-2 px-1">
         <div className="flex justify-between items-center text-xs">
           <span className="text-text-muted font-medium">Subtotal</span>
@@ -74,7 +68,6 @@ export const CartSummaryPanel = ({
         ))}
       </div>
 
-      {/* Prominent Grand Total Callout */}
       <div className="p-5 bg-field text-text-on-field rounded-card elevation-inset border border-black/5 text-center relative overflow-hidden group">
         <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
@@ -86,7 +79,6 @@ export const CartSummaryPanel = ({
         </p>
       </div>
 
-      {/* Checkout Actions */}
       <div className="flex flex-col gap-2">
         <Button
           intent="primary"

@@ -3,14 +3,14 @@ import {
   EntityProfileHeader,
   EntityProfileAction,
   TabbedListContainer,
-  CompactProductRow,
-  CartItemRow,
-  CartSummaryPanel,
-  ProductActionCard,
   Modal,
   Button,
   Input,
 } from '@40labs/ui-components';
+import { CompactProductRow } from './CompactProductRow';
+import { ProductActionCard } from './ProductActionCard';
+import { CartItemRow } from '../sales/CartItemRow';
+import { CartSummaryPanel } from '../sales/CartSummaryPanel';
 import { ShoppingBag, CheckCircle2, Tag, Lock, ArrowLeft } from 'lucide-react';
 import type { PurchaseOrder } from '@40labs/types';
 import { ExtendedSupplier } from './SupplierListItem';

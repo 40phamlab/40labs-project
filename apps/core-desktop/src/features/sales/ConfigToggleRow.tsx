@@ -1,5 +1,5 @@
 import React from 'react';
-import { Switch } from '../forms/Switch';
+import { Toggle } from '@40labs/ui-components';
 
 export interface ConfigToggleRowProps {
   label: string;
@@ -10,11 +10,6 @@ export interface ConfigToggleRowProps {
   className?: string;
 }
 
-/**
- * ConfigToggleRow
- * A specialized row for configuration settings.
- * Supports a Switch (success green), text value, or a compact Select on the right.
- */
 export const ConfigToggleRow: React.FC<ConfigToggleRowProps> = ({
   label,
   type,
@@ -33,10 +28,9 @@ export const ConfigToggleRow: React.FC<ConfigToggleRowProps> = ({
       <span className="text-sm text-text">{label}</span>
 
       {type === 'switch' ? (
-        <Switch
+        <Toggle
           checked={!!value}
           onChange={onChange || (() => {})}
-          intent="success"
         />
       ) : type === 'select' ? (
         <select

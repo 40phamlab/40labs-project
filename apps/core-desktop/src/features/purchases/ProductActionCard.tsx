@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button } from '../primitives/Button';
+import * as React from 'react';
+import { Button } from '@40labs/ui-components';
 
 export interface ProductActionCardProps {
   productName: string;
@@ -12,10 +12,6 @@ export interface ProductActionCardProps {
   className?: string;
 }
 
-/**
- * ProductActionCard
- * A stylized card following a specific pharmacy design reference.
- */
 export const ProductActionCard: React.FC<ProductActionCardProps> = ({
   productName,
   badgeUrl,
@@ -33,7 +29,6 @@ export const ProductActionCard: React.FC<ProductActionCardProps> = ({
         ${className}
       `}
     >
-      {/* 1. Top Header */}
       <div className="flex items-start justify-between gap-4 mb-4">
         <h3 className="text-base font-bold text-text leading-tight">
           {productName}
@@ -51,10 +46,8 @@ export const ProductActionCard: React.FC<ProductActionCardProps> = ({
         </div>
       </div>
 
-      {/* 2. Flexible Middle Spacer */}
       <div className="flex-1" />
 
-      {/* 3. Pricing Area */}
       <div className="flex flex-col items-end mb-4">
         <span className="text-lg font-bold text-text">{currentPrice}</span>
         {originalPrice && (
@@ -64,7 +57,6 @@ export const ProductActionCard: React.FC<ProductActionCardProps> = ({
         )}
       </div>
 
-      {/* 4. Actions Row */}
       <div className="flex gap-2 mb-3">
         <Button
           intent="accent"
@@ -86,7 +78,6 @@ export const ProductActionCard: React.FC<ProductActionCardProps> = ({
         </Button>
       </div>
 
-      {/* 5. Footer */}
       <button
         onClick={onMoreInfo}
         className="text-left text-[10px] text-text-muted hover:text-primary transition-colors italic"

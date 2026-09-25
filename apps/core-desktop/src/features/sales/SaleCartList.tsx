@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { CartItemRow, CartItemModel } from '@40labs/ui-components';
+import { CartItemRow, CartItemModel } from './CartItemRow';
 import { MedicineWithInventory } from '@40labs/types';
 
 export interface SaleCartLine {

@@ -14,13 +14,6 @@ import {
   ShieldCheck,
   CloudUpload,
   FileText,
-  History,
-  Download,
-  Share2,
-  MessageCircle,
-  Mail,
-  MessageSquare,
-  MapPin,
   HeartPulse,
   Stethoscope,
   ClipboardList,
@@ -71,52 +64,21 @@ import {
   Tooltip,
   ToastContainer,
   DashboardShell,
-  DashboardCard,
-  KPIGrid,
-  KPICard,
-  ChartPanel,
-  QuickActions,
-  ProductCard,
-  CartItem,
-  Numpad,
-  ReceiptPreview,
   HotkeyBadge,
   HotkeyModal,
-  PriceDisplay,
-  DiscountDisplay,
-  QuantityControl,
-  ProductRow,
-  ProductResult,
-  ProductSearch,
-  CartSummary,
-  Cart,
-  CustomerSelector,
-  CustomerSummary,
-  OrderStatus,
-  OrderSummary,
-  PaymentSummary,
-  PaymentMethodSelector,
-  CartItemRow,
-  CartSummaryPanel,
-  OnboardingCarouselCard,
-  AuthFormCard,
-  TermsCheckboxGroup,
-  LocationGpsGroup,
-  AuthSuccessCard,
-  ChannelConnectList,
   AppSidebarNav,
   ContextualSubNav,
   DashboardHeaderBar,
-  QuickActionsGrid,
   KPITile,
   EmptyState,
   LoadingState,
-  ErrorState,
-  SuccessState,
-  SkeletonTable,
   StatusBadge,
-  Metric,
 } from '@40labs/ui-components';
+import { Numpad } from '../features/sales/Numpad';
+import { ReceiptPreview } from '../features/sales/ReceiptPreview';
+import { CartItemRow } from '../features/sales/CartItemRow';
+import { CartSummaryPanel } from '../features/sales/CartSummaryPanel';
+import { ProductRow } from '../features/sales/ProductRow';
 
 export function ComponentLab() {
   const [toggleVal, setToggleVal] = useState(true);
@@ -124,22 +86,13 @@ export function ComponentLab() {
   const [numpadValue, setNumpadValue] = useState('');
   const [isHotkeyModalOpen, setIsHotkeyModalOpen] = useState(false);
 
-  // Commerce Phase 7 States
-  const [prodSearch, setProdSearch] = useState('');
-  const [custSearch, setCustSearch] = useState('');
-  const [selectedCust, setSelectedCust] = useState<any>(null);
-  const [payMethod, setPayMethod] = useState('cash');
-  const [qty, setQty] = useState(1);
-  const [activeStep, setActiveStep] = useState(0);
-
   const [activeRoute, setActiveRoute] = useState('dashboard');
   const [activeSubRoute, setActiveSubRoute] = useState('business');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showSubNav, setShowSubNav] = useState(true);
-  const [fullScreenMode, setFullScreenMode] = useState(false);
+  const [, setFullScreenMode] = useState(false);
   const [activePayload, setActivePayload] = useState<'pharmacy' | 'hospital'>('pharmacy');
 
-  // Phase 5 States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [toasts, setToasts] = useState<any[]>([]);
@@ -167,14 +120,11 @@ export function ComponentLab() {
     { category: 'General', description: 'Show Shortcuts', keys: ['SHIFT', '?'] },
     { category: 'General', description: 'Cancel / Close', keys: ['ESC'] },
     { category: 'Sales', description: 'Focus Search', keys: ['F1'] },
-    { category: 'Sales', description: 'Complete Sale', keys: ['CTRL', 'ENTER'] },
-    { category: 'Sales', description: 'Add New Customer', keys: ['ALT', 'N'] },
   ];
 
   const mockData = [
     { id: 1, name: 'Paracetamol 500mg', stock: 124, price: 5.50, status: 'active', category: 'Analgesics' },
     { id: 2, name: 'Amoxicillin 250mg', stock: 42, price: 12.00, status: 'warning', category: 'Antibiotics' },
-    { id: 3, name: 'Ibuprofen 400mg', stock: 0, price: 8.25, status: 'error', category: 'Analgesics' },
   ];
 
   const columns = [
@@ -186,8 +136,6 @@ export function ComponentLab() {
       render: (item: any) => <span>{item.stock} units</span>
     }
   ];
-
-  // --- API PAYLOAD MOCKS ---
 
   const pharmacyConfig = {
     branding: {
@@ -280,65 +228,6 @@ export function ComponentLab() {
 
   const config = activePayload === 'pharmacy' ? pharmacyConfig : hospitalConfig;
 
-  // --- FORM SCHEMAS ---
-
-  const signInSchema: any = {
-    id: 'sign-in',
-    title: 'Welcome Back',
-    subtitle: 'Enter your credentials to access the portal',
-    fields: [
-      { id: 'email', type: 'email', label: 'Email Address', placeholder: 'name@work.com' },
-      { id: 'pass', type: 'password', label: 'Password', placeholder: '••••••••' },
-      { id: 'rem', type: 'checkbox', label: 'Remember me on this device' }
-    ],
-    submitLabel: 'Sign In',
-    secondaryActions: [
-      { label: 'Forgot Password?', onClick: () => alert('Reset') }
-    ],
-    footerLink: { label: 'Contact Support', onClick: () => alert('Help') }
-  };
-
-  const registrationSchema: any = {
-    id: 'register',
-    title: 'Create Account',
-    subtitle: 'Join the 40Labs network today',
-    branding: { showLogoBadge: true },
-    fields: [
-      { id: 'biz', type: 'text', label: 'Business Name', placeholder: 'e.g. Afya Center' },
-      {
-        id: 'type',
-        type: 'select',
-        label: 'Type',
-        options: [
-          { label: 'Retail Pharmacy', value: 'retail' },
-          { label: 'Wholesale', value: 'wholesale' },
-          { label: 'Hospital', value: 'hospital' }
-        ]
-      },
-      { id: 'phone', type: 'tel', label: 'Phone', placeholder: '+255...' },
-    ],
-    submitLabel: 'Continue to Location',
-  };
-
-  const mfaSchema: any = {
-    id: 'mfa',
-    title: 'Verify Identity',
-    subtitle: 'A code was sent to your registered device',
-    fields: [
-      {
-        id: 'otp',
-        type: 'otp',
-        label: 'Verification Code',
-        placeholder: '000-000',
-        otpAction: { label: 'Resend via Email', onSend: () => alert('Code Resent!') }
-      }
-    ],
-    submitLabel: 'Verify & Authorize',
-    secondaryActions: [{ label: 'Use Security Key instead', onClick: () => alert('Key'), variant: 'secondary' }]
-  };
-
-  // --- DOMAIN API MOCKS ---
-
   const mockCartItems: any[] = [
     {
       id: 'item-1',
@@ -350,15 +239,6 @@ export function ComponentLab() {
       discountAmount: 100,
       currencyCode: 'TZS'
     },
-    {
-      id: 'item-2',
-      name: 'Amoxicillin 250mg',
-      unitPrice: 8000,
-      quantity: 1,
-      unitType: 'Bottle',
-      stockStatus: 'low-stock',
-      currencyCode: 'TZS'
-    }
   ];
 
   const mockCartSummary: any = {
@@ -368,21 +248,6 @@ export function ComponentLab() {
     grandTotal: 14750,
     currencyCode: 'TZS'
   };
-
-  const mockQuickActions: any[] = [
-    { id: 'qa1', label: 'New Sale', icon: <ShoppingBag size={20} />, onClick: () => alert('New Sale'), variant: 'primary' },
-    { id: 'qa2', label: 'Stock In', icon: <Package size={20} />, onClick: () => alert('Stock In'), variant: 'accent' },
-    { id: 'qa3', label: 'Add Patient', icon: <Users size={20} />, onClick: () => alert('Add Patient'), permissionRequired: 'can_add_patient' },
-    { id: 'qa4', label: 'Reports', icon: <BarChart3 size={20} />, onClick: () => alert('Reports'), variant: 'neutral' },
-    { id: 'qa5', label: 'System Check', icon: <Activity size={20} />, onClick: () => alert('Diagnostics') },
-    { id: 'qa6', label: 'Sync Logs', icon: <History size={20} />, onClick: () => alert('Syncing...') },
-  ];
-
-  const mockMetrics: any[] = [
-    { title: 'Daily Revenue', value: 2450000, tone: 'primary', trendPercentage: 12, trendDirection: 'up', formatting: { prefix: 'TZS ' }, icon: <Activity size={18} /> },
-    { title: 'Pending Orders', value: 42, tone: 'accent', trendPercentage: 5, trendDirection: 'down', icon: <ShoppingCart size={18} /> },
-    { title: 'Low Stock SKU', value: 8, tone: 'danger', trendPercentage: 2, trendDirection: 'up', icon: <Package size={18} />, subtext: 'Critical items reaching zero' }
-  ];
 
   return (
     <div className="p-8 space-y-16 bg-surface min-h-screen text-text pb-32 overflow-y-auto h-full">
@@ -564,7 +429,6 @@ export function ComponentLab() {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Metric label="Daily Sales" value="TZS 2,450,000" trend={{value: 12, isUp: true}} />
             <KPITile title="Total Orders" value="142" tone="primary" />
             <Panel variant="raised" className="p-4 flex flex-col justify-center items-center">
               <p className="text-caption text-text-muted uppercase mb-2">Panel Utility</p>
@@ -583,7 +447,7 @@ export function ComponentLab() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Card>
-            <CardHeader>States (Loading, Empty, Error)</CardHeader>
+            <CardHeader>States (Loading, Empty)</CardHeader>
             <CardBody className="space-y-8">
               <div className="space-y-2">
                 <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Loading State</p>
@@ -596,20 +460,6 @@ export function ComponentLab() {
                   title="No Orders Found"
                   message="We couldn't find any orders matching your criteria."
                   action={<Button size="sm" intent="secondary">Clear Filters</Button>}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Error State</p>
-                <ErrorState onRetry={() => alert('Retrying...')} />
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Success State</p>
-                <SuccessState
-                  title="Sale Confirmed"
-                  message="The transaction has been recorded and receipt sent."
-                  action={<Button size="sm">Print Receipt</Button>}
                 />
               </div>
             </CardBody>
@@ -641,13 +491,6 @@ export function ComponentLab() {
                   <Skeleton className="h-20 w-full" />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Table Skeleton</p>
-                <div className="border border-border rounded-card overflow-hidden">
-                  <SkeletonTable rows={3} columns={3} />
-                </div>
-              </div>
             </CardBody>
           </Card>
         </div>
@@ -670,375 +513,49 @@ export function ComponentLab() {
         </div>
       </section>
 
-      {/* 6. DASHBOARD COMPONENTS */}
-      <section className="space-y-6">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">6. Dashboard Components</h2>
-        <KPIGrid>
-          <KPICard title="Revenue" value="$12,000" trend={{value: 10, isUp: true}} tone="primary" />
-          <KPICard title="Users" value="1,200" tone="accent" />
-        </KPIGrid>
+      {/* 7. COMMERCE & SALES */}
+      <section className="space-y-6 pb-10">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">7. Sales Features</h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <DashboardCard title="Quick Actions">
-            <QuickActions>
-              <Button size="sm" intent="secondary">Action 1</Button>
-              <Button size="sm" intent="secondary">Action 2</Button>
-            </QuickActions>
-          </DashboardCard>
-          <ChartPanel title="Standalone Chart Container">
-            <div className="h-48 flex items-center justify-center border border-dashed border-border/30 rounded-card">
-              <span className="text-text-muted text-xs italic">Chart Area</span>
-            </div>
-          </ChartPanel>
-        </div>
-      </section>
-
-      {/* 7. COMMERCE & SALES (PHASE 7) */}
-      <section className="space-y-6 pb-10">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">7. Commerce & Sales (Phase 7)</h2>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Column 1: Discovery & Controls */}
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Discovery & Search</h3>
-              <ProductSearch
-                value={prodSearch}
-                onChange={setProdSearch}
-                results={prodSearch.length > 0 && (
-                  <>
-                    <ProductResult name="Panadol Advance 500mg" subtitle="Paracetamol • 20 Tabs" price="TZS 2,500" />
-                    <ProductResult name="Amoxicillin 250mg" subtitle="Antibiotic • 10 Caps" price="TZS 8,000" highlight />
-                  </>
-                )}
-              />
-              <div className="space-y-2">
-                <ProductRow name="Metformin 500mg" sku="MET-500" stock={120} price="TZS 15,000" onAdd={() => {}} />
-                <ProductRow name="Ibuprofen 400mg" sku="IBU-400" stock={85} price="TZS 2,200" onAdd={() => {}} />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Pricing & Quantity</h3>
-              <div className="flex flex-wrap gap-4 items-end bg-panel-strong/30 p-4 rounded-card border border-border/10">
-                <PriceDisplay amount="120,000" originalAmount="150,000" size="lg" />
-                <DiscountDisplay percentage={20} amount="30,000" label="Member Discount" />
-                <QuantityControl value={qty} onIncrement={() => setQty(qty + 1)} onDecrement={() => setQty(Math.max(0, qty - 1))} />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Product Card Variants</h3>
-              <ProductCard
-                name="Paracetamol 500mg"
-                subtitle="Analgesic"
-                stock={120}
-                price="TZS 5,000"
-                info="Batch: AB123"
-                onClick={() => {}}
-              />
-            </div>
-          </div>
-
-          {/* Column 2: Cart & Payments */}
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Active Cart</h3>
-              <Cart className="max-h-64 border border-border/20 shadow-xl">
-                <CartItem
-                  name="Panadol Advance 500mg"
-                  unitPrice="2,500"
-                  quantity={2}
-                  subtotal="5,000"
-                  onRemove={() => {}}
-                />
-                <CartItem
-                  name="Amoxicillin 250mg"
-                  unitPrice="8,000"
-                  quantity={1}
-                  subtotal="8,000"
-                  onRemove={() => {}}
-                />
-              </Cart>
-              <CartSummary
-                subtotal="13,000"
-                tax="2,340"
-                discount="500"
-                total="14,840"
-                onCheckout={() => addToast('Processing...', 'info')}
-              />
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Payment Flow</h3>
-              <PaymentMethodSelector selectedMethod={payMethod} onSelect={setPayMethod} />
-              <PaymentSummary
-                payments={[
-                  { method: 'Cash', amount: 'TZS 10,000', reference: 'CASH-882' },
-                  { method: 'Mobile Money', amount: 'TZS 4,840', reference: 'M-PESA: QWE123RTY' }
-                ]}
-                totalPaid="TZS 14,840"
-              />
-            </div>
-          </div>
-
-          {/* Column 3: CRM & Order Context */}
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Customer Selection</h3>
-              <CustomerSelector
-                searchQuery={custSearch}
-                onSearchChange={setCustSearch}
-                results={[
-                  { id: '1', full_name: 'John Doe', phone: '0712 345 678' },
-                  { id: '2', full_name: 'Jane Smith', phone: '0655 111 222' }
-                ]}
-                selectedCustomer={selectedCust}
-                onSelect={setSelectedCust}
-                onClearSelection={() => setSelectedCust(null)}
-                onWalkIn={() => addToast('Switched to Walk-in', 'neutral')}
-              />
-              <CustomerSummary customer={selectedCust} />
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Order Summary</h3>
-              <OrderSummary
-                orderNumber="ORD-2023-9981"
-                date="2023-10-27 14:30"
-                status="completed"
-                itemCount={3}
-                total="TZS 14,840"
-              />
-              <div className="flex flex-wrap gap-2">
-                <OrderStatus status="pending" />
-                <OrderStatus status="completed" />
-                <OrderStatus status="processing" />
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-[10px] font-bold text-accent uppercase tracking-widest">Thermal Receipt</h3>
-              <ReceiptPreview
-                businessName="40LABS PHARMACY"
-                businessAddress="123 Health St, Dar es Salaam, TZ"
-                businessPhone="+255 700 000 000"
-                orderId="ORD-2023-9981"
-                date="2023-10-27 14:30"
-                items={[
-                  { name: 'Panadol Advance 500mg', qty: 2, price: 5000, total: 10000 },
-                  { name: 'Amoxicillin 250mg', qty: 1, price: 12000, total: 12000 },
-                ]}
-                subtotal={22000}
-                tax={3960}
-                total={25960}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 9. ONBOARDING & SETUP */}
-      <section className="space-y-6 pb-10">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">9. Onboarding & Setup</h2>
-        <div className="flex justify-center py-10 bg-panel-strong/20 rounded-[3rem] border border-border/5">
-          <OnboardingCarouselCard
-            title={
-              activeStep === 0 ? "Inventory Control" :
-              activeStep === 1 ? "Real-time Sales" :
-              "Clinical Insights"
-            }
-            features={
-              activeStep === 0 ? [
-                "Scan barcodes for lightning fast entry",
-                "Batch & expiry date tracking",
-                "Automated low-stock alerts"
-              ] : activeStep === 1 ? [
-                "Split-payment management",
-                "Integrated thermal printing",
-                "Offline transaction syncing"
-              ] : [
-                "Prescription validity checks",
-                "Drug interaction warnings",
-                "Patient compliance tracking"
-              ]
-            }
-            activeStep={activeStep}
-            totalSteps={3}
-            primaryAction={{
-              label: activeStep === 2 ? "Complete Setup" : "Next Feature",
-              onClick: () => setActiveStep((s) => (s + 1) % 3)
-            }}
-            secondaryAction={activeStep > 0 ? {
-              label: "Go Back",
-              onClick: () => setActiveStep((s) => (s - 1 + 3) % 3)
-            } : undefined}
-          />
-        </div>
-      </section>
-
-      {/* 11. AUTH FORM COMPOSITES (SCHEMA DRIVEN) */}
-      <section className="space-y-6 pb-32">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">11. Auth Form Composites (Schema Driven)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Sign In Schema</h3>
-            <AuthFormCard
-              schema={signInSchema}
-              onSubmit={(d) => console.log('Login:', d)}
+            <ProductRow name="Metformin 500mg" sku="MET-500" stock={120} price="TZS 15,000" onAdd={() => {}} />
+            {mockCartItems.map((item) => (
+              <CartItemRow
+                key={item.id}
+                item={item}
+                onQuantityChange={(id, q) => console.log('Qty:', id, q)}
+                onRemove={(id) => console.log('Remove:', id)}
+              />
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            <CartSummaryPanel
+              payload={mockCartSummary}
+              onConfirm={() => alert('Confirmed')}
+              onClear={() => alert('Cleared')}
             />
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Registration Step 1</h3>
-            <AuthFormCard
-              schema={registrationSchema}
-              onSubmit={(d) => console.log('Register:', d)}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">MFA / OTP Schema</h3>
-            <AuthFormCard
-              schema={mfaSchema}
-              onSubmit={(d) => console.log('MFA:', d)}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* 12. AUTH SPECIALTY INPUTS (DYNAMIC) */}
-      <section className="space-y-6 pb-32">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">12. Auth Specialty Inputs (Dynamic)</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-5xl">
-          <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Terms API Payload</h3>
-            <TermsCheckboxGroup
-              summary={<span>Unakubaliana na <strong>sera ya faragha</strong>?</span>}
-              fullText="Hapa kuna maelezo ya kina kutoka kwa API..."
-              expandLabel="Soma zaidi..."
-              collapseLabel="Funga"
-              groupName="terms_api"
-              options={[
-                { label: 'Kubali', value: 'yes' },
-                { label: 'Kataa', value: 'no' }
+            <ReceiptPreview
+              businessName="40LABS PHARMACY"
+              businessAddress="123 Health St, Dar es Salaam, TZ"
+              businessPhone="+255 700 000 000"
+              orderId="ORD-2023-9981"
+              date="2023-10-27 14:30"
+              items={[
+                { name: 'Panadol Advance 500mg', qty: 2, price: 5000, total: 10000 },
               ]}
-              onOptionChange={(v) => console.log('TOS:', v)}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Dynamic Location Hierarchy</h3>
-            <div className="bg-panel-strong/20 p-6 rounded-card border border-border/10">
-              <LocationGpsGroup
-                levels={[
-                  { id: 'region', label: 'Region', placeholder: 'Select Region' },
-                  { id: 'district', label: 'District', placeholder: 'Select District' },
-                  { id: 'ward', label: 'Ward', placeholder: 'Enter Ward' }
-                ]}
-                gpsButtonLabel="Acquire GPS Coordinates"
-                gpsButtonIcon={<MapPin size={14} />}
-                onLocationChange={(id, v) => console.log(`Location ${id}:`, v)}
-                onGeolocate={async () => {
-                  await new Promise(r => setTimeout(r, 1000));
-                  return { lat: -6.7924, lng: 39.2083 };
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 13. AUTH COMPLETION CARDS */}
-      <section className="space-y-6 pb-32">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">13. Auth Completion Cards</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl">
-          <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Account Success Card</h3>
-            <AuthSuccessCard
-              title="Congratulations!"
-              message={
-                <p>
-                  You have successfully opened a business account for <span className="text-primary font-semibold">Afya Bora Pharmacy</span>.
-                </p>
-              }
-              primaryAction={{ label: 'Anza', onClick: () => alert('Starting App...') }}
-              secondaryActions={[
-                { label: 'Download', onClick: () => alert('Downloading...'), icon: <Download size={16} /> },
-                { label: 'Share', onClick: () => alert('Sharing...'), icon: <Share2 size={16} /> }
-              ]}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Channel Connection List</h3>
-            <ChannelConnectList
-              title="Connect Channels"
-              subtitle="Reach your customers where they are by connecting your favorite channels."
-              channels={[
-                { id: 'whatsapp', name: 'WhatsApp', description: 'Send receipts via WhatsApp', icon: <MessageCircle size={20} /> },
-                { id: 'email', name: 'Email', description: 'Automated reports to email', icon: <Mail size={20} /> },
-                { id: 'sms', name: 'SMS', description: 'Quick alerts via SMS', icon: <MessageSquare size={20} /> },
-              ]}
-              onConnect={(id) => alert(`Connecting to ${id}...`)}
-              primaryAction={{ label: 'Anza', onClick: () => alert('Starting App...') }}
-              secondaryAction={{ label: 'Skip For Now', onClick: () => alert('Skipping...') }}
+              subtotal={10000}
+              tax={1800}
+              total={11800}
             />
           </div>
         </div>
       </section>
 
-      {/* 18. DYNAMIC DOMAIN COMPOSITES (API FEED) */}
-      <section className="space-y-6 pb-32">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">18. Dynamic Domain Composites (API Feed)</h2>
-        <div className="space-y-12">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-             <div className="lg:col-span-2 space-y-4">
-               <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Real-time Cart Feed</h3>
-               <div className="space-y-2 max-w-2xl">
-                 {mockCartItems.map((item) => (
-                   <CartItemRow
-                     key={item.id}
-                     item={item}
-                     onQuantityChange={(id, q) => console.log('Qty:', id, q)}
-                     onRemove={(id) => console.log('Remove:', id)}
-                   />
-                 ))}
-               </div>
-             </div>
-             <div className="space-y-4">
-               <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Summary API Payload</h3>
-               <CartSummaryPanel
-                 payload={mockCartSummary}
-                 onConfirm={() => alert('Confirmed')}
-                 onClear={() => alert('Cleared')}
-                 onHold={() => alert('On Hold')}
-               />
-             </div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">Dynamic Quick Actions (Role-Based)</h3>
-            <QuickActionsGrid
-              actions={mockQuickActions}
-              userPermissions={['can_add_patient']}
-            />
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-caption font-bold text-accent uppercase tracking-widest px-2">KPI Metric Feed</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {mockMetrics.map((metric, idx) => (
-                <KPITile key={idx} {...metric} />
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 17. FULL APPLICATION LAYOUT INTEGRATION (API DRIVEN) */}
+      {/* 17. FULL APPLICATION LAYOUT INTEGRATION */}
       <section className="space-y-6 pb-64">
-        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">17. Full Application Layout Integration (API Driven)</h2>
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">17. Full Application Layout Integration</h2>
         <div className="space-y-4">
           <div className="flex items-center gap-4 px-2">
              <Button size="sm" onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
@@ -1100,17 +617,6 @@ export function ComponentLab() {
                    </div>
                  </div>
 
-                 <KPIGrid>
-                   <KPICard
-                     title={activePayload === 'hospital' ? "Occupancy Rate" : "Total Revenue"}
-                     value={activePayload === 'hospital' ? "92%" : "TZS 4.2M"}
-                     trend={{value: 12, isUp: true}}
-                     tone="primary"
-                   />
-                   <KPICard title={activePayload === 'hospital' ? "Emergency" : "Active Orders"} value="24" tone="accent" />
-                   <KPICard title={activePayload === 'hospital' ? "Waiting Time" : "Low Stock Items"} value={activePayload === 'hospital' ? "15m" : "8"} tone="danger" />
-                 </KPIGrid>
-
                  <Card>
                    <CardHeader>Recent {activePayload === 'hospital' ? 'Patients' : 'Activity'}</CardHeader>
                    <CardBody>
@@ -1126,85 +632,7 @@ export function ComponentLab() {
         </div>
       </section>
 
-      {/* FULL SCREEN PREVIEW MODE */}
-      {fullScreenMode && (
-        <div className="fixed inset-0 z-[9999] bg-surface">
-           <div className="absolute top-4 right-4 z-[10000]">
-              <Button intent="danger" size="md" onClick={() => setFullScreenMode(false)}>Exit Preview</Button>
-           </div>
-           <DashboardShell
-             showSubNav={showSubNav}
-             sidebar={
-               <AppSidebarNav
-                 activeRoute={activeRoute}
-                 collapsed={sidebarCollapsed}
-                 onNavigate={setActiveRoute}
-                 onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-                 tenantBranding={config.branding}
-                 userProfile={config.user}
-                 items={config.navigation}
-                 pinnedBottomItems={[
-                   { id: 'settings', label: 'Settings', icon: <Settings size={20} /> }
-                 ]}
-               />
-             }
-             header={
-               <DashboardHeaderBar
-                 moduleTitle={activeRoute.toUpperCase()}
-                 statusIndicatorColor={activeRoute === 'hospital' ? 'red' : 'green'}
-                 searchPlaceholder={activeRoute === 'hospital' ? "Find patient by ID..." : "Search product..."}
-                 searchHotkeys={['CTRL', 'K']}
-                 statusIndicators={config.header.indicators}
-                 actionButtons={[
-                   { id: 'n1', icon: <Bell size={18} />, onClick: () => alert('Notifications'), hasBadge: true, badgeColor: activeRoute === 'hospital' ? 'danger' : 'primary' }
-                 ]}
-                 onSearch={(q) => console.log('Global search:', q)}
-               />
-             }
-             subNav={
-               <ContextualSubNav
-                 sections={config.settingsSubNav}
-                 activeItemId={activeSubRoute}
-                 onSelect={setActiveSubRoute}
-                 userPermissions={config.user.permissions}
-               />
-             }
-           >
-             <div className="space-y-8">
-               <div className="flex items-center justify-between">
-                 <h3 className="text-3xl font-heading font-bold text-text capitalize">{activeRoute} Management</h3>
-                 <div className="flex gap-3">
-                   <Button intent="secondary" leftIcon={<Plus size={18} />}>Create New</Button>
-                   <Button leftIcon={<FileText size={18} />}>Export Report</Button>
-                 </div>
-               </div>
-
-               <KPIGrid>
-                 <KPICard
-                   title={activePayload === 'hospital' ? "Occupancy Rate" : "Total Revenue"}
-                   value={activePayload === 'hospital' ? "92%" : "TZS 4.2M"}
-                   trend={{value: 12, isUp: true}}
-                   tone="primary"
-                 />
-                 <KPICard title={activePayload === 'hospital' ? "Emergency" : "Active Orders"} value="24" tone="accent" />
-                 <KPICard title={activePayload === 'hospital' ? "Waiting Time" : "Low Stock Items"} value={activePayload === 'hospital' ? "15m" : "8"} tone="danger" />
-               </KPIGrid>
-
-               <Card>
-                 <CardHeader>Recent {activePayload === 'hospital' ? 'Patients' : 'Activity'}</CardHeader>
-                 <CardBody>
-                    <DataTable
-                      data={mockData}
-                      columns={columns}
-                    />
-                 </CardBody>
-               </Card>
-             </div>
-           </DashboardShell>
-        </div>
-      )}
-
-      {/* OVERLAYS (PORTALS) */}
+      {/* OVERLAYS */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Standalone Modal">
         <p>This modal stands by itself without internal component dependencies.</p>
         <div className="mt-8 flex justify-end">

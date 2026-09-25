@@ -1,14 +1,12 @@
-import { Trash2, Image as ImageIcon } from 'lucide-react';
-import { Badge } from '../primitives/Badge';
-import { IconButton } from '../primitives/IconButton';
-import { QuantityControl } from './Commerce';
+import { Trash2, Image as ImageIcon, Minus, Plus } from 'lucide-react';
+import { Badge, IconButton } from '@40labs/ui-components';
 
 export interface CartItemModel {
   id: string | number;
   name: string;
   unitPrice: number;
   quantity: number;
-  unitType?: string; // e.g. "Strip", "Bottle", "Box"
+  unitType?: string;
   stockStatus?: 'in-stock' | 'low-stock' | 'out-of-stock';
   discountAmount?: number;
   thumbnailUrl?: string;
@@ -26,10 +24,6 @@ export interface CartItemRowProps {
 const defaultFormatter = (value: number, currency: string) =>
   `${currency} ${value.toLocaleString()}`;
 
-/**
- * CartItemRow composite component for rendering drug/item entries in a commerce cart.
- * Reverted to compact horizontal layout.
- */
 export const CartItemRow = ({
   item,
   onQuantityChange,
@@ -43,7 +37,6 @@ export const CartItemRow = ({
 
   return (
     <div className={`flex items-center gap-2 p-2 rounded-card bg-panel-strong elevation-raised border border-border/10 ${className}`}>
-      {/* Thumbnail */}
       <div className="w-10 h-10 shrink-0 rounded-input bg-field elevation-inset overflow-hidden flex items-center justify-center relative border border-border/5">
         {item.thumbnailUrl ? (
           <img src={item.thumbnailUrl} alt={item.name} className="w-full h-full object-cover" />
@@ -60,7 +53,6 @@ export const CartItemRow = ({
         )}
       </div>
 
-      {/* Name + unitType badge inline on one line, flex-1 min-w-0, truncate */}
       <div className="min-w-0 flex-1 flex flex-col justify-center">
         <div className="flex items-center gap-1.5 min-w-0">
           <h4 className="text-xs font-semibold text-text truncate min-w-0">
@@ -77,23 +69,30 @@ export const CartItemRow = ({
         </p>
       </div>
 
-      {/* QuantityControl */}
-      <QuantityControl
-        value={item.quantity}
-        onIncrement={() => onQuantityChange(item.id, item.quantity + 1)}
-        onDecrement={() => onQuantityChange(item.id, Math.max(0, item.quantity - 1))}
-        size="sm"
-        className="shrink-0"
-      />
+      <div className="flex items-center bg-panel-strong rounded-full p-0.5 elevation-inset shrink-0">
+        <button
+          onClick={() => onQuantityChange(item.id, Math.max(0, item.quantity - 1))}
+          className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-panel text-text"
+        >
+          <Minus size={12} />
+        </button>
+        <span className="font-mono font-bold text-text text-center min-w-[20px] text-xs">
+          {item.quantity}
+        </span>
+        <button
+          onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+          className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-panel text-primary"
+        >
+          <Plus size={12} />
+        </button>
+      </div>
 
-      {/* Subtotal */}
       <div className="w-20 text-right shrink-0">
         <span className="font-mono text-xs font-bold text-primary">
           {currencyFormatter(subtotal, currency)}
         </span>
       </div>
 
-      {/* Remove Button */}
       <IconButton
         icon={<Trash2 size={14} />}
         label="Remove item"

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { CustomerPicker, Card, Button, Checkbox, IconButton } from '@40labs/ui-components';
+import { Card, Button, Checkbox, IconButton } from '@40labs/ui-components';
+import { CustomerPicker } from '../customers/CustomerPicker';
 import { Customer } from '@40labs/types';
 import { ChevronDown } from 'lucide-react';
 import { pharmaciesApi } from '../../api';

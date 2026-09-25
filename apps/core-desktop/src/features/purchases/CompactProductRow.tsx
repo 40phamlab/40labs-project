@@ -1,5 +1,5 @@
-import React from 'react';
-import { Button } from '../primitives/Button';
+import * as React from 'react';
+import { Button } from '@40labs/ui-components';
 
 export interface CompactProductRowProps {
   product: {
@@ -13,10 +13,6 @@ export interface CompactProductRowProps {
   className?: string;
 }
 
-/**
- * CompactProductRow
- * A specialized data row for products, following the pharmacy design reference.
- */
 export const CompactProductRow: React.FC<CompactProductRowProps> = ({
   product,
   onAdd,
@@ -32,7 +28,6 @@ export const CompactProductRow: React.FC<CompactProductRowProps> = ({
       `}
     >
       <div className="flex items-start justify-between">
-        {/* Left Side: Product Info */}
         <div className="flex flex-col min-w-0">
           <span className="text-sm font-bold text-text truncate">
             {product.name}
@@ -47,7 +42,6 @@ export const CompactProductRow: React.FC<CompactProductRowProps> = ({
           )}
         </div>
 
-        {/* Right Side: Action */}
         <Button
           size="sm"
           intent="accent"
@@ -58,7 +52,6 @@ export const CompactProductRow: React.FC<CompactProductRowProps> = ({
         </Button>
       </div>
 
-      {/* Footer: Detailed Link */}
       <button
         onClick={() => onMoreInfo(product.id)}
         className="self-end text-[9px] text-text-muted hover:text-primary transition-colors italic decoration-dotted underline"

@@ -1,9 +1,7 @@
 import * as React from 'react';
 import { X } from 'lucide-react';
 import { Customer } from '@40labs/types';
-import { Card } from '../primitives/Card';
-import { Input } from '../forms/Input';
-import { IconButton } from '../primitives/IconButton';
+import { Card, Input, IconButton } from '@40labs/ui-components';
 
 export interface CustomerPickerProps {
   value: Customer | null;

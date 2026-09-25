@@ -16,9 +16,7 @@ export const Numpad = ({ value, onChange, onConfirm, className = '' }: NumpadPro
     } else if (key === 'Enter') {
       onConfirm?.();
     } else {
-      // Prevent multiple decimals
       if (key === '.' && value.includes('.')) return;
-      // Prevent multiple leading zeros
       if (key === '00' && value === '') return;
       onChange(value + key);
     }

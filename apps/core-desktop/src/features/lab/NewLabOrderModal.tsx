@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Modal, Button, Select, CustomerPicker } from '@40labs/ui-components';
+import { Modal, Button, Select } from '@40labs/ui-components';
+import { CustomerPicker } from '../customers/CustomerPicker';
 import type { Customer, TestCatalogEntry, LabOrder } from '@40labs/types';
 import { pharmaciesApi } from '../../api';
 

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { TabbedListContainer, OrderSummary } from '@40labs/ui-components';
+import { TabbedListContainer } from '@40labs/ui-components';
+import { OrderSummary } from './OrderSummary';
 import { ShoppingBag } from 'lucide-react';
 import type { PurchaseOrder } from '@40labs/types';
 import { usePurchases } from '../../hooks/usePurchases';

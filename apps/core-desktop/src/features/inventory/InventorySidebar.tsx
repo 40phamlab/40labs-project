@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { SearchInput, Button, CategorySquare } from '@40labs/ui-components';
+import { SearchInput, Button } from '@40labs/ui-components';
+import { CategorySquare } from './CategorySquare';
 
 interface InventorySidebarProps {
   searchTerm: string;

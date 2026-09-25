@@ -1,4 +1,4 @@
-import React from 'react';
+import * as React from 'react';
 
 export interface CategorySquareProps {
   label: string;
@@ -7,11 +7,6 @@ export interface CategorySquareProps {
   className?: string;
 }
 
-/**
- * CategorySquare
- * A 1:1 aspect ratio square for pharmacy category selection.
- * Uses claymorphic design tokens for active/inactive states.
- */
 export const CategorySquare: React.FC<CategorySquareProps> = ({
   label,
   isActive = false,
