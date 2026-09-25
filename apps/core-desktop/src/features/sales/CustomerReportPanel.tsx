@@ -2,7 +2,7 @@ import * as React from 'react';
 import { CustomerPicker, Card, Button, Checkbox, IconButton } from '@40labs/ui-components';
 import { Customer } from '@40labs/types';
 import { ChevronDown } from 'lucide-react';
-import { mockBusiness } from '../../lib/mockData';
+import { pharmaciesApi } from '../../api';
 
 export interface ConfirmedSaleData {
   customerLabel: string;
@@ -92,7 +92,7 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
             <>
               <Card className="flex flex-col gap-1 p-4 !bg-panel/20 border-border/20 elevation-flat shadow-none shrink-0">
                 <h3 className="text-sm font-bold text-text mb-2">
-                  {mockBusiness.name}
+                  {pharmaciesApi.getBusiness().name}
                 </h3>
 
                 <div className="border-t border-border/20 pt-3 space-y-3">

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { PurchaseOrder, Supplier } from '@40labs/types';
-import { mockPurchaseOrders, mockSuppliers, WORKSPACE_ID, BRANCH_ID } from '../lib/mockData.ts';
+import { purchasesApi } from '../api/purchasesApi';
 
 interface PurchasesState {
   purchaseOrders: PurchaseOrder[];
@@ -8,34 +8,22 @@ interface PurchasesState {
   selectedPOId: string | null;
 
   setSelectedPOId: (id: string | null) => void;
-  createPurchaseOrder: (supplierId: string, lines: { medicine_id: string; quantity: number; unit_cost: number }[]) => PurchaseOrder;
+  createPurchaseOrder: (
+    supplierId: string,
+    lines: { medicine_id: string; quantity: number; unit_cost: number }[]
+  ) => PurchaseOrder;
   approvePurchaseOrder: (poId: string) => void;
 }
 
 export const usePurchasesStore = create<PurchasesState>((set) => ({
-  purchaseOrders: mockPurchaseOrders,
-  suppliers: mockSuppliers,
+  purchaseOrders: purchasesApi.getPurchaseOrders(),
+  suppliers: purchasesApi.getSuppliers(),
   selectedPOId: null,
 
   setSelectedPOId: (selectedPOId) => set({ selectedPOId }),
 
   createPurchaseOrder: (supplierId, lines) => {
-    const now = new Date().toISOString();
-    const totalCost = lines.reduce((sum, line) => sum + line.quantity * line.unit_cost, 0);
-
-    const newPO: PurchaseOrder = {
-      id: `po_${Date.now()}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      supplier_id: supplierId,
-      status: 'draft',
-      lines,
-      total_cost: totalCost,
-      approved_by_user_id: null,
-      submitted_at: null,
-    };
+    const newPO = purchasesApi.createPurchaseOrder(supplierId, lines);
 
     set((state) => ({
       purchaseOrders: [newPO, ...state.purchaseOrders],
@@ -45,14 +33,16 @@ export const usePurchasesStore = create<PurchasesState>((set) => ({
     return newPO;
   },
 
-  approvePurchaseOrder: (poId) => set((state) => {
+  approvePurchaseOrder: (poId) => {
+    purchasesApi.approvePurchaseOrder(poId);
     const now = new Date().toISOString();
-    return {
+
+    set((state) => ({
       purchaseOrders: state.purchaseOrders.map((po) =>
         po.id === poId
           ? { ...po, status: 'completed', approved_by_user_id: 'user_001', submitted_at: now, updated_at: now }
           : po
       ),
-    };
-  }),
+    }));
+  },
 }));

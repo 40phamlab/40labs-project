@@ -1,0 +1,57 @@
+import type { User } from '@40labs/types';
+import { WORKSPACE_ID, BRANCH_ID, daysAgoIso } from '../constants';
+
+export const initialUsers: User[] = [
+  {
+    id: 'user_001',
+    workspace_id: WORKSPACE_ID,
+    branch_id: BRANCH_ID,
+    created_at: daysAgoIso(90),
+    updated_at: daysAgoIso(90),
+    full_name: 'Sairiamu Mwakalinga',
+    role: 'sudo',
+    pin_hash: 'mock_hash_sudo',
+    permissions: null,
+    active: true,
+  },
+  {
+    id: 'user_002',
+    workspace_id: WORKSPACE_ID,
+    branch_id: BRANCH_ID,
+    created_at: daysAgoIso(60),
+    updated_at: daysAgoIso(10),
+    full_name: 'Grace Mushi',
+    role: 'staff',
+    pin_hash: 'mock_hash_staff_1',
+    permissions: {
+      can_update_stock: true,
+      can_adjust_stock: false,
+      can_issue_refund: false,
+      can_approve_po: false,
+      can_add_lab_sample: true,
+      can_override_lab_result: false,
+      can_view_reports: true,
+    },
+    active: true,
+  },
+  {
+    id: 'user_003',
+    workspace_id: WORKSPACE_ID,
+    branch_id: BRANCH_ID,
+    created_at: daysAgoIso(45),
+    updated_at: daysAgoIso(45),
+    full_name: 'Emmanuel Kileo',
+    role: 'staff',
+    pin_hash: 'mock_hash_staff_2',
+    permissions: {
+      can_update_stock: true,
+      can_adjust_stock: true,
+      can_issue_refund: false,
+      can_approve_po: false,
+      can_add_lab_sample: false,
+      can_override_lab_result: false,
+      can_view_reports: false,
+    },
+    active: true,
+  },
+];

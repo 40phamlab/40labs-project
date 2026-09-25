@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Notification } from '@40labs/types';
-import { mockNotifications } from '../lib/mockData.ts';
+import { notificationsApi } from '../api/notificationsApi';
 
 interface NotificationsState {
   notifications: Notification[];
@@ -14,22 +14,28 @@ interface NotificationsState {
 }
 
 export const useNotificationsStore = create<NotificationsState>((set) => ({
-  notifications: mockNotifications,
+  notifications: notificationsApi.getNotifications(),
   selectedNotificationId: null,
   activeCategory: 'all',
 
   setSelectedNotificationId: (selectedNotificationId) => set({ selectedNotificationId }),
   setActiveCategory: (activeCategory) => set({ activeCategory }),
 
-  markAsRead: (id) => set((state) => ({
-    notifications: state.notifications.map((n) =>
-      n.id === id ? { ...n, status: 'read', updated_at: new Date().toISOString() } : n
-    ),
-  })),
+  markAsRead: (id) => {
+    notificationsApi.markAsRead(id);
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.id === id ? { ...n, status: 'read', updated_at: new Date().toISOString() } : n
+      ),
+    }));
+  },
 
-  archiveNotification: (id) => set((state) => ({
-    notifications: state.notifications.map((n) =>
-      n.id === id ? { ...n, status: 'archived', updated_at: new Date().toISOString() } : n
-    ),
-  })),
+  archiveNotification: (id) => {
+    notificationsApi.archiveNotification(id);
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        n.id === id ? { ...n, status: 'archived', updated_at: new Date().toISOString() } : n
+      ),
+    }));
+  },
 }));

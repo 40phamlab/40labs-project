@@ -1,13 +1,6 @@
 import { create } from 'zustand';
 import type { LabOrder, LabSample, LabResult, TestCatalogEntry } from '@40labs/types';
-import {
-  mockLabOrders,
-  mockLabSamples,
-  mockLabResults,
-  mockTestCatalog,
-  WORKSPACE_ID,
-  BRANCH_ID,
-} from '../lib/mockData.ts';
+import { labApi } from '../api/labApi';
 
 interface LabState {
   orders: LabOrder[];
@@ -26,10 +19,10 @@ interface LabState {
 }
 
 export const useLabStore = create<LabState>((set) => ({
-  orders: mockLabOrders,
-  samples: mockLabSamples,
-  results: mockLabResults,
-  catalog: mockTestCatalog,
+  orders: labApi.getOrders(),
+  samples: labApi.getSamples(),
+  results: labApi.getResults(),
+  catalog: labApi.getCatalog(),
   selectedOrderId: null,
   activeTab: 'orders',
 
@@ -37,19 +30,7 @@ export const useLabStore = create<LabState>((set) => ({
   setActiveTab: (activeTab) => set({ activeTab }),
 
   createOrder: (customerId, testCatalogId) => {
-    const now = new Date().toISOString();
-    const newOrder: LabOrder = {
-      id: `labord_${Date.now()}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      customer_id: customerId,
-      sale_id: null,
-      ordered_by_user_id: 'user_001',
-      status: 'pending',
-      test_catalog_id: testCatalogId,
-    };
+    const newOrder = labApi.createOrder(customerId, testCatalogId);
 
     set((state) => ({
       orders: [newOrder, ...state.orders],
@@ -60,19 +41,8 @@ export const useLabStore = create<LabState>((set) => ({
   },
 
   collectSample: (orderId, sampleLabel) => {
+    const newSample = labApi.collectSample(orderId, sampleLabel);
     const now = new Date().toISOString();
-    const newSample: LabSample = {
-      id: `labsample_${Date.now()}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      lab_order_id: orderId,
-      collected_by_user_id: 'user_001',
-      collected_at: now,
-      sample_label: sampleLabel,
-      status: 'collected',
-    };
 
     set((state) => ({
       samples: [newSample, ...state.samples],
@@ -85,20 +55,8 @@ export const useLabStore = create<LabState>((set) => ({
   },
 
   enterResult: (orderId, value, referenceRange, isOutOfRange) => {
+    const newResult = labApi.enterResult(orderId, value, referenceRange, isOutOfRange);
     const now = new Date().toISOString();
-    const newResult: LabResult = {
-      id: `labresult_${Date.now()}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      lab_order_id: orderId,
-      entered_by_user_id: 'user_001',
-      value,
-      reference_range: referenceRange,
-      is_out_of_range: isOutOfRange,
-      override_authorized_by_user_id: null,
-    };
 
     set((state) => ({
       results: [newResult, ...state.results],

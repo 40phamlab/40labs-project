@@ -1,13 +1,8 @@
 import { create } from 'zustand';
 import type { Customer } from '@40labs/types';
-import { mockCustomers, WORKSPACE_ID, BRANCH_ID } from '../lib/mockData.ts';
+import { customersApi, AddCustomerPayload } from '../api/customersApi';
 
-export interface AddCustomerPayload {
-  fullName: string;
-  phone: string;
-  email?: string;
-  notes?: string;
-}
+export type { AddCustomerPayload };
 
 interface CustomersState {
   customers: Customer[];
@@ -24,7 +19,7 @@ interface CustomersState {
 }
 
 export const useCustomersStore = create<CustomersState>((set) => ({
-  customers: mockCustomers,
+  customers: customersApi.getCustomers(),
   searchTerm: '',
   selectedCustomerId: null,
   isAddModalOpen: false,
@@ -34,20 +29,7 @@ export const useCustomersStore = create<CustomersState>((set) => ({
   setAddModalOpen: (isAddModalOpen) => set({ isAddModalOpen }),
 
   addCustomer: (payload) => {
-    const now = new Date().toISOString();
-    const newCustomer: Customer = {
-      id: `cust_${Date.now()}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      full_name: payload.fullName,
-      phone: payload.phone,
-      email: payload.email || null,
-      outstanding_balance: 0,
-      notes: payload.notes || null,
-      amob_patient_id: null,
-    };
+    const newCustomer = customersApi.addCustomer(payload);
 
     set((state) => ({
       customers: [newCustomer, ...state.customers],
@@ -58,9 +40,12 @@ export const useCustomersStore = create<CustomersState>((set) => ({
     return newCustomer;
   },
 
-  updateCustomerNotes: (id, notes) => set((state) => ({
-    customers: state.customers.map((c) =>
-      c.id === id ? { ...c, notes, updated_at: new Date().toISOString() } : c
-    ),
-  })),
+  updateCustomerNotes: (id, notes) => {
+    customersApi.updateCustomerNotes(id, notes);
+    set((state) => ({
+      customers: state.customers.map((c) =>
+        c.id === id ? { ...c, notes, updated_at: new Date().toISOString() } : c
+      ),
+    }));
+  },
 }));

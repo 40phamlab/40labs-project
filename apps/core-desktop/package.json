@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "tauri": "tauri"
   },
+  
   "dependencies": {
     "@40labs/design-tokens": "workspace:*",
     "@40labs/types": "workspace:*",

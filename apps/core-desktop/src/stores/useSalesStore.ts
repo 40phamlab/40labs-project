@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Customer, MedicineWithInventory, Sale, SaleLine } from '@40labs/types';
-import { mockSales, WORKSPACE_ID, BRANCH_ID } from '../lib/mockData.ts';
+import { salesApi } from '../api/salesApi';
 
 export interface CartItem {
   inventoryItem: MedicineWithInventory;
@@ -33,7 +33,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   selectedCustomer: null,
   paymentMethod: 'cash',
   discountAmount: 0,
-  completedSales: mockSales,
+  completedSales: salesApi.getSales(),
 
   addToCart: (item) => set((state) => {
     const existingIndex = state.cart.findIndex(
@@ -69,11 +69,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
     const { cart, selectedCustomer, paymentMethod, discountAmount, completedSales } = get();
     if (cart.length === 0) return null;
 
-    const now = new Date().toISOString();
-    const saleId = `sale_${Date.now()}`;
-
-    const lines: SaleLine[] = cart.map((item, index) => ({
-      id: `saleline_${Date.now()}_${index}`,
+    const lines: Omit<SaleLine, 'id'>[] = cart.map((item) => ({
       inventory_item_id: item.inventoryItem.id,
       medicine_id: item.inventoryItem.medicine_id,
       quantity: item.quantity,
@@ -83,25 +79,12 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       is_prescription_dispense: item.inventoryItem.medicine.requires_prescription,
     }));
 
-    const subtotal = lines.reduce((acc, line) => acc + line.subtotal, 0);
-    const grandTotal = Math.max(0, subtotal - discountAmount);
-
-    const newSale: Sale = {
-      id: saleId,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      customer_id: selectedCustomer ? selectedCustomer.id : null,
+    const newSale = salesApi.createSale({
+      customerId: selectedCustomer ? selectedCustomer.id : null,
       lines,
-      payment_method: paymentMethod,
-      discount_amount: discountAmount,
-      discount_authorized_by_user_id: discountAmount > 0 ? 'user_001' : null,
-      tax_amount: 0,
-      grand_total: grandTotal,
-      currency: 'TZS',
-      synced_at: null,
-    };
+      paymentMethod,
+      discountAmount,
+    });
 
     set({
       completedSales: [newSale, ...completedSales],
