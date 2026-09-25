@@ -14,7 +14,8 @@ import {
 import { ShoppingBag, CheckCircle2, Tag, Lock, ArrowLeft } from 'lucide-react';
 import type { PurchaseOrder } from '@40labs/types';
 import { ExtendedSupplier } from './SupplierListItem';
-import { purchasesApi, pharmaciesApi } from '../../api';
+import { usePurchases } from '../../hooks/usePurchases';
+import { pharmaciesApi } from '../../api';
 
 export interface StorefrontProduct {
   id: string;
@@ -92,14 +93,21 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   onClose,
   className = '',
 }) => {
+  const {
+    purchaseOrders: fetchedPOs,
+    suppliers: fetchedSuppliers,
+    createPurchaseOrder,
+    updatePurchaseOrder,
+  } = usePurchases();
+
   const purchaseOrders = React.useMemo(() => {
-    return purchaseOrdersProp || purchasesApi.list();
-  }, [purchaseOrdersProp]);
+    return purchaseOrdersProp || fetchedPOs;
+  }, [purchaseOrdersProp, fetchedPOs]);
 
   const supplier = React.useMemo(() => {
     if (supplierProp) return supplierProp;
 
-    const baseSuppliers = purchasesApi.listSuppliers();
+    const baseSuppliers = fetchedSuppliers;
     const extendedSuppliers: ExtendedSupplier[] = baseSuppliers.map((s) => ({
       ...s,
       name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
@@ -137,7 +145,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
       );
     }
     return extendedSuppliers[0];
-  }, [supplierProp, supplierId]);
+  }, [supplierProp, fetchedSuppliers, supplierId]);
 
   const [activeTab, setActiveTab] = React.useState('products');
   const [cart, setCart] = React.useState<StorefrontCartItem[]>([]);
@@ -161,9 +169,10 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
   React.useEffect(() => {
     setIsFollowed(false);
-  }, [supplier.id]);
+  }, [supplier?.id]);
 
   const handleToggleFollow = React.useCallback(async () => {
+    if (!supplier) return;
     const nextState = !isFollowed;
     setIsFollowed(nextState);
 
@@ -177,7 +186,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
       console.error('Failed to toggle follow status:', error);
       setIsFollowed(!nextState);
     }
-  }, [isFollowed, supplier.id]);
+  }, [isFollowed, supplier]);
 
   const handleAddToCart = React.useCallback((productId: string) => {
     const targetProduct = products.find((p) => p.id === productId);
@@ -226,8 +235,10 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
   const grandTotal = subtotal;
 
-  const createDraftOrder = React.useCallback(() => {
-    const newDraftPO: PurchaseOrder = purchasesApi.create(
+  const createDraftOrder = React.useCallback(async () => {
+    if (!supplier) return;
+
+    const newDraftPO = await createPurchaseOrder(
       supplier.id,
       cart.map((item) => ({
         medicine_id: item.id,
@@ -236,12 +247,12 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
       }))
     );
 
-    if (isPinVerified) {
-      purchasesApi.update(newDraftPO.id, { approved_by_user_id: 'user_001_sudo' });
+    if (isPinVerified && newDraftPO) {
+      await updatePurchaseOrder(newDraftPO.id, { approved_by_user_id: 'user_001_sudo' });
     }
 
     console.log('[SupplierStorefront] Created draft PurchaseOrder:', newDraftPO);
-    if (onOrderCreated) {
+    if (onOrderCreated && newDraftPO) {
       onOrderCreated(newDraftPO);
     }
 
@@ -249,7 +260,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     setIsOrderConfirmed(true);
     setIsPinModalOpen(false);
     setPinCode('');
-  }, [cart, isPinVerified, supplier, onOrderCreated]);
+  }, [cart, isPinVerified, supplier, createPurchaseOrder, updatePurchaseOrder, onOrderCreated]);
 
   const handleConfirmOrder = React.useCallback(() => {
     if (cart.length === 0) return;
@@ -275,6 +286,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   }, [pinCode, createDraftOrder]);
 
   const supplierDeals = React.useMemo(() => {
+    if (!supplier) return [];
     const supplierPOs = purchaseOrders.filter((po) => po.supplier_id === supplier.id);
 
     const dealEntries: Array<{
@@ -312,7 +324,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     });
 
     return dealEntries;
-  }, [purchaseOrders, supplier.id, products]);
+  }, [purchaseOrders, supplier, products]);
 
   const handleAddDealToCart = React.useCallback((medicineId: string, unitPrice: number, productName: string) => {
     setCart((prev) => {
@@ -341,6 +353,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   }, [products]);
 
   const handleCommunicate = React.useCallback((productName: string) => {
+    if (!supplier) return;
     const whatsappNumber = supplier.whatsapp || supplier.phone;
     if (whatsappNumber) {
       const cleanNumber = whatsappNumber.replace(/[^0-9]/g, '');
@@ -350,6 +363,8 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   }, [supplier]);
 
   const handleMoreInfo = React.useCallback((_poId: string, _medicineId: string) => {}, []);
+
+  if (!supplier) return null;
 
   const supplierName = supplier.business?.name || supplier.name || 'Supplier Storefront';
   const mobile = supplier.phone || '+255 700 000 000';

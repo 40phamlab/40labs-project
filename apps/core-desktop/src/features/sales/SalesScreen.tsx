@@ -6,28 +6,29 @@ import { CustomerReportPanel, ConfirmedSaleData } from './CustomerReportPanel';
 import { SaleTotalsBar } from './SaleTotalsBar';
 import { IconButton, Card } from '@40labs/ui-components';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useSalesStore } from '../../stores/useSalesStore';
-import { useInventoryStore } from '../../stores/useInventoryStore';
-import { useCustomersStore } from '../../stores/useCustomersStore';
-import { usersApi } from '../../api';
+import { useSales } from '../../hooks/useSales';
+import { useInventory } from '../../hooks/useInventory';
+import { useCustomers } from '../../hooks/useCustomers';
 
 export const SalesScreen: React.FC = () => {
-  const inventoryItems = useInventoryStore((s) => s.items);
-  const customers = useCustomersStore((s) => s.customers);
+  const { items: inventoryItems } = useInventory();
+  const { customers } = useCustomers();
 
-  const cart = useSalesStore((s) => s.cart);
-  const selectedCustomer = useSalesStore((s) => s.selectedCustomer);
-  const paymentMethod = useSalesStore((s) => s.paymentMethod);
-  const discountAmount = useSalesStore((s) => s.discountAmount);
-
-  const addToCart = useSalesStore((s) => s.addToCart);
-  const removeFromCart = useSalesStore((s) => s.removeFromCart);
-  const updateQuantity = useSalesStore((s) => s.updateQuantity);
-  const setSelectedCustomer = useSalesStore((s) => s.setSelectedCustomer);
-  const setPaymentMethod = useSalesStore((s) => s.setPaymentMethod);
-  const setDiscountAmount = useSalesStore((s) => s.setDiscountAmount);
-  const checkout = useSalesStore((s) => s.checkout);
-  const clearCart = useSalesStore((s) => s.clearCart);
+  const {
+    cart,
+    selectedCustomer,
+    paymentMethod,
+    discountAmount,
+    users,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    setSelectedCustomer,
+    setPaymentMethod,
+    setDiscountAmount,
+    checkout,
+    clearCart,
+  } = useSales();
 
   const [manualEntry, setManualEntry] = React.useState<{ full_name: string; phone: string }>({
     full_name: '',
@@ -38,7 +39,6 @@ export const SalesScreen: React.FC = () => {
   const [saveCustomer, setSaveCustomer] = React.useState(true);
   const [confirmedSale, setConfirmedSale] = React.useState<ConfirmedSaleData | null>(null);
 
-  const users = usersApi.list();
   const dispensedUser = users[0] || { full_name: 'Pharmacy Staff' };
 
   const subtotal = React.useMemo(() => {
@@ -53,14 +53,14 @@ export const SalesScreen: React.FC = () => {
     addToCart(item);
   }, [addToCart]);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     if (!canConfirm) return;
 
     const customerLabel = selectedCustomer?.full_name || manualEntry.full_name || 'Walk-in';
     const customerPhone = selectedCustomer?.phone || manualEntry.phone || 'N/A';
     const itemSummary = cart.map((c) => c.inventoryItem.medicine.name).join(', ');
 
-    const completed = checkout();
+    const completed = await checkout();
     if (!completed) return;
 
     setConfirmedSale({

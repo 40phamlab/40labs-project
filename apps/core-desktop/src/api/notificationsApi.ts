@@ -26,10 +26,15 @@ export const notificationsApi = {
       created_at: now,
       updated_at: now,
       category: payload.category,
+      source_type: 'remote',
       sender_name: payload.sender_name,
-      sender_address: payload.sender_address || null,
+      sender_business_id: null,
+      subject: `${payload.category.toUpperCase()} Notification`,
       body: payload.body,
       status: 'unread',
+      related_entity_type: null,
+      related_entity_id: null,
+      received_at: now,
     };
 
     notificationsStore = [newNotif, ...notificationsStore];

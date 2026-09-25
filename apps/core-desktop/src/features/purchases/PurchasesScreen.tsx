@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { SupplierSearchPanel } from './SupplierSearchPanel';
 import { PurchaseHistoryPanel } from './PurchaseHistoryPanel';
 import { SupplierStorefront } from './SupplierStorefront';
+import { usePurchases } from '../../hooks/usePurchases';
 
 export const PurchasesScreen: React.FC = () => {
-  const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+  const { selectedSupplierId, setSelectedSupplierId } = usePurchases();
 
   if (selectedSupplierId) {
     return (
@@ -20,6 +21,7 @@ export const PurchasesScreen: React.FC = () => {
       {/* Search panel placed on the left */}
       <div className="w-1/3 min-w-[320px]">
         <SupplierSearchPanel
+          selectedSupplierId={selectedSupplierId}
           onSelectSupplier={(id) => setSelectedSupplierId(id)}
         />
       </div>

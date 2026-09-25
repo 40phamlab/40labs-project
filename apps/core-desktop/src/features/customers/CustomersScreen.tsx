@@ -5,18 +5,19 @@ import { CustomerFilterBar } from './CustomerFilterBar';
 import { CustomerList } from './CustomerList';
 import { AddCustomerModal } from './AddCustomerModal';
 import { CustomerDetailDrawer } from './CustomerDetailDrawer';
-import { useCustomersStore } from '../../stores/useCustomersStore';
+import { useCustomers } from '../../hooks/useCustomers';
 
 export const CustomersScreen: React.FC = () => {
-  const customers = useCustomersStore((s) => s.customers);
-  const searchTerm = useCustomersStore((s) => s.searchTerm);
-  const selectedCustomerId = useCustomersStore((s) => s.selectedCustomerId);
-  const isAddModalOpen = useCustomersStore((s) => s.isAddModalOpen);
-
-  const setSearchTerm = useCustomersStore((s) => s.setSearchTerm);
-  const setSelectedCustomerId = useCustomersStore((s) => s.setSelectedCustomerId);
-  const setAddModalOpen = useCustomersStore((s) => s.setAddModalOpen);
-  const addCustomer = useCustomersStore((s) => s.addCustomer);
+  const {
+    customers,
+    searchTerm,
+    setSearchTerm,
+    selectedCustomerId,
+    setSelectedCustomerId,
+    isAddModalOpen,
+    setAddModalOpen,
+    addCustomer,
+  } = useCustomers();
 
   const [timeRange, setTimeRange] = React.useState('all');
 

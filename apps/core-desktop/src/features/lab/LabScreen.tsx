@@ -18,12 +18,11 @@ import {
   DollarSign,
 } from 'lucide-react';
 import type { LabResult, TestCatalogEntry, Customer } from '@40labs/types';
-import { customersApi, usersApi, auditApi } from '../../api';
 import { LabDashboard } from './LabDashboard';
 import { LabOrdersList } from './LabOrdersList';
 import { LabSamplesList } from './LabSamplesList';
-import { useLabStore } from '../../stores/useLabStore';
-import { useCustomersStore } from '../../stores/useCustomersStore';
+import { useLab } from '../../hooks/useLab';
+import { useCustomers } from '../../hooks/useCustomers';
 
 export type LabTab =
   | 'dashboard'
@@ -72,30 +71,40 @@ const LAB_SUBNAV_SECTIONS: SubNavSection[] = [
 export const LabScreen: React.FC = () => {
   const [activeLabTab, setActiveLabTab] = React.useState<LabTab>('samples');
 
-  const orders = useLabStore((s) => s.orders);
-  const samples = useLabStore((s) => s.samples);
-  const results = useLabStore((s) => s.results);
-  const testCatalog = useLabStore((s) => s.catalog);
-  const customers = useCustomersStore((s) => s.customers);
+  const {
+    orders,
+    samples,
+    results,
+    catalog: testCatalog,
+    users,
+    auditLogs,
+    createOrder,
+    updateOrderStatus,
+    updateSampleStatus,
+  } = useLab();
 
-  const users = usersApi.list();
-  const auditLogs = auditApi.list();
+  const { customers } = useCustomers();
 
-  const handleAddOrder = React.useCallback((newOrder: any, _newCustomer?: Customer) => {
-    useLabStore.getState().createOrder(newOrder.customer_id, newOrder.test_catalog_id);
-  }, []);
+  const handleAddOrder = React.useCallback(
+    async (newOrder: any, _newCustomer?: Customer) => {
+      await createOrder(newOrder.customer_id, newOrder.test_catalog_id);
+    },
+    [createOrder]
+  );
 
-  const handleUpdateOrderStatus = React.useCallback((orderId: string, newStatus: any) => {
-    useLabStore.setState((state) => ({
-      orders: state.orders.map((o) => (o.id === orderId ? { ...o, status: newStatus, updated_at: new Date().toISOString() } : o)),
-    }));
-  }, []);
+  const handleUpdateOrderStatus = React.useCallback(
+    async (orderId: string, newStatus: any) => {
+      await updateOrderStatus(orderId, newStatus);
+    },
+    [updateOrderStatus]
+  );
 
-  const handleUpdateSampleStatus = React.useCallback((sampleId: string, newStatus: any) => {
-    useLabStore.setState((state) => ({
-      samples: state.samples.map((s) => (s.id === sampleId ? { ...s, status: newStatus, updated_at: new Date().toISOString() } : s)),
-    }));
-  }, []);
+  const handleUpdateSampleStatus = React.useCallback(
+    async (sampleId: string, newStatus: any) => {
+      await updateSampleStatus(sampleId, newStatus);
+    },
+    [updateSampleStatus]
+  );
 
   // Columns for Results view
   const resultColumns: ColumnDefinition<LabResult>[] = React.useMemo(

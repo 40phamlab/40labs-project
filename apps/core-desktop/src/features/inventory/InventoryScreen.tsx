@@ -4,36 +4,24 @@ import { ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import { InventoryTable } from './InventoryTable';
 import { InventorySidebar } from './InventorySidebar';
 import { NewStockModal } from './NewStockModal';
-import { useInventoryStore } from '../../stores/useInventoryStore';
+import { useInventory } from '../../hooks/useInventory';
 
 export const InventoryScreen: React.FC = () => {
-  const items = useInventoryStore((s) => s.items);
-  const searchTerm = useInventoryStore((s) => s.searchTerm);
-  const filterExpired = useInventoryStore((s) => s.filterExpired);
-  const isModalOpen = useInventoryStore((s) => s.isModalOpen);
-  const graphVisible = useInventoryStore((s) => s.graphVisible);
-  const searchPanelOpen = useInventoryStore((s) => s.searchPanelOpen);
-
-  const setSearchTerm = useInventoryStore((s) => s.setSearchTerm);
-  const setFilterExpired = useInventoryStore((s) => s.setFilterExpired);
-  const setModalOpen = useInventoryStore((s) => s.setModalOpen);
-  const setGraphVisible = useInventoryStore((s) => s.setGraphVisible);
-  const setSearchPanelOpen = useInventoryStore((s) => s.setSearchPanelOpen);
-  const addItem = useInventoryStore((s) => s.addItem);
-  const deleteItem = useInventoryStore((s) => s.deleteItem);
-
-  const filteredData = React.useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const now = new Date();
-
-    return items.filter((item) => {
-      const medicineName = item.medicine.name.toLowerCase();
-      const matchesSearch = normalizedSearch === '' || medicineName.includes(normalizedSearch);
-      const isExpired = new Date(item.expiry_date) < now;
-      const matchesExpired = !filterExpired || isExpired;
-      return matchesSearch && matchesExpired;
-    });
-  }, [items, searchTerm, filterExpired]);
+  const {
+    filteredData,
+    searchTerm,
+    setSearchTerm,
+    filterExpired,
+    setFilterExpired,
+    isModalOpen,
+    setModalOpen,
+    graphVisible,
+    setGraphVisible,
+    searchPanelOpen,
+    setSearchPanelOpen,
+    addItem,
+    deleteItem,
+  } = useInventory();
 
   return (
     <div className="p-6 h-full w-full overflow-hidden">

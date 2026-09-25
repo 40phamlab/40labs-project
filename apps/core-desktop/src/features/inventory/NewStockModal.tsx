@@ -10,7 +10,7 @@ import {
   CurrencyInput,
   DateInput,
 } from '@40labs/ui-components';
-import { inventoryApi } from '../../api';
+import { useInventory } from '../../hooks/useInventory';
 import { type Medicine, type InventoryItem, type MedicineWithInventory } from '@40labs/types';
 
 interface NewStockModalProps {
@@ -22,10 +22,11 @@ interface NewStockModalProps {
 const UNITS = ['pack', 'tablet', 'bottle', 'sachet'];
 
 export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, onAdd }) => {
+  const { medicines } = useInventory();
+
   const categories = React.useMemo(() => {
-    const medicines = inventoryApi.listMedicines();
     return Array.from(new Set(medicines.map((m) => m.category)));
-  }, [isOpen]);
+  }, [medicines]);
 
   const [formData, setFormData] = React.useState({
     name: '',

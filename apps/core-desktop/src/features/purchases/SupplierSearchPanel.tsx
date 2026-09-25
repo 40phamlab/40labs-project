@@ -2,7 +2,7 @@ import * as React from 'react';
 import { SearchableListPanel, IconButton } from '@40labs/ui-components';
 import { ChevronRight } from 'lucide-react';
 import { SupplierListItem, ExtendedSupplier } from './SupplierListItem';
-import { purchasesApi } from '../../api';
+import { usePurchases } from '../../hooks/usePurchases';
 
 export interface SupplierSearchPanelProps {
   suppliers?: ExtendedSupplier[];
@@ -20,10 +20,11 @@ export const SupplierSearchPanel: React.FC<SupplierSearchPanelProps> = ({
   className = '',
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
+  const { suppliers: fetchedSuppliers } = usePurchases();
 
   const suppliers = React.useMemo(() => {
     if (suppliersProp) return suppliersProp;
-    const baseSuppliers = purchasesApi.listSuppliers();
+    const baseSuppliers = fetchedSuppliers;
     return baseSuppliers.map((s) => ({
       ...s,
       name: s.id === 'supplier_001' ? 'Kibo Pharma Distributors' : 'Bora Medical Supplies',
@@ -37,7 +38,7 @@ export const SupplierSearchPanel: React.FC<SupplierSearchPanelProps> = ({
         },
       },
     })) as ExtendedSupplier[];
-  }, [suppliersProp]);
+  }, [suppliersProp, fetchedSuppliers]);
 
   const filteredSuppliers = React.useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

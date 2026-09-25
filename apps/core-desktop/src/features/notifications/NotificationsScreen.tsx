@@ -3,14 +3,17 @@ import { ConfirmDialog } from '@40labs/ui-components';
 import { NotificationsListPanel } from './NotificationsListPanel';
 import { NotificationDetailPanel } from './NotificationDetailPanel';
 import { NotificationsOverviewPanel } from './NotificationsOverviewPanel';
-import { useNotificationsStore } from '../../stores/useNotificationsStore';
+import { useNotifications } from '../../hooks/useNotifications';
 
 export const NotificationsScreen: React.FC = () => {
-  const notifications = useNotificationsStore((s) => s.notifications);
-  const selectedId = useNotificationsStore((s) => s.selectedNotificationId);
-  const setSelectedId = useNotificationsStore((s) => s.setSelectedNotificationId);
-  const markAsRead = useNotificationsStore((s) => s.markAsRead);
-  const archiveNotification = useNotificationsStore((s) => s.archiveNotification);
+  const {
+    notifications,
+    selectedNotificationId: selectedId,
+    setSelectedNotificationId: setSelectedId,
+    markAsRead,
+    archiveNotification,
+    sendReply,
+  } = useNotifications();
 
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
@@ -24,9 +27,9 @@ export const NotificationsScreen: React.FC = () => {
     return notifications.find((n) => n.id === selectedId) || null;
   }, [notifications, selectedId]);
 
-  const handleConfirmDelete = React.useCallback(() => {
+  const handleConfirmDelete = React.useCallback(async () => {
     if (deleteTargetId) {
-      archiveNotification(deleteTargetId);
+      await archiveNotification(deleteTargetId);
       if (selectedId === deleteTargetId) {
         setSelectedId(null);
       }
@@ -35,25 +38,19 @@ export const NotificationsScreen: React.FC = () => {
   }, [deleteTargetId, archiveNotification, selectedId, setSelectedId]);
 
   const handleSelectNotification = React.useCallback(
-    (id: string) => {
+    async (id: string) => {
       setSelectedId(id);
-      markAsRead(id);
+      await markAsRead(id);
     },
     [setSelectedId, markAsRead]
   );
 
-  const handleSendReply = React.useCallback((id: string, replyText: string) => {
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const replyFormatted = `\n\n--- You replied (${timestamp}) ---\n${replyText}`;
-
-    useNotificationsStore.setState((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === id
-          ? { ...n, body: (n.body || '') + replyFormatted, status: 'read' }
-          : n
-      ),
-    }));
-  }, []);
+  const handleSendReply = React.useCallback(
+    async (id: string, replyText: string) => {
+      await sendReply(id, replyText);
+    },
+    [sendReply]
+  );
 
   return (
     <div className="p-6 h-full w-full overflow-hidden flex flex-col gap-4">
@@ -86,8 +83,8 @@ export const NotificationsScreen: React.FC = () => {
           {selectedNotification ? (
             <NotificationDetailPanel
               notification={selectedNotification}
-              onMarkAsRead={markAsRead}
-              onArchive={archiveNotification}
+              onMarkAsRead={(id) => markAsRead(id)}
+              onArchive={(id) => archiveNotification(id)}
               onDelete={(id) => setDeleteTargetId(id)}
               onSendReply={handleSendReply}
             />

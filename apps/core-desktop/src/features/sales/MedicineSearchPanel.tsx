@@ -2,7 +2,7 @@ import * as React from 'react';
 import { ChevronRight, RefreshCw } from 'lucide-react';
 import { SearchInput, IconButton, ProductRow } from '@40labs/ui-components';
 import { MedicineWithInventory } from '@40labs/types';
-import { salesApi } from '../../api';
+import { useSales } from '../../hooks/useSales';
 
 export interface MedicineSearchPanelProps {
   medicines: MedicineWithInventory[];
@@ -18,12 +18,13 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
   const [query, setQuery] = React.useState('');
   const [refreshTrigger, setRefreshTrigger] = React.useState(0);
 
-  // Compute frequency ranking from salesApi
+  const { completedSales } = useSales();
+
+  // Compute frequency ranking from completedSales
   const rankedMedicines = React.useMemo(() => {
     const frequencyMap: Record<string, number> = {};
-    const salesList = salesApi.list();
 
-    salesList.forEach((sale) => {
+    completedSales.forEach((sale) => {
       if (sale.lines) {
         sale.lines.forEach((line) => {
           if (line.medicine_id) {
@@ -43,7 +44,7 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
 
       return a.medicine.name.localeCompare(b.medicine.name);
     });
-  }, [medicines, refreshTrigger]);
+  }, [medicines, completedSales, refreshTrigger]);
 
   // Filter list by query text if non-empty
   const filteredMedicines = React.useMemo(() => {
