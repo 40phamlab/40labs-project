@@ -467,10 +467,10 @@ export const LabScreen: React.FC = () => {
       />
 
       {/* Content */}
-      <PageContent scrollable={false} padding="normal">
-        <div className="flex gap-6 w-full h-full overflow-hidden">
+      <PageContent scrollable={false} variant="transparent" padding="none">
+        <div className="flex gap-3.5 w-full h-full overflow-hidden">
           {/* Left SubNav */}
-          <div className="w-60 shrink-0 border-r border-border/40 pr-4 h-full overflow-y-auto custom-scrollbar">
+          <div className="w-52 shrink-0 border-r border-border/40 pr-3 h-full overflow-y-auto custom-scrollbar">
             <ContextualSubNav
               sections={LAB_SUBNAV_SECTIONS}
               activeItemId={activeLabTab}

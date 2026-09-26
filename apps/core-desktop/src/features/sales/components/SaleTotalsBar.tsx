@@ -33,7 +33,7 @@ export const SaleTotalsBar: React.FC<SaleTotalsBarProps> = ({
   isProcessing = false,
 }) => {
   return (
-    <div className="flex flex-col gap-3 p-4 bg-surface-strong rounded-card border border-border/50 elevation-inset">
+    <div className="flex flex-col gap-2 p-3 bg-surface-strong rounded-card border border-border/50 elevation-inset">
       {/* Top Controls Row */}
       <div className="grid grid-cols-3 gap-3 items-end">
         <div className="flex flex-col">

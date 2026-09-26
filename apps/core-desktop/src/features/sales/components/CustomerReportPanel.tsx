@@ -57,7 +57,7 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-3 bg-surface-strong border border-border/50 rounded-card p-4 elevation-inset h-full overflow-hidden w-[300px] shrink-0">
+    <div className="flex flex-col gap-2.5 bg-surface-strong border border-border/50 rounded-card p-3 elevation-inset h-full overflow-hidden w-[300px] shrink-0">
       {/* Header Row with Collapse Toggle */}
       <div className="flex items-center justify-between shrink-0">
         <h2 className="text-xs font-bold text-text uppercase tracking-wider">

@@ -29,7 +29,7 @@ export const SearchableListPanel: React.FC<SearchableListPanelProps> = ({
       `}
     >
       {/* Sticky Header */}
-      <div className="p-4 space-y-3 bg-panel border-b border-border/10 shrink-0">
+      <div className="p-3 space-y-2 bg-panel border-b border-border/10 shrink-0">
         {panelTitle && (
           <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest">
             {panelTitle}

@@ -75,7 +75,7 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
   }, []);
 
   return (
-    <div className="flex flex-col gap-3 bg-panel-strong border border-border/50 rounded-card p-4 elevation-inset h-full overflow-hidden w-[320px] shrink-0">
+    <div className="flex flex-col gap-2.5 bg-panel-strong border border-border/50 rounded-card p-3 elevation-inset h-full overflow-hidden w-[320px] shrink-0">
       {/* Header Row */}
       <div className="flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">

@@ -41,7 +41,7 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({ customers })
   );
 
   return (
-    <Panel className="p-4 flex items-center justify-between gap-6">
+    <Panel className="p-3 py-2.5 flex items-center justify-between gap-6">
       <div className="flex items-center gap-6 divide-x divide-border/40">
         {kpis.map((kpi, idx) => (
           <div className={`flex flex-col ${idx > 0 ? 'pl-6' : ''}`} key={kpi.label}>

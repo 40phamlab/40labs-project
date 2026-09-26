@@ -123,8 +123,8 @@ export const CustomersScreen: React.FC = () => {
       />
 
       {/* Content */}
-      <PageContent scrollable={false} padding="normal">
-        <div className="flex flex-col gap-4 h-full w-full overflow-hidden">
+      <PageContent scrollable={false} variant="transparent" padding="none">
+        <div className="flex flex-col gap-3 h-full w-full overflow-hidden">
           {/* KPI Stats Bar */}
           <CustomerStatsBar customers={customers} />
 

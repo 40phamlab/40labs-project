@@ -22,10 +22,14 @@ export function PageToolbar({
   children,
   className = '',
 }: PageToolbarProps) {
+  if (!left && !right && !children) {
+    return null;
+  }
+
   if (children) {
     return (
       <div
-        className={`shrink-0 min-h-[44px] px-4 py-2 bg-panel-strong/40 rounded-card border border-border/40 flex flex-wrap sm:flex-nowrap items-center gap-3 ${className}`}
+        className={`shrink-0 min-h-[38px] px-3 py-1.5 bg-panel-strong/40 rounded-card border border-border/40 flex flex-wrap sm:flex-nowrap items-center gap-2.5 ${className}`}
       >
         {children}
       </div>
@@ -34,13 +38,13 @@ export function PageToolbar({
 
   return (
     <div
-      className={`shrink-0 min-h-[44px] px-4 py-2 bg-panel-strong/40 rounded-card border border-border/40 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 ${className}`}
+      className={`shrink-0 min-h-[38px] px-3 py-1.5 bg-panel-strong/40 rounded-card border border-border/40 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 ${className}`}
     >
-      <div className="flex flex-wrap items-center gap-2.5 min-w-0 flex-1">
+      <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
         {left}
       </div>
       {right && (
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {right}
         </div>
       )}

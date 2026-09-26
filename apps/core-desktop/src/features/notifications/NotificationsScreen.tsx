@@ -104,10 +104,10 @@ export const NotificationsScreen: React.FC = () => {
       />
 
       {/* Content */}
-      <PageContent scrollable={false} padding="normal">
-        <div className="flex flex-row gap-6 w-full h-full overflow-hidden">
+      <PageContent scrollable={false} variant="transparent" padding="none">
+        <div className="flex flex-row gap-3.5 w-full h-full overflow-hidden">
           {/* Left List Pane */}
-          <div className="w-1/3 min-w-[320px] h-full overflow-hidden">
+          <div className="w-[320px] shrink-0 h-full overflow-hidden">
             <NotificationsListPanel
               notifications={notifications}
               selectedId={selectedId}

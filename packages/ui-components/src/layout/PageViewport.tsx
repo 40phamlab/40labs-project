@@ -21,9 +21,9 @@ export function PageViewport({
 }: PageViewportProps) {
   const paddingClasses = {
     none: 'p-0 gap-0',
-    compact: 'p-4 gap-3',
-    normal: 'p-6 gap-5',
-    loose: 'p-8 gap-6',
+    compact: 'p-2.5 gap-2',
+    normal: 'p-3.5 gap-3',
+    loose: 'p-5 gap-4',
   };
 
   return (

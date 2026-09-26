@@ -405,7 +405,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   ];
 
   return (
-    <div className={`flex flex-col gap-6 h-full bg-panel p-6 rounded-card border border-border/50 elevation-raised overflow-hidden ${className}`}>
+    <div className={`flex flex-col gap-3.5 h-full bg-panel p-4 rounded-card border border-border/50 elevation-raised overflow-hidden ${className}`}>
       {(onBack || onClose) && (
         <div className="flex items-center gap-2 shrink-0">
           <Button

@@ -54,8 +54,8 @@ export function PageContent({
   };
 
   const paddingClasses = {
-    normal: 'p-6 gap-6',
-    compact: 'p-4 gap-4',
+    normal: 'p-3.5 gap-3.5',
+    compact: 'p-2.5 gap-2.5',
     none: 'p-0 gap-0',
   };
 

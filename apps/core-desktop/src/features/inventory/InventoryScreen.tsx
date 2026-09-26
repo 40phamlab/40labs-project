@@ -108,13 +108,13 @@ export const InventoryScreen: React.FC = () => {
       />
 
       {/* Content */}
-      <PageContent scrollable={false} padding="normal">
-        <div className="flex gap-6 h-full w-full overflow-hidden">
+      <PageContent scrollable={false} variant="transparent" padding="none">
+        <div className="flex gap-3.5 h-full w-full overflow-hidden">
           {/* Main Column */}
-          <div className="flex-1 min-w-0 flex flex-col gap-4 h-full overflow-hidden">
+          <div className="flex-1 min-w-0 flex flex-col gap-3 h-full overflow-hidden">
             {/* Graph / Stats Section */}
             {graphVisible && (
-              <Panel variant="inset" className="shrink-0 h-40 p-4 flex items-center justify-center border border-dashed border-border/40">
+              <Panel variant="inset" className="shrink-0 h-28 p-3 flex items-center justify-center border border-dashed border-border/40">
                 <div className="text-center space-y-1">
                   <p className="text-xs font-semibold text-text">
                     Stock Trends & Category Analytics
@@ -127,7 +127,7 @@ export const InventoryScreen: React.FC = () => {
             )}
 
             {/* Table Region - ONE controlled scroll region */}
-            <div className="flex-1 min-h-0 bg-panel rounded-card border border-border/50 p-4 elevation-inset overflow-y-auto custom-scrollbar">
+            <div className="flex-1 min-h-0 bg-panel rounded-card border border-border/50 p-3 elevation-inset overflow-y-auto custom-scrollbar">
               <InventoryTable
                 data={filteredData}
                 onAction={openActionModal}
@@ -141,7 +141,7 @@ export const InventoryScreen: React.FC = () => {
           {/* Right Sidebar */}
           <div
             className={`transition-all duration-200 overflow-hidden shrink-0 h-full ${
-              searchPanelOpen ? 'w-[300px] opacity-100' : 'w-0 opacity-0 -ml-6'
+              searchPanelOpen ? 'w-[300px] opacity-100' : 'w-0 opacity-0 -ml-3.5'
             }`}
           >
             <div className="w-[300px] h-full overflow-y-auto pr-1 custom-scrollbar">

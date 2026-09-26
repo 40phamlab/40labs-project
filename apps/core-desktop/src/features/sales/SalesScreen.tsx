@@ -267,8 +267,8 @@ export const SalesScreen: React.FC = () => {
       />
 
       {/* Content Region */}
-      <PageContent scrollable={false} padding="normal">
-        <div className="relative flex gap-4 h-full w-full overflow-hidden">
+      <PageContent scrollable={false} variant="transparent" padding="none">
+        <div className="relative flex gap-3 h-full w-full overflow-hidden">
           {/* Left Column Toggle when closed */}
           {!customerPanelOpen && (
             <div className="absolute left-0 top-0 z-20">

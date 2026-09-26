@@ -10,16 +10,16 @@ export const PurchasesScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      <PageContent scrollable={false} padding="normal">
+      <PageContent scrollable={false} variant="transparent" padding="none">
         {selectedSupplierId ? (
           <SupplierStorefront
             supplierId={selectedSupplierId}
             onBack={() => setSelectedSupplierId(null)}
           />
         ) : (
-          <div className="flex flex-row gap-6 w-full h-full overflow-hidden">
+          <div className="flex flex-row gap-3.5 w-full h-full overflow-hidden">
             {/* Search panel placed on the left */}
-            <div className="w-1/3 min-w-[320px] h-full overflow-y-auto custom-scrollbar">
+            <div className="w-[320px] shrink-0 h-full overflow-y-auto custom-scrollbar">
               <SupplierSearchPanel
                 selectedSupplierId={selectedSupplierId}
                 onSelectSupplier={(id) => setSelectedSupplierId(id)}
