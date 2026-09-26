@@ -6,15 +6,23 @@ import {
   Button,
   IconButton,
 } from '@40labs/ui-components';
-import { Calendar, Plus, RefreshCw, SlidersHorizontal } from 'lucide-react';
-import { ScheduleCategory } from '@40labs/types';
+import { Calendar, Plus, RefreshCw } from 'lucide-react';
+import { Schedule, ScheduleCategory } from '@40labs/types';
 import { mockSchedules } from '../../lib/mockData';
-import { ScheduleCategoryPanel } from './ScheduleCategoryPanel';
+import { ScheduleCategoryStrip } from './ScheduleCategoryStrip';
+import { ScheduleListPanel } from './ScheduleListPanel';
+import { ScheduleDetailPanel } from './ScheduleDetailPanel';
+import { NewScheduleModal } from './NewScheduleModal';
 
 export const SchedulingScreen: React.FC = () => {
-  const [schedules, setSchedules] = React.useState(mockSchedules);
+  const [schedules, setSchedules] = React.useState<Schedule[]>(mockSchedules);
   const [activeCategory, setActiveCategory] = React.useState<ScheduleCategory | null>(null);
+  const [selectedId, setSelectedId] = React.useState<string | null>(schedules[0]?.id || null);
   const [isLoading, setIsLoading] = React.useState(false);
+
+  // Modal states
+  const [isNewModalOpen, setIsNewModalOpen] = React.useState(false);
+  const [editingSchedule, setEditingSchedule] = React.useState<Schedule | null>(null);
 
   const handleRefresh = React.useCallback(() => {
     setIsLoading(true);
@@ -22,6 +30,35 @@ export const SchedulingScreen: React.FC = () => {
       setSchedules([...mockSchedules]);
       setIsLoading(false);
     }, 400);
+  }, []);
+
+  const selectedSchedule = React.useMemo(() => {
+    if (!selectedId) return null;
+    return schedules.find((s) => s.id === selectedId) || null;
+  }, [schedules, selectedId]);
+
+  const handleSaveSchedule = React.useCallback((saved: Schedule) => {
+    setSchedules((prev) => {
+      const exists = prev.some((s) => s.id === saved.id);
+      if (exists) {
+        return prev.map((s) => (s.id === saved.id ? saved : s));
+      }
+      return [saved, ...prev];
+    });
+    setSelectedId(saved.id);
+  }, []);
+
+  const handleDeleteSchedule = React.useCallback((id: string) => {
+    setSchedules((prev) => prev.filter((s) => s.id !== id));
+    if (selectedId === id) {
+      setSelectedId(null);
+    }
+  }, [selectedId]);
+
+  const handleStopSchedule = React.useCallback((id: string) => {
+    setSchedules((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, status: 'cancelled', updated_at: new Date().toISOString() } : s))
+    );
   }, []);
 
   return (
@@ -48,7 +85,10 @@ export const SchedulingScreen: React.FC = () => {
               intent="primary"
               size="sm"
               leftIcon={<Plus size={14} />}
-              onClick={() => console.log('New schedule clicked')}
+              onClick={() => {
+                setEditingSchedule(null);
+                setIsNewModalOpen(true);
+              }}
             >
               New Schedule
             </Button>
@@ -63,46 +103,62 @@ export const SchedulingScreen: React.FC = () => {
         }
       />
 
-      {/* Main Content Area — 3-Pane Layout */}
+      {/* Main Content Area — 2-Pane Layout with Top Category Strip */}
       <PageContent scrollable={false} padding="normal">
-        <div className="flex flex-row gap-6 w-full h-full overflow-hidden">
-          {/* Left Pane: Category Cards & Stats (w-[360px]) */}
-          <div className="w-[360px] flex-shrink-0 h-full overflow-hidden rounded-card border border-border shadow-xs">
-            <ScheduleCategoryPanel
-              schedules={schedules}
-              activeCategory={activeCategory}
-              onSelectCategory={setActiveCategory}
-            />
-          </div>
+        <div className="flex flex-col gap-4 h-full w-full overflow-hidden">
+          {/* Top Category Strip */}
+          <ScheduleCategoryStrip
+            schedules={schedules}
+            activeCategory={activeCategory}
+            onSelectCategory={setActiveCategory}
+          />
 
-          {/* Middle Pane: Placeholder until Phase 6B-3 */}
-          <div className="w-1/3 flex-shrink-0 h-full overflow-hidden rounded-card border border-border bg-surface p-6 flex flex-col items-center justify-center text-center shadow-xs">
-            <div className="w-12 h-12 rounded-full bg-surface-strong border border-border flex items-center justify-center text-text-muted mb-3">
-              <SlidersHorizontal size={20} />
+          {/* Two-Pane Row: List Panel (left) + Detail Panel (right) */}
+          <div className="flex flex-row gap-6 flex-1 min-h-0 overflow-hidden">
+            {/* List Panel */}
+            <div className="w-[380px] flex-shrink-0 h-full overflow-hidden rounded-card border border-border shadow-xs">
+              <ScheduleListPanel
+                schedules={schedules}
+                selectedId={selectedId}
+                activeCategory={activeCategory}
+                onSelectSchedule={setSelectedId}
+                onOpenNewModal={() => {
+                  setEditingSchedule(null);
+                  setIsNewModalOpen(true);
+                }}
+                onEditSchedule={(sch) => setEditingSchedule(sch)}
+                onStopSchedule={handleStopSchedule}
+              />
             </div>
-            <h3 className="font-heading text-sm font-bold text-text mb-1">Schedule List Panel</h3>
-            <p className="text-xs text-text-muted max-w-[260px]">
-              Coming in Phase 6B-3. Displays filtered schedules by type (report, reminder, refill) with search and status badges.
-            </p>
-            {activeCategory && (
-              <span className="mt-3 text-[11px] font-mono px-2.5 py-1 rounded-full bg-panel border border-border text-[var(--color-primary)]">
-                Active Category: {activeCategory.toUpperCase()}
-              </span>
-            )}
-          </div>
 
-          {/* Right Pane: Placeholder until Phase 6B-3 */}
-          <div className="flex-1 h-full overflow-hidden rounded-card border border-border bg-surface p-6 flex flex-col items-center justify-center text-center shadow-xs">
-            <div className="w-12 h-12 rounded-full bg-surface-strong border border-border flex items-center justify-center text-text-muted mb-3">
-              <Calendar size={20} />
+            {/* Detail Panel */}
+            <div className="flex-1 h-full overflow-hidden rounded-card border border-border bg-surface shadow-xs">
+              <ScheduleDetailPanel
+                schedule={selectedSchedule}
+                onEdit={() => selectedSchedule && setEditingSchedule(selectedSchedule)}
+                onDelete={handleDeleteSchedule}
+                onStop={handleStopSchedule}
+                onSendNow={(id) => {
+                  setSchedules((prev) =>
+                    prev.map((s) => (s.id === id ? { ...s, status: 'sent', sent_count: s.sent_count + 1, updated_at: new Date().toISOString() } : s))
+                  );
+                }}
+              />
             </div>
-            <h3 className="font-heading text-sm font-bold text-text mb-1">Schedule Details & Preview</h3>
-            <p className="text-xs text-text-muted max-w-[280px]">
-              Coming in Phase 6B-3. View schedule metadata, message body preview, attachment list, and management actions.
-            </p>
           </div>
         </div>
       </PageContent>
+
+      {/* New / Edit Schedule Modal */}
+      <NewScheduleModal
+        isOpen={isNewModalOpen || Boolean(editingSchedule)}
+        onClose={() => {
+          setIsNewModalOpen(false);
+          setEditingSchedule(null);
+        }}
+        onSave={handleSaveSchedule}
+        editSchedule={editingSchedule}
+      />
     </PageViewport>
   );
 };
