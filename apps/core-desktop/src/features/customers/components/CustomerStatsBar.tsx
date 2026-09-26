@@ -1,27 +1,17 @@
 import * as React from 'react';
-import { Plus } from 'lucide-react';
-import { SearchInput, Button } from '@40labs/ui-components';
-import { Customer } from '@40labs/types';
+import type { Customer } from '@40labs/types';
+import { Panel } from '@40labs/ui-components';
 
 export interface CustomerStatsBarProps {
   customers: Customer[];
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
-  onAddClick: () => void;
 }
 
 /**
  * CustomerStatsBar
  *
- * Top strip of the Customers screen. Renders static read-only reporting KPIs
- * (Today, Last Month, All, Reserved) alongside Debtors and Payables metrics, global search, and add actions.
+ * Top strip of the Customers screen. Renders summary metrics for customers, debtors, and payables.
  */
-export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({
-  customers,
-  searchTerm,
-  onSearchChange,
-  onAddClick,
-}) => {
+export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({ customers }) => {
   const counts = React.useMemo(() => {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -30,9 +20,7 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
     return {
-      today: customers.filter(
-        (c) => new Date(c.created_at) >= startOfToday
-      ).length,
+      today: customers.filter((c) => new Date(c.created_at) >= startOfToday).length,
       lastMonth: customers.filter((c) => {
         const d = new Date(c.created_at);
         return d >= startOfLastMonth && d < startOfCurrentMonth;
@@ -43,58 +31,42 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({
     };
   }, [customers]);
 
-  const kpis = React.useMemo(() => [
-    { label: 'Today', value: counts.today },
-    { label: 'Last Month', value: counts.lastMonth },
-    { label: 'All', value: counts.all },
-    { label: 'Reserved', value: '—' },
-  ], [counts]);
+  const kpis = React.useMemo(
+    () => [
+      { label: 'New Today', value: counts.today },
+      { label: 'Last Month', value: counts.lastMonth },
+      { label: 'Total Directory', value: counts.all },
+    ],
+    [counts]
+  );
 
   return (
-    <div className="flex items-center justify-between gap-6 p-4 bg-panel rounded-card border border-border/50 elevation-raised shadow-sm">
-      <div className="flex items-center gap-4">
-        <div className="flex items-center divide-x divide-border/40">
-          {kpis.map((kpi) => (
-            <div className="flex flex-col px-4 first:pl-0" key={kpi.label}>
-              <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                {kpi.label}
-              </span>
-              <span className="text-lg font-bold text-text">{kpi.value}</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex flex-col gap-1 pl-4 border-l border-border/40">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-bold text-text-muted uppercase tracking-widest">
-              Debtors
+    <Panel className="p-4 flex items-center justify-between gap-6">
+      <div className="flex items-center gap-6 divide-x divide-border/40">
+        {kpis.map((kpi, idx) => (
+          <div className={`flex flex-col ${idx > 0 ? 'pl-6' : ''}`} key={kpi.label}>
+            <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+              {kpi.label}
             </span>
-            <span className="font-bold text-accent">{counts.debtors}</span>
+            <span className="text-xl font-bold text-text mt-0.5">{kpi.value}</span>
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-bold text-text-muted uppercase tracking-widest">
-              Payables
-            </span>
-            <span className="font-bold text-text">{counts.payables}</span>
-          </div>
-        </div>
+        ))}
       </div>
 
-      <div className="flex flex-col items-end gap-2">
-        <SearchInput
-          className="w-64"
-          placeholder="Search name or phone..."
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          onClear={() => onSearchChange('')}
-        />
-        <Button
-          intent="primary"
-          leftIcon={<Plus size={16} />}
-          onClick={onAddClick}
-        >
-          Add Customer
-        </Button>
+      <div className="flex items-center gap-6 divide-x divide-border/40">
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+            Outstanding Debtors
+          </span>
+          <span className="text-lg font-bold text-warning mt-0.5">{counts.debtors}</span>
+        </div>
+        <div className="flex flex-col pl-6">
+          <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+            Credit Balance (Payables)
+          </span>
+          <span className="text-lg font-bold text-text mt-0.5">{counts.payables}</span>
+        </div>
       </div>
-    </div>
+    </Panel>
   );
 };

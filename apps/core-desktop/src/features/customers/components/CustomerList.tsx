@@ -1,42 +1,103 @@
 import * as React from 'react';
-import { EmptyState } from '@40labs/ui-components';
-import { Customer } from '@40labs/types';
-import { CustomerListRow } from './CustomerListRow';
-import { Users } from 'lucide-react';
+import {
+  DataTable,
+  Button,
+  MoneyDisplay,
+  Avatar,
+  type ColumnDefinition,
+} from '@40labs/ui-components';
+import type { Customer } from '@40labs/types';
 
 interface CustomerListProps {
   customers: Customer[];
   onViewDetails: (id: string) => void;
+  loading?: boolean;
+  error?: string | Error | null;
+  onRetry?: () => void;
 }
 
 /**
  * CustomerList
  *
- * Renders a vertical list of customer rows tightly packed as independent chips.
+ * Renders a data table of customer records with loading, error, and empty states.
  */
 export const CustomerList: React.FC<CustomerListProps> = ({
   customers,
   onViewDetails,
+  loading,
+  error,
+  onRetry,
 }) => {
-  if (customers.length === 0) {
-    return (
-      <EmptyState
-        icon={<Users size={32} className="opacity-20" />}
-        title="No customers found"
-        message="We couldn't find any customers matching your current search or filters. Try adjusting them or add a new customer."
-      />
-    );
-  }
+  const columns: ColumnDefinition<Customer>[] = [
+    {
+      key: 'full_name',
+      header: 'Customer',
+      render: (item) => (
+        <div className="flex items-center gap-3">
+          <Avatar size="sm" name={item.full_name} />
+          <div className="flex flex-col">
+            <span className="font-semibold text-text">{item.full_name}</span>
+            <span className="text-xs text-text-muted">{item.phone}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'email',
+      header: 'Email Address',
+      render: (item) => (
+        <span className="text-xs text-text-muted">{item.email || '—'}</span>
+      ),
+    },
+    {
+      key: 'outstanding_balance',
+      header: 'Balance',
+      align: 'right',
+      render: (item) => (
+        <MoneyDisplay
+          amount={item.outstanding_balance}
+          colorize={item.outstanding_balance > 0}
+          emphasis="strong"
+          className="text-xs"
+        />
+      ),
+    },
+    {
+      key: 'created_at',
+      header: 'Created',
+      render: (item) => (
+        <span className="text-xs text-text-muted font-mono">
+          {new Date(item.created_at).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      align: 'right',
+      width: '120px',
+      render: (item) => (
+        <Button
+          intent="neutral"
+          size="sm"
+          onClick={() => onViewDetails(item.id)}
+        >
+          View Profile
+        </Button>
+      ),
+    },
+  ];
 
   return (
-    <div className="flex flex-col gap-2">
-      {customers.map((customer) => (
-        <CustomerListRow
-          key={customer.id}
-          customer={customer}
-          onViewDetails={onViewDetails}
-        />
-      ))}
-    </div>
+    <DataTable
+      data={customers}
+      columns={columns}
+      loading={loading}
+      error={error}
+      onRetry={onRetry}
+      emptyMessage="No customers found matching your current search or filters."
+      keyExtractor={(item) => item.id}
+      density="compact"
+    />
   );
 };

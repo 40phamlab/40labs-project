@@ -15,6 +15,7 @@ export function useCustomers() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery<Customer[]>({
     queryKey: customerKeys.list(),
     queryFn: async () => customersApi.list(),
@@ -67,6 +68,7 @@ export function useCustomers() {
     isLoading,
     isError,
     error,
+    refetch,
 
     // UI state & setters
     searchTerm,

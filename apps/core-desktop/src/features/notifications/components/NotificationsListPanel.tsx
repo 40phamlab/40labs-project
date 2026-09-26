@@ -6,7 +6,7 @@ import {
   Panel,
   Tooltip,
 } from '@40labs/ui-components';
-import { ChevronDown, MailOpen, Share2, Trash2, Flag } from 'lucide-react';
+import { ChevronDown, MailOpen, Share2, Trash2, Archive, Flag } from 'lucide-react';
 import type { Notification } from '@40labs/types';
 import { NotificationListItem } from './NotificationListItem';
 
@@ -16,16 +16,19 @@ export interface NotificationsListPanelProps {
   categoryFilter?: string | null;
   onSelectNotification: (id: string) => void;
   onCategoryChange?: (category: string | null) => void;
+  onArchiveNotification: (id: string) => void;
   onDeleteNotification: (id: string) => void;
   className?: string;
 }
 
 const FILTER_OPTIONS: Array<{ label: string; value: string | null }> = [
-  { label: 'ALL', value: null },
+  { label: 'All Active', value: null },
+  { label: 'Unread', value: 'unread' },
   { label: 'Gov', value: 'gov' },
   { label: 'Customers', value: 'customers' },
   { label: 'Marketing', value: 'marketing' },
   { label: 'Business', value: 'business' },
+  { label: 'Archived', value: 'archived' },
 ];
 
 export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
@@ -34,6 +37,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
   categoryFilter,
   onSelectNotification,
   onCategoryChange,
+  onArchiveNotification,
   onDeleteNotification,
   className = '',
 }) => {
@@ -42,27 +46,32 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
 
   // Filter notifications by active category filter
   const filteredNotifications = React.useMemo(() => {
-    if (!categoryFilter) return notifications;
+    if (!categoryFilter) {
+      return notifications.filter((n) => n.status !== 'archived');
+    }
     if (categoryFilter === 'unread') {
       return notifications.filter((n) => n.status === 'unread');
     }
-    return notifications.filter((n) => n.category === categoryFilter);
+    if (categoryFilter === 'archived') {
+      return notifications.filter((n) => n.status === 'archived');
+    }
+    return notifications.filter((n) => n.category === categoryFilter && n.status !== 'archived');
   }, [notifications, categoryFilter]);
 
   const currentFilterLabel =
     FILTER_OPTIONS.find((opt) => opt.value === categoryFilter)?.label ||
-    (categoryFilter ? categoryFilter.toUpperCase() : 'ALL');
+    (categoryFilter ? categoryFilter.toUpperCase() : 'ALL ACTIVE');
 
   const getEmptyMessage = () => {
     if (categoryFilter) {
       return `No notifications found under "${categoryFilter}".`;
     }
-    return 'No notifications available.';
+    return 'No active notifications available.';
   };
 
   return (
     <div
-      className={`flex flex-col h-full bg-panel border border-border/30 rounded-card p-4 overflow-hidden gap-3 ${className}`}
+      className={`flex flex-col h-full bg-panel border border-border/40 rounded-card p-4 overflow-hidden gap-3 ${className}`}
     >
       {/* Header with Filter Dropdown */}
       <div className="flex items-center justify-between shrink-0 pb-2 border-b border-border/30">
@@ -152,8 +161,19 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
                   </div>
                 </Tooltip>
 
+                {item.status !== 'archived' && (
+                  <DropdownMenuItem
+                    label="Archive"
+                    icon={<Archive size={14} />}
+                    onClick={() => {
+                      setContextMenuId(null);
+                      onArchiveNotification(item.id);
+                    }}
+                  />
+                )}
+
                 <DropdownMenuItem
-                  label="Delete"
+                  label="Delete Permanently"
                   variant="danger"
                   icon={<Trash2 size={14} />}
                   onClick={() => {

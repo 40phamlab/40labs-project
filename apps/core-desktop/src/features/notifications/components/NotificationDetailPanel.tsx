@@ -77,7 +77,7 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
   if (!notification) {
     return (
       <div className="w-full h-full flex items-center justify-center p-4">
-        <Card className="w-full max-w-2xl bg-panel border border-border/50 rounded-card elevation-raised p-8 text-center">
+        <Card className="w-full max-w-2xl bg-panel border border-border/50 rounded-card p-8 text-center">
           <Panel variant="flat" className="p-6 max-w-sm mx-auto flex flex-col items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-panel-strong flex items-center justify-center text-text-muted">
               <Mail size={24} />
@@ -112,7 +112,7 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
 
   return (
     <div className={`w-full h-full flex items-center justify-center p-4 overflow-y-auto custom-scrollbar ${className}`}>
-      <Card className="w-full max-w-2xl max-h-full flex flex-col bg-panel border border-border/50 rounded-card elevation-raised overflow-hidden">
+      <Card className="w-full max-w-2xl max-h-full flex flex-col bg-panel border border-border/50 rounded-card overflow-hidden">
         {/* Header Section */}
         <CardHeader className="bg-panel-strong/40 flex flex-col gap-3 p-4 border-b border-border/30 shrink-0">
           <div className="flex items-center justify-between gap-2">
@@ -123,6 +123,11 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
               {notification.status === 'unread' && (
                 <Badge variant="primary" size="sm">
                   Unread
+                </Badge>
+              )}
+              {notification.status === 'archived' && (
+                <Badge variant="neutral" size="sm">
+                  Archived
                 </Badge>
               )}
             </div>

@@ -6,6 +6,8 @@ import { FilterChipTrigger } from './FilterChipTrigger';
 export interface CustomerFilterBarProps {
   timeRange: string;
   onTimeRangeChange: (value: string) => void;
+  balanceFilter: string;
+  onBalanceFilterChange: (value: string) => void;
   onClearAll: () => void;
   className?: string;
 }
@@ -17,18 +19,26 @@ const TIME_OPTIONS = [
   { value: 'month', label: 'This Month' },
 ];
 
-const STATIC_OPTIONS = [{ value: 'all', label: 'All' }];
+const BALANCE_OPTIONS = [
+  { value: 'all', label: 'All Balances' },
+  { value: 'debtors', label: 'Debtors Only' },
+  { value: 'clear', label: 'Zero Balance' },
+];
 
 export const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
   timeRange,
   onTimeRangeChange,
+  balanceFilter,
+  onBalanceFilterChange,
   onClearAll,
   className = '',
 }) => {
   return (
-    <div className={`flex flex-col gap-2 p-3 bg-panel-strong/50 rounded-card border border-border/50 ${className}`}>
-      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Filters</span>
-      <div className="flex items-center justify-end gap-5">
+    <div className={`flex items-center gap-4 ${className}`}>
+      <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
+        Filters:
+      </span>
+      <div className="flex items-center gap-4">
         <FilterChipTrigger
           label="Time"
           selectedValue={timeRange}
@@ -37,54 +47,21 @@ export const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
         />
 
         <FilterChipTrigger
-          label="Age"
-          selectedValue="all"
-          options={STATIC_OPTIONS}
-          onSelect={() => {}}
+          label="Balance"
+          selectedValue={balanceFilter}
+          options={BALANCE_OPTIONS}
+          onSelect={onBalanceFilterChange}
         />
 
-        <FilterChipTrigger
-          label="Gender"
-          selectedValue="all"
-          options={STATIC_OPTIONS}
-          onSelect={() => {}}
-        />
-
-        <FilterChipTrigger
-          label="Problem"
-          selectedValue="all"
-          options={STATIC_OPTIONS}
-          onSelect={() => {}}
-        />
-
-        <FilterChipTrigger
-          label="Subscription"
-          selectedValue="all"
-          options={STATIC_OPTIONS}
-          onSelect={() => {}}
-        />
-
-        <FilterChipTrigger
-          label="Relation"
-          selectedValue="all"
-          options={STATIC_OPTIONS}
-          onSelect={() => {}}
-        />
-
-        <FilterChipTrigger
-          label="Deals"
-          selectedValue="all"
-          options={STATIC_OPTIONS}
-          onSelect={() => {}}
-        />
-
-        <IconButton
-          intent="neutral"
-          size="sm"
-          icon={<RotateCcw size={14} />}
-          label="Reset filters"
-          onClick={onClearAll}
-        />
+        {(timeRange !== 'all' || balanceFilter !== 'all') && (
+          <IconButton
+            intent="ghost"
+            size="sm"
+            icon={<RotateCcw size={14} />}
+            label="Reset filters"
+            onClick={onClearAll}
+          />
+        )}
       </div>
     </div>
   );

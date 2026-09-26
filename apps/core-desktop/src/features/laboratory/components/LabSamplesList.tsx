@@ -45,6 +45,9 @@ export interface LabSamplesListProps {
   customers: Customer[];
   testCatalog: TestCatalogEntry[];
   onUpdateSampleStatus: (sampleId: string, status: LabSampleStatus) => void;
+  loading?: boolean;
+  error?: string | Error | null;
+  onRetry?: () => void;
 }
 
 interface ToastItem {
@@ -70,6 +73,9 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
   customers,
   testCatalog,
   onUpdateSampleStatus,
+  loading,
+  error,
+  onRetry,
 }) => {
   const [activeTimeFilter, setActiveTimeFilter] =
     React.useState<SampleTimeFilter>('recently');
@@ -351,6 +357,9 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
         <DataTable
           data={filteredSamples}
           columns={columns}
+          loading={loading}
+          error={error}
+          onRetry={onRetry}
           emptyMessage="No laboratory samples found for the selected time range."
         />
       </div>

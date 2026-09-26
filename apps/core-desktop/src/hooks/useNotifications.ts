@@ -15,6 +15,7 @@ export function useNotifications() {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery<Notification[]>({
     queryKey: notificationKeys.list(),
     queryFn: async () => notificationsApi.list(),
@@ -68,7 +69,7 @@ export function useNotifications() {
 
   // UI state
   const [selectedNotificationId, setSelectedNotificationId] = React.useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = React.useState<'all' | 'customers' | 'gov' | 'marketing' | 'business' | string>('all');
+  const [activeCategory, setActiveCategory] = React.useState<string | null>(null);
 
   const sendReply = React.useCallback(
     async (id: string, replyText: string) => {
@@ -92,6 +93,7 @@ export function useNotifications() {
     isLoading,
     isError,
     error,
+    refetch,
 
     // UI state
     selectedNotificationId,

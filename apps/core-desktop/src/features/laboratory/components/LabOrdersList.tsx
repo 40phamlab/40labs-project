@@ -33,6 +33,9 @@ export interface LabOrdersListProps {
   testCatalog: TestCatalogEntry[];
   customers: Customer[];
   onUpdateOrderStatus: (orderId: string, newStatus: LabOrderStatus) => void;
+  loading?: boolean;
+  error?: string | Error | null;
+  onRetry?: () => void;
 }
 
 interface ToastItem {
@@ -46,6 +49,9 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
   testCatalog,
   customers,
   onUpdateOrderStatus,
+  loading,
+  error,
+  onRetry,
 }) => {
   const [activeChannel, setActiveChannel] = React.useState<ChannelTab>('unsolved');
   const [timeRange, setTimeRange] = React.useState<TimeRange>('month');
@@ -304,6 +310,9 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
         <DataTable
           data={filteredOrders}
           columns={columns}
+          loading={loading}
+          error={error}
+          onRetry={onRetry}
           emptyMessage={getEmptyMessage()}
         />
       </div>

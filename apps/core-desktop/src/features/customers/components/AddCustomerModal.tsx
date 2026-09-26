@@ -8,27 +8,29 @@ import {
   PhoneInput,
   Textarea,
 } from '@40labs/ui-components';
-import { type Customer } from '@40labs/types';
+
+export interface AddCustomerPayload {
+  fullName: string;
+  phone: string;
+  email?: string;
+  notes?: string;
+}
 
 interface AddCustomerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (newCustomer: Customer) => void;
+  onAdd: (payload: AddCustomerPayload) => Promise<void> | void;
+  isLoading?: boolean;
 }
 
-/**
- * AddCustomerModal
- *
- * Provides a form to create a new customer record.
- * Following the design pattern of NewStockModal for consistency.
- */
 export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   isOpen,
   onClose,
   onAdd,
+  isLoading = false,
 }) => {
   const [formData, setFormData] = React.useState({
-    full_name: '',
+    fullName: '',
     phone: '',
     email: '',
     notes: '',
@@ -42,35 +44,21 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   };
 
   const isFormValid =
-    formData.full_name.trim() !== '' && formData.phone.trim() !== '';
+    formData.fullName.trim() !== '' && formData.phone.trim() !== '';
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    if (!isFormValid || isLoading) return;
 
-    const WORKSPACE_ID = 'ws_dev_001';
-    const BRANCH_ID = 'br_dev_001';
-    const now = new Date().toISOString();
-    const idSuffix = Math.random().toString(36).substr(2, 9);
-
-    const newCustomer: Customer = {
-      id: `cust_new_${idSuffix}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      full_name: formData.full_name,
-      phone: formData.phone,
-      email: formData.email || null,
-      outstanding_balance: 0,
-      notes: formData.notes || null,
-      amob_patient_id: null,
-    };
-
-    onAdd(newCustomer);
+    await onAdd({
+      fullName: formData.fullName.trim(),
+      phone: formData.phone.trim(),
+      email: formData.email.trim() || undefined,
+      notes: formData.notes.trim() || undefined,
+    });
 
     setFormData({
-      full_name: '',
+      fullName: '',
       phone: '',
       email: '',
       notes: '',
@@ -82,26 +70,25 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add Customer"
+      title="Add Customer Profile"
       size="md"
       footer={
         <div className="flex justify-end gap-3 w-full">
           <Button
             type="button"
-            intent="accent"
+            intent="neutral"
             onClick={onClose}
-            className="rounded-full px-8"
+            disabled={isLoading}
           >
             Cancel
           </Button>
           <Button
             type="button"
             intent="primary"
-            onClick={handleAdd as any}
-            disabled={!isFormValid}
-            className="rounded-full px-8 shadow-surface-pop"
+            onClick={handleAdd}
+            disabled={!isFormValid || isLoading}
           >
-            Save Customer
+            {isLoading ? 'Saving...' : 'Save Customer'}
           </Button>
         </div>
       }
@@ -110,8 +97,8 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
         <Field>
           <FieldLabel required>Full Name</FieldLabel>
           <Input
-            name="full_name"
-            value={formData.full_name}
+            name="fullName"
+            value={formData.fullName}
             onChange={handleChange}
             placeholder="e.g. Juma Hamisi"
             autoFocus

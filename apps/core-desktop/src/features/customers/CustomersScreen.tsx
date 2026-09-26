@@ -6,8 +6,9 @@ import {
   PageContent,
   Button,
   SearchInput,
+  IconButton,
 } from '@40labs/ui-components';
-import { Plus } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { CustomerStatsBar } from './components/CustomerStatsBar';
 import { CustomerFilterBar } from './components/CustomerFilterBar';
 import { CustomerList } from './components/CustomerList';
@@ -18,6 +19,10 @@ import { useCustomers } from '../../hooks/useCustomers';
 export const CustomersScreen: React.FC = () => {
   const {
     customers,
+    isLoading,
+    isError,
+    error,
+    refetch,
     searchTerm,
     setSearchTerm,
     selectedCustomerId,
@@ -25,15 +30,20 @@ export const CustomersScreen: React.FC = () => {
     isAddModalOpen,
     setAddModalOpen,
     addCustomer,
+    isAdding,
   } = useCustomers();
 
   const [timeRange, setTimeRange] = React.useState('all');
+  const [balanceFilter, setBalanceFilter] = React.useState('all');
 
   const filteredCustomers = React.useMemo(() => {
     return customers.filter((c) => {
+      const q = searchTerm.toLowerCase().trim();
       const matchesSearch =
-        c.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.phone.includes(searchTerm);
+        !q ||
+        c.full_name.toLowerCase().includes(q) ||
+        c.phone.includes(q) ||
+        (c.email && c.email.toLowerCase().includes(q));
 
       let matchesTime = true;
       const createdAt = new Date(c.created_at);
@@ -50,9 +60,16 @@ export const CustomersScreen: React.FC = () => {
         matchesTime = createdAt >= monthAgo;
       }
 
-      return matchesSearch && matchesTime;
+      let matchesBalance = true;
+      if (balanceFilter === 'debtors') {
+        matchesBalance = c.outstanding_balance > 0;
+      } else if (balanceFilter === 'clear') {
+        matchesBalance = c.outstanding_balance === 0;
+      }
+
+      return matchesSearch && matchesTime && matchesBalance;
     });
-  }, [customers, searchTerm, timeRange]);
+  }, [customers, searchTerm, timeRange, balanceFilter]);
 
   const selectedCustomer = React.useMemo(() => {
     return customers.find((c) => c.id === selectedCustomerId) || null;
@@ -60,6 +77,7 @@ export const CustomersScreen: React.FC = () => {
 
   const handleClearAll = React.useCallback(() => {
     setTimeRange('all');
+    setBalanceFilter('all');
     setSearchTerm('');
   }, [setSearchTerm]);
 
@@ -67,10 +85,11 @@ export const CustomersScreen: React.FC = () => {
     <PageViewport>
       {/* Header */}
       <PageHeader
-        title="Customer Management"
-        subtitle="Manage customer profiles, directory search, and purchasing histories."
+        title="Customer Directory"
+        subtitle="Manage customer accounts, search contacts, track outstanding balances, and view order histories."
         actions={
           <Button
+            type="button"
             intent="primary"
             leftIcon={<Plus size={16} />}
             onClick={() => setAddModalOpen(true)}
@@ -86,34 +105,47 @@ export const CustomersScreen: React.FC = () => {
           <CustomerFilterBar
             timeRange={timeRange}
             onTimeRangeChange={setTimeRange}
+            balanceFilter={balanceFilter}
+            onBalanceFilterChange={setBalanceFilter}
             onClearAll={handleClearAll}
           />
         }
         right={
-          <SearchInput
-            className="w-64"
-            placeholder="Search name or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onClear={() => setSearchTerm('')}
-          />
+          <div className="flex items-center gap-3">
+            <SearchInput
+              className="w-64"
+              placeholder="Search name, phone, email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onClear={() => setSearchTerm('')}
+            />
+            <IconButton
+              icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
+              label="Refresh customers"
+              intent="ghost"
+              size="sm"
+              onClick={() => refetch()}
+            />
+          </div>
         }
       />
 
-      {/* Content - ONE controlled content scroll region */}
-      <PageContent scrollable={true} padding="normal">
-        <CustomerStatsBar
-          customers={customers}
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          onAddClick={() => setAddModalOpen(true)}
-        />
+      {/* Content */}
+      <PageContent scrollable={false} padding="normal">
+        <div className="flex flex-col gap-4 h-full w-full overflow-hidden">
+          {/* KPI Stats Bar */}
+          <CustomerStatsBar customers={customers} />
 
-        <div className="flex-1 min-h-0">
-          <CustomerList
-            customers={filteredCustomers}
-            onViewDetails={setSelectedCustomerId}
-          />
+          {/* Table Region */}
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+            <CustomerList
+              customers={filteredCustomers}
+              onViewDetails={setSelectedCustomerId}
+              loading={isLoading}
+              error={isError ? (error as Error) : null}
+              onRetry={() => refetch()}
+            />
+          </div>
         </div>
       </PageContent>
 
@@ -121,19 +153,15 @@ export const CustomersScreen: React.FC = () => {
       <AddCustomerModal
         isOpen={isAddModalOpen}
         onClose={() => setAddModalOpen(false)}
-        onAdd={(cust) =>
-          addCustomer({
-            fullName: cust.full_name,
-            phone: cust.phone,
-            email: cust.email || undefined,
-            notes: cust.notes || undefined,
-          })
-        }
+        onAdd={async (payload) => {
+          await addCustomer(payload);
+        }}
+        isLoading={isAdding}
       />
 
       <CustomerDetailDrawer
         customer={selectedCustomer}
-        isOpen={!!selectedCustomerId}
+        isOpen={Boolean(selectedCustomerId)}
         onClose={() => setSelectedCustomerId(null)}
       />
     </PageViewport>

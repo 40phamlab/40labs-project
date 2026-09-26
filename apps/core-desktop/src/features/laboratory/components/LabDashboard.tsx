@@ -37,8 +37,12 @@ export interface LabDashboardProps {
   results: LabResult[];
   testCatalog: TestCatalogEntry[];
   customers: Customer[];
-  onAddOrder: (order: LabOrder, newCustomer?: Customer) => void;
+  onAddOrder: (customerId: string, testCatalogId: string) => Promise<void> | void;
   onViewOrder?: (orderId: string) => void;
+  loading?: boolean;
+  error?: string | Error | null;
+  onRetry?: () => void;
+  isCreatingOrder?: boolean;
 }
 
 const statusBadgeMap: Record<LabOrderStatus, { status: StatusType; label: string }> = {
@@ -58,6 +62,10 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
   customers,
   onAddOrder,
   onViewOrder,
+  loading,
+  error,
+  onRetry,
+  isCreatingOrder,
 }) => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [activeMenuOrderId, setActiveMenuOrderId] = React.useState<string | null>(null);
@@ -230,7 +238,7 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
       <div className="flex flex-col gap-4 w-full">
         <div className="flex items-center justify-between shrink-0">
           <div>
-            <h2 className="text-base font-bold text-text">Recently</h2>
+            <h2 className="text-base font-bold text-text">Recently Requisitions</h2>
             <p className="text-xs text-text-muted">
               Real-time activity feed of laboratory requisitions and processing status.
             </p>
@@ -240,10 +248,9 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
             type="button"
             intent="primary"
             onClick={() => setIsModalOpen(true)}
-            className="rounded-full px-5 shadow-surface-pop flex items-center gap-2"
+            leftIcon={<Plus size={16} />}
           >
-            <Plus size={16} />
-            <span>New Test</span>
+            New Test
           </Button>
         </div>
 
@@ -252,6 +259,9 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
           <DataTable
             data={recentOrders}
             columns={columns}
+            loading={loading}
+            error={error}
+            onRetry={onRetry}
             emptyMessage="No laboratory requisitions found."
           />
         </div>
@@ -264,6 +274,7 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
         onSubmit={onAddOrder}
         customers={customers}
         testCatalog={testCatalog}
+        isLoading={isCreatingOrder}
       />
     </div>
   );

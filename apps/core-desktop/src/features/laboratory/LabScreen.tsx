@@ -2,6 +2,7 @@ import * as React from 'react';
 import {
   PageViewport,
   PageHeader,
+  PageToolbar,
   PageContent,
   ContextualSubNav,
   SubNavSection,
@@ -9,6 +10,8 @@ import {
   ColumnDefinition,
   Badge,
   KPITile,
+  IconButton,
+  Button,
 } from '@40labs/ui-components';
 import {
   LayoutDashboard,
@@ -26,11 +29,14 @@ import {
   User as UserIcon,
   Activity,
   DollarSign,
+  RefreshCw,
+  Plus,
 } from 'lucide-react';
-import type { LabResult, TestCatalogEntry, Customer, LabOrderStatus, LabSampleStatus } from '@40labs/types';
+import type { LabResult, TestCatalogEntry, LabOrderStatus, LabSampleStatus } from '@40labs/types';
 import { LabDashboard } from './components/LabDashboard';
 import { LabOrdersList } from './components/LabOrdersList';
 import { LabSamplesList } from './components/LabSamplesList';
+import { NewLabOrderModal } from './components/NewLabOrderModal';
 import { useLab } from '../../hooks/useLab';
 import { useCustomers } from '../../hooks/useCustomers';
 
@@ -80,6 +86,7 @@ const LAB_SUBNAV_SECTIONS: SubNavSection[] = [
 
 export const LabScreen: React.FC = () => {
   const [activeLabTab, setActiveLabTab] = React.useState<LabTab>('samples');
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
 
   const {
     orders,
@@ -88,16 +95,21 @@ export const LabScreen: React.FC = () => {
     catalog: testCatalog,
     users,
     auditLogs,
+    isLoading,
+    isError,
+    error,
+    refetch,
     createOrder,
     updateOrderStatus,
     updateSampleStatus,
+    isCreatingOrder,
   } = useLab();
 
   const { customers } = useCustomers();
 
   const handleAddOrder = React.useCallback(
-    async (newOrder: { customer_id: string; test_catalog_id: string }, _newCustomer?: Customer) => {
-      await createOrder(newOrder.customer_id, newOrder.test_catalog_id);
+    async (customerId: string, testCatalogId: string) => {
+      await createOrder(customerId, testCatalogId);
     },
     [createOrder]
   );
@@ -212,6 +224,10 @@ export const LabScreen: React.FC = () => {
             onViewOrder={(_orderId) => {
               setActiveLabTab('orders');
             }}
+            loading={isLoading}
+            error={isError ? (error as Error) : null}
+            onRetry={refetch}
+            isCreatingOrder={isCreatingOrder}
           />
         );
 
@@ -222,6 +238,9 @@ export const LabScreen: React.FC = () => {
             testCatalog={testCatalog}
             customers={customers}
             onUpdateOrderStatus={handleUpdateOrderStatus}
+            loading={isLoading}
+            error={isError ? (error as Error) : null}
+            onRetry={refetch}
           />
         );
 
@@ -233,6 +252,9 @@ export const LabScreen: React.FC = () => {
             customers={customers}
             testCatalog={testCatalog}
             onUpdateSampleStatus={handleUpdateSampleStatus}
+            loading={isLoading}
+            error={isError ? (error as Error) : null}
+            onRetry={refetch}
           />
         );
 
@@ -244,7 +266,14 @@ export const LabScreen: React.FC = () => {
               <p className="text-xs text-text-muted">Review, verify, and override diagnostic test findings.</p>
             </div>
             <div className="w-full">
-              <DataTable data={results} columns={resultColumns} emptyMessage="No laboratory results recorded." />
+              <DataTable
+                data={results}
+                columns={resultColumns}
+                loading={isLoading}
+                error={isError ? (error as Error) : null}
+                onRetry={refetch}
+                emptyMessage="No laboratory results recorded."
+              />
             </div>
           </div>
         );
@@ -257,7 +286,14 @@ export const LabScreen: React.FC = () => {
               <p className="text-xs text-text-muted">Manage available laboratory tests, categories, and TZS pricing.</p>
             </div>
             <div className="w-full">
-              <DataTable data={testCatalog} columns={catalogColumns} emptyMessage="No test catalog entries found." />
+              <DataTable
+                data={testCatalog}
+                columns={catalogColumns}
+                loading={isLoading}
+                error={isError ? (error as Error) : null}
+                onRetry={refetch}
+                emptyMessage="No test catalog entries found."
+              />
             </div>
           </div>
         );
@@ -291,30 +327,6 @@ export const LabScreen: React.FC = () => {
                   <p>Last Calibrated: 1 day ago</p>
                   <p>QC Control Pass Rate: <span className="font-bold text-primary">98.5%</span></p>
                   <p>Status: Calibration verified for Glucose & Lipid panels</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-text text-sm">Biorad Microplate Reader</span>
-                  <Badge variant="primary">Standby</Badge>
-                </div>
-                <div className="text-xs text-text-muted flex flex-col gap-1">
-                  <p>Last Calibrated: 5 days ago</p>
-                  <p>QC Control Pass Rate: <span className="font-bold text-primary">100%</span></p>
-                  <p>Status: Standby for Serology EIA runs</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-text text-sm">Binocular Microscope CX23</span>
-                  <Badge variant="success">Operational</Badge>
-                </div>
-                <div className="text-xs text-text-muted flex flex-col gap-1">
-                  <p>Last Cleaned & Serviced: 7 days ago</p>
-                  <p>Light Source: LED (100% Life)</p>
-                  <p>Status: Active for Stool & Parasitology slides</p>
                 </div>
               </div>
             </div>
@@ -432,11 +444,41 @@ export const LabScreen: React.FC = () => {
 
   return (
     <PageViewport>
+      {/* Header */}
       <PageHeader
         title="Laboratory Management"
         subtitle="Diagnostic test catalog, sample requisitions, result entry, and quality control."
+        actions={
+          <Button
+            type="button"
+            intent="primary"
+            leftIcon={<Plus size={16} />}
+            onClick={() => setIsModalOpen(true)}
+          >
+            New Requisition
+          </Button>
+        }
       />
 
+      {/* Toolbar */}
+      <PageToolbar
+        left={
+          <span className="text-xs font-bold text-text-muted uppercase tracking-widest">
+            Module View: {LAB_TAB_LABELS[activeLabTab] || activeLabTab}
+          </span>
+        }
+        right={
+          <IconButton
+            icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
+            label="Refresh laboratory data"
+            intent="ghost"
+            size="sm"
+            onClick={() => refetch()}
+          />
+        }
+      />
+
+      {/* Content */}
       <PageContent scrollable={false} padding="normal">
         <div className="flex gap-6 w-full h-full overflow-hidden">
           {/* Left SubNav */}
@@ -454,6 +496,16 @@ export const LabScreen: React.FC = () => {
           </div>
         </div>
       </PageContent>
+
+      {/* Requisition Modal */}
+      <NewLabOrderModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleAddOrder}
+        customers={customers}
+        testCatalog={testCatalog}
+        isLoading={isCreatingOrder}
+      />
     </PageViewport>
   );
 };

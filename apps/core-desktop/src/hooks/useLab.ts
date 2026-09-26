@@ -20,6 +20,9 @@ export function useLab() {
   const {
     data: orders = [],
     isLoading: isLoadingOrders,
+    isError: isErrorOrders,
+    error: errorOrders,
+    refetch: refetchOrders,
   } = useQuery<LabOrder[]>({
     queryKey: labKeys.orders(),
     queryFn: async () => labApi.listOrders(),
@@ -28,6 +31,9 @@ export function useLab() {
   const {
     data: samples = [],
     isLoading: isLoadingSamples,
+    isError: isErrorSamples,
+    error: errorSamples,
+    refetch: refetchSamples,
   } = useQuery<LabSample[]>({
     queryKey: labKeys.samples(),
     queryFn: async () => labApi.listSamples(),
@@ -36,6 +42,9 @@ export function useLab() {
   const {
     data: results = [],
     isLoading: isLoadingResults,
+    isError: isErrorResults,
+    error: errorResults,
+    refetch: refetchResults,
   } = useQuery<LabResult[]>({
     queryKey: labKeys.results(),
     queryFn: async () => labApi.listResults(),
@@ -44,6 +53,9 @@ export function useLab() {
   const {
     data: catalog = [],
     isLoading: isLoadingCatalog,
+    isError: isErrorCatalog,
+    error: errorCatalog,
+    refetch: refetchCatalog,
   } = useQuery<TestCatalogEntry[]>({
     queryKey: labKeys.catalog(),
     queryFn: async () => labApi.listCatalog(),
@@ -62,6 +74,17 @@ export function useLab() {
     queryKey: labKeys.auditLogs(),
     queryFn: async () => auditApi.list(),
   });
+
+  const isLoading = isLoadingOrders || isLoadingSamples || isLoadingResults || isLoadingCatalog;
+  const isError = isErrorOrders || isErrorSamples || isErrorResults || isErrorCatalog;
+  const error = errorOrders || errorSamples || errorResults || errorCatalog;
+
+  const refetch = React.useCallback(() => {
+    refetchOrders();
+    refetchSamples();
+    refetchResults();
+    refetchCatalog();
+  }, [refetchOrders, refetchSamples, refetchResults, refetchCatalog]);
 
   // Mutations
   const createOrderMutation = useMutation({
@@ -130,7 +153,10 @@ export function useLab() {
     catalog,
     users,
     auditLogs,
-    isLoading: isLoadingOrders || isLoadingSamples || isLoadingResults || isLoadingCatalog,
+    isLoading,
+    isError,
+    error,
+    refetch,
 
     // UI state
     selectedOrderId,

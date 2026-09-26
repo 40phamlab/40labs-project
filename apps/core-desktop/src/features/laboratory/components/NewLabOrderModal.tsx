@@ -1,15 +1,15 @@
 import * as React from 'react';
-import { Modal, Button, Select } from '@40labs/ui-components';
+import { Modal, Button, Select, Field, FieldLabel } from '@40labs/ui-components';
 import { CustomerPicker } from '../../customers/components/CustomerPicker';
-import type { Customer, TestCatalogEntry, LabOrder } from '@40labs/types';
-import { pharmaciesApi } from '../../../api';
+import type { Customer, TestCatalogEntry } from '@40labs/types';
 
 export interface NewLabOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (order: LabOrder, newCustomer?: Customer) => void;
+  onSubmit: (customerId: string, testCatalogId: string) => Promise<void> | void;
   customers: Customer[];
   testCatalog: TestCatalogEntry[];
+  isLoading?: boolean;
 }
 
 export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
@@ -18,6 +18,7 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
   onSubmit,
   customers,
   testCatalog,
+  isLoading = false,
 }) => {
   const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
   const [manualEntry, setManualEntry] = React.useState({ full_name: '', phone: '' });
@@ -40,7 +41,7 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
     onClose();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
 
@@ -49,49 +50,13 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
       return;
     }
 
-    let customerId = selectedCustomer?.id;
-    let newCustomer: Customer | undefined;
-
-    const business = pharmaciesApi.getBusiness();
-    const WORKSPACE_ID = business.id || 'ws_dev_001';
-    const BRANCH_ID = 'br_dev_001';
-
+    const customerId = selectedCustomer?.id || customers[0]?.id;
     if (!customerId) {
-      if (!manualEntry.full_name.trim()) {
-        setErrorMsg('Please select an existing patient or enter patient name.');
-        return;
-      }
-
-      newCustomer = {
-        id: `cust_${Date.now()}`,
-        workspace_id: WORKSPACE_ID,
-        branch_id: BRANCH_ID,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        full_name: manualEntry.full_name.trim(),
-        phone: manualEntry.phone.trim() || 'N/A',
-        email: null,
-        outstanding_balance: 0,
-        notes: 'Created via New Lab Test Requisition',
-        amob_patient_id: null,
-      };
-      customerId = newCustomer.id;
+      setErrorMsg('Please select an existing patient.');
+      return;
     }
 
-    const newOrder: LabOrder = {
-      id: `labord_${Date.now().toString().slice(-6)}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      customer_id: customerId,
-      sale_id: null,
-      ordered_by_user_id: 'user_001',
-      status: 'pending',
-      test_catalog_id: selectedTestId,
-    };
-
-    onSubmit(newOrder, newCustomer);
+    await onSubmit(customerId, selectedTestId);
     handleReset();
     onClose();
   };
@@ -103,12 +68,12 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
       title="New Lab Test Requisition"
       size="md"
       footer={
-        <div className="flex gap-2 justify-end w-full">
-          <Button type="button" intent="ghost" onClick={handleClose}>
+        <div className="flex gap-3 justify-end w-full">
+          <Button type="button" intent="neutral" onClick={handleClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="button" intent="primary" onClick={handleSubmit}>
-            Create Order
+          <Button type="button" intent="primary" onClick={handleSubmit} disabled={isLoading || !selectedTestId}>
+            {isLoading ? 'Creating...' : 'Create Order'}
           </Button>
         </div>
       }
@@ -121,10 +86,8 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
         )}
 
         {/* Patient Selection using CustomerPicker */}
-        <div className="flex flex-col gap-1.5">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">
-            1. Patient Information
-          </h3>
+        <Field>
+          <FieldLabel required>Patient Information</FieldLabel>
           <CustomerPicker
             value={selectedCustomer}
             manualEntry={manualEntry}
@@ -132,13 +95,11 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
             onManualEntryChange={setManualEntry}
             customers={customers}
           />
-        </div>
+        </Field>
 
         {/* Test Selection */}
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-text-muted opacity-40">
-            2. Select Lab Test
-          </label>
+        <Field>
+          <FieldLabel required>Lab Test Catalog</FieldLabel>
           <Select
             value={selectedTestId}
             onChange={(e) => setSelectedTestId(e.target.value)}
@@ -150,11 +111,11 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
               </option>
             ))}
           </Select>
-        </div>
+        </Field>
 
         {/* Selected Test Summary Card */}
         {selectedTest && (
-          <div className="p-4 rounded-card bg-panel-strong border border-border/50 flex flex-col gap-2">
+          <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-text">{selectedTest.name}</span>
               <span className="text-xs font-mono font-bold text-primary">
