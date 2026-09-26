@@ -22,6 +22,9 @@ import { type MedicineWithInventory } from '@40labs/types';
 interface InventoryTableProps {
   data: MedicineWithInventory[];
   onDelete: (id: string) => void;
+  loading?: boolean;
+  error?: string | Error | null;
+  onRetry?: () => void;
 }
 
 const RowActions = ({
@@ -104,6 +107,9 @@ const RowActions = ({
 export const InventoryTable: React.FC<InventoryTableProps> = ({
   data,
   onDelete,
+  loading,
+  error,
+  onRetry,
 }) => {
   const columns: ColumnDefinition<MedicineWithInventory>[] = [
     {
@@ -112,11 +118,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       render: (item) => {
         const isExpired = new Date(item.expiry_date) < new Date();
         return (
-          <span
-            className={
-              isExpired ? 'text-danger font-bold' : ''
-            }
-          >
+          <span className={isExpired ? 'text-danger font-bold' : ''}>
             {item.medicine.name}
           </span>
         );
@@ -130,6 +132,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     {
       key: 'quantity',
       header: 'Quantity',
+      accessorKey: 'quantity',
     },
     {
       key: 'buy_price',
@@ -147,8 +150,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       key: 'expiry_date',
       header: 'Expire',
       render: (item) => {
-        const isExpired =
-          new Date(item.expiry_date) < new Date();
+        const isExpired = new Date(item.expiry_date) < new Date();
         const dateStr = item.expiry_date.slice(0, 10);
         return isExpired ? (
           <StatusBadge status="error" label={dateStr} />
@@ -159,13 +161,17 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     },
     {
       key: 'batch_number',
-      header: 'batch',
+      header: 'Batch',
+      accessorKey: 'batch_number',
       className: 'font-mono',
     },
     {
       key: 'supplier',
       header: 'Supplier',
-      render: (item: any) => item.medicine.supplier_name ?? '—',
+      render: (item) => {
+        const med = item.medicine as { supplier_name?: string };
+        return med.supplier_name ?? '—';
+      },
     },
     {
       key: 'metric',
@@ -180,6 +186,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       key: 'actions',
       header: '',
       width: '140px',
+      align: 'right',
       render: (item) => (
         <div className="flex items-center gap-2 justify-end">
           <Button
@@ -201,9 +208,12 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     <DataTable
       data={data}
       columns={columns}
+      loading={loading}
+      error={error}
+      onRetry={onRetry}
       emptyMessage="No inventory items found matching your criteria."
       keyExtractor={(item) => item.id}
-      dense
+      density="compact"
     />
   );
 };

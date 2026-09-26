@@ -27,7 +27,7 @@ import {
   Activity,
   DollarSign,
 } from 'lucide-react';
-import type { LabResult, TestCatalogEntry, Customer } from '@40labs/types';
+import type { LabResult, TestCatalogEntry, Customer, LabOrderStatus, LabSampleStatus } from '@40labs/types';
 import { LabDashboard } from './components/LabDashboard';
 import { LabOrdersList } from './components/LabOrdersList';
 import { LabSamplesList } from './components/LabSamplesList';
@@ -96,21 +96,21 @@ export const LabScreen: React.FC = () => {
   const { customers } = useCustomers();
 
   const handleAddOrder = React.useCallback(
-    async (newOrder: any, _newCustomer?: Customer) => {
+    async (newOrder: { customer_id: string; test_catalog_id: string }, _newCustomer?: Customer) => {
       await createOrder(newOrder.customer_id, newOrder.test_catalog_id);
     },
     [createOrder]
   );
 
   const handleUpdateOrderStatus = React.useCallback(
-    async (orderId: string, newStatus: any) => {
+    async (orderId: string, newStatus: LabOrderStatus) => {
       await updateOrderStatus(orderId, newStatus);
     },
     [updateOrderStatus]
   );
 
   const handleUpdateSampleStatus = React.useCallback(
-    async (sampleId: string, newStatus: any) => {
+    async (sampleId: string, newStatus: LabSampleStatus) => {
       await updateSampleStatus(sampleId, newStatus);
     },
     [updateSampleStatus]
