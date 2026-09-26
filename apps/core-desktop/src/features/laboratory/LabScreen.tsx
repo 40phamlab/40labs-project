@@ -67,7 +67,6 @@ const LAB_TAB_LABELS: Record<LabTab, string> = {
 const LAB_SUBNAV_SECTIONS: SubNavSection[] = [
   {
     id: 'laboratory',
-    title: 'Laboratory',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> },
       { id: 'orders', label: 'Orders', icon: <ClipboardList size={16} /> },
@@ -261,7 +260,7 @@ export const LabScreen: React.FC = () => {
         return (
           <div className="flex flex-col gap-6 w-full">
             <div>
-              <h2 className="text-base font-bold text-text">Laboratory Results</h2>
+              <h2 className="text-base font-bold text-text">Results</h2>
               <p className="text-xs text-text-muted">Review, verify, and override diagnostic test findings.</p>
             </div>
             <div className="w-full">
@@ -281,7 +280,7 @@ export const LabScreen: React.FC = () => {
         return (
           <div className="flex flex-col gap-6 w-full">
             <div>
-              <h2 className="text-base font-bold text-text">Diagnostic Test Catalog</h2>
+              <h2 className="text-base font-bold text-text">Test Catalog</h2>
               <p className="text-xs text-text-muted">Manage available laboratory tests, categories, and TZS pricing.</p>
             </div>
             <div className="w-full">
@@ -336,7 +335,7 @@ export const LabScreen: React.FC = () => {
         return (
           <div className="flex flex-col gap-6 w-full">
             <div>
-              <h2 className="text-base font-bold text-text">Laboratory Analytics & Turnaround</h2>
+              <h2 className="text-base font-bold text-text">Analytics & Turnaround</h2>
               <p className="text-xs text-text-muted">Key performance indicators, SLA compliance, and test volume breakdown.</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
@@ -352,7 +351,7 @@ export const LabScreen: React.FC = () => {
         return (
           <div className="flex flex-col gap-6 w-full">
             <div>
-              <h2 className="text-base font-bold text-text">Lab Store & Reagent Stock</h2>
+              <h2 className="text-base font-bold text-text">Reagent & Supply Stock</h2>
               <p className="text-xs text-text-muted">Track diagnostic kits, buffer solutions, slides, and blood collection tubes.</p>
             </div>
             <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3 w-full">
@@ -381,7 +380,7 @@ export const LabScreen: React.FC = () => {
         return (
           <div className="flex flex-col gap-6 w-full">
             <div>
-              <h2 className="text-base font-bold text-text">Lab Manager & Authorizations</h2>
+              <h2 className="text-base font-bold text-text">Staff & Authorizations</h2>
               <p className="text-xs text-text-muted">Staff permissions, result override authorizations, and supervisor settings.</p>
             </div>
             <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3 w-full">
@@ -409,7 +408,7 @@ export const LabScreen: React.FC = () => {
         return (
           <div className="flex flex-col gap-6 w-full">
             <div>
-              <h2 className="text-base font-bold text-text">Laboratory Audit Trail</h2>
+              <h2 className="text-base font-bold text-text">Audit Trail</h2>
               <p className="text-xs text-text-muted">Immutable log of specimen updates, critical overrides, and user actions.</p>
             </div>
             <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3 w-full">
@@ -445,11 +444,6 @@ export const LabScreen: React.FC = () => {
     <PageViewport>
       {/* Toolbar */}
       <PageToolbar
-        left={
-          <span className="text-xs font-bold text-text-muted uppercase tracking-widest">
-            Module View: {LAB_TAB_LABELS[activeLabTab] || activeLabTab}
-          </span>
-        }
         right={
           <div className="flex items-center gap-2">
             <Button

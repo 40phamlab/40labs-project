@@ -81,11 +81,6 @@ export const NotificationsScreen: React.FC = () => {
     <PageViewport>
       {/* Page Toolbar */}
       <PageToolbar
-        left={
-          <span className="text-xs font-bold text-text-muted uppercase tracking-widest">
-            Filter: {categoryFilter ? categoryFilter.toUpperCase() : 'ALL ACTIVE'}
-          </span>
-        }
         right={
           <div className="flex items-center gap-2">
             <Button
