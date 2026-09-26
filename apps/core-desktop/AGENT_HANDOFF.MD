@@ -48,8 +48,8 @@ Web App are in MVP scope. Source docs: `/docs/prd/40Labs_PRD_v1_MVP.md`,
 ✅ `sqlx` chosen over `rusqlite` (async fit with Tauri commands,
    compile-time query checking, same crate will drive Postgres sync
    later). Both `.env` files in place:
-   - `infra/db/sqlite-schema/.env` → `DATABASE_URL=sqlite:dev.db`
-   - `apps/core-desktop/src-tauri/.env` → `DATABASE_URL=sqlite:../../../infra/db/sqlite-schema/dev.db`
+   - `infra/db/sqlite-schema/.env` → `DATABASE_URL=sqlite:../../dev-data/40labs-dev.db`
+   - `dev-data/40labs-dev.db` (automatically resolved outside `src-tauri` to prevent Tauri watcher restart loops)
 ✅ `apps/core-desktop/src/lib/mockData.ts` — full mock-API seam,
    type-checked clean against `@40labs/types` (0 errors), covers all
    15 entities plus `getMockDashboardSummary()` computed aggregate.

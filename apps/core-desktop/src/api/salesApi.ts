@@ -1,5 +1,6 @@
 import type { Sale, SaleLine, FiscalReceipt } from '@40labs/types';
 import { initialSales, initialFiscalReceipts, WORKSPACE_ID, BRANCH_ID } from '../devData/index.ts';
+import { isUsingTauriIpc, invokeCommand } from './client';
 
 export interface CreateSalePayload {
   customerId: string | null;
@@ -18,13 +19,22 @@ let salesStore: Sale[] = [...initialSales];
 let fiscalReceiptsStore: FiscalReceipt[] = [...initialFiscalReceipts];
 
 export const salesApi = {
-  list: (): Sale[] => [...salesStore],
+  list: async (): Promise<Sale[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Sale[]>('get_sales_list');
+    }
+    return [...salesStore];
+  },
 
-  get: (id: string): Sale | null => {
+  get: async (id: string): Promise<Sale | null> => {
     return salesStore.find((s) => s.id === id) || null;
   },
 
-  create: (payload: CreateSalePayload): Sale => {
+  create: async (payload: CreateSalePayload): Promise<Sale> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Sale>('create_sale', { payload });
+    }
+
     const now = new Date().toISOString();
     const saleId = `sale_${Date.now()}`;
 
@@ -57,7 +67,7 @@ export const salesApi = {
     return newSale;
   },
 
-  update: (id: string, updates: UpdateSalePayload): Sale | null => {
+  update: async (id: string, updates: UpdateSalePayload): Promise<Sale | null> => {
     const index = salesStore.findIndex((s) => s.id === id);
     if (index === -1) return null;
 
@@ -74,18 +84,23 @@ export const salesApi = {
     return updatedSale;
   },
 
-  delete: (id: string): boolean => {
+  delete: async (id: string): Promise<boolean> => {
     const initialLen = salesStore.length;
     salesStore = salesStore.filter((s) => s.id !== id);
     return salesStore.length < initialLen;
   },
 
-  listFiscalReceipts: (): FiscalReceipt[] => [...fiscalReceiptsStore],
+  listFiscalReceipts: async (): Promise<FiscalReceipt[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<FiscalReceipt[]>('get_fiscal_receipts');
+    }
+    return [...fiscalReceiptsStore];
+  },
 
   // Backwards compatibility aliases
-  getSales: (): Sale[] => salesApi.list(),
-  getFiscalReceipts: (): FiscalReceipt[] => salesApi.listFiscalReceipts(),
-  createSale: (payload: CreateSalePayload): Sale => salesApi.create(payload),
+  getSales: (): Promise<Sale[]> => salesApi.list(),
+  getFiscalReceipts: (): Promise<FiscalReceipt[]> => salesApi.listFiscalReceipts(),
+  createSale: (payload: CreateSalePayload): Promise<Sale> => salesApi.create(payload),
 };
 
 export const sales = salesApi;

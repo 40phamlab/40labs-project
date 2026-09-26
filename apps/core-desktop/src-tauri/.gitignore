@@ -6,6 +6,8 @@
 # will have schema files for capabilities auto-completion
 /gen/schemas
 
-infra/db/sqlite-schema/dev.db
+# Development database files
+dev.db*
+dev-data/
 
 .env

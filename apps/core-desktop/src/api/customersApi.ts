@@ -1,5 +1,6 @@
 import type { Customer } from '@40labs/types';
 import { initialCustomers, WORKSPACE_ID, BRANCH_ID } from '../devData';
+import { isUsingTauriIpc, invokeCommand } from './client';
 
 export interface AddCustomerPayload {
   fullName: string;
@@ -19,13 +20,25 @@ export interface UpdateCustomerPayload {
 let customersStore: Customer[] = [...initialCustomers];
 
 export const customersApi = {
-  list: (): Customer[] => [...customersStore],
+  list: async (): Promise<Customer[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Customer[]>('get_customers_list');
+    }
+    return [...customersStore];
+  },
 
-  get: (id: string): Customer | null => {
+  get: async (id: string): Promise<Customer | null> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Customer | null>('get_customer', { id });
+    }
     return customersStore.find((c) => c.id === id) || null;
   },
 
-  create: (payload: AddCustomerPayload): Customer => {
+  create: async (payload: AddCustomerPayload): Promise<Customer> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Customer>('create_customer', { payload });
+    }
+
     const now = new Date().toISOString();
     const newCustomer: Customer = {
       id: `cust_${Date.now()}`,
@@ -45,7 +58,11 @@ export const customersApi = {
     return newCustomer;
   },
 
-  update: (id: string, updates: UpdateCustomerPayload): Customer | null => {
+  update: async (id: string, updates: UpdateCustomerPayload): Promise<Customer | null> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Customer>('update_customer', { id, payload: updates });
+    }
+
     const index = customersStore.findIndex((c) => c.id === id);
     if (index === -1) return null;
 
@@ -64,23 +81,23 @@ export const customersApi = {
     return updated;
   },
 
-  updateCustomerNotes: (id: string, notes: string): Customer | null => {
+  updateCustomerNotes: (id: string, notes: string): Promise<Customer | null> => {
     return customersApi.update(id, { notes });
   },
 
-  delete: (id: string): boolean => {
+  delete: async (id: string): Promise<boolean> => {
     const initialLen = customersStore.length;
     customersStore = customersStore.filter((c) => c.id !== id);
     return customersStore.length < initialLen;
   },
 
-  archive: (id: string): boolean => {
+  archive: (id: string): Promise<boolean> => {
     return customersApi.delete(id);
   },
 
   // Backwards compatibility aliases
-  getCustomers: (): Customer[] => customersApi.list(),
-  addCustomer: (payload: AddCustomerPayload): Customer => customersApi.create(payload),
+  getCustomers: (): Promise<Customer[]> => customersApi.list(),
+  addCustomer: (payload: AddCustomerPayload): Promise<Customer> => customersApi.create(payload),
 };
 
 export const customers = customersApi;

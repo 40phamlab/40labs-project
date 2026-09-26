@@ -1,6 +1,7 @@
 import type { Medicine, InventoryItem, MedicineWithInventory, StockAdjustment, AuditLogEntry } from '@40labs/types';
 import { initialMedicines, initialInventoryItems, initialStockAdjustments, WORKSPACE_ID, BRANCH_ID } from '../devData/index.ts';
 import { auditApi } from './auditApi';
+import { isUsingTauriIpc, invokeCommand } from './client';
 
 export interface AddStockPayload {
   medicineName: string;
@@ -49,12 +50,11 @@ export interface RecordStockActionResult {
   auditEntry: AuditLogEntry;
 }
 
-// Extended inventory item type tracking deactivation status
 export type ExtendedInventoryItem = InventoryItem & {
   is_deactivated?: boolean;
 };
 
-// In-memory devData store hidden behind boundary
+// In-memory devData fallback store
 let medicinesStore: Medicine[] = [...initialMedicines];
 let inventoryStore: ExtendedInventoryItem[] = [...initialInventoryItems];
 let stockAdjustmentsStore: StockAdjustment[] = [...initialStockAdjustments];
@@ -70,20 +70,32 @@ function combineMedicineWithInventory(items: ExtendedInventoryItem[], medicines:
 }
 
 export const inventoryApi = {
-  list: (includeDeactivated = false): MedicineWithInventory[] => {
+  list: async (includeDeactivated = false): Promise<MedicineWithInventory[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<MedicineWithInventory[]>('get_inventory_list', { includeDeactivated });
+    }
     const itemsToCombine = includeDeactivated
       ? inventoryStore
       : inventoryStore.filter((item) => !item.is_deactivated);
     return combineMedicineWithInventory(itemsToCombine, medicinesStore);
   },
 
-  listMedicines: (): Medicine[] => [...medicinesStore],
+  listMedicines: async (): Promise<Medicine[]> => {
+    return [...medicinesStore];
+  },
 
-  listInventoryItems: (): InventoryItem[] => [...inventoryStore],
+  listInventoryItems: async (): Promise<InventoryItem[]> => {
+    return [...inventoryStore];
+  },
 
-  listStockAdjustments: (): StockAdjustment[] => [...stockAdjustmentsStore],
+  listStockAdjustments: async (): Promise<StockAdjustment[]> => {
+    return [...stockAdjustmentsStore];
+  },
 
-  get: (id: string): MedicineWithInventory | null => {
+  get: async (id: string): Promise<MedicineWithInventory | null> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<MedicineWithInventory | null>('get_inventory_item', { id });
+    }
     const item = inventoryStore.find((i) => i.id === id);
     if (!item) return null;
     const medicine = medicinesStore.find((m) => m.id === item.medicine_id);
@@ -91,15 +103,19 @@ export const inventoryApi = {
     return { ...item, medicine };
   },
 
-  getMedicine: (id: string): Medicine | null => {
+  getMedicine: async (id: string): Promise<Medicine | null> => {
     return medicinesStore.find((m) => m.id === id) || null;
   },
 
-  getInventoryItem: (id: string): InventoryItem | null => {
+  getInventoryItem: async (id: string): Promise<InventoryItem | null> => {
     return inventoryStore.find((i) => i.id === id) || null;
   },
 
-  create: (payload: AddStockPayload): MedicineWithInventory => {
+  create: async (payload: AddStockPayload): Promise<MedicineWithInventory> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<MedicineWithInventory>('create_stock_item', { payload });
+    }
+
     const medicineId = `med_dev_${Date.now()}`;
     const inventoryId = `inv_dev_${Date.now()}`;
     const now = new Date().toISOString();
@@ -138,7 +154,6 @@ export const inventoryApi = {
     medicinesStore = [newMedicine, ...medicinesStore];
     inventoryStore = [newInventoryItem, ...inventoryStore];
 
-    // Log initial audit creation entry
     auditApi.recordEntry({
       action: 'stock_adjustment',
       performed_by_user_id: 'user_001',
@@ -157,7 +172,7 @@ export const inventoryApi = {
     };
   },
 
-  update: (id: string, updates: UpdateStockPayload): MedicineWithInventory | null => {
+  update: async (id: string, updates: UpdateStockPayload): Promise<MedicineWithInventory | null> => {
     const index = inventoryStore.findIndex((i) => i.id === id);
     if (index === -1) return null;
 
@@ -180,7 +195,11 @@ export const inventoryApi = {
     return { ...updatedItem, medicine };
   },
 
-  recordStockAction: (payload: RecordStockActionPayload): RecordStockActionResult | null => {
+  recordStockAction: async (payload: RecordStockActionPayload): Promise<RecordStockActionResult | null> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<RecordStockActionResult>('record_stock_action', { payload });
+    }
+
     const index = inventoryStore.findIndex((i) => i.id === payload.inventoryItemId);
     if (index === -1) return null;
 
@@ -240,7 +259,7 @@ export const inventoryApi = {
 
     inventoryStore[index] = updatedItem;
 
-    const auditEntry = auditApi.recordEntry({
+    const auditEntry = await auditApi.recordEntry({
       action: 'stock_adjustment',
       performed_by_user_id: payload.authorizedByUserId || 'user_001',
       target_entity_type: 'InventoryItem',
@@ -283,8 +302,8 @@ export const inventoryApi = {
     };
   },
 
-  updateQuantity: (id: string, delta: number): InventoryItem | null => {
-    const result = inventoryApi.recordStockAction({
+  updateQuantity: async (id: string, delta: number): Promise<InventoryItem | null> => {
+    const result = await inventoryApi.recordStockAction({
       inventoryItemId: id,
       action: 'adjustment',
       quantityDelta: delta,
@@ -293,9 +312,8 @@ export const inventoryApi = {
     return result ? result.inventoryItem : null;
   },
 
-  // Semantically mark deactivated instead of destructive array removal
-  delete: (id: string): boolean => {
-    const result = inventoryApi.recordStockAction({
+  delete: async (id: string): Promise<boolean> => {
+    const result = await inventoryApi.recordStockAction({
       inventoryItemId: id,
       action: 'deactivated',
       reason: 'Deactivated stock batch via UI',
@@ -304,13 +322,11 @@ export const inventoryApi = {
   },
 
   // Backwards compatibility aliases
-  getMedicines: (): Medicine[] => inventoryApi.listMedicines(),
-  getInventoryItems: (): InventoryItem[] => inventoryApi.listInventoryItems(),
-  getMedicinesWithInventory: (): MedicineWithInventory[] => inventoryApi.list(),
-  addStock: (payload: AddStockPayload): MedicineWithInventory => inventoryApi.create(payload),
-  deleteItem: (id: string): void => {
-    inventoryApi.delete(id);
-  },
+  getMedicines: (): Promise<Medicine[]> => inventoryApi.listMedicines(),
+  getInventoryItems: (): Promise<InventoryItem[]> => inventoryApi.listInventoryItems(),
+  getMedicinesWithInventory: (): Promise<MedicineWithInventory[]> => inventoryApi.list(),
+  addStock: (payload: AddStockPayload): Promise<MedicineWithInventory> => inventoryApi.create(payload),
+  deleteItem: (id: string): Promise<boolean> => inventoryApi.delete(id),
 };
 
 export const inventory = inventoryApi;
