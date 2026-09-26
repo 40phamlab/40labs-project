@@ -10,6 +10,7 @@ export const radius = {
   card: '8px',
   input: '6px',
   full: '9999px',
+  pill: '9999px',
 } as const;
 
 export type RadiusToken = keyof typeof radius;

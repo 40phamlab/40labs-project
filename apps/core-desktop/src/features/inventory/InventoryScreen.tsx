@@ -1,7 +1,6 @@
 import * as React from 'react';
 import {
   PageViewport,
-  PageHeader,
   PageToolbar,
   PageContent,
   Panel,
@@ -63,22 +62,6 @@ export const InventoryScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      {/* Header */}
-      <PageHeader
-        title="Inventory Management"
-        subtitle="Track stock levels, record semantic refills and adjustments, handle expirations, and maintain audit logs."
-        actions={
-          <Button
-            type="button"
-            intent="primary"
-            leftIcon={<Plus size={16} />}
-            onClick={() => setModalOpen(true)}
-          >
-            Add Stock
-          </Button>
-        }
-      />
-
       {/* Toolbar */}
       <PageToolbar
         left={
@@ -97,6 +80,15 @@ export const InventoryScreen: React.FC = () => {
         }
         right={
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              intent="primary"
+              size="sm"
+              leftIcon={<Plus size={14} />}
+              onClick={() => setModalOpen(true)}
+            >
+              Add Stock
+            </Button>
             <IconButton
               icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
               label="Refresh data"

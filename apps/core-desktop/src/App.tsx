@@ -13,7 +13,7 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
-import { AppShell, AppSidebarNav, TopMenuBar, PageViewport, PageHeader, PageContent } from '@40labs/ui-components';
+import { AppShell, AppSidebarNav, TopMenuBar, PageViewport, PageContent } from '@40labs/ui-components';
 import { TitleBar } from './components/TitleBar';
 import { useNavStore, ScreenId } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
@@ -62,10 +62,6 @@ export default function App() {
         const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
         return (
           <PageViewport>
-            <PageHeader
-              title={label.replace('-', ' ')}
-              subtitle="This feature area is scheduled for upcoming development."
-            />
             <PageContent
               isEmpty
               emptyTitle={`${label.replace('-', ' ')} Module`}

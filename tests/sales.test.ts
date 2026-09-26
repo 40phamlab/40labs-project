@@ -1,5 +1,4 @@
-import { test, describe } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, test, expect } from 'vitest';
 import { useSalesStore } from '../apps/core-desktop/src/stores/useSalesStore.ts';
 import type { MedicineWithInventory } from '@40labs/types';
 
@@ -39,15 +38,15 @@ describe('Sales Store', () => {
 
     store.addToCart(sampleItem);
     let state = useSalesStore.getState();
-    assert.equal(state.cart.length, 1);
-    assert.equal(state.cart[0].quantity, 1);
-    assert.equal(state.cart[0].unitPrice, 1500);
+    expect(state.cart.length).toBe(1);
+    expect(state.cart[0].quantity).toBe(1);
+    expect(state.cart[0].unitPrice).toBe(1500);
 
     // Add again to increment quantity
     store.addToCart(sampleItem);
     state = useSalesStore.getState();
-    assert.equal(state.cart.length, 1);
-    assert.equal(state.cart[0].quantity, 2);
+    expect(state.cart.length).toBe(1);
+    expect(state.cart[0].quantity).toBe(2);
   });
 
   test('updates quantity and removes item when quantity is 0', () => {
@@ -57,25 +56,25 @@ describe('Sales Store', () => {
 
     store.updateQuantity(sampleItem.id, 5);
     let state = useSalesStore.getState();
-    assert.equal(state.cart[0].quantity, 5);
+    expect(state.cart[0].quantity).toBe(5);
 
     store.updateQuantity(sampleItem.id, 0);
     state = useSalesStore.getState();
-    assert.equal(state.cart.length, 0);
+    expect(state.cart.length).toBe(0);
   });
 
-  test('performs checkout and clears cart', () => {
+  test('performs checkout and clears cart', async () => {
     const store = useSalesStore.getState();
     store.clearCart();
     store.addToCart(sampleItem);
     store.setDiscountAmount(500);
 
-    const completedSale = store.checkout();
-    assert.notEqual(completedSale, null);
-    assert.equal(completedSale?.grand_total, 1000); // 1500 - 500 discount
+    const completedSale = await store.checkout();
+    expect(completedSale).not.toBeNull();
+    expect(completedSale?.grand_total).toBe(1000); // 1500 - 500 discount
 
     const state = useSalesStore.getState();
-    assert.equal(state.cart.length, 0);
-    assert.equal(state.discountAmount, 0);
+    expect(state.cart.length).toBe(0);
+    expect(state.discountAmount).toBe(0);
   });
 });

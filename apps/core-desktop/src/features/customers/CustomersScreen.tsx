@@ -1,7 +1,6 @@
 import * as React from 'react';
 import {
   PageViewport,
-  PageHeader,
   PageToolbar,
   PageContent,
   Button,
@@ -83,22 +82,6 @@ export const CustomersScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      {/* Header */}
-      <PageHeader
-        title="Customer Directory"
-        subtitle="Manage customer accounts, search contacts, track outstanding balances, and view order histories."
-        actions={
-          <Button
-            type="button"
-            intent="primary"
-            leftIcon={<Plus size={16} />}
-            onClick={() => setAddModalOpen(true)}
-          >
-            Add Customer
-          </Button>
-        }
-      />
-
       {/* Toolbar */}
       <PageToolbar
         left={
@@ -112,6 +95,15 @@ export const CustomersScreen: React.FC = () => {
         }
         right={
           <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              intent="primary"
+              size="sm"
+              leftIcon={<Plus size={14} />}
+              onClick={() => setAddModalOpen(true)}
+            >
+              Add Customer
+            </Button>
             <SearchInput
               className="w-64"
               placeholder="Search name, phone, email..."

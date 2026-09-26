@@ -6,10 +6,8 @@ import { InventoryScreen } from './InventoryScreen';
 import { renderWithProviders } from '../../../../../tests/test-utils';
 
 describe('InventoryScreen Integration', () => {
-  test('renders InventoryScreen with page header and action buttons', async () => {
+  test('renders InventoryScreen with toolbar action buttons', async () => {
     renderWithProviders(<InventoryScreen />);
-
-    expect(screen.getByRole('heading', { name: /inventory management/i })).toBeInTheDocument();
 
     const addStockButton = screen.getByRole('button', { name: /add stock/i });
     expect(addStockButton).toBeInTheDocument();

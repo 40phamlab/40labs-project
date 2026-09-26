@@ -69,6 +69,8 @@ export const colors = {
   primary: '#16A34A',
   accent: '#F97316',
   border: '#28362E',
+  bg: '#0B0F0D',
+  highlight: '#22C55E',
 } as const;
 
 export type ColorToken = keyof typeof colors;

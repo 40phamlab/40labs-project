@@ -86,7 +86,7 @@ export const Drawer: React.FC<DrawerProps> = ({
     <div style={{ zIndex }} className="fixed inset-0 overflow-hidden">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-surface/80 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-surface/80 transition-opacity"
         aria-hidden="true"
       />
 

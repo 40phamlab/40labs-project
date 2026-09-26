@@ -64,7 +64,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
   return createPortal(
     <div style={{ zIndex }} className="fixed inset-0 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm" aria-hidden="true" />
+      <div className="absolute inset-0 bg-surface/80" aria-hidden="true" />
       <div
         ref={containerRef}
         role="alertdialog"
@@ -148,7 +148,7 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
 
   return createPortal(
     <div style={{ zIndex }} className="fixed inset-0 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm" aria-hidden="true" />
+      <div className="absolute inset-0 bg-surface/80" aria-hidden="true" />
       <div
         ref={containerRef}
         role="alertdialog"

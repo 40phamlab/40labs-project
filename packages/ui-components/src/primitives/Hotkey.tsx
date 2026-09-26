@@ -13,7 +13,7 @@ export const HotkeyBadge = ({ children, className = '', ...props }: HotkeyBadgeP
         min-w-[20px] rounded-input
         bg-panel-strong border border-border/40
         text-caption font-mono font-bold text-text-muted
-        shadow-[inset_0_-1px_0_rgba(255,255,255,0.05),0_1px_0_rgba(0,0,0,0.5)]
+        shadow-sm
         ${className}
       `}
       {...props}

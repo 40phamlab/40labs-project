@@ -1,7 +1,6 @@
 import * as React from 'react';
 import {
   PageViewport,
-  PageHeader,
   PageToolbar,
   PageContent,
   ContextualSubNav,
@@ -444,22 +443,6 @@ export const LabScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      {/* Header */}
-      <PageHeader
-        title="Laboratory Management"
-        subtitle="Diagnostic test catalog, sample requisitions, result entry, and quality control."
-        actions={
-          <Button
-            type="button"
-            intent="primary"
-            leftIcon={<Plus size={16} />}
-            onClick={() => setIsModalOpen(true)}
-          >
-            New Requisition
-          </Button>
-        }
-      />
-
       {/* Toolbar */}
       <PageToolbar
         left={
@@ -468,13 +451,24 @@ export const LabScreen: React.FC = () => {
           </span>
         }
         right={
-          <IconButton
-            icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-            label="Refresh laboratory data"
-            intent="ghost"
-            size="sm"
-            onClick={() => refetch()}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              intent="primary"
+              size="sm"
+              leftIcon={<Plus size={14} />}
+              onClick={() => setIsModalOpen(true)}
+            >
+              New Requisition
+            </Button>
+            <IconButton
+              icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
+              label="Refresh laboratory data"
+              intent="ghost"
+              size="sm"
+              onClick={() => refetch()}
+            />
+          </div>
         }
       />
 

@@ -47,13 +47,13 @@ const statusMap: Record<StatusType, StatusConfig> = {
     label: 'Success',
   },
   warning: {
-    variantClass: 'bg-amber-500/20 text-amber-500 border-amber-500/30',
-    dotClass: 'bg-amber-500',
+    variantClass: 'bg-warning-bg text-warning border-warning-border',
+    dotClass: 'bg-warning',
     label: 'Warning',
   },
   info: {
-    variantClass: 'bg-sky-500/20 text-sky-400 border-sky-500/30',
-    dotClass: 'bg-sky-400',
+    variantClass: 'bg-info-bg text-info border-info-border',
+    dotClass: 'bg-info',
     label: 'Info',
   },
   draft: {

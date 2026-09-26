@@ -60,7 +60,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
     <thead
       className={`
         bg-panel-strong border-b border-border
-        ${sticky ? 'sticky top-0 z-10 backdrop-blur-sm' : ''}
+        ${sticky ? 'sticky top-0 z-10 bg-panel-strong' : ''}
         ${className}
       `}
       {...props}

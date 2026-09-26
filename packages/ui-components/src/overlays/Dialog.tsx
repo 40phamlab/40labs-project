@@ -88,7 +88,7 @@ export const Dialog: React.FC<DialogProps> = ({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-surface/80 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-surface/80 transition-opacity"
         aria-hidden="true"
       />
 

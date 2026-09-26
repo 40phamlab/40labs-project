@@ -1,13 +1,13 @@
-import { test, describe } from 'node:test';
-import assert from 'node:assert/strict';
+import { describe, test, expect } from 'vitest';
 import { useInventoryStore } from '../apps/core-desktop/src/stores/useInventoryStore.ts';
 
 describe('Inventory Store', () => {
-  test('adds new inventory item', () => {
+  test('adds new inventory item', async () => {
     const store = useInventoryStore.getState();
-    const initialCount = store.items.length;
+    await store.loadItems();
+    const initialCount = useInventoryStore.getState().items.length;
 
-    store.addItem({
+    await store.addItem({
       medicineName: 'Metformin 500mg',
       genericName: 'Metformin',
       category: 'Antidiabetic',
@@ -21,25 +21,26 @@ describe('Inventory Store', () => {
     });
 
     const state = useInventoryStore.getState();
-    assert.equal(state.items.length, initialCount + 1);
+    expect(state.items.length).toBe(initialCount + 1);
     const newItem = state.items[0];
-    assert.equal(newItem.medicine.name, 'Metformin 500mg');
-    assert.equal(newItem.quantity, 100);
-    assert.equal(newItem.sell_price, 800);
+    expect(newItem.medicine.name).toBe('Metformin 500mg');
+    expect(newItem.quantity).toBe(100);
+    expect(newItem.sell_price).toBe(800);
   });
 
-  test('updates quantity and deletes item', () => {
+  test('updates quantity and deletes item', async () => {
     const store = useInventoryStore.getState();
-    const item = store.items[0];
-    assert.ok(item);
+    await store.loadItems();
+    const item = useInventoryStore.getState().items[0];
+    expect(item).toBeDefined();
 
     const originalQty = item.quantity;
-    store.updateQuantity(item.id, 10);
+    await store.updateQuantity(item.id, 10);
     let state = useInventoryStore.getState();
-    assert.equal(state.items.find((i) => i.id === item.id)?.quantity, originalQty + 10);
+    expect(state.items.find((i) => i.id === item.id)?.quantity).toBe(originalQty + 10);
 
-    store.deleteItem(item.id);
+    await store.deleteItem(item.id);
     state = useInventoryStore.getState();
-    assert.equal(state.items.find((i) => i.id === item.id), undefined);
+    expect(state.items.find((i) => i.id === item.id)).toBeUndefined();
   });
 });

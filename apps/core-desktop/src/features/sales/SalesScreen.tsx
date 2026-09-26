@@ -2,7 +2,6 @@ import * as React from 'react';
 import type { MedicineWithInventory } from '@40labs/types';
 import {
   PageViewport,
-  PageHeader,
   PageToolbar,
   PageContent,
   IconButton,
@@ -216,12 +215,6 @@ export const SalesScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      {/* Header */}
-      <PageHeader
-        title="Point of Sale"
-        subtitle="Process checkout sales, search stock, manage active cart, and print receipts."
-      />
-
       {/* POS Toolbar */}
       <PageToolbar
         left={

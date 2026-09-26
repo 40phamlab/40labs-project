@@ -65,7 +65,7 @@ export function DashboardHeaderBar({
     >
       {/* Left: Module Title & Status Dot */}
       <div className="flex items-center gap-3 shrink-0">
-        <div className={`w-2.5 h-2.5 rounded-full ${dotColorClass} shadow-[0_0_8px_rgba(0,0,0,0.3)] animate-pulse`} />
+        <div className={`w-2.5 h-2.5 rounded-full ${dotColorClass} shadow-sm animate-pulse`} />
         <h2 className="text-sm font-heading font-bold text-text uppercase tracking-widest">
           {moduleTitle}
         </h2>

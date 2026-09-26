@@ -12,6 +12,8 @@ export const elevation = {
   inset: 'inset 0 1px 3px rgba(0, 0, 0, 0.6)',
   surfacePop: '0 4px 16px rgba(0, 0, 0, 0.7)',
   innerSoft: 'inset 0 2px 4px rgba(0, 0, 0, 0.6)',
+  skeuOuter: '0 2px 8px rgba(0, 0, 0, 0.5)',
+  skeuInset: 'inset 0 1px 3px rgba(0, 0, 0, 0.6)',
 } as const;
 
 export type ElevationToken = keyof typeof elevation;

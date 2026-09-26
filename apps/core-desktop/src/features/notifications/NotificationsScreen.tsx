@@ -1,7 +1,6 @@
 import * as React from 'react';
 import {
   PageViewport,
-  PageHeader,
   PageToolbar,
   PageContent,
   ConfirmDialog,
@@ -80,22 +79,6 @@ export const NotificationsScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      {/* Page Header */}
-      <PageHeader
-        title="Notifications Center"
-        subtitle="Track alerts, government notices, customer inquiries, and business communications."
-        actions={
-          <Button
-            type="button"
-            intent="neutral"
-            leftIcon={<CheckCheck size={16} />}
-            onClick={handleMarkAllRead}
-          >
-            Mark All as Read
-          </Button>
-        }
-      />
-
       {/* Page Toolbar */}
       <PageToolbar
         left={
@@ -104,13 +87,24 @@ export const NotificationsScreen: React.FC = () => {
           </span>
         }
         right={
-          <IconButton
-            icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-            label="Refresh notifications"
-            intent="ghost"
-            size="sm"
-            onClick={() => refetch()}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              intent="neutral"
+              size="sm"
+              leftIcon={<CheckCheck size={14} />}
+              onClick={handleMarkAllRead}
+            >
+              Mark All as Read
+            </Button>
+            <IconButton
+              icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
+              label="Refresh notifications"
+              intent="ghost"
+              size="sm"
+              onClick={() => refetch()}
+            />
+          </div>
         }
       />
 

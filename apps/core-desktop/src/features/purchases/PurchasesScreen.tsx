@@ -1,6 +1,5 @@
 import React from 'react';
-import { PageViewport, PageHeader, PageContent, Button } from '@40labs/ui-components';
-import { ChevronLeft } from 'lucide-react';
+import { PageViewport, PageContent } from '@40labs/ui-components';
 import { SupplierSearchPanel } from './components/SupplierSearchPanel';
 import { PurchaseHistoryPanel } from './components/PurchaseHistoryPanel';
 import { SupplierStorefront } from './components/SupplierStorefront';
@@ -11,22 +10,6 @@ export const PurchasesScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      <PageHeader
-        title="Purchases & Suppliers"
-        subtitle="Browse supplier marketplace, issue purchase orders, and track order fulfillment."
-        actions={
-          selectedSupplierId ? (
-            <Button
-              intent="neutral"
-              leftIcon={<ChevronLeft size={16} />}
-              onClick={() => setSelectedSupplierId(null)}
-            >
-              Back to Suppliers
-            </Button>
-          ) : undefined
-        }
-      />
-
       <PageContent scrollable={false} padding="normal">
         {selectedSupplierId ? (
           <SupplierStorefront
