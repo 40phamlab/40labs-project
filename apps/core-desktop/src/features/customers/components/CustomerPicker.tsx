@@ -110,7 +110,7 @@ export function CustomerPicker({
       </div>
 
       {isOpen && !value && manualEntry.full_name.trim().length > 0 && (
-        <Card className="absolute left-0 right-0 top-[68px] z-50 max-h-[240px] overflow-hidden elevation-pop border border-border/40 bg-panel-strong shadow-2xl flex flex-col">
+        <Card className="absolute left-0 right-0 top-[68px] z-50 max-h-[240px] overflow-hidden elevation-pop border border-border/40 bg-panel-strong shadow-surface-pop flex flex-col">
           <div className="flex-1 overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
             {filteredCustomers.length > 0 ? (
               filteredCustomers.map((c) => (

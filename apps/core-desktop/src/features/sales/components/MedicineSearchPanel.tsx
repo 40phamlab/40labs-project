@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { ChevronRight, RefreshCw, Layers } from 'lucide-react';
-import { SearchInput, IconButton, CategorySquare } from '@40labs/ui-components';
+import { ChevronRight, RefreshCw } from 'lucide-react';
+import { SearchInput, IconButton } from '@40labs/ui-components';
 import { ProductRow } from './ProductRow';
 import { MedicineWithInventory, Sale } from '@40labs/types';
 

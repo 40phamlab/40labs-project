@@ -162,7 +162,7 @@ export const NotificationsScreen: React.FC = () => {
         message="Are you sure you want to archive this notification? It will be moved to your archived notifications list."
         confirmText="Confirm Archive"
         cancelText="Cancel"
-        intent="neutral"
+        intent="primary"
       />
 
       {/* Confirm Delete Dialog */}

@@ -11,6 +11,7 @@ export interface CartItemModel {
   unitType?: string;
   stockStatus?: 'in-stock' | 'low-stock' | 'out-of-stock';
   discountAmount?: number;
+  currencyCode?: string;
 }
 
 export interface CartItemRowProps {

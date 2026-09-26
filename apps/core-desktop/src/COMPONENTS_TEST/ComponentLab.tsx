@@ -76,8 +76,8 @@ import {
 } from '@40labs/ui-components';
 import { Numpad } from '../features/sales/components/Numpad';
 import { ReceiptPreview } from '../features/sales/components/ReceiptPreview';
-import { CartItemRow } from '../features/sales/components/CartItemRow';
-import { CartSummaryPanel } from '../features/sales/components/CartSummaryPanel';
+import { CartItemRow, CartItemModel } from '../features/sales/components/CartItemRow';
+import { CartSummaryPanel, CartSummaryPayload } from '../features/sales/components/CartSummaryPanel';
 import { ProductRow } from '../features/sales/components/ProductRow';
 
 export function ComponentLab() {
@@ -93,11 +93,26 @@ export function ComponentLab() {
   const [, setFullScreenMode] = useState(false);
   const [activePayload, setActivePayload] = useState<'pharmacy' | 'hospital'>('pharmacy');
 
+  interface ToastItem {
+    id: string;
+    message: string;
+    intent?: 'info' | 'success' | 'warning' | 'danger';
+  }
+
+  interface MockDataRow {
+    id: number;
+    name: string;
+    stock: number;
+    price: number;
+    status: string;
+    category: string;
+  }
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [toasts, setToasts] = useState<any[]>([]);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const addToast = (message: string, intent: any = 'info') => {
+  const addToast = (message: string, intent: 'info' | 'success' | 'warning' | 'danger' = 'info') => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, intent }]);
   };
@@ -122,7 +137,7 @@ export function ComponentLab() {
     { category: 'Sales', description: 'Focus Search', keys: ['F1'] },
   ];
 
-  const mockData = [
+  const mockData: MockDataRow[] = [
     { id: 1, name: 'Paracetamol 500mg', stock: 124, price: 5.50, status: 'active', category: 'Analgesics' },
     { id: 2, name: 'Amoxicillin 250mg', stock: 42, price: 12.00, status: 'warning', category: 'Antibiotics' },
   ];
@@ -133,7 +148,7 @@ export function ComponentLab() {
     {
       key: 'stock',
       header: 'Stock',
-      render: (item: any) => <span>{item.stock} units</span>
+      render: (item: MockDataRow) => <span>{item.stock} units</span>
     }
   ];
 
@@ -142,7 +157,7 @@ export function ComponentLab() {
       brandName: "40LABS",
       brandTagline: "PHARMACY",
       logo: <Pill size={18} />,
-      themeColor: "#39B54A"
+      themeColor: "var(--color-primary)"
     },
     user: {
       name: "Dr. Alex Z. (Pharmacist)",
@@ -186,7 +201,7 @@ export function ComponentLab() {
       brandName: "AFYA BORA",
       brandTagline: "HOSPITAL",
       logo: <HeartPulse size={18} />,
-      themeColor: "#EF4444"
+      themeColor: "var(--color-danger)"
     },
     user: {
       name: "Nurse Jane Smith",
@@ -228,7 +243,7 @@ export function ComponentLab() {
 
   const config = activePayload === 'pharmacy' ? pharmacyConfig : hospitalConfig;
 
-  const mockCartItems: any[] = [
+  const mockCartItems: CartItemModel[] = [
     {
       id: 'item-1',
       name: 'Panadol Advance 500mg',
@@ -241,7 +256,7 @@ export function ComponentLab() {
     },
   ];
 
-  const mockCartSummary: any = {
+  const mockCartSummary: CartSummaryPayload = {
     subtotal: 13000,
     discounts: [{ label: 'Member Promo', amount: 500 }],
     taxes: [{ label: 'VAT', rate: 18, amount: 2250 }],
@@ -519,7 +534,7 @@ export function ComponentLab() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-4">
-            <ProductRow name="Metformin 500mg" sku="MET-500" stock={120} price="TZS 15,000" onAdd={() => {}} />
+            <ProductRow name="Metformin 500mg" sku="MET-500" stock={120} price={15000} onAdd={() => {}} />
             {mockCartItems.map((item) => (
               <CartItemRow
                 key={item.id}
@@ -569,7 +584,7 @@ export function ComponentLab() {
              </Button>
           </div>
 
-          <div className="h-[800px] border-4 border-panel-strong rounded-[2rem] overflow-hidden shadow-surface-pop bg-surface relative group">
+          <div className="h-[800px] border-4 border-panel-strong rounded-card overflow-hidden shadow-surface-pop bg-surface relative group">
              <DashboardShell
                showSubNav={showSubNav}
                sidebar={

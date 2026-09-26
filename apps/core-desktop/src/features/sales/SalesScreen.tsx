@@ -342,7 +342,7 @@ export const SalesScreen: React.FC = () => {
 
               {/* Optional Floating Numpad Panel */}
               {showNumpad && (
-                <div className="absolute bottom-3 right-3 z-30 w-56 shadow-2xl animate-in slide-in-from-bottom-2">
+                <div className="absolute bottom-3 right-3 z-30 w-56 shadow-surface-pop animate-in slide-in-from-bottom-2">
                   <Numpad
                     value={discountAmount ? String(discountAmount) : ''}
                     onChange={(val) => setDiscountAmount(Number(val) || 0)}

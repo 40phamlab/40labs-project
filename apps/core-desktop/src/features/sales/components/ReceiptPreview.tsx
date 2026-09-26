@@ -36,7 +36,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
 }) => {
   return (
     <div
-      className={`p-6 w-[320px] mx-auto font-mono text-xs rounded border border-border bg-white text-black shadow-lg ${className}`}
+      className={`p-6 w-[320px] mx-auto font-mono text-xs rounded-card border border-border bg-white text-black shadow-md ${className}`}
       style={{
         lineHeight: '1.3',
       }}

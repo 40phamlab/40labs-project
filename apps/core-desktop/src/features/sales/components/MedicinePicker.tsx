@@ -115,7 +115,7 @@ export function MedicinePicker({
         />
 
         {isOpen && (
-          <Card className="absolute z-50 w-full mt-1 max-h-60 overflow-auto border border-border/20 bg-panel-strong shadow-2xl">
+          <Card className="absolute z-50 w-full mt-1 max-h-60 overflow-auto border border-border/20 bg-panel-strong shadow-surface-pop">
             {filteredMedicines.length > 0 ? (
               <ul className="py-1">
                 {filteredMedicines.map((m) => {

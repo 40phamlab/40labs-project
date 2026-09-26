@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Modal, Button } from '@40labs/ui-components';
-import { Download, Printer } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { ReceiptPreview, ReceiptItem } from './ReceiptPreview';
 import { pharmaciesApi } from '../../../api';
 import { useToast } from '../../../hooks/useToast';
@@ -29,13 +29,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   if (!saleData) return null;
 
   const biz = pharmaciesApi.getBusiness();
+  const formattedAddress = `${biz.address.place}, ${biz.address.district}, ${biz.address.region}`;
+  const formattedPhone = biz.contacts.mobile;
 
   const handleSaveAndPrint = () => {
     try {
       saveReceiptPdf({
         businessName: biz.name,
-        businessAddress: biz.address,
-        businessPhone: biz.phone,
+        businessAddress: formattedAddress,
+        businessPhone: formattedPhone,
         orderId: saleData.saleId,
         date: saleData.date,
         customerLabel: saleData.customerLabel,
@@ -88,8 +90,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       <div className="flex justify-center p-2 bg-panel rounded-card border border-border/20">
         <ReceiptPreview
           businessName={biz.name}
-          businessAddress={biz.address}
-          businessPhone={biz.phone}
+          businessAddress={formattedAddress}
+          businessPhone={formattedPhone}
           orderId={saleData.saleId}
           date={saleData.date}
           items={saleData.items}
