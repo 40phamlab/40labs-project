@@ -345,12 +345,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
         />
       </div>
 
-      <div className="shrink-0">
-        <h2 className="text-base font-bold text-text">Lab Samples</h2>
-        <p className="text-xs text-text-muted">
-          Track specimen intake, status lifecycle, SLA turnarounds, and processing state.
-        </p>
-      </div>
+
 
       {/* Samples DataTable */}
       <div className="w-full">

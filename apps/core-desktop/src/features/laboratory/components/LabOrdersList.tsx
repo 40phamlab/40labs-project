@@ -300,9 +300,6 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
         <h2 className="text-base font-bold text-text">
           {channelLabelMap[activeChannel]} Orders
         </h2>
-        <p className="text-xs text-text-muted">
-          Manage laboratory test orders, resolve issues, or route requisitions.
-        </p>
       </div>
 
       {/* Orders DataTable */}

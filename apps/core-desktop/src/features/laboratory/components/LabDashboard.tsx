@@ -239,9 +239,6 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
         <div className="flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-base font-bold text-text">Recently Requisitions</h2>
-            <p className="text-xs text-text-muted">
-              Real-time activity feed of laboratory requisitions and processing status.
-            </p>
           </div>
 
           <Button
