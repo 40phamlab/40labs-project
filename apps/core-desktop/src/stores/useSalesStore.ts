@@ -25,7 +25,8 @@ interface SalesState {
   setSelectedCustomer: (customer: Customer | null) => void;
   setPaymentMethod: (method: 'cash' | 'mobile_money' | 'card' | 'credit') => void;
   setDiscountAmount: (amount: number) => void;
-  checkout: () => Sale | null;
+  loadSales: () => Promise<void>;
+  checkout: () => Promise<Sale | null>;
 }
 
 export const useSalesStore = create<SalesState>((set, get) => ({
@@ -33,7 +34,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   selectedCustomer: null,
   paymentMethod: 'cash',
   discountAmount: 0,
-  completedSales: sales.list(),
+  completedSales: [],
 
   addToCart: (item) => set((state) => {
     const existingIndex = state.cart.findIndex(
@@ -65,7 +66,12 @@ export const useSalesStore = create<SalesState>((set, get) => ({
   setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
   setDiscountAmount: (discountAmount) => set({ discountAmount }),
 
-  checkout: () => {
+  loadSales: async () => {
+    const loaded = await sales.list();
+    set({ completedSales: loaded });
+  },
+
+  checkout: async () => {
     const { cart, selectedCustomer, paymentMethod, discountAmount, completedSales } = get();
     if (cart.length === 0) return null;
 
@@ -79,7 +85,7 @@ export const useSalesStore = create<SalesState>((set, get) => ({
       is_prescription_dispense: item.inventoryItem.medicine.requires_prescription,
     }));
 
-    const newSale = sales.create({
+    const newSale = await sales.create({
       customerId: selectedCustomer ? selectedCustomer.id : null,
       lines,
       paymentMethod,

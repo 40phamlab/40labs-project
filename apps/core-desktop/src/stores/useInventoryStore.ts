@@ -19,13 +19,14 @@ interface InventoryState {
   setGraphVisible: (visible: boolean) => void;
   setSearchPanelOpen: (open: boolean) => void;
 
-  addItem: (payload: AddStockPayload) => void;
-  deleteItem: (id: string) => void;
-  updateQuantity: (id: string, delta: number) => void;
+  loadItems: () => Promise<void>;
+  addItem: (payload: AddStockPayload) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+  updateQuantity: (id: string, delta: number) => Promise<void>;
 }
 
 export const useInventoryStore = create<InventoryState>((set) => ({
-  items: inventory.list(),
+  items: [],
   searchTerm: '',
   filterExpired: false,
   isModalOpen: false,
@@ -38,29 +39,33 @@ export const useInventoryStore = create<InventoryState>((set) => ({
   setGraphVisible: (graphVisible) => set({ graphVisible }),
   setSearchPanelOpen: (searchPanelOpen) => set({ searchPanelOpen }),
 
-  addItem: (payload) => {
-    const newItem = inventory.create(payload);
+  loadItems: async () => {
+    const list = await inventory.list();
+    set({ items: list });
+  },
+
+  addItem: async (payload) => {
+    const newItem = await inventory.create(payload);
     set((state) => ({
       items: [newItem, ...state.items],
       isModalOpen: false,
     }));
   },
 
-  deleteItem: (id) => {
-    inventory.delete(id);
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-    }));
+  deleteItem: async (id) => {
+    const success = await inventory.delete(id);
+    if (success) {
+      set((state) => ({
+        items: state.items.filter((item) => item.id !== id),
+      }));
+    }
   },
 
-  updateQuantity: (id, delta) => {
-    inventory.updateQuantity(id, delta);
-    set((state) => ({
-      items: state.items.map((item) => {
-        if (item.id !== id) return item;
-        const newQty = Math.max(0, item.quantity + delta);
-        return { ...item, quantity: newQty, updated_at: new Date().toISOString() };
-      }),
-    }));
+  updateQuantity: async (id, delta) => {
+    const updated = await inventory.updateQuantity(id, delta);
+    if (updated) {
+      const refreshed = await inventory.list();
+      set({ items: refreshed });
+    }
   },
 }));

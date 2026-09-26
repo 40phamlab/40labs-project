@@ -34,15 +34,13 @@ export const usePurchasesStore = create<PurchasesState>((set) => ({
   },
 
   approvePurchaseOrder: (poId) => {
-    purchases.approve(poId);
-    const now = new Date().toISOString();
-
-    set((state) => ({
-      purchaseOrders: state.purchaseOrders.map((po) =>
-        po.id === poId
-          ? { ...po, status: 'completed', approved_by_user_id: 'user_001', submitted_at: now, updated_at: now }
-          : po
-      ),
-    }));
+    const updatedPO = purchases.approve(poId);
+    if (updatedPO) {
+      set((state) => ({
+        purchaseOrders: state.purchaseOrders.map((po) =>
+          po.id === poId ? updatedPO : po
+        ),
+      }));
+    }
   },
 }));

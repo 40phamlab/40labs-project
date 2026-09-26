@@ -14,12 +14,13 @@ interface CustomersState {
   setSelectedCustomerId: (id: string | null) => void;
   setAddModalOpen: (open: boolean) => void;
 
-  addCustomer: (payload: AddCustomerPayload) => Customer;
-  updateCustomerNotes: (id: string, notes: string) => void;
+  loadCustomers: () => Promise<void>;
+  addCustomer: (payload: AddCustomerPayload) => Promise<Customer>;
+  updateCustomerNotes: (id: string, notes: string) => Promise<void>;
 }
 
 export const useCustomersStore = create<CustomersState>((set) => ({
-  customers: customers.list(),
+  customers: [],
   searchTerm: '',
   selectedCustomerId: null,
   isAddModalOpen: false,
@@ -28,8 +29,13 @@ export const useCustomersStore = create<CustomersState>((set) => ({
   setSelectedCustomerId: (selectedCustomerId) => set({ selectedCustomerId }),
   setAddModalOpen: (isAddModalOpen) => set({ isAddModalOpen }),
 
-  addCustomer: (payload) => {
-    const newCustomer = customers.create(payload);
+  loadCustomers: async () => {
+    const list = await customers.list();
+    set({ customers: list });
+  },
+
+  addCustomer: async (payload) => {
+    const newCustomer = await customers.create(payload);
 
     set((state) => ({
       customers: [newCustomer, ...state.customers],
@@ -40,12 +46,12 @@ export const useCustomersStore = create<CustomersState>((set) => ({
     return newCustomer;
   },
 
-  updateCustomerNotes: (id, notes) => {
-    customers.updateCustomerNotes(id, notes);
-    set((state) => ({
-      customers: state.customers.map((c) =>
-        c.id === id ? { ...c, notes, updated_at: new Date().toISOString() } : c
-      ),
-    }));
+  updateCustomerNotes: async (id, notes) => {
+    const updated = await customers.updateCustomerNotes(id, notes);
+    if (updated) {
+      set((state) => ({
+        customers: state.customers.map((c) => (c.id === id ? updated : c)),
+      }));
+    }
   },
 }));

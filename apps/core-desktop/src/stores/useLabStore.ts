@@ -42,13 +42,10 @@ export const useLabStore = create<LabState>((set) => ({
 
   collectSample: (orderId, sampleLabel) => {
     const newSample = lab.collectSample(orderId, sampleLabel);
-    const now = new Date().toISOString();
 
     set((state) => ({
       samples: [newSample, ...state.samples],
-      orders: state.orders.map((o) =>
-        o.id === orderId ? { ...o, status: 'sample_collected', updated_at: now } : o
-      ),
+      orders: lab.listOrders(),
     }));
 
     return newSample;
@@ -56,13 +53,10 @@ export const useLabStore = create<LabState>((set) => ({
 
   enterResult: (orderId, value, referenceRange, isOutOfRange) => {
     const newResult = lab.enterResult(orderId, value, referenceRange, isOutOfRange);
-    const now = new Date().toISOString();
 
     set((state) => ({
       results: [newResult, ...state.results],
-      orders: state.orders.map((o) =>
-        o.id === orderId ? { ...o, status: 'report_ready', updated_at: now } : o
-      ),
+      orders: lab.listOrders(),
     }));
 
     return newResult;

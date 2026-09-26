@@ -22,20 +22,20 @@ export const useNotificationsStore = create<NotificationsState>((set) => ({
   setActiveCategory: (activeCategory) => set({ activeCategory }),
 
   markAsRead: (id) => {
-    notifications.markAsRead(id);
-    set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === id ? { ...n, status: 'read', updated_at: new Date().toISOString() } : n
-      ),
-    }));
+    const updated = notifications.markAsRead(id);
+    if (updated) {
+      set((state) => ({
+        notifications: state.notifications.map((n) => (n.id === id ? updated : n)),
+      }));
+    }
   },
 
   archiveNotification: (id) => {
-    notifications.archive(id);
-    set((state) => ({
-      notifications: state.notifications.map((n) =>
-        n.id === id ? { ...n, status: 'archived', updated_at: new Date().toISOString() } : n
-      ),
-    }));
+    const updated = notifications.archive(id);
+    if (updated) {
+      set((state) => ({
+        notifications: state.notifications.map((n) => (n.id === id ? updated : n)),
+      }));
+    }
   },
 }));

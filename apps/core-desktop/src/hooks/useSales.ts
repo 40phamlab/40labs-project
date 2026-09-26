@@ -217,11 +217,10 @@ export function useSales() {
     // Persist new customer if saveCustomer is true and manual entry is present
     if (options?.saveCustomer && !selectedCustomer && options?.manualCustomer?.full_name?.trim()) {
       try {
-        const newCust = customersApi.create({
-          full_name: options.manualCustomer.full_name.trim(),
+        const newCust = await customersApi.create({
+          fullName: options.manualCustomer.full_name.trim(),
           phone: options.manualCustomer.phone?.trim() || '',
           email: '',
-          outstanding_balance: 0,
         });
         customerIdToUse = newCust.id;
         queryClient.invalidateQueries({ queryKey: customerKeys.all });
