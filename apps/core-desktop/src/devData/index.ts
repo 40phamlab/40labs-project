@@ -9,3 +9,4 @@ export * from './laboratory';
 export * from './notifications';
 export * from './audit';
 export * from './dashboard';
+export * from './schedules';
