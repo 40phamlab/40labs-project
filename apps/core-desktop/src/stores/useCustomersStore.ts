@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Customer } from '@40labs/types';
-import { customers, AddCustomerPayload } from '../api';
+import { customers, AddCustomerPayload } from '../api/index.ts';
 
 export type { AddCustomerPayload };
 

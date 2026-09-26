@@ -1,10 +1,10 @@
-"use client";
-
-import { EyeClosed,LucideEye } from 'lucide-react';
 import * as React from 'react';
+import { EyeClosed, Eye } from 'lucide-react';
+import { Input, type InputProps } from './Input';
+import { IconButton } from '../primitives/IconButton';
 
-export interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  error?: boolean;
+export interface PasswordInputProps extends Omit<InputProps, 'type' | 'suffix'> {
+  error?: boolean | string;
   success?: boolean;
 }
 
@@ -12,35 +12,28 @@ export const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputPro
   ({ error, success, className = '', ...props }, ref) => {
     const [show, setShow] = React.useState(false);
 
-    const stateClasses = error
-      ? 'border-danger focus:ring-danger/20'
-      : success
-      ? 'border-primary focus:ring-primary/20'
-      : 'border-border focus:ring-primary/45';
-
     return (
-      <div className={`relative flex items-center w-full ${className}`}>
-        <input
-          {...props}
-          ref={ref}
-          type={show ? 'text' : 'password'}
-          className={`
-            w-full bg-field/10 border rounded-input px-3 py-2 pr-10 text-sm text-text font-ui
-            placeholder:text-text-muted/50 transition-all focus:outline-none focus:ring-2
-            disabled:opacity-50 disabled:cursor-not-allowed elevation-inset
-            ${stateClasses}
-          `}
-        />
-        <button
-          type="button"
-          onClick={() => setShow(!show)}
-          className="absolute right-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-panel transition-colors text-text-muted"
-          aria-label={show ? 'Hide password' : 'Show password'}
-        >
-          {show ? <EyeClosed size={16} /> : <LucideEye size={16} />}
-        </button>
-      </div>
+      <Input
+        {...props}
+        ref={ref}
+        type={show ? 'text' : 'password'}
+        error={error}
+        success={success}
+        className={className}
+        suffix={
+          <IconButton
+            type="button"
+            icon={show ? <EyeClosed size={14} /> : <Eye size={14} />}
+            label={show ? 'Hide password' : 'Show password'}
+            variant="ghost"
+            size="xs"
+            onClick={() => setShow(!show)}
+            tabIndex={-1}
+          />
+        }
+      />
     );
-  }
+  },
 );
+
 PasswordInput.displayName = 'PasswordInput';

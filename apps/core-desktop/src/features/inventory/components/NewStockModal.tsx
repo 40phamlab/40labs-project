@@ -117,10 +117,10 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
       size="lg"
       footer={
         <div className="flex justify-end gap-3 w-full">
-          <Button type="button" intent="accent" onClick={onClose} className="rounded-full px-8">
+          <Button type="button" variant="neutral" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="button" intent="primary" onClick={handleAdd as any} disabled={!isFormValid} className="rounded-full px-8">
+          <Button type="button" variant="primary" onClick={handleAdd as any} disabled={!isFormValid}>
             Add
           </Button>
         </div>

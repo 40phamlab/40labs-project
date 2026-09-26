@@ -1,5 +1,5 @@
 import type { Medicine, InventoryItem, MedicineWithInventory } from '@40labs/types';
-import { initialMedicines, initialInventoryItems, WORKSPACE_ID, BRANCH_ID } from '../devData';
+import { initialMedicines, initialInventoryItems, WORKSPACE_ID, BRANCH_ID } from '../devData/index.ts';
 
 export interface AddStockPayload {
   medicineName: string;

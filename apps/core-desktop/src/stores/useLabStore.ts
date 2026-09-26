@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { LabOrder, LabSample, LabResult, TestCatalogEntry } from '@40labs/types';
-import { lab } from '../api';
+import { lab } from '../api/index.ts';
 
 interface LabState {
   orders: LabOrder[];

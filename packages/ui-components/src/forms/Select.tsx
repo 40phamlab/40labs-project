@@ -1,34 +1,71 @@
-import { type SelectHTMLAttributes, forwardRef } from 'react';
+import * as React from 'react';
 
-export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+export type SelectSize = 'sm' | 'md' | 'lg';
+
+export interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, 'size'> {
+  size?: SelectSize;
   error?: boolean | string;
   success?: boolean;
 }
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ error, success, children, className = '', ...rest }, ref) => {
+const sizeClasses: Record<SelectSize, string> = {
+  sm: 'h-7 text-xs pl-2.5 pr-7',
+  md: 'h-8 text-xs pl-3 pr-8',
+  lg: 'h-10 text-sm pl-3.5 pr-9',
+};
+
+const iconSizes: Record<SelectSize, string> = {
+  sm: 'w-3.5 h-3.5',
+  md: 'w-4 h-4',
+  lg: 'w-4 h-4',
+};
+
+export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
+  (
+    {
+      size = 'md',
+      error,
+      success,
+      disabled,
+      children,
+      className = '',
+      ...rest
+    },
+    ref,
+  ) => {
     const hasError = !!error;
 
+    const stateClasses = hasError
+      ? 'border-danger focus:border-danger focus:ring-1 focus:ring-danger'
+      : success
+      ? 'border-success focus:border-success focus:ring-1 focus:ring-success'
+      : 'border-border-default hover:border-border-strong focus:border-border-focus focus:ring-1 focus:ring-focus-ring';
+
+    const sizeClass = sizeClasses[size] || sizeClasses.md;
+    const iconSize = iconSizes[size] || 'w-4 h-4';
+
     return (
-      <div className="relative w-full">
+      <div className="relative flex items-center w-full">
         <select
           ref={ref}
+          disabled={disabled}
           className={[
-            'w-full rounded-input bg-input text-text appearance-none px-3 py-2 h-10 text-sm transition-all duration-150 ease-out font-ui',
-            'elevation-inset focus:outline-none focus:ring-2 pr-10',
-            hasError ? 'ring-2 ring-danger/50 focus:ring-danger/60' :
-            success ? 'ring-2 ring-primary/50 focus:ring-primary/60' :
-            'focus:ring-primary/45',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            'read-only:bg-panel-strong/30 read-only:elevation-flat',
+            'w-full bg-surface-primary text-text-primary appearance-none',
+            'border rounded-input font-ui transition-all duration-150 ease-out',
+            'focus:outline-none',
+            'disabled:bg-surface-disabled disabled:text-text-disabled disabled:border-border-subtle disabled:cursor-not-allowed disabled:opacity-50',
+            sizeClass,
+            stateClasses,
             className,
-          ].filter(Boolean).join(' ')}
+          ]
+            .filter(Boolean)
+            .join(' ')}
           {...rest}
         >
           {children}
         </select>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-text-muted flex items-center justify-center shrink-0">
+          <svg className={iconSize} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
           </svg>
         </div>
@@ -36,4 +73,5 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     );
   },
 );
+
 Select.displayName = 'Select';

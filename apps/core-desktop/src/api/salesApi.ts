@@ -1,5 +1,5 @@
 import type { Sale, SaleLine, FiscalReceipt } from '@40labs/types';
-import { initialSales, initialFiscalReceipts, WORKSPACE_ID, BRANCH_ID } from '../devData';
+import { initialSales, initialFiscalReceipts, WORKSPACE_ID, BRANCH_ID } from '../devData/index.ts';
 
 export interface CreateSalePayload {
   customerId: string | null;

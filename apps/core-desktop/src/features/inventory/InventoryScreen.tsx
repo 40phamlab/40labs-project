@@ -40,11 +40,10 @@ export const InventoryScreen: React.FC = () => {
         actions={
           <Button
             type="button"
-            intent="primary"
-            className="rounded-full px-6 shadow-surface-pop"
+            variant="primary"
+            leftIcon={<Plus size={14} />}
             onClick={() => setModalOpen(true)}
           >
-            <Plus size={16} className="mr-1.5" />
             Add Stock
           </Button>
         }
@@ -57,7 +56,7 @@ export const InventoryScreen: React.FC = () => {
             <IconButton
               icon={graphVisible ? <Eye size={14} /> : <EyeOff size={14} />}
               label={graphVisible ? 'Hide graph' : 'Show graph'}
-              intent="ghost"
+              variant="ghost"
               size="sm"
               onClick={() => setGraphVisible(!graphVisible)}
             />
@@ -68,11 +67,10 @@ export const InventoryScreen: React.FC = () => {
         }
         right={
           <IconButton
-            icon={searchPanelOpen ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            icon={searchPanelOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             label={searchPanelOpen ? 'Close sidebar' : 'Open sidebar'}
-            intent="neutral"
+            variant="neutral"
             size="sm"
-            className="shadow-surface-pop border border-border/50"
             onClick={() => setSearchPanelOpen(!searchPanelOpen)}
           />
         }
@@ -86,7 +84,7 @@ export const InventoryScreen: React.FC = () => {
             {/* Graph Section */}
             {graphVisible && (
               <div className="shrink-0 h-48 transition-all duration-200 overflow-hidden">
-                <ChartContainer className="h-full w-full flex items-center justify-center border-dashed bg-panel-strong/60 rounded-card p-4">
+                <ChartContainer className="h-full w-full flex items-center justify-center border-dashed bg-surface-secondary/60 rounded-card p-4">
                   <p className="max-w-md text-center text-xs leading-relaxed text-text-muted">
                     Real-time visualization of stock levels, category distribution, and upcoming expirations.
                   </p>
@@ -95,7 +93,7 @@ export const InventoryScreen: React.FC = () => {
             )}
 
             {/* Table Region - ONE controlled scroll region */}
-            <div className="flex-1 min-h-0 rounded-card border border-border/50 bg-panel-strong/40 p-4 shadow-sm overflow-y-auto custom-scrollbar">
+            <div className="flex-1 min-h-0 rounded-card border border-border-default bg-surface-secondary/40 p-4 shadow-sm overflow-y-auto custom-scrollbar">
               <InventoryTable data={filteredData} onDelete={deleteItem} />
             </div>
           </div>

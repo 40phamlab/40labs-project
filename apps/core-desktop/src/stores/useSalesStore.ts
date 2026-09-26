@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { Customer, MedicineWithInventory, Sale, SaleLine } from '@40labs/types';
-import { sales } from '../api';
+import { sales } from '../api/index.ts';
 
 export interface CartItem {
   inventoryItem: MedicineWithInventory;

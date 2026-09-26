@@ -39,9 +39,9 @@ const RowActions = ({
       onClose={() => setIsOpen(false)}
       trigger={
         <IconButton
-          icon={<MoreVertical size={16} />}
+          icon={<MoreVertical size={14} />}
           label="Actions"
-          intent="ghost"
+          variant="ghost"
           size="sm"
           onClick={() => setIsOpen(!isOpen)}
         />
@@ -79,7 +79,7 @@ const RowActions = ({
           setIsOpen(false);
         }}
       />
-      <div className="h-px bg-border my-1 mx-1" />
+      <div className="h-px bg-border-subtle my-1 mx-1" />
       <DropdownMenuItem
         label="Supplier"
         icon={<Truck size={14} />}
@@ -183,9 +183,8 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       render: (item) => (
         <div className="flex items-center gap-2 justify-end">
           <Button
-            intent="neutral"
+            variant="neutral"
             size="sm"
-            className="rounded-full px-4"
             onClick={() => {
               console.log('TODO: Re-fill', item.id);
             }}

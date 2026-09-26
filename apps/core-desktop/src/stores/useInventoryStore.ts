@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { MedicineWithInventory } from '@40labs/types';
-import { inventory, AddStockPayload } from '../api';
+import { inventory, AddStockPayload } from '../api/index.ts';
 
 export type { AddStockPayload };
 
