@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Button, Input, Select } from '@40labs/ui-components';
+import { Button, Input, Select, MoneyDisplay, HotkeyBadge } from '@40labs/ui-components';
 
 export type PaymentMethod = 'cash' | 'mobile_money' | 'card' | 'credit';
 
@@ -13,7 +13,9 @@ export interface SaleTotalsBarProps {
   onPaymentMethodChange: (m: PaymentMethod) => void;
   onConfirm: () => void;
   onDelete: () => void;
+  onHold?: () => void;
   disabled: boolean;
+  isProcessing?: boolean;
 }
 
 export const SaleTotalsBar: React.FC<SaleTotalsBarProps> = ({
@@ -26,41 +28,45 @@ export const SaleTotalsBar: React.FC<SaleTotalsBarProps> = ({
   onPaymentMethodChange,
   onConfirm,
   onDelete,
+  onHold,
   disabled,
+  isProcessing = false,
 }) => {
   return (
-    <div className="grid grid-rows-2 gap-4 p-5 bg-surface-strong rounded-card border border-border/50 elevation-inset">
-      {/* Row 1 (3-col grid) */}
-      <div className="grid grid-cols-3 gap-4 items-end">
+    <div className="flex flex-col gap-3 p-4 bg-surface-strong rounded-card border border-border/50 elevation-inset">
+      {/* Top Controls Row */}
+      <div className="grid grid-cols-3 gap-3 items-end">
         <div className="flex flex-col">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-40">
-            Line Total
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-60">
+            Subtotal
           </span>
-          <span className="text-sm font-mono font-bold">
-            TZS {subtotal.toLocaleString()}
-          </span>
+          <MoneyDisplay amount={subtotal} emphasis="strong" className="text-sm text-text" />
         </div>
 
         <div className="flex flex-col gap-1">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-40">
-            Discount
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-60">
+            Discount (TZS)
           </span>
-          {/* TODO: [PIN gate] discount threshold TBD */}
           <Input
             type="number"
             monospace
-            value={discount}
-            onChange={(e) => onDiscountChange(Number(e.target.value) || 0)}
+            min={0}
+            max={subtotal}
+            value={discount || ''}
+            placeholder="0"
+            onChange={(e) => onDiscountChange(Math.max(0, Number(e.target.value) || 0))}
+            className="!h-8 !text-xs"
           />
         </div>
 
         <div className="flex flex-col gap-1">
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-40">
-            Payment
+          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-60">
+            Payment Method
           </span>
           <Select
             value={paymentMethod}
             onChange={(e) => onPaymentMethodChange(e.target.value as PaymentMethod)}
+            className="!h-8 !text-xs"
           >
             <option value="cash">Cash</option>
             <option value="mobile_money">Mobile Money</option>
@@ -70,44 +76,62 @@ export const SaleTotalsBar: React.FC<SaleTotalsBarProps> = ({
         </div>
       </div>
 
-      {/* Row 2 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-8">
+      {/* Bottom Totals & Action Buttons Row */}
+      <div className="flex items-center justify-between pt-2 border-t border-border/30">
+        <div className="flex items-center gap-6">
           <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-40">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-60">
               Tax
             </span>
-            <span className="text-sm font-mono font-bold">
-              TZS {tax.toLocaleString()}
-            </span>
+            <MoneyDisplay amount={tax} emphasis="normal" className="text-xs text-text-muted" />
           </div>
 
           <div className="flex flex-col">
-            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-40">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted opacity-60">
               Grand Total
             </span>
-            <span className="text-xl font-mono font-bold text-primary">
-              TZS {grandTotal.toLocaleString()}
-            </span>
+            <MoneyDisplay amount={grandTotal} emphasis="strong" className="text-xl text-primary font-mono font-bold" />
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex items-center gap-2">
+          {onHold && (
+            <Button
+              type="button"
+              intent="neutral"
+              size="sm"
+              onClick={onHold}
+              disabled={disabled || isProcessing}
+            >
+              Hold Bill
+            </Button>
+          )}
+
           <Button
-            intent="accent"
+            type="button"
+            intent="ghost"
+            size="sm"
             onClick={onDelete}
-            disabled={disabled}
-            className="rounded-full px-6 text-[10px] font-black uppercase tracking-widest shadow-surface-pop hover:shadow-none"
+            disabled={disabled || isProcessing}
+            className="text-text-muted hover:text-danger hover:bg-danger/10"
           >
-            Delete
+            Clear Cart
           </Button>
+
           <Button
+            type="button"
             intent="primary"
+            size="md"
+            loading={isProcessing}
+            disabled={disabled || isProcessing}
             onClick={onConfirm}
-            disabled={disabled}
-            className="rounded-full px-8 text-[10px] font-black uppercase tracking-widest shadow-surface-pop hover:shadow-none"
+            rightIcon={
+              <HotkeyBadge className="!bg-black/20 !text-surface !border-white/10 !text-[8px] !px-1">
+                Ctrl+Enter
+              </HotkeyBadge>
+            }
           >
-            Confirm
+            Confirm Sale
           </Button>
         </div>
       </div>

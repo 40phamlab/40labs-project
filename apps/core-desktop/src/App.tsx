@@ -22,6 +22,7 @@ import { CustomersScreen } from './features/customers/CustomersScreen';
 import { PurchasesScreen } from './features/purchases/PurchasesScreen';
 import { LabScreen } from './features/laboratory/LabScreen';
 import { NotificationsScreen } from './features/notifications/NotificationsScreen';
+import { ToastProvider } from './hooks/useToast';
 import './App.css';
 
 const NAV_ITEMS = [
@@ -103,8 +104,10 @@ export default function App() {
   );
 
   return (
-    <AppShell topBar={topBarElement} sidebar={sidebarElement}>
-      {renderContent()}
-    </AppShell>
+    <ToastProvider>
+      <AppShell topBar={topBarElement} sidebar={sidebarElement}>
+        {renderContent()}
+      </AppShell>
+    </ToastProvider>
   );
 }

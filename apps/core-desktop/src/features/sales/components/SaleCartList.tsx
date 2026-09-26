@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { ShoppingBag } from 'lucide-react';
 import { CartItemRow, CartItemModel } from './CartItemRow';
 import { MedicineWithInventory } from '@40labs/types';
 
@@ -20,14 +21,20 @@ export const SaleCartList: React.FC<SaleCartListProps> = ({
 }) => {
   if (lines.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center p-8 text-text-muted italic">
-        Cart is empty — search a medicine to begin.
+      <div className="flex flex-col items-center justify-center h-full p-8 text-center border border-dashed border-border/30 rounded-card bg-panel/30">
+        <div className="p-3 rounded-full bg-panel text-text-muted mb-2">
+          <ShoppingBag size={24} />
+        </div>
+        <p className="text-xs font-semibold text-text mb-1">Active Cart is Empty</p>
+        <p className="text-[11px] text-text-muted max-w-xs">
+          Search and click any medicine from the right panel to add it to this sale.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col gap-2 overflow-y-auto pr-2 custom-scrollbar">
+    <div className="flex h-full flex-col gap-2 overflow-y-auto pr-1 custom-scrollbar">
       {lines.map((line) => {
         const { item, quantity } = line;
         const stockQty = item.quantity;
@@ -44,18 +51,18 @@ export const SaleCartList: React.FC<SaleCartListProps> = ({
           id: item.id,
           name: item.medicine.name,
           unitPrice: item.sell_price,
-          quantity: quantity,
+          quantity,
+          maxStock: stockQty,
           unitType: item.medicine.unit,
-          stockStatus: stockStatus,
-          currencyCode: 'TZS',
+          stockStatus,
         };
 
         return (
           <CartItemRow
             key={item.id}
             item={itemModel}
-            onQuantityChange={(id, qty) => onQuantityChange(id as string, qty)}
-            onRemove={(id) => onRemove(id as string)}
+            onQuantityChange={onQuantityChange}
+            onRemove={onRemove}
           />
         );
       })}

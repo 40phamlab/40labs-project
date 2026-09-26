@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Delete } from 'lucide-react';
 
 export interface NumpadProps {
@@ -7,7 +8,7 @@ export interface NumpadProps {
   className?: string;
 }
 
-export const Numpad = ({ value, onChange, onConfirm, className = '' }: NumpadProps) => {
+export const Numpad: React.FC<NumpadProps> = ({ value, onChange, onConfirm, className = '' }) => {
   const handleKeyClick = (key: string) => {
     if (key === 'C') {
       onChange('');
@@ -31,7 +32,7 @@ export const Numpad = ({ value, onChange, onConfirm, className = '' }: NumpadPro
   ];
 
   return (
-    <div className={`grid grid-cols-3 gap-2 p-3 bg-panel-strong rounded-card shadow-inner-soft ${className}`}>
+    <div className={`grid grid-cols-3 gap-1.5 p-2 bg-panel-strong rounded-card border border-border/30 ${className}`}>
       {keys.map((key) => {
         const isAction = ['C', 'backspace', 'Enter'].includes(key);
         const isEnter = key === 'Enter';
@@ -39,15 +40,15 @@ export const Numpad = ({ value, onChange, onConfirm, className = '' }: NumpadPro
         return (
           <button
             key={key}
+            type="button"
             onClick={() => handleKeyClick(key)}
             className={`
-              h-14 flex items-center justify-center rounded-input font-mono text-lg font-bold transition-all
-              ${isEnter ? 'bg-primary text-surface' : isAction ? 'bg-panel text-text' : 'bg-surface text-text'}
-              shadow-surface-pop active:shadow-inner-soft active:translate-y-0.5
-              hover:opacity-90
+              h-10 flex items-center justify-center rounded-input font-mono text-sm font-bold transition-all
+              ${isEnter ? 'bg-primary text-surface font-black' : isAction ? 'bg-panel text-text hover:bg-surface' : 'bg-surface text-text hover:bg-panel'}
+              border border-border/20 elevation-flat active:scale-95
             `}
           >
-            {key === 'backspace' ? <Delete size={20} /> : key}
+            {key === 'backspace' ? <Delete size={16} /> : key}
           </button>
         );
       })}

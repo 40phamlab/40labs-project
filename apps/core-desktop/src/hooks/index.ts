@@ -5,3 +5,4 @@ export * from './useCustomers';
 export * from './usePurchases';
 export * from './useLab';
 export * from './useNotifications';
+export * from './useToast';
