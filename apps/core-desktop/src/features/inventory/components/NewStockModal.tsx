@@ -10,33 +10,42 @@ import {
   CurrencyInput,
   DateInput,
 } from '@40labs/ui-components';
-import { useInventory } from '../../../hooks/useInventory';
-import { type Medicine, type InventoryItem, type MedicineWithInventory } from '@40labs/types';
+import { useInventory, type AddStockPayload } from '../../../hooks/useInventory';
 
 interface NewStockModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (newItem: MedicineWithInventory) => void;
+  onAdd: (payload: AddStockPayload) => Promise<unknown> | void;
+  isLoading?: boolean;
 }
 
-const UNITS = ['pack', 'tablet', 'bottle', 'sachet'];
+const UNITS = ['pack', 'tablet', 'bottle', 'sachet', 'ampoule', 'vial'];
+const DEFAULT_CATEGORIES = ['Analgesic', 'Antibiotic', 'Sedative', 'Rehydration', 'Supplements'];
 
-export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, onAdd }) => {
+export const NewStockModal: React.FC<NewStockModalProps> = ({
+  isOpen,
+  onClose,
+  onAdd,
+  isLoading = false,
+}) => {
   const { medicines } = useInventory();
 
   const categories = React.useMemo(() => {
-    return Array.from(new Set(medicines.map((m) => m.category)));
+    const set = new Set([...DEFAULT_CATEGORIES, ...medicines.map((m) => m.category)]);
+    return Array.from(set);
   }, [medicines]);
 
   const [formData, setFormData] = React.useState({
     name: '',
-    category: categories[0] || 'Analgesics',
-    quantity: '1',
-    buy_price: '0',
-    sell_price: '0',
+    generic_name: '',
+    category: categories[0] || 'Analgesic',
+    quantity: '10',
+    buy_price: '1000',
+    sell_price: '1500',
     unit: UNITS[0] || 'pack',
-    batch: 'BATCH-' + Math.floor(Math.random() * 1000),
+    batch: 'BATCH-' + Math.floor(100000 + Math.random() * 900000),
     expiry_date: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+    low_stock_threshold: '10',
   });
 
   React.useEffect(() => {
@@ -50,61 +59,42 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const isFormValid = Object.values(formData).every((val) => val.trim() !== '');
+  const isFormValid =
+    formData.name.trim() !== '' &&
+    formData.batch.trim() !== '' &&
+    formData.expiry_date.trim() !== '' &&
+    Number(formData.quantity) > 0;
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    const WORKSPACE_ID = 'ws_dev_001';
-    const BRANCH_ID = 'br_dev_001';
-    const now = new Date().toISOString();
-    const idSuffix = Math.random().toString(36).substr(2, 9);
-
-    const newMedicine: Medicine = {
-      id: `med_new_${idSuffix}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      name: formData.name,
-      generic_name: null,
+    const payload: AddStockPayload = {
+      medicineName: formData.name.trim(),
+      genericName: formData.generic_name.trim() || undefined,
       category: formData.category,
       unit: formData.unit,
-      is_controlled_substance: false,
-      requires_prescription: false,
-    };
-
-    const newInventoryItem: InventoryItem = {
-      id: `inv_new_${idSuffix}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      created_at: now,
-      updated_at: now,
-      medicine_id: newMedicine.id,
-      batch_number: formData.batch,
-      expiry_date: new Date(formData.expiry_date).toISOString(),
-      buy_price: Number(formData.buy_price.replace(/,/g, '')),
-      sell_price: Number(formData.sell_price.replace(/,/g, '')),
+      batchNumber: formData.batch.trim(),
+      expiryDate: new Date(formData.expiry_date).toISOString(),
+      buyPrice: Number(formData.buy_price.replace(/,/g, '')),
+      sellPrice: Number(formData.sell_price.replace(/,/g, '')),
       quantity: Number(formData.quantity),
-      low_stock_threshold: 10,
-      cold_chain_required: false,
+      lowStockThreshold: Number(formData.low_stock_threshold) || 10,
     };
 
-    onAdd({
-      ...newInventoryItem,
-      medicine: newMedicine,
-    });
+    await onAdd(payload);
 
     setFormData({
       name: '',
-      category: categories[0] || 'Analgesics',
-      quantity: '1',
-      buy_price: '0',
-      sell_price: '0',
+      generic_name: '',
+      category: categories[0] || 'Analgesic',
+      quantity: '10',
+      buy_price: '1000',
+      sell_price: '1500',
       unit: UNITS[0] || 'pack',
-      batch: 'BATCH-' + Math.floor(Math.random() * 1000),
+      batch: 'BATCH-' + Math.floor(100000 + Math.random() * 900000),
       expiry_date: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+      low_stock_threshold: '10',
     });
     onClose();
   };
@@ -113,15 +103,20 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="New Stock"
+      title="Add New Stock Batch"
       size="lg"
       footer={
         <div className="flex justify-end gap-3 w-full">
-          <Button type="button" variant="neutral" onClick={onClose}>
+          <Button type="button" variant="neutral" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="button" variant="primary" onClick={handleAdd as any} disabled={!isFormValid}>
-            Add
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleAdd as any}
+            disabled={!isFormValid || isLoading}
+          >
+            {isLoading ? 'Adding Stock...' : 'Add Stock'}
           </Button>
         </div>
       }
@@ -130,13 +125,23 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
         {/* Left Column */}
         <div className="space-y-4">
           <Field>
-            <FieldLabel required>Product name</FieldLabel>
+            <FieldLabel required>Product Name</FieldLabel>
             <Input
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="e.g. Paracetamol"
+              placeholder="e.g. Paracetamol 500mg"
               autoFocus
+            />
+          </Field>
+
+          <Field>
+            <FieldLabel>Generic Name</FieldLabel>
+            <Input
+              name="generic_name"
+              value={formData.generic_name}
+              onChange={handleChange}
+              placeholder="e.g. Paracetamol"
             />
           </Field>
 
@@ -162,21 +167,10 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
           </Field>
 
           <Field>
-            <FieldLabel required>Buy price</FieldLabel>
+            <FieldLabel required>Buy Price (TZS)</FieldLabel>
             <CurrencyInput
               name="buy_price"
               value={formData.buy_price}
-              onChange={handleChange}
-              currencySymbol="TZS"
-              placeholder="0"
-            />
-          </Field>
-
-          <Field>
-            <FieldLabel required>Sell price</FieldLabel>
-            <CurrencyInput
-              name="sell_price"
-              value={formData.sell_price}
               onChange={handleChange}
               currencySymbol="TZS"
               placeholder="0"
@@ -187,7 +181,18 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
         {/* Right Column */}
         <div className="space-y-4">
           <Field>
-            <FieldLabel required>Metric</FieldLabel>
+            <FieldLabel required>Sell Price (TZS)</FieldLabel>
+            <CurrencyInput
+              name="sell_price"
+              value={formData.sell_price}
+              onChange={handleChange}
+              currencySymbol="TZS"
+              placeholder="0"
+            />
+          </Field>
+
+          <Field>
+            <FieldLabel required>Unit / Metric</FieldLabel>
             <Select name="unit" value={formData.unit} onChange={handleChange}>
               {UNITS.map((u) => (
                 <option key={u} value={u}>
@@ -198,7 +203,7 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
           </Field>
 
           <Field>
-            <FieldLabel required>Batch</FieldLabel>
+            <FieldLabel required>Batch Number</FieldLabel>
             <Input
               name="batch"
               value={formData.batch}
@@ -209,11 +214,21 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({ isOpen, onClose, o
           </Field>
 
           <Field>
-            <FieldLabel required>Expire</FieldLabel>
+            <FieldLabel required>Expiry Date</FieldLabel>
             <DateInput
               name="expiry_date"
               value={formData.expiry_date}
               onChange={handleChange}
+            />
+          </Field>
+
+          <Field>
+            <FieldLabel>Low Stock Threshold</FieldLabel>
+            <NumberInput
+              name="low_stock_threshold"
+              value={formData.low_stock_threshold}
+              onChange={handleChange}
+              placeholder="10"
             />
           </Field>
         </div>

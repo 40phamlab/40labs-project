@@ -10,18 +10,21 @@ import {
 } from '@40labs/ui-components';
 import {
   MoreVertical,
-  Info,
-  Pencil,
-  Bookmark,
-  MessageCircle,
-  Truck,
+  PlusCircle,
+  SlidersHorizontal,
+  AlertTriangle,
+  CalendarX2,
   Trash2,
+  ArrowRightLeft,
+  Archive,
 } from 'lucide-react';
 import { type MedicineWithInventory } from '@40labs/types';
+import { StockIndicator } from './StockIndicator';
+import type { StockActionType } from '../../../hooks/useInventory';
 
 interface InventoryTableProps {
   data: MedicineWithInventory[];
-  onDelete: (id: string) => void;
+  onAction: (item: MedicineWithInventory, action: StockActionType) => void;
   loading?: boolean;
   error?: string | Error | null;
   onRetry?: () => void;
@@ -29,10 +32,10 @@ interface InventoryTableProps {
 
 const RowActions = ({
   item,
-  onDelete,
+  onAction,
 }: {
   item: MedicineWithInventory;
-  onDelete: (id: string) => void;
+  onAction: (item: MedicineWithInventory, action: StockActionType) => void;
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -43,7 +46,7 @@ const RowActions = ({
       trigger={
         <IconButton
           icon={<MoreVertical size={14} />}
-          label="Actions"
+          label="Inventory Actions"
           variant="ghost"
           size="sm"
           onClick={() => setIsOpen(!isOpen)}
@@ -51,52 +54,61 @@ const RowActions = ({
       }
     >
       <DropdownMenuItem
-        label="Info"
-        icon={<Info size={14} />}
+        label="Refill Stock"
+        icon={<PlusCircle size={14} />}
         onClick={() => {
-          console.log('TODO: Info', item.id);
+          onAction(item, 'refill');
           setIsOpen(false);
         }}
       />
       <DropdownMenuItem
-        label="Edit"
-        icon={<Pencil size={14} />}
+        label="Stock Adjustment"
+        icon={<SlidersHorizontal size={14} />}
         onClick={() => {
-          console.log('TODO: Edit', item.id);
+          onAction(item, 'adjustment');
+          setIsOpen(false);
+        }}
+      />
+      <div className="h-px bg-border/20 my-1 mx-1" />
+      <DropdownMenuItem
+        label="Mark Damaged"
+        icon={<AlertTriangle size={14} />}
+        onClick={() => {
+          onAction(item, 'damaged');
           setIsOpen(false);
         }}
       />
       <DropdownMenuItem
-        label="Mark"
-        icon={<Bookmark size={14} />}
+        label="Mark Expired"
+        icon={<CalendarX2 size={14} />}
         onClick={() => {
-          console.log('TODO: Mark', item.id);
+          onAction(item, 'expired');
           setIsOpen(false);
         }}
       />
       <DropdownMenuItem
-        label="Ask"
-        icon={<MessageCircle size={14} />}
-        onClick={() => {
-          console.log('TODO: Ask', item.id);
-          setIsOpen(false);
-        }}
-      />
-      <div className="h-px bg-border-subtle my-1 mx-1" />
-      <DropdownMenuItem
-        label="Supplier"
-        icon={<Truck size={14} />}
-        onClick={() => {
-          console.log('TODO: Supplier', item.id);
-          setIsOpen(false);
-        }}
-      />
-      <DropdownMenuItem
-        label="Delete"
+        label="Dispose Stock"
         icon={<Trash2 size={14} />}
+        onClick={() => {
+          onAction(item, 'disposed');
+          setIsOpen(false);
+        }}
+      />
+      <DropdownMenuItem
+        label="Transfer Stock"
+        icon={<ArrowRightLeft size={14} />}
+        onClick={() => {
+          onAction(item, 'transferred');
+          setIsOpen(false);
+        }}
+      />
+      <div className="h-px bg-border/20 my-1 mx-1" />
+      <DropdownMenuItem
+        label="Deactivate Batch"
+        icon={<Archive size={14} />}
         variant="danger"
         onClick={() => {
-          onDelete(item.id);
+          onAction(item, 'deactivated');
           setIsOpen(false);
         }}
       />
@@ -106,7 +118,7 @@ const RowActions = ({
 
 export const InventoryTable: React.FC<InventoryTableProps> = ({
   data,
-  onDelete,
+  onAction,
   loading,
   error,
   onRetry,
@@ -114,70 +126,78 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   const columns: ColumnDefinition<MedicineWithInventory>[] = [
     {
       key: 'name',
-      header: 'Product name',
+      header: 'Product Name',
       render: (item) => {
         const isExpired = new Date(item.expiry_date) < new Date();
         return (
-          <span className={isExpired ? 'text-danger font-bold' : ''}>
-            {item.medicine.name}
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className={`font-semibold ${isExpired ? 'text-danger font-bold' : 'text-text-primary'}`}>
+              {item.medicine.name}
+            </span>
+            {item.medicine.generic_name && (
+              <span className="text-[11px] text-text-muted">
+                {item.medicine.generic_name}
+              </span>
+            )}
+          </div>
         );
       },
     },
     {
       key: 'category',
       header: 'Category',
-      render: (item) => item.medicine.category,
+      render: (item) => (
+        <span className="text-xs text-text-secondary">
+          {item.medicine.category}
+        </span>
+      ),
     },
     {
       key: 'quantity',
-      header: 'Quantity',
-      accessorKey: 'quantity',
+      header: 'Stock Status',
+      render: (item) => (
+        <StockIndicator
+          quantity={item.quantity}
+          lowStockThreshold={item.low_stock_threshold}
+        />
+      ),
     },
     {
       key: 'buy_price',
-      header: 'Buy price',
-      className: 'font-mono',
-      render: (item) => item.buy_price.toLocaleString(),
+      header: 'Buy Price',
+      className: 'font-mono text-xs',
+      render: (item) => `${item.buy_price.toLocaleString()} TZS`,
     },
     {
       key: 'sell_price',
-      header: 'Sell price',
-      className: 'font-mono',
-      render: (item) => item.sell_price.toLocaleString(),
+      header: 'Sell Price',
+      className: 'font-mono text-xs',
+      render: (item) => `${item.sell_price.toLocaleString()} TZS`,
     },
     {
       key: 'expiry_date',
-      header: 'Expire',
+      header: 'Expiry Date',
       render: (item) => {
         const isExpired = new Date(item.expiry_date) < new Date();
         const dateStr = item.expiry_date.slice(0, 10);
         return isExpired ? (
           <StatusBadge status="error" label={dateStr} />
         ) : (
-          dateStr
+          <span className="text-xs font-mono">{dateStr}</span>
         );
       },
     },
     {
       key: 'batch_number',
-      header: 'Batch',
+      header: 'Batch No.',
       accessorKey: 'batch_number',
-      className: 'font-mono',
-    },
-    {
-      key: 'supplier',
-      header: 'Supplier',
-      render: (item) => {
-        const med = item.medicine as { supplier_name?: string };
-        return med.supplier_name ?? '—';
-      },
+      className: 'font-mono text-xs',
     },
     {
       key: 'metric',
-      header: 'Metric',
+      header: 'Unit',
       render: (item) => (
-        <span className="text-[10px] font-bold uppercase tracking-tight text-text-muted">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
           {item.medicine.unit}
         </span>
       ),
@@ -185,20 +205,18 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     {
       key: 'actions',
       header: '',
-      width: '140px',
+      width: '150px',
       align: 'right',
       render: (item) => (
         <div className="flex items-center gap-2 justify-end">
           <Button
             variant="neutral"
             size="sm"
-            onClick={() => {
-              console.log('TODO: Re-fill', item.id);
-            }}
+            onClick={() => onAction(item, 'refill')}
           >
             Re-fill
           </Button>
-          <RowActions item={item} onDelete={onDelete} />
+          <RowActions item={item} onAction={onAction} />
         </div>
       ),
     },

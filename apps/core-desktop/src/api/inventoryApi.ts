@@ -1,5 +1,6 @@
-import type { Medicine, InventoryItem, MedicineWithInventory } from '@40labs/types';
-import { initialMedicines, initialInventoryItems, WORKSPACE_ID, BRANCH_ID } from '../devData/index.ts';
+import type { Medicine, InventoryItem, MedicineWithInventory, StockAdjustment, AuditLogEntry } from '@40labs/types';
+import { initialMedicines, initialInventoryItems, initialStockAdjustments, WORKSPACE_ID, BRANCH_ID } from '../devData/index.ts';
+import { auditApi } from './auditApi';
 
 export interface AddStockPayload {
   medicineName: string;
@@ -23,26 +24,64 @@ export interface UpdateStockPayload {
   lowStockThreshold?: number;
 }
 
+export type StockActionType =
+  | 'adjustment'
+  | 'refill'
+  | 'damaged'
+  | 'expired'
+  | 'disposed'
+  | 'transferred'
+  | 'deactivated';
+
+export interface RecordStockActionPayload {
+  inventoryItemId: string;
+  action: StockActionType;
+  quantityDelta?: number;
+  newQuantity?: number;
+  reason: string;
+  authorizedPin?: string;
+  authorizedByUserId?: string;
+}
+
+export interface RecordStockActionResult {
+  inventoryItem: MedicineWithInventory;
+  adjustment: StockAdjustment;
+  auditEntry: AuditLogEntry;
+}
+
+// Extended inventory item type tracking deactivation status
+export type ExtendedInventoryItem = InventoryItem & {
+  is_deactivated?: boolean;
+};
+
 // In-memory devData store hidden behind boundary
 let medicinesStore: Medicine[] = [...initialMedicines];
-let inventoryStore: InventoryItem[] = [...initialInventoryItems];
+let inventoryStore: ExtendedInventoryItem[] = [...initialInventoryItems];
+let stockAdjustmentsStore: StockAdjustment[] = [...initialStockAdjustments];
 
-function combineMedicineWithInventory(items: InventoryItem[], medicines: Medicine[]): MedicineWithInventory[] {
-  return items.flatMap((item) => {
-    const medicine = medicines.find((m) => m.id === item.medicine_id);
-    if (!medicine) return [];
-    return [{ ...item, medicine }];
-  });
+function combineMedicineWithInventory(items: ExtendedInventoryItem[], medicines: Medicine[]): MedicineWithInventory[] {
+  return items
+    .filter((item) => !item.is_deactivated)
+    .flatMap((item) => {
+      const medicine = medicines.find((m) => m.id === item.medicine_id);
+      if (!medicine) return [];
+      return [{ ...item, medicine }];
+    });
 }
 
 export const inventoryApi = {
-  list: (): MedicineWithInventory[] => {
-    return combineMedicineWithInventory(inventoryStore, medicinesStore);
+  list: (includeDeactivated = false): MedicineWithInventory[] => {
+    const itemsToCombine = includeDeactivated
+      ? inventoryStore
+      : inventoryStore.filter((item) => !item.is_deactivated);
+    return combineMedicineWithInventory(itemsToCombine, medicinesStore);
   },
 
   listMedicines: (): Medicine[] => [...medicinesStore],
 
   listInventoryItems: (): InventoryItem[] => [...inventoryStore],
+
+  listStockAdjustments: (): StockAdjustment[] => [...stockAdjustmentsStore],
 
   get: (id: string): MedicineWithInventory | null => {
     const item = inventoryStore.find((i) => i.id === id);
@@ -79,7 +118,7 @@ export const inventoryApi = {
       requires_prescription: false,
     };
 
-    const newInventoryItem: InventoryItem = {
+    const newInventoryItem: ExtendedInventoryItem = {
       id: inventoryId,
       workspace_id: WORKSPACE_ID,
       branch_id: BRANCH_ID,
@@ -93,10 +132,24 @@ export const inventoryApi = {
       quantity: payload.quantity,
       low_stock_threshold: payload.lowStockThreshold,
       cold_chain_required: false,
+      is_deactivated: false,
     };
 
     medicinesStore = [newMedicine, ...medicinesStore];
     inventoryStore = [newInventoryItem, ...inventoryStore];
+
+    // Log initial audit creation entry
+    auditApi.recordEntry({
+      action: 'stock_adjustment',
+      performed_by_user_id: 'user_001',
+      target_entity_type: 'InventoryItem',
+      target_entity_id: inventoryId,
+      metadata: {
+        actionType: 'initial_stock_creation',
+        quantity: payload.quantity,
+        batchNumber: payload.batchNumber,
+      },
+    });
 
     return {
       ...newInventoryItem,
@@ -109,7 +162,7 @@ export const inventoryApi = {
     if (index === -1) return null;
 
     const existing = inventoryStore[index];
-    const updatedItem: InventoryItem = {
+    const updatedItem: ExtendedInventoryItem = {
       ...existing,
       batch_number: updates.batchNumber ?? existing.batch_number,
       expiry_date: updates.expiryDate ?? existing.expiry_date,
@@ -127,26 +180,127 @@ export const inventoryApi = {
     return { ...updatedItem, medicine };
   },
 
-  updateQuantity: (id: string, delta: number): InventoryItem | null => {
-    const index = inventoryStore.findIndex((i) => i.id === id);
+  recordStockAction: (payload: RecordStockActionPayload): RecordStockActionResult | null => {
+    const index = inventoryStore.findIndex((i) => i.id === payload.inventoryItemId);
     if (index === -1) return null;
 
     const existing = inventoryStore[index];
-    const updatedQty = Math.max(0, existing.quantity + delta);
-    const updatedItem: InventoryItem = {
+    let computedDelta = 0;
+    let newQty = existing.quantity;
+    let isDeactivated = existing.is_deactivated || false;
+
+    switch (payload.action) {
+      case 'refill': {
+        const amount = Math.abs(payload.quantityDelta ?? payload.newQuantity ?? 0);
+        computedDelta = amount;
+        newQty = existing.quantity + amount;
+        break;
+      }
+      case 'damaged':
+      case 'expired':
+      case 'transferred': {
+        const amount = Math.abs(payload.quantityDelta ?? 0);
+        computedDelta = -amount;
+        newQty = Math.max(0, existing.quantity - amount);
+        break;
+      }
+      case 'disposed': {
+        const amount = payload.quantityDelta !== undefined
+          ? Math.abs(payload.quantityDelta)
+          : existing.quantity;
+        computedDelta = -amount;
+        newQty = Math.max(0, existing.quantity - amount);
+        break;
+      }
+      case 'deactivated': {
+        computedDelta = -existing.quantity;
+        newQty = 0;
+        isDeactivated = true;
+        break;
+      }
+      case 'adjustment':
+      default: {
+        if (payload.newQuantity !== undefined) {
+          newQty = Math.max(0, payload.newQuantity);
+          computedDelta = newQty - existing.quantity;
+        } else {
+          computedDelta = payload.quantityDelta ?? 0;
+          newQty = Math.max(0, existing.quantity + computedDelta);
+        }
+        break;
+      }
+    }
+
+    const updatedItem: ExtendedInventoryItem = {
       ...existing,
-      quantity: updatedQty,
+      quantity: newQty,
+      is_deactivated: isDeactivated,
       updated_at: new Date().toISOString(),
     };
 
     inventoryStore[index] = updatedItem;
-    return updatedItem;
+
+    const auditEntry = auditApi.recordEntry({
+      action: 'stock_adjustment',
+      performed_by_user_id: payload.authorizedByUserId || 'user_001',
+      target_entity_type: 'InventoryItem',
+      target_entity_id: existing.id,
+      metadata: {
+        actionType: payload.action,
+        delta: computedDelta,
+        previousQuantity: existing.quantity,
+        newQuantity: newQty,
+        reason: payload.reason,
+        pinAuthorized: Boolean(payload.authorizedPin),
+      },
+    });
+
+    const adjustment: StockAdjustment = {
+      id: `adj_dev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      workspace_id: WORKSPACE_ID,
+      branch_id: BRANCH_ID,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      inventory_item_id: existing.id,
+      adjusted_by_user_id: payload.authorizedByUserId || 'user_001',
+      delta: computedDelta,
+      reason: payload.reason || `Action: ${payload.action}`,
+      audit_log_id: auditEntry.id,
+    };
+
+    stockAdjustmentsStore = [adjustment, ...stockAdjustmentsStore];
+
+    const medicine = medicinesStore.find((m) => m.id === updatedItem.medicine_id);
+    const combined: MedicineWithInventory = {
+      ...updatedItem,
+      medicine: medicine!,
+    };
+
+    return {
+      inventoryItem: combined,
+      adjustment,
+      auditEntry,
+    };
   },
 
+  updateQuantity: (id: string, delta: number): InventoryItem | null => {
+    const result = inventoryApi.recordStockAction({
+      inventoryItemId: id,
+      action: 'adjustment',
+      quantityDelta: delta,
+      reason: `Quick quantity adjustment (${delta > 0 ? '+' : ''}${delta})`,
+    });
+    return result ? result.inventoryItem : null;
+  },
+
+  // Semantically mark deactivated instead of destructive array removal
   delete: (id: string): boolean => {
-    const initialLen = inventoryStore.length;
-    inventoryStore = inventoryStore.filter((item) => item.id !== id);
-    return inventoryStore.length < initialLen;
+    const result = inventoryApi.recordStockAction({
+      inventoryItemId: id,
+      action: 'deactivated',
+      reason: 'Deactivated stock batch via UI',
+    });
+    return Boolean(result);
   },
 
   // Backwards compatibility aliases
