@@ -5,64 +5,69 @@ import { createPortal } from 'react-dom';
 import { useOverlay } from './core/useOverlay';
 import { useOverlayPosition, OverlayPlacement } from './core/useOverlayPosition';
 
-export interface TooltipProps {
+export interface PopoverProps {
   content: React.ReactNode;
   children: React.ReactElement;
+  title?: string;
+  isOpen?: boolean;
+  onClose?: () => void;
   position?: OverlayPlacement;
-  delay?: number;
+  trigger?: 'click' | 'hover';
   className?: string;
-  disabled?: boolean;
+  closeOnEsc?: boolean;
+  closeOnOutsideClick?: boolean;
 }
 
-export const Tooltip: React.FC<TooltipProps> = ({
+export const Popover: React.FC<PopoverProps> = ({
   content,
   children,
-  position = 'top',
-  delay = 200,
+  title,
+  isOpen: controlledIsOpen,
+  onClose,
+  position = 'bottom',
+  trigger = 'click',
   className = '',
-  disabled = false,
+  closeOnEsc = true,
+  closeOnOutsideClick = true,
 }) => {
-  const [isVisible, setIsVisible] = React.useState(false);
+  const [uncontrolledIsOpen, setUncontrolledIsOpen] = React.useState(false);
+  const isControlled = controlledIsOpen !== undefined;
+  const isOpen = isControlled ? controlledIsOpen : uncontrolledIsOpen;
+
   const triggerRef = React.useRef<HTMLElement | null>(null);
   const overlayRef = React.useRef<HTMLDivElement>(null);
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleClose = React.useCallback(() => {
+    if (!isControlled) setUncontrolledIsOpen(false);
+    onClose?.();
+  }, [isControlled, onClose]);
 
   const { zIndex } = useOverlay({
-    isOpen: isVisible,
-    type: 'tooltip',
+    isOpen,
+    type: 'popover',
     lockScroll: false,
-    closeOnEsc: true,
-    closeOnOutsideClick: false,
+    closeOnEsc,
+    closeOnOutsideClick,
+    onClose: handleClose,
     triggerRef,
     containerRef: overlayRef,
   });
 
   const coords = useOverlayPosition({
-    isOpen: isVisible,
+    isOpen,
     triggerRef,
     overlayRef,
     placement: position,
-    offset: 6,
+    offset: 8,
   });
 
-  const showTooltip = () => {
-    if (disabled || !content) return;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      setIsVisible(true);
-    }, delay);
+  const toggle = () => {
+    if (isControlled) {
+      if (isOpen) onClose?.();
+    } else {
+      setUncontrolledIsOpen((prev) => !prev);
+    }
   };
-
-  const hideTooltip = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setIsVisible(false);
-  };
-
-  React.useEffect(() => {
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
 
   const childProps = (children as React.ReactElement<any>).props || {};
 
@@ -76,32 +81,34 @@ export const Tooltip: React.FC<TooltipProps> = ({
         childRef.current = node;
       }
     },
+    onClick: (e: React.MouseEvent) => {
+      if (trigger === 'click') {
+        toggle();
+      }
+      childProps.onClick?.(e);
+    },
     onMouseEnter: (e: React.MouseEvent) => {
-      showTooltip();
+      if (trigger === 'hover') {
+        if (!isControlled) setUncontrolledIsOpen(true);
+      }
       childProps.onMouseEnter?.(e);
     },
     onMouseLeave: (e: React.MouseEvent) => {
-      hideTooltip();
+      if (trigger === 'hover') {
+        if (!isControlled) setUncontrolledIsOpen(false);
+      }
       childProps.onMouseLeave?.(e);
-    },
-    onFocus: (e: React.FocusEvent) => {
-      showTooltip();
-      childProps.onFocus?.(e);
-    },
-    onBlur: (e: React.FocusEvent) => {
-      hideTooltip();
-      childProps.onBlur?.(e);
     },
   });
 
   return (
     <>
       {triggerElement}
-      {isVisible && content && typeof document !== 'undefined' &&
+      {isOpen && typeof document !== 'undefined' &&
         createPortal(
           <div
             ref={overlayRef}
-            role="tooltip"
+            role="dialog"
             style={{
               position: 'fixed',
               top: `${coords.top}px`,
@@ -109,12 +116,16 @@ export const Tooltip: React.FC<TooltipProps> = ({
               zIndex,
             }}
             className={`
-              px-2 py-1 bg-surface-strong border border-border rounded-input
-              text-[10px] font-bold uppercase tracking-wider text-text elevation-raised whitespace-nowrap
-              pointer-events-none transition-opacity duration-150 animate-in fade-in
+              min-w-[200px] p-4 bg-surface-strong border border-border rounded-card
+              elevation-raised text-xs text-text outline-none animate-in fade-in
               ${className}
             `}
           >
+            {title && (
+              <div className="font-bold uppercase tracking-wider mb-2 border-b border-border pb-1 text-[11px] text-text">
+                {title}
+              </div>
+            )}
             {content}
           </div>,
           document.body

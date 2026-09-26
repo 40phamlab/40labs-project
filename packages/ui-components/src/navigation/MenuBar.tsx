@@ -1,5 +1,9 @@
+"use client";
+
 import * as React from 'react';
 import { createPortal } from 'react-dom';
+import { useOverlay } from '../overlays/core/useOverlay';
+import { useOverlayPosition } from '../overlays/core/useOverlayPosition';
 
 export interface MenuBarItemProps {
   label: React.ReactNode;
@@ -12,7 +16,7 @@ export interface MenuBarItemProps {
   disabled?: boolean;
 }
 
-export const MenuBarItem = ({
+export const MenuBarItem: React.FC<MenuBarItemProps> = ({
   label,
   isOpen = false,
   onOpen,
@@ -21,44 +25,28 @@ export const MenuBarItem = ({
   isActive = false,
   className = '',
   disabled = false,
-}: MenuBarItemProps) => {
+}) => {
   const triggerRef = React.useRef<HTMLButtonElement>(null);
-  const [coords, setCoords] = React.useState({ top: 0, left: 0 });
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
 
-  const updateCoords = React.useCallback(() => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const dropdownWidth = 220;
-      const padding = 8;
+  const { zIndex } = useOverlay({
+    isOpen: Boolean(isOpen && children),
+    type: 'dropdown',
+    lockScroll: false,
+    closeOnEsc: true,
+    closeOnOutsideClick: true,
+    onClose: () => onOpen?.(),
+    triggerRef,
+    containerRef: dropdownRef,
+  });
 
-      let left = rect.left;
-      if (left + dropdownWidth > window.innerWidth - padding) {
-        left = Math.max(padding, window.innerWidth - dropdownWidth - padding);
-      }
-
-      setCoords({
-        top: rect.bottom,
-        left,
-      });
-    }
-  }, []);
-
-  React.useLayoutEffect(() => {
-    if (isOpen) {
-      updateCoords();
-    }
-  }, [isOpen, updateCoords]);
-
-  React.useEffect(() => {
-    if (isOpen) {
-      window.addEventListener('resize', updateCoords);
-      window.addEventListener('scroll', updateCoords, true);
-      return () => {
-        window.removeEventListener('resize', updateCoords);
-        window.removeEventListener('scroll', updateCoords, true);
-      };
-    }
-  }, [isOpen, updateCoords]);
+  const coords = useOverlayPosition({
+    isOpen: Boolean(isOpen && children),
+    triggerRef,
+    overlayRef: dropdownRef,
+    placement: 'bottom-start',
+    offset: 0,
+  });
 
   return (
     <div className="relative flex items-center h-full">
@@ -87,43 +75,26 @@ export const MenuBarItem = ({
         {label}
       </button>
 
-      {isOpen && children && (
-        <MenuDropdown
-          top={coords.top}
-          left={coords.left}
-          onClose={() => onOpen?.()}
-        >
-          {children}
-        </MenuDropdown>
+      {isOpen && children && typeof document !== 'undefined' && (
+        createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{
+              position: 'fixed',
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              zIndex,
+            }}
+            className="min-w-[200px] bg-surface-elevated border border-border rounded-md shadow-md overflow-hidden select-none animate-in fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="py-1 flex flex-col">{children}</div>
+          </div>,
+          document.body
+        )
       )}
     </div>
-  );
-};
-
-interface MenuDropdownProps {
-  children: React.ReactNode;
-  top: number;
-  left: number;
-  onClose: () => void;
-}
-
-const MenuDropdown = ({ children, top, left }: MenuDropdownProps) => {
-  return createPortal(
-    <div
-      style={{
-        position: 'fixed',
-        top: `${top}px`,
-        left: `${left}px`,
-        zIndex: 9999,
-      }}
-      className="mt-1 min-w-[200px] bg-surface-elevated border border-border rounded-md shadow-md overflow-hidden select-none"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="py-1 flex flex-col">
-        {children}
-      </div>
-    </div>,
-    document.body
   );
 };
 
@@ -132,18 +103,12 @@ export interface MenuBarProps {
   className?: string;
 }
 
-export const MenuBar = ({ children, className = '' }: MenuBarProps) => {
+export const MenuBar: React.FC<MenuBarProps> = ({ children, className = '' }) => {
   const [openIndex, setOpenIndex] = React.useState<number | null>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const childCount = React.Children.count(children);
 
   React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpenIndex(null);
-      }
-    };
-
     const handleKeyDown = (event: KeyboardEvent) => {
       if (openIndex === null) return;
 
@@ -160,12 +125,10 @@ export const MenuBar = ({ children, className = '' }: MenuBarProps) => {
     };
 
     if (openIndex !== null) {
-      document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [openIndex, childCount]);

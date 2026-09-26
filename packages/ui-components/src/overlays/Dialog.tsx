@@ -6,15 +6,14 @@ import { useOverlay } from './core/useOverlay';
 import { handleFocusTrap, getFocusableElements } from './core/overlayManager';
 import { X } from 'lucide-react';
 
-export interface DrawerProps {
+export interface DialogProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
   description?: string;
   children?: React.ReactNode;
   footer?: React.ReactNode;
-  side?: 'left' | 'right';
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   closeOnEsc?: boolean;
   closeOnOutsideClick?: boolean;
   lockScroll?: boolean;
@@ -23,20 +22,20 @@ export interface DrawerProps {
 }
 
 const sizeClasses = {
-  sm: 'w-64',
-  md: 'w-80',
-  lg: 'w-96',
-  xl: 'w-[480px]',
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  full: 'max-w-[calc(100vw-2rem)]',
 };
 
-export const Drawer: React.FC<DrawerProps> = ({
+export const Dialog: React.FC<DialogProps> = ({
   isOpen,
   onClose,
   title,
   description,
   children,
   footer,
-  side = 'right',
   size = 'md',
   closeOnEsc = true,
   closeOnOutsideClick = true,
@@ -45,10 +44,12 @@ export const Drawer: React.FC<DrawerProps> = ({
   id,
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const titleId = React.useId();
+  const descriptionId = React.useId();
 
   const { zIndex } = useOverlay({
     isOpen,
-    type: 'drawer',
+    type: 'dialog',
     id,
     lockScroll,
     closeOnEsc,
@@ -80,46 +81,50 @@ export const Drawer: React.FC<DrawerProps> = ({
 
   if (!isOpen || typeof document === 'undefined') return null;
 
-  const sideClasses = side === 'left' ? 'left-0 border-r' : 'right-0 border-l';
-
   return createPortal(
-    <div style={{ zIndex }} className="fixed inset-0 overflow-hidden">
+    <div
+      style={{ zIndex }}
+      className="fixed inset-0 flex items-center justify-center p-4 sm:p-6"
+    >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-surface/80 backdrop-blur-sm transition-opacity"
         aria-hidden="true"
       />
 
-      {/* Drawer Container */}
+      {/* Dialog Card */}
       <div
         ref={containerRef}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         className={`
-          fixed inset-y-0 ${sideClasses} flex flex-col max-w-full bg-surface-strong border-border elevation-raised
-          transition-transform duration-300 ease-in-out outline-none
+          relative w-full bg-surface-strong border border-border rounded-card elevation-raised
+          flex flex-col max-h-[calc(100vh-3rem)] overflow-hidden outline-none
           ${sizeClasses[size]} ${className}
         `}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-panel-strong/20 shrink-0">
           <div>
             {title && (
-              <h2 className="text-sm font-bold uppercase tracking-wider text-text">
+              <h2 id={titleId} className="text-sm font-bold uppercase tracking-wider text-text">
                 {title}
               </h2>
             )}
             {description && (
-              <p className="text-xs text-text-muted mt-0.5">{description}</p>
+              <p id={descriptionId} className="text-xs text-text-muted mt-0.5">
+                {description}
+              </p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
             className="ml-auto w-8 h-8 flex items-center justify-center rounded-full hover:bg-panel transition-colors text-text-muted hover:text-text"
-            aria-label="Close drawer"
+            aria-label="Close dialog"
           >
             <X size={16} />
           </button>
@@ -130,7 +135,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         </div>
 
         {footer && (
-          <div className="px-6 py-4 border-t border-border bg-panel-strong/20 flex flex-col gap-2 shrink-0">
+          <div className="px-6 py-4 border-t border-border bg-panel-strong/20 flex justify-end gap-3 shrink-0">
             {footer}
           </div>
         )}

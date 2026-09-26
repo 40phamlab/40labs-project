@@ -33,6 +33,9 @@ export * from './feedback/Alert';
 export * from './feedback/Progress';
 export * from './feedback/Toast';
 
+// Overlays
+export * from './overlays';
+
 // Navigation
 export * from './navigation/Sidebar';
 export * from './navigation/TopBar';
@@ -48,11 +51,8 @@ export * from './navigation/AppSidebarNav';
 export * from './navigation/ContextualSubNav';
 export * from './navigation/DashboardHeaderBar';
 
-// Overlays
-export * from './overlays/Modal';
-export * from './overlays/Drawer';
-export * from './overlays/ConfirmDialog';
-export * from './overlays/Tooltip';
+// Explicit resolution for Dropdown to prevent TS2308 ambiguity
+export { Dropdown, type DropdownProps } from './overlays';
 
 // Layout
 export * from './layout/AppShell';

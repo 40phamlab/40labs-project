@@ -1,5 +1,7 @@
+"use client";
+
 import * as React from 'react';
-import { createPortal } from 'react-dom';
+import { Dropdown as OverlayDropdown, DropdownProps as OverlayDropdownProps } from '../overlays/Dropdown';
 
 export interface MenuItemProps {
   label: React.ReactNode;
@@ -11,7 +13,7 @@ export interface MenuItemProps {
   className?: string;
 }
 
-export const MenuItem = ({
+export const MenuItem: React.FC<MenuItemProps> = ({
   label,
   icon,
   badge,
@@ -19,7 +21,7 @@ export const MenuItem = ({
   disabled = false,
   variant = 'default',
   className = '',
-}: MenuItemProps) => {
+}) => {
   const variantClasses =
     variant === 'danger'
       ? 'text-danger hover:bg-danger-bg focus-visible:bg-danger-bg'
@@ -62,7 +64,7 @@ export interface MenuProps {
   className?: string;
 }
 
-export const Menu = ({ children, className = '' }: MenuProps) => {
+export const Menu: React.FC<MenuProps> = ({ children, className = '' }) => {
   return (
     <div
       className={`min-w-[180px] py-1 bg-surface-elevated border border-border rounded-md shadow-md overflow-hidden ${className}`}
@@ -72,99 +74,13 @@ export const Menu = ({ children, className = '' }: MenuProps) => {
   );
 };
 
-export interface DropdownProps {
-  trigger: React.ReactNode;
-  children: React.ReactNode;
-  isOpen?: boolean;
-  onClose?: () => void;
-  className?: string;
-}
+export interface DropdownProps extends OverlayDropdownProps {}
 
-export const Dropdown = ({ trigger, children, isOpen, onClose, className = '' }: DropdownProps) => {
-  const triggerRef = React.useRef<HTMLDivElement>(null);
-  const menuRef = React.useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = React.useState({ top: 0, left: 0 });
-
-  const updatePosition = React.useCallback(() => {
-    if (triggerRef.current) {
-      const rect = triggerRef.current.getBoundingClientRect();
-      const menuWidth = 200;
-      const menuHeight = 240;
-      const padding = 8;
-
-      let top = rect.bottom + 4;
-      let left = rect.left;
-
-      if (left + menuWidth > window.innerWidth - padding) {
-        left = Math.max(padding, window.innerWidth - menuWidth - padding);
-      }
-
-      if (top + menuHeight > window.innerHeight - padding) {
-        top = Math.max(padding, rect.top - menuHeight - 4);
-      }
-
-      setCoords({ top, left });
-    }
-  }, []);
-
-  React.useLayoutEffect(() => {
-    if (isOpen) {
-      updatePosition();
-    }
-  }, [isOpen, updatePosition]);
-
-  React.useEffect(() => {
-    if (isOpen) {
-      window.addEventListener('scroll', updatePosition, true);
-      window.addEventListener('resize', updatePosition);
-
-      const handleClickOutside = (event: MouseEvent) => {
-        const target = event.target as Node;
-        const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(target);
-        const isOutsideMenu = menuRef.current && !menuRef.current.contains(target);
-
-        if (isOutsideTrigger && isOutsideMenu) {
-          onClose?.();
-        }
-      };
-
-      const handleEsc = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          onClose?.();
-        }
-      };
-
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleEsc);
-
-      return () => {
-        window.removeEventListener('scroll', updatePosition, true);
-        window.removeEventListener('resize', updatePosition);
-        document.removeEventListener('mousedown', handleClickOutside);
-        document.removeEventListener('keydown', handleEsc);
-      };
-    }
-  }, [isOpen, onClose, updatePosition]);
-
+export const Dropdown: React.FC<DropdownProps> = ({ children, ...props }) => {
   return (
-    <div ref={triggerRef} className={`relative inline-block ${className}`}>
-      {trigger}
-      {isOpen &&
-        createPortal(
-          <div
-            ref={menuRef}
-            style={{
-              position: 'fixed',
-              top: `${coords.top}px`,
-              left: `${coords.left}px`,
-              zIndex: 9999,
-            }}
-          >
-            <Menu>{children}</Menu>
-          </div>,
-          document.body
-        )}
-    </div>
+    <OverlayDropdown {...props}>
+      {typeof children === 'function' ? children : <Menu>{children}</Menu>}
+    </OverlayDropdown>
   );
 };
 
