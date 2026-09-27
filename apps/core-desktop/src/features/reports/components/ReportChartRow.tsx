@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Chart, ChartPanel } from '@40labs/ui-components';
+import { Chart, SummaryPanel } from '@40labs/ui-components';
 import {
   ReportCategoryId,
   ChartConfig,
@@ -182,17 +182,19 @@ export const ReportChartRow: React.FC<ReportChartRowProps> = ({
   return (
     <div className={`grid grid-cols-1 lg:grid-cols-3 gap-4 ${className}`}>
       {chartTriple.map((chartItem, idx) => (
-        <ChartPanel key={`${categoryId}_chart_${idx}`} title={chartItem.title}>
+        <SummaryPanel key={`${categoryId}_chart_${idx}`} title={chartItem.title}>
           <Chart
             data={chartItem.data}
             type={chartItem.type}
             xAxisKey={chartItem.xAxisKey}
             series={chartItem.series}
             height={220}
+            width="100%"
             showLegend={false}
             showGrid={true}
+            className="border-0 shadow-none bg-transparent p-0"
           />
-        </ChartPanel>
+        </SummaryPanel>
       ))}
     </div>
   );

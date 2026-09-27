@@ -128,6 +128,25 @@ export function useReports({ categoryId, dateRange }: UseReportsOptions) {
     return categoryConfig.buildTable(contextData);
   }, [categoryConfig, contextData]);
 
+  const getReportForCategory = React.useCallback(
+    (catId: ReportCategoryId) => {
+      const config = reportCategoriesConfig[catId] || reportCategoriesConfig.sales;
+      const catKpis = config.buildKpis(contextData);
+      const { config: catChartConfig, data: catChartData } = config.buildChart(contextData);
+      const { columns: catColumns, rows: catRows } = config.buildTable(contextData);
+      return {
+        categoryId: catId,
+        categoryConfig: config,
+        kpis: catKpis,
+        chartConfig: catChartConfig,
+        chartData: catChartData,
+        tableColumns: catColumns,
+        tableRows: catRows,
+      };
+    },
+    [contextData]
+  );
+
   return {
     categoryId,
     categoryConfig,
@@ -140,5 +159,6 @@ export function useReports({ categoryId, dateRange }: UseReportsOptions) {
     isLoading,
     isError,
     refetch: refetchAll,
+    getReportForCategory,
   };
 }

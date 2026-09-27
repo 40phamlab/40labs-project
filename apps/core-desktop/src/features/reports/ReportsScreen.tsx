@@ -6,6 +6,7 @@ import {
   FilterTabs,
   Button,
   IconButton,
+  Popover,
 } from '@40labs/ui-components';
 import { Download, Share2 } from 'lucide-react';
 import { useReports } from '../../hooks/useReports';
@@ -20,6 +21,7 @@ import { ReportSummaryStrip } from './components/ReportSummaryStrip';
 import { ReportTable } from './components/ReportTable';
 import { downloadReportPdf } from './utils/exportReportPdf';
 import { ReportShareModal } from './components/ReportShareModal';
+import { ReportSelectionList } from './components/ReportSelectionList';
 
 const CATEGORY_TABS = Object.values(reportCategoriesConfig).map((cat) => ({
   id: cat.id,
@@ -32,6 +34,9 @@ export const ReportsScreen: React.FC = () => {
   const [dateRange, setDateRange] = React.useState(() => getPeriodDateRange('last_month'));
 
   const [isShareModalOpen, setIsShareModalOpen] = React.useState(false);
+  const [isDownloadPopoverOpen, setIsDownloadPopoverOpen] = React.useState(false);
+  const [downloadCategories, setDownloadCategories] = React.useState<ReportCategoryId[]>([activeCategory]);
+
   const { toast } = useToast();
 
   const handlePeriodChange = (option: PeriodOption, range: { start: Date; end: Date }) => {
@@ -47,21 +52,35 @@ export const ReportsScreen: React.FC = () => {
     tableColumns,
     tableRows,
     isLoading,
+    getReportForCategory,
   } = useReports({
     categoryId: activeCategory,
     dateRange,
   });
 
-  const handleDownloadPdf = () => {
-    downloadReportPdf({
-      title: categoryConfig.label,
-      categoryLabel: categoryConfig.label,
-      periodLabel: periodOption.replace('_', ' ').toUpperCase(),
-      kpis,
-      columns: tableColumns,
-      rows: tableRows,
+  React.useEffect(() => {
+    if (!isDownloadPopoverOpen) {
+      setDownloadCategories([activeCategory]);
+    }
+  }, [activeCategory, isDownloadPopoverOpen]);
+
+  const handleExecuteDownload = () => {
+    if (downloadCategories.length === 0) return;
+
+    downloadCategories.forEach((catId) => {
+      const reportData = getReportForCategory(catId);
+      downloadReportPdf({
+        title: reportData.categoryConfig.label,
+        categoryLabel: reportData.categoryConfig.label,
+        periodLabel: periodOption.replace('_', ' ').toUpperCase(),
+        kpis: reportData.kpis,
+        columns: reportData.tableColumns,
+        rows: reportData.tableRows,
+      });
     });
-    toast.success('Report PDF downloaded successfully.');
+
+    toast.success(`Downloaded ${downloadCategories.length} report PDF(s) successfully.`);
+    setIsDownloadPopoverOpen(false);
   };
 
   return (
@@ -75,13 +94,51 @@ export const ReportsScreen: React.FC = () => {
               value={periodOption}
               onChange={handlePeriodChange}
             />
-            <IconButton
-              icon={<Download size={14} />}
-              label="Download PDF report"
-              intent="ghost"
-              size="sm"
-              onClick={handleDownloadPdf}
-            />
+            <Popover
+              isOpen={isDownloadPopoverOpen}
+              onClose={() => setIsDownloadPopoverOpen(false)}
+              title="Download PDF Reports"
+              position="bottom-end"
+              content={
+                <div className="flex flex-col gap-3 w-[300px]">
+                  <ReportSelectionList
+                    selectedCategories={downloadCategories}
+                    onChange={setDownloadCategories}
+                    periodLabel={periodOption.replace('_', ' ').toUpperCase()}
+                    dateRange={dateRange}
+                    getReportForCategory={getReportForCategory}
+                  />
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                    <Button
+                      type="button"
+                      intent="neutral"
+                      size="sm"
+                      onClick={() => setIsDownloadPopoverOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      intent="primary"
+                      size="sm"
+                      leftIcon={<Download size={14} />}
+                      disabled={downloadCategories.length === 0}
+                      onClick={handleExecuteDownload}
+                    >
+                      Download ({downloadCategories.length})
+                    </Button>
+                  </div>
+                </div>
+              }
+            >
+              <IconButton
+                icon={<Download size={14} />}
+                label="Download PDF report"
+                intent="ghost"
+                size="sm"
+                onClick={() => setIsDownloadPopoverOpen(true)}
+              />
+            </Popover>
             <Button
               type="button"
               intent="primary"
@@ -132,10 +189,12 @@ export const ReportsScreen: React.FC = () => {
       <ReportShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        reportTitle={categoryConfig.label}
+        activeCategory={activeCategory}
         periodLabel={periodOption.replace('_', ' ').toUpperCase()}
+        dateRange={dateRange}
+        getReportForCategory={getReportForCategory}
         onShareComplete={(summary) => {
-          toast.success(summary);
+          toast.info(summary);
         }}
       />
     </PageViewport>
