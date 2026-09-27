@@ -6,3 +6,6 @@ export * from './usePurchases';
 export * from './useLab';
 export * from './useNotifications';
 export * from './useToast';
+export * from './useFiscalReceipts';
+export * from './useAuditLog';
+export * from './useReports';

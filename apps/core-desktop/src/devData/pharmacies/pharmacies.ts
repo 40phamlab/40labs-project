@@ -54,3 +54,4 @@ export const initialSecondBusiness: Business = {
 };
 
 export const initialBusinesses: Business[] = [initialBusiness, initialSecondBusiness];
+

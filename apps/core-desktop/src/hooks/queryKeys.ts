@@ -45,3 +45,10 @@ export const notificationKeys = {
   list: () => [...notificationKeys.lists()] as const,
   detail: (id: string) => [...notificationKeys.all, 'detail', id] as const,
 };
+
+export const auditKeys = {
+  all: ['audit'] as const,
+  lists: () => [...auditKeys.all, 'list'] as const,
+  list: () => [...auditKeys.lists()] as const,
+  detail: (id: string) => [...auditKeys.all, 'detail', id] as const,
+};
