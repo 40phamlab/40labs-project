@@ -23,6 +23,7 @@ import { PurchasesScreen } from './features/purchases/PurchasesScreen';
 import { LabScreen } from './features/laboratory/LabScreen';
 import { NotificationsScreen } from './features/notifications/NotificationsScreen';
 import { SchedulingScreen } from './features/scheduling/SchedulingScreen';
+import { ReportsScreen } from './features/reports/ReportsScreen';
 import { ToastProvider } from './hooks/useToast';
 import './App.css';
 
@@ -61,6 +62,8 @@ export default function App() {
         return <NotificationsScreen />;
       case 'scheduling':
         return <SchedulingScreen />;
+      case 'reports':
+        return <ReportsScreen />;
       default: {
         const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
         return (
