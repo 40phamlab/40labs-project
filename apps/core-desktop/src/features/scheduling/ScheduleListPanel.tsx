@@ -50,9 +50,9 @@ export const ScheduleListPanel: React.FC<ScheduleListPanelProps> = ({
   }, [schedules, activeCategory, typeFilter, searchQuery]);
 
   return (
-    <div className="flex flex-col h-full bg-surface border-r border-border overflow-hidden">
+    <div className="flex flex-col h-full bg-panel border-r border-border/50 overflow-hidden elevation-raised">
       {/* Search Input sits ABOVE the tabs in this same panel */}
-      <div className="p-3 border-b border-border bg-surface-strong flex flex-col gap-3">
+      <div className="p-3 border-b border-border/40 bg-panel-strong/40 flex flex-col gap-2.5 elevation-inset">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
             Schedules ({filteredSchedules.length})
@@ -63,7 +63,7 @@ export const ScheduleListPanel: React.FC<ScheduleListPanelProps> = ({
             size="sm"
             leftIcon={<Plus size={14} />}
             onClick={onOpenNewModal}
-            className="rounded-input"
+            className="rounded-input h-7 text-xs"
           >
             Add New
           </Button>
@@ -84,9 +84,9 @@ export const ScheduleListPanel: React.FC<ScheduleListPanelProps> = ({
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-2.5 flex flex-col gap-2 custom-scrollbar">
         {filteredSchedules.length === 0 ? (
-          <div className="p-8 text-center border border-dashed border-border rounded-card my-auto">
+          <div className="p-8 text-center border border-dashed border-border/40 rounded-card my-auto bg-panel-strong/20">
             <p className="text-xs text-text-muted">No schedules found matching criteria.</p>
           </div>
         ) : (

@@ -115,8 +115,8 @@ export const ChannelRecipientModal: React.FC<ChannelRecipientModalProps> = ({
     >
       <div className="flex flex-col gap-4 py-2">
         <div className="flex items-center gap-3">
-          <span className="px-2.5 py-1 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-mono text-xs font-bold uppercase">
-            phn
+          <span className="px-2.5 py-1 rounded-full bg-panel-strong text-text-muted font-mono text-xs font-bold uppercase border border-border/40">
+            {channel}
           </span>
           <span className="text-xs text-text-muted">
             Configure target audience and recipient routing for {CHANNEL_NAMES[channel]}.

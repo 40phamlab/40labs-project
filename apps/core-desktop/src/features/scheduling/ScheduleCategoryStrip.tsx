@@ -21,19 +21,19 @@ export const ScheduleCategoryStrip: React.FC<ScheduleCategoryStripProps> = ({
   onSelectCategory,
 }) => {
   return (
-    <Panel className="p-3 flex items-center gap-3 overflow-x-auto whitespace-nowrap custom-scrollbar shrink-0">
+    <Panel className="p-2.5 flex items-center gap-2.5 overflow-x-auto whitespace-nowrap custom-scrollbar shrink-0 bg-panel border border-border/50 rounded-card elevation-raised">
       {/* All Schedules Pill */}
       <button
         type="button"
         onClick={() => onSelectCategory(null)}
-        className={`px-4 py-2 rounded-input text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+        className={`px-3 py-1.5 rounded-input text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
           activeCategory === null
-            ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
-            : 'bg-panel text-text border-border hover:bg-surface-strong'
+            ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs font-bold'
+            : 'bg-panel-strong/40 text-text border-border/60 hover:bg-surface-strong'
         }`}
       >
         <span>All Schedules</span>
-        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${activeCategory === null ? 'bg-white/20 text-white' : 'bg-surface text-text-muted'}`}>
+        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${activeCategory === null ? 'bg-white/20 text-white' : 'bg-panel text-text-muted'}`}>
           {schedules.length}
         </span>
       </button>
@@ -54,18 +54,18 @@ export const ScheduleCategoryStrip: React.FC<ScheduleCategoryStripProps> = ({
             <button
               type="button"
               onClick={() => onSelectCategory(isActive ? null : cat.id)}
-              className={`px-4 py-2 rounded-input text-xs font-bold transition-all flex items-center gap-2 border cursor-pointer ${
+              className={`px-3 py-1.5 rounded-input text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
                 isActive
-                  ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
-                  : 'bg-panel text-text border-border hover:bg-surface-strong'
+                  ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs font-bold'
+                  : 'bg-panel-strong/40 text-text border-border/60 hover:bg-surface-strong'
               }`}
             >
               <span>{cat.label}</span>
               <span
-                className={`w-5 h-5 rounded-full border flex items-center justify-center font-mono text-[11px] ${
+                className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center font-mono text-[10px] ${
                   isActive
-                    ? 'bg-white text-[var(--color-primary)] border-white'
-                    : 'bg-surface border-[var(--color-primary)] text-text'
+                    ? 'bg-white/20 text-white border-white/40'
+                    : 'bg-panel border-border text-text-muted'
                 }`}
               >
                 {actvCount}

@@ -66,9 +66,9 @@ export const ScheduleListItem: React.FC<ScheduleListItemProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`cursor-pointer transition-all rounded-card border p-3 flex flex-col gap-2 ${
+      className={`cursor-pointer transition-all rounded-card border p-2.5 flex flex-col gap-1.5 elevation-raised ${
         isSelected
-          ? 'bg-surface border-[var(--color-primary)] ring-1 ring-[var(--color-primary)] shadow-xs'
+          ? 'bg-panel-strong border-[var(--color-primary)] ring-1 ring-[var(--color-primary)] shadow-xs'
           : 'bg-panel border-border/60 hover:bg-surface-strong'
       }`}
     >
@@ -84,9 +84,9 @@ export const ScheduleListItem: React.FC<ScheduleListItemProps> = ({
         <StatusBadge status={statusType as any} label={schedule.status} size="sm" />
       </div>
 
-      <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border/40">
-        <div className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--color-primary)]">
-          <Clock size={12} />
+      <div className="flex items-center justify-between text-xs text-text-muted pt-1 border-t border-border/30">
+        <div className="flex items-center gap-1.5 font-mono text-[11px] text-text-muted">
+          <Clock size={12} className="text-accent" />
           <span>{countdown}</span>
         </div>
 
@@ -101,7 +101,7 @@ export const ScheduleListItem: React.FC<ScheduleListItemProps> = ({
                 e.stopPropagation();
                 onStop(schedule.id);
               }}
-              className="h-7 text-[11px] rounded-input text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
+              className="h-6 text-[10px] rounded-input text-[var(--color-danger)] hover:bg-[var(--color-danger)]/10"
             >
               Stop
             </Button>
@@ -115,7 +115,7 @@ export const ScheduleListItem: React.FC<ScheduleListItemProps> = ({
               e.stopPropagation();
               onEdit();
             }}
-            className="h-7 text-[11px] rounded-input"
+            className="h-6 text-[10px] rounded-input"
           >
             Edit
           </Button>

@@ -218,7 +218,7 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
               <label className="text-xs font-medium text-text-muted">Receiver's Name / Scope (Derived)</label>
               <div className="px-3 py-2 rounded-input bg-surface border border-border text-xs font-mono text-text flex items-center justify-between">
                 <span className="truncate">{receiverSummary}</span>
-                <span className="text-[10px] text-[var(--color-primary)] uppercase font-bold">Auto-resolved</span>
+                <span className="text-[10px] text-text-muted uppercase font-semibold">Auto-resolved</span>
               </div>
             </div>
           </div>

@@ -104,8 +104,8 @@ export const SchedulingScreen: React.FC = () => {
       />
 
       {/* Main Content Area — 2-Pane Layout with Top Category Strip */}
-      <PageContent scrollable={false} padding="normal">
-        <div className="flex flex-col gap-4 h-full w-full overflow-hidden">
+      <PageContent scrollable={false} variant="transparent" padding="none">
+        <div className="flex flex-col gap-3.5 h-full w-full overflow-hidden p-3.5">
           {/* Top Category Strip */}
           <ScheduleCategoryStrip
             schedules={schedules}
@@ -114,9 +114,9 @@ export const SchedulingScreen: React.FC = () => {
           />
 
           {/* Two-Pane Row: List Panel (left) + Detail Panel (right) */}
-          <div className="flex flex-row gap-6 flex-1 min-h-0 overflow-hidden">
+          <div className="flex flex-row gap-3.5 flex-1 min-h-0 overflow-hidden">
             {/* List Panel */}
-            <div className="w-[380px] flex-shrink-0 h-full overflow-hidden rounded-card border border-border shadow-xs">
+            <div className="w-[360px] flex-shrink-0 h-full overflow-hidden rounded-card border border-border/50 bg-panel shadow-xs">
               <ScheduleListPanel
                 schedules={schedules}
                 selectedId={selectedId}
@@ -132,7 +132,7 @@ export const SchedulingScreen: React.FC = () => {
             </div>
 
             {/* Detail Panel */}
-            <div className="flex-1 h-full overflow-hidden rounded-card border border-border bg-surface shadow-xs">
+            <div className="flex-1 h-full overflow-hidden rounded-card border border-border/50 bg-panel shadow-xs">
               <ScheduleDetailPanel
                 schedule={selectedSchedule}
                 onEdit={() => selectedSchedule && setEditingSchedule(selectedSchedule)}
