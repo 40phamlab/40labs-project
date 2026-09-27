@@ -68,7 +68,7 @@ export const ScheduleListItem: React.FC<ScheduleListItemProps> = ({
       onClick={onClick}
       className={`cursor-pointer transition-all rounded-card border p-2.5 flex flex-col gap-1.5 elevation-raised ${
         isSelected
-          ? 'bg-panel-strong border-[var(--color-primary)] ring-1 ring-[var(--color-primary)] shadow-xs'
+          ? 'bg-panel-strong border-border-strong elevation-inset text-text'
           : 'bg-panel border-border/60 hover:bg-surface-strong'
       }`}
     >

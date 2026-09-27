@@ -28,12 +28,12 @@ export const ScheduleCategoryStrip: React.FC<ScheduleCategoryStripProps> = ({
         onClick={() => onSelectCategory(null)}
         className={`px-3 py-1.5 rounded-input text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
           activeCategory === null
-            ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs font-bold'
+            ? 'bg-panel-strong border-border elevation-inset text-text font-bold shadow-xs'
             : 'bg-panel-strong/40 text-text border-border/60 hover:bg-surface-strong'
         }`}
       >
         <span>All Schedules</span>
-        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${activeCategory === null ? 'bg-white/20 text-white' : 'bg-panel text-text-muted'}`}>
+        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-panel border border-border/40 text-text-muted">
           {schedules.length}
         </span>
       </button>
@@ -56,17 +56,13 @@ export const ScheduleCategoryStrip: React.FC<ScheduleCategoryStripProps> = ({
               onClick={() => onSelectCategory(isActive ? null : cat.id)}
               className={`px-3 py-1.5 rounded-input text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
                 isActive
-                  ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs font-bold'
+                  ? 'bg-panel-strong border-border elevation-inset text-text font-bold shadow-xs'
                   : 'bg-panel-strong/40 text-text border-border/60 hover:bg-surface-strong'
               }`}
             >
               <span>{cat.label}</span>
               <span
-                className={`w-4.5 h-4.5 rounded-full border flex items-center justify-center font-mono text-[10px] ${
-                  isActive
-                    ? 'bg-white/20 text-white border-white/40'
-                    : 'bg-panel border-border text-text-muted'
-                }`}
+                className="w-4.5 h-4.5 rounded-full border border-border/40 flex items-center justify-center font-mono text-[10px] bg-panel text-text-muted"
               >
                 {actvCount}
               </span>

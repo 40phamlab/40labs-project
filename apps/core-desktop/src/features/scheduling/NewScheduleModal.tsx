@@ -235,14 +235,14 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
                     key={ch.id}
                     type="button"
                     onClick={() => setActiveChannelForModal(ch.id)}
-                    className={`px-3 py-1.5 rounded-input text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                    className={`px-3 py-1.5 rounded-input text-xs font-semibold transition-all flex items-center gap-1.5 border cursor-pointer ${
                       isSelected
-                        ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-xs'
-                        : 'bg-panel text-text border-border hover:bg-surface-strong'
+                        ? 'bg-panel-strong border-border elevation-inset text-text font-bold'
+                        : 'bg-panel text-text border-border/60 hover:bg-surface-strong'
                     }`}
                   >
                     <span>{ch.label}</span>
-                    <span className={`text-[10px] px-1 rounded ${isSelected ? 'bg-white/20 text-white' : 'bg-surface text-text-muted'}`}>
+                    <span className={`text-[10px] px-1 rounded ${isSelected ? 'bg-panel border border-border/40 text-text' : 'bg-surface text-text-muted'}`}>
                       {isSelected ? 'Active' : 'Configure'}
                     </span>
                   </button>
