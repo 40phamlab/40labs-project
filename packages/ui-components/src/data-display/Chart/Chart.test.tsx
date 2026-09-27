@@ -3,7 +3,7 @@ import { describe, test, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Chart } from './Chart';
 
-describe('Chart Component - Task 2 Flexible Visualizations', () => {
+describe('Chart Component - Task 3 Production-Quality Verification', () => {
   const sharedDataset = [
     { month: 'Jan', value: 120, target: 100 },
     { month: 'Feb', value: 180, target: 150 },
@@ -52,16 +52,14 @@ describe('Chart Component - Task 2 Flexible Visualizations', () => {
     expect(screen.getByText('value')).toBeInTheDocument();
   });
 
-  test('supports axis and label customization', () => {
-    render(
-      <Chart
-        data={sharedDataset}
-        xKey="month"
-        series="value"
-        xAxisLabel="Months"
-        yAxisLabel="Values"
-      />
-    );
-    expect(screen.getByText('value')).toBeInTheDocument();
+  test('renders loading, empty, and error states correctly', () => {
+    const { rerender } = render(<Chart data={[]} loading loadingMessage="Loading analytics..." />);
+    expect(screen.getByText('Loading analytics...')).toBeInTheDocument();
+
+    rerender(<Chart data={[]} emptyMessage="No chart records found" />);
+    expect(screen.getByText('No chart records found')).toBeInTheDocument();
+
+    rerender(<Chart data={[]} error="Failed to fetch chart data" />);
+    expect(screen.getByText('Failed to fetch chart data')).toBeInTheDocument();
   });
 });
