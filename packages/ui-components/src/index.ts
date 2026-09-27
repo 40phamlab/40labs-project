@@ -79,3 +79,4 @@ export * from './data-display/Metrics';
 export * from './data-display/List';
 export * from './data-display/DashboardComposites';
 export * from './data-display/EntityProfileHeader';
+export * from './data-display/Chart';

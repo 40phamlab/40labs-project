@@ -9,15 +9,14 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
-    "@40labs/types": "workspace:*",
     "@40labs/design-tokens": "workspace:*",
-    "lucide-react": "^0.475.0"
+    "@40labs/types": "workspace:*",
+    "lucide-react": "^0.475.0",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
     "typescript": "~5.8.3"
   }
 }
