@@ -4,8 +4,12 @@ import {
   PageHeader,
   PageContent,
   FilterTabs,
+  Button,
+  IconButton,
 } from '@40labs/ui-components';
+import { Download, Share2 } from 'lucide-react';
 import { useReports } from '../../hooks/useReports';
+import { useToast } from '../../hooks/useToast';
 import {
   ReportCategoryId,
   reportCategoriesConfig,
@@ -14,6 +18,8 @@ import { PeriodSelector, PeriodOption, getPeriodDateRange } from './components/P
 import { ReportChartRow } from './components/ReportChartRow';
 import { ReportSummaryStrip } from './components/ReportSummaryStrip';
 import { ReportTable } from './components/ReportTable';
+import { downloadReportPdf } from './utils/exportReportPdf';
+import { ReportShareModal } from './components/ReportShareModal';
 
 const CATEGORY_TABS = Object.values(reportCategoriesConfig).map((cat) => ({
   id: cat.id,
@@ -24,6 +30,9 @@ export const ReportsScreen: React.FC = () => {
   const [activeCategory, setActiveCategory] = React.useState<ReportCategoryId>('sales');
   const [periodOption, setPeriodOption] = React.useState<PeriodOption>('last_month');
   const [dateRange, setDateRange] = React.useState(() => getPeriodDateRange('last_month'));
+
+  const [isShareModalOpen, setIsShareModalOpen] = React.useState(false);
+  const { toast } = useToast();
 
   const handlePeriodChange = (option: PeriodOption, range: { start: Date; end: Date }) => {
     setPeriodOption(option);
@@ -43,16 +52,46 @@ export const ReportsScreen: React.FC = () => {
     dateRange,
   });
 
+  const handleDownloadPdf = () => {
+    downloadReportPdf({
+      title: categoryConfig.label,
+      categoryLabel: categoryConfig.label,
+      periodLabel: periodOption.replace('_', ' ').toUpperCase(),
+      kpis,
+      columns: tableColumns,
+      rows: tableRows,
+    });
+    toast.success('Report PDF downloaded successfully.');
+  };
+
   return (
     <PageViewport>
       <PageHeader
         title="Reports & Analytics"
         subtitle={categoryConfig.description || 'Aggregation, compliance tracking, and business metrics'}
         actions={
-          <PeriodSelector
-            value={periodOption}
-            onChange={handlePeriodChange}
-          />
+          <div className="flex items-center gap-2">
+            <PeriodSelector
+              value={periodOption}
+              onChange={handlePeriodChange}
+            />
+            <IconButton
+              icon={<Download size={14} />}
+              label="Download PDF report"
+              intent="ghost"
+              size="sm"
+              onClick={handleDownloadPdf}
+            />
+            <Button
+              type="button"
+              intent="primary"
+              size="sm"
+              leftIcon={<Share2 size={14} />}
+              onClick={() => setIsShareModalOpen(true)}
+            >
+              Share Report
+            </Button>
+          </div>
         }
       />
 
@@ -88,6 +127,17 @@ export const ReportsScreen: React.FC = () => {
           />
         </div>
       </PageContent>
+
+      {/* Share & Outbox Modal */}
+      <ReportShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        reportTitle={categoryConfig.label}
+        periodLabel={periodOption.replace('_', ' ').toUpperCase()}
+        onShareComplete={(summary) => {
+          toast.success(summary);
+        }}
+      />
     </PageViewport>
   );
 };
