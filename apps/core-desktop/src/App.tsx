@@ -1,4 +1,3 @@
-import * as React from 'react';
 import {
   Home,
   ShoppingCart,
@@ -45,7 +44,8 @@ const NAV_ITEMS = [
 export default function App() {
   const activeScreen = useNavStore((s) => s.activeScreen);
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
-  const [collapsed, setCollapsed] = React.useState(true);
+  const sidebarState = useNavStore((s) => s.sidebarState);
+  const setSidebarState = useNavStore((s) => s.setSidebarState);
 
   const renderContent = () => {
     switch (activeScreen) {
@@ -98,8 +98,8 @@ export default function App() {
   const sidebarElement = (
     <AppSidebarNav
       activeRoute={activeScreen}
-      collapsed={collapsed}
-      onToggleCollapse={() => setCollapsed(!collapsed)}
+      navState={sidebarState}
+      onNavStateChange={setSidebarState}
       onNavigate={(id) => setActiveScreen(id as ScreenId)}
       items={NAV_ITEMS}
       pinnedBottomItems={[
@@ -110,7 +110,12 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <AppShell topBar={topBarElement} sidebar={sidebarElement}>
+      <AppShell
+        topBar={topBarElement}
+        sidebar={sidebarElement}
+        navState={sidebarState}
+        onNavStateChange={setSidebarState}
+      >
         {renderContent()}
       </AppShell>
     </ToastProvider>

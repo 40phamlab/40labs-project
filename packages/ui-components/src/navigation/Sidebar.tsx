@@ -1,25 +1,44 @@
-import * as React from 'react';
+'use client';
+
+import React, { Children, isValidElement, cloneElement, KeyboardEvent } from 'react';
+import { useAppShell, NavigationState } from '../layout/AppShell';
 
 export interface SidebarProps {
   children: React.ReactNode;
   compact?: boolean;
+  navState?: NavigationState;
   className?: string;
 }
 
-export const Sidebar = ({ children, compact, className = '' }: SidebarProps) => {
+export const Sidebar = ({ children, compact, navState, className = '' }: SidebarProps) => {
+  const shell = useAppShell();
+  const effectiveNavState: NavigationState =
+    navState ?? (compact !== undefined ? (compact ? 'compact' : 'expanded') : shell.navState);
+
+  const isCompact = effectiveNavState === 'compact';
+  const isHidden = effectiveNavState === 'hidden';
+
+  if (isHidden) {
+    return null;
+  }
+
   return (
-    <aside
-      className={`flex flex-col h-full bg-sidebar border-r border-border transition-[width] duration-200 ease-in-out select-none ${
-        compact ? 'w-16' : 'w-60'
+    <nav
+      aria-label="Sidebar navigation"
+      className={`flex flex-col h-full w-full bg-sidebar border-r border-border transition-[width] duration-200 ease-in-out select-none ${
+        isCompact ? 'w-16' : 'w-60'
       } ${className}`}
     >
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, { compact });
+      {Children.map(children, (child) => {
+        if (isValidElement(child) && typeof child.type !== 'string') {
+          return cloneElement(child as React.ReactElement<any>, {
+            compact: isCompact,
+            navState: effectiveNavState,
+          });
         }
         return child;
       })}
-    </aside>
+    </nav>
   );
 };
 
@@ -27,21 +46,30 @@ export interface SidebarSectionProps {
   title?: string;
   children: React.ReactNode;
   compact?: boolean;
+  navState?: NavigationState;
   className?: string;
 }
 
-export const SidebarSection = ({ title, children, compact, className = '' }: SidebarSectionProps) => {
+export const SidebarSection = ({ title, children, compact, navState, className = '' }: SidebarSectionProps) => {
+  const shell = useAppShell();
+  const effectiveNavState: NavigationState =
+    navState ?? (compact !== undefined ? (compact ? 'compact' : 'expanded') : shell.navState);
+  const isCompact = effectiveNavState === 'compact';
+
   return (
     <div className={`py-2 ${className}`}>
-      {title && !compact && (
+      {title && !isCompact && (
         <h3 className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted truncate select-none">
           {title}
         </h3>
       )}
       <div className="space-y-1 px-2">
-        {React.Children.map(children, (child) => {
-          if (React.isValidElement(child)) {
-            return React.cloneElement(child as React.ReactElement<any>, { compact });
+        {Children.map(children, (child) => {
+          if (isValidElement(child) && typeof child.type !== 'string') {
+            return cloneElement(child as React.ReactElement<any>, {
+              compact: isCompact,
+              navState: effectiveNavState,
+            });
           }
           return child;
         })}
@@ -57,6 +85,7 @@ export interface SidebarItemProps {
   active?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  navState?: NavigationState;
   onClick?: () => void;
   className?: string;
 }
@@ -67,11 +96,17 @@ export const SidebarItem = ({
   badge,
   active = false,
   disabled = false,
-  compact = false,
+  compact,
+  navState,
   onClick,
   className = '',
 }: SidebarItemProps) => {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+  const shell = useAppShell();
+  const effectiveNavState: NavigationState =
+    navState ?? (compact !== undefined ? (compact ? 'compact' : 'expanded') : shell.navState);
+  const isCompact = effectiveNavState === 'compact';
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (disabled) return;
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -85,7 +120,8 @@ export const SidebarItem = ({
       disabled={disabled}
       onClick={!disabled ? onClick : undefined}
       onKeyDown={handleKeyDown}
-      title={compact ? label : undefined}
+      title={label}
+      aria-label={label}
       aria-current={active ? 'page' : undefined}
       className={`
         w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium
@@ -93,23 +129,29 @@ export const SidebarItem = ({
         focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar
         ${
           active
-            ? 'bg-surface-selected text-text-primary font-semibold border-l-2 border-action-primary pl-2'
+            ? isCompact
+              ? 'bg-surface-selected text-text-primary font-bold shadow-inner-soft border-l-2 border-action-primary'
+              : 'bg-surface-selected text-text-primary font-semibold border-l-2 border-action-primary pl-2'
             : 'text-text-muted hover:text-text-primary hover:bg-surface-hover'
         }
         ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-        ${compact ? 'justify-center px-0 w-10 mx-auto border-l-0' : ''}
+        ${isCompact ? 'justify-center px-0 w-10 mx-auto' : ''}
         ${className}
       `}
     >
       {icon && (
-        <span className="w-5 h-5 flex items-center justify-center shrink-0 text-current">
+        <span
+          className={`w-5 h-5 flex items-center justify-center shrink-0 ${
+            active ? 'text-action-primary' : 'text-current'
+          }`}
+        >
           {icon}
         </span>
       )}
-      {!compact && (
+      {!isCompact && (
         <span className="flex-1 text-left truncate">{label}</span>
       )}
-      {!compact && badge !== undefined && (
+      {!isCompact && badge !== undefined && (
         <span
           className={`
             inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none
@@ -123,8 +165,11 @@ export const SidebarItem = ({
           {badge}
         </span>
       )}
-      {compact && badge !== undefined && (
-        <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-danger" />
+      {isCompact && badge !== undefined && (
+        <span
+          className="absolute top-1 right-1 w-2 h-2 rounded-full bg-danger ring-2 ring-sidebar"
+          title={`${label}: ${badge}`}
+        />
       )}
     </button>
   );
@@ -133,15 +178,24 @@ export const SidebarItem = ({
 export interface SidebarGroupProps {
   children: React.ReactNode;
   compact?: boolean;
+  navState?: NavigationState;
   className?: string;
 }
 
-export const SidebarGroup = ({ children, compact, className = '' }: SidebarGroupProps) => {
+export const SidebarGroup = ({ children, compact, navState, className = '' }: SidebarGroupProps) => {
+  const shell = useAppShell();
+  const effectiveNavState: NavigationState =
+    navState ?? (compact !== undefined ? (compact ? 'compact' : 'expanded') : shell.navState);
+  const isCompact = effectiveNavState === 'compact';
+
   return (
     <div className={`space-y-1 ${className}`}>
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child as React.ReactElement<any>, { compact });
+      {Children.map(children, (child) => {
+        if (isValidElement(child) && typeof child.type !== 'string') {
+          return cloneElement(child as React.ReactElement<any>, {
+            compact: isCompact,
+            navState: effectiveNavState,
+          });
         }
         return child;
       })}

@@ -1,3 +1,5 @@
+'use client';
+
 import * as React from 'react';
 import {
   RefreshCw,
@@ -10,15 +12,20 @@ import {
   Info,
   Package,
   FolderOpen,
-  FileText
+  FileText,
+  PanelLeft
 } from 'lucide-react';
 import { MenuBar, MenuBarItem } from './MenuBar';
 import { DropdownMenuItem } from './Menu';
+import { IconButton } from '../primitives/IconButton';
+import { useAppShell } from '../layout/AppShell';
 
 export interface TopMenuBarProps {
   brandName?: string;
   onHelpClick?: () => void;
   onUpdateClick?: () => void;
+  showSidebarToggle?: boolean;
+  onToggleSidebar?: () => void;
   className?: string;
 }
 
@@ -26,14 +33,40 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   brandName = "40Labs",
   onHelpClick,
   onUpdateClick,
+  showSidebarToggle = true,
+  onToggleSidebar,
   className = "",
 }) => {
+  const shell = useAppShell();
+
+  const handleToggle = () => {
+    if (onToggleSidebar) {
+      onToggleSidebar();
+    } else {
+      shell.toggleSidebar();
+    }
+  };
+
+  const isNavHidden = shell.navState === 'hidden';
+
   return (
     <div
-      className={`h-10 w-full bg-top-chrome border-b border-border flex items-center justify-between px-3 select-none ${className}`}
+      className={`h-10 w-full bg-top-chrome border-b border-border flex items-center justify-between px-2 select-none ${className}`}
       data-tauri-drag-region
     >
-      <div className="flex items-center gap-1 h-full">
+      <div className="flex items-center gap-1.5 h-full">
+        {showSidebarToggle && (
+          <IconButton
+            icon={<PanelLeft size={15} />}
+            onClick={handleToggle}
+            intent="ghost"
+            size="sm"
+            label={isNavHidden ? "Show sidebar navigation" : "Toggle sidebar navigation"}
+            title={isNavHidden ? "Show sidebar navigation (Ctrl+B)" : "Toggle sidebar navigation (Ctrl+B)"}
+            className={isNavHidden ? "text-action-primary hover:bg-surface-hover" : "text-text-muted hover:text-text-primary"}
+          />
+        )}
+
         <MenuBar>
           {/* 40Labs Brand Menu */}
           <MenuBarItem
