@@ -18,6 +18,10 @@ export const translations = {
     'dashboard.businessHealth': 'Afya ya Biashara',
     'dashboard.patientsInTrack': 'Wagonjwa Kwenye Ufuatiliaji',
     'dashboard.pendingOrders': 'Oda Zinazosubiri',
+    'dashboard.pending': 'Zinazosubiri',
+    'dashboard.labTests': 'Vipimo vya Lab',
+    'dashboard.nothingPending': 'Hakuna kinachosubiri. Yote yamekamilika.',
+    'dashboard.notAvailableForView': 'Haipatikani kwa mwonekano huu',
     'dashboard.quickActions': 'Hatua za Haraka',
     'dashboard.searchPlaceholder': 'Tafuta... (Ctrl+K)',
     'dashboard.newSale': 'Mauzo Mapya',
@@ -42,6 +46,30 @@ export const translations = {
     'dashboard.noData': 'Hakuna data inayopatikana',
     'dashboard.previousChart': 'Chati Iliyopita',
     'dashboard.nextChart': 'Chati Inayofuata',
+
+    // Metric names
+    'dashboard.metricSales': 'Mauzo',
+    'dashboard.metricProfit': 'Faida',
+    'dashboard.metricPurchases': 'Ununuzi',
+    'dashboard.metricStockValue': 'Thamani ya Akiba',
+
+    // Group By
+    'dashboard.groupBy': 'Kipengele / Wakati',
+    'dashboard.groupByTime': 'Wakati',
+    'dashboard.groupByCategory': 'Kipengele',
+
+    // Chart types
+    'dashboard.typeLine': 'Mstari',
+    'dashboard.typeArea': 'Eneo',
+    'dashboard.typeBar': 'Pau',
+    'dashboard.typeRing': 'Pete',
+    'dashboard.typePie': 'Mduara',
+    'dashboard.typeRadar': 'Rada',
+
+    // Periods
+    'dashboard.period7d': 'Siku 7',
+    'dashboard.period30d': 'Siku 30',
+    'dashboard.period90d': 'Siku 90',
   },
   en: {
     // Dashboard labels
@@ -60,6 +88,10 @@ export const translations = {
     'dashboard.businessHealth': 'Business Health',
     'dashboard.patientsInTrack': 'Patients in Track',
     'dashboard.pendingOrders': 'Pending Orders',
+    'dashboard.pending': 'Pending',
+    'dashboard.labTests': 'Lab Tests',
+    'dashboard.nothingPending': 'Nothing pending. All caught up.',
+    'dashboard.notAvailableForView': 'Not available for this view',
     'dashboard.quickActions': 'Quick Actions',
     'dashboard.searchPlaceholder': 'Search... (Ctrl+K)',
     'dashboard.newSale': 'New Sale',
@@ -84,6 +116,30 @@ export const translations = {
     'dashboard.noData': 'No data available',
     'dashboard.previousChart': 'Previous Chart',
     'dashboard.nextChart': 'Next Chart',
+
+    // Metric names
+    'dashboard.metricSales': 'Sales',
+    'dashboard.metricProfit': 'Profit',
+    'dashboard.metricPurchases': 'Purchases',
+    'dashboard.metricStockValue': 'Stock Value',
+
+    // Group By
+    'dashboard.groupBy': 'Group By',
+    'dashboard.groupByTime': 'Time',
+    'dashboard.groupByCategory': 'Category',
+
+    // Chart types
+    'dashboard.typeLine': 'Line',
+    'dashboard.typeArea': 'Area',
+    'dashboard.typeBar': 'Bar',
+    'dashboard.typeRing': 'Ring',
+    'dashboard.typePie': 'Pie',
+    'dashboard.typeRadar': 'Radar',
+
+    // Periods
+    'dashboard.period7d': '7d',
+    'dashboard.period30d': '30d',
+    'dashboard.period90d': '90d',
   },
 } as const;
 
