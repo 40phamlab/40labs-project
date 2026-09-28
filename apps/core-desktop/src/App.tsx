@@ -24,6 +24,7 @@ import { LabScreen } from './features/laboratory/LabScreen';
 import { NotificationsScreen } from './features/notifications/NotificationsScreen';
 import { SchedulingScreen } from './features/scheduling/SchedulingScreen';
 import { ReportsScreen } from './features/reports/ReportsScreen';
+import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { ToastProvider } from './hooks/useToast';
 import './App.css';
 
@@ -48,6 +49,8 @@ export default function App() {
 
   const renderContent = () => {
     switch (activeScreen) {
+      case 'dashboard':
+        return <DashboardScreen />;
       case 'inventory':
         return <InventoryScreen />;
       case 'sales':

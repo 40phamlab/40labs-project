@@ -44,6 +44,9 @@ importers:
       '@40labs/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@40labs/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@40labs/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -159,6 +162,8 @@ importers:
         version: 19.2.8
 
   packages/design-tokens: {}
+
+  packages/i18n: {}
 
   packages/types: {}
 
