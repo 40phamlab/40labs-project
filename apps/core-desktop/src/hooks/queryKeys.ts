@@ -52,3 +52,8 @@ export const auditKeys = {
   list: () => [...auditKeys.lists()] as const,
   detail: (id: string) => [...auditKeys.all, 'detail', id] as const,
 };
+
+export const dashboardKeys = {
+  all: ['dashboard'] as const,
+  summary: () => [...dashboardKeys.all, 'summary'] as const,
+};

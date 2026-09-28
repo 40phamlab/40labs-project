@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Sale, Customer, MedicineWithInventory, SaleLine, FiscalReceipt } from '@40labs/types';
 import { salesApi, CreateSalePayload, usersApi, inventoryApi, customersApi } from '../api';
-import { salesKeys, inventoryKeys, labKeys, customerKeys } from './queryKeys';
+import { salesKeys, inventoryKeys, labKeys, customerKeys, dashboardKeys } from './queryKeys';
 
 export interface CartItem {
   inventoryItem: MedicineWithInventory;
@@ -75,6 +75,7 @@ export function useSales() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesKeys.all });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 

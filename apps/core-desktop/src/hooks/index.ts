@@ -9,3 +9,4 @@ export * from './useToast';
 export * from './useFiscalReceipts';
 export * from './useAuditLog';
 export * from './useReports';
+export * from './useDashboard';

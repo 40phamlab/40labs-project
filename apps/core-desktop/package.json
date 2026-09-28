@@ -12,6 +12,7 @@
   
   "dependencies": {
     "@40labs/design-tokens": "workspace:*",
+    "@40labs/i18n": "workspace:*",
     "@40labs/types": "workspace:*",
     "@40labs/ui-components": "workspace:*",
     "@tauri-apps/api": "^2",

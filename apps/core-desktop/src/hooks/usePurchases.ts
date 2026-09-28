@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PurchaseOrder, Supplier } from '@40labs/types';
 import { purchasesApi, CreatePurchaseOrderLine } from '../api';
-import { purchaseKeys } from './queryKeys';
+import { purchaseKeys, dashboardKeys } from './queryKeys';
 
 export type { CreatePurchaseOrderLine };
 
@@ -39,6 +39,7 @@ export function usePurchases() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -48,6 +49,7 @@ export function usePurchases() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -57,6 +59,7 @@ export function usePurchases() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -66,6 +69,7 @@ export function usePurchases() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: purchaseKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 

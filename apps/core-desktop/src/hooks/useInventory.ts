@@ -7,7 +7,7 @@ import {
   RecordStockActionPayload,
   StockActionType,
 } from '../api';
-import { inventoryKeys } from './queryKeys';
+import { inventoryKeys, dashboardKeys } from './queryKeys';
 
 export type { AddStockPayload, RecordStockActionPayload, StockActionType };
 
@@ -41,6 +41,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -50,6 +51,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -63,6 +65,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -72,6 +75,7 @@ export function useInventory() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 

@@ -9,7 +9,7 @@ import type {
   LabSampleStatus,
 } from '@40labs/types';
 import { labApi, usersApi, auditApi, CreateLabOrderPayload } from '../api';
-import { labKeys } from './queryKeys';
+import { labKeys, dashboardKeys } from './queryKeys';
 
 export type { CreateLabOrderPayload };
 
@@ -93,6 +93,7 @@ export function useLab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: labKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -102,6 +103,7 @@ export function useLab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: labKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -111,6 +113,7 @@ export function useLab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: labKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -120,6 +123,7 @@ export function useLab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: labKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -139,6 +143,7 @@ export function useLab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: labKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 

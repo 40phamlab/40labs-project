@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Customer } from '@40labs/types';
 import { customersApi, AddCustomerPayload, UpdateCustomerPayload } from '../api';
-import { customerKeys } from './queryKeys';
+import { customerKeys, dashboardKeys } from './queryKeys';
 
 export type { AddCustomerPayload, UpdateCustomerPayload };
 
@@ -28,6 +28,7 @@ export function useCustomers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -37,6 +38,7 @@ export function useCustomers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -46,6 +48,7 @@ export function useCustomers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
@@ -55,6 +58,7 @@ export function useCustomers() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: customerKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     },
   });
 
