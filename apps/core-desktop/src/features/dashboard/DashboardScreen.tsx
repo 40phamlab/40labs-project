@@ -28,7 +28,7 @@ export const DashboardScreen: React.FC = () => {
 
   if (isLoading || !summary) {
     return (
-      <div className="p-8 max-w-[1600px] mx-auto space-y-6">
+      <div className="p-8 max-w-[1600px] mx-auto space-y-6 h-full overflow-y-auto">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-24 w-full" />
@@ -46,7 +46,7 @@ export const DashboardScreen: React.FC = () => {
 
   if (isError) {
     return (
-      <div className="p-8 max-w-[1600px] mx-auto">
+      <div className="p-8 max-w-[1600px] mx-auto h-full overflow-y-auto">
         <Alert intent="danger" title={t('dashboard.errorLoading')}>
           <div className="flex items-center justify-between">
             <span>{error instanceof Error ? error.message : String(error)}</span>
@@ -64,42 +64,44 @@ export const DashboardScreen: React.FC = () => {
   }
 
   return (
-    <DashboardGrid>
-      {/* Main Column (~9 cols) */}
-      <DashboardSection colSpan={9} className="space-y-6">
-        {/* KPI Rows */}
-        <KPIRows summary={summary} />
+    <div className="h-full w-full overflow-y-auto">
+      <DashboardGrid>
+        {/* Main Column (~9 cols) */}
+        <DashboardSection colSpan={9} className="space-y-6">
+          {/* KPI Rows */}
+          <KPIRows summary={summary} />
 
-        {/* Overview Chart Panel */}
-        <OverviewChartPanel summary={summary} />
+          {/* Overview Chart Panel */}
+          <OverviewChartPanel summary={summary} />
 
-        {/* Bottom Row: Business Health + Patients in Track */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <BusinessHealthPanel summary={summary} />
-          <PatientsInTrackPanel patients={summary.patientsInTrack} />
-        </div>
-      </DashboardSection>
+          {/* Bottom Row: Business Health + Patients in Track */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <BusinessHealthPanel summary={summary} />
+            <PatientsInTrackPanel patients={summary.patientsInTrack} />
+          </div>
+        </DashboardSection>
 
-      {/* Right Rail (~3 cols) */}
-      <DashboardSection colSpan={3} className="space-y-6">
-        {/* Global Search Input */}
-        <div className="relative">
-          <SearchInput
-            ref={searchInputRef}
-            placeholder={t('dashboard.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onClear={() => setSearchQuery('')}
-          />
-          {/* TODO: [reason: no global search index exists] [phase: post-MVP] */}
-        </div>
+        {/* Right Rail (~3 cols) */}
+        <DashboardSection colSpan={3} className="space-y-6">
+          {/* Global Search Input */}
+          <div className="relative">
+            <SearchInput
+              ref={searchInputRef}
+              placeholder={t('dashboard.searchPlaceholder')}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onClear={() => setSearchQuery('')}
+            />
+            {/* TODO: [reason: no global search index exists] [phase: post-MVP] */}
+          </div>
 
-        {/* Quick Actions Grid */}
-        <QuickActionsPanel />
+          {/* Quick Actions Grid */}
+          <QuickActionsPanel />
 
-        {/* Pending Orders Panel */}
-        <PendingPanel summary={summary} />
-      </DashboardSection>
-    </DashboardGrid>
+          {/* Pending Orders Panel */}
+          <PendingPanel summary={summary} />
+        </DashboardSection>
+      </DashboardGrid>
+    </div>
   );
 };

@@ -7,7 +7,7 @@ export interface DashboardGridProps {
 
 export const DashboardGrid = ({ children, className = '' }: DashboardGridProps) => {
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 p-6 overflow-y-auto ${className}`}>
+    <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 p-6 h-full w-full overflow-y-auto ${className}`}>
       {children}
     </div>
   );
