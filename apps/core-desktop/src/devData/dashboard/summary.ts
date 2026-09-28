@@ -4,6 +4,7 @@ import { initialSales } from '../sales';
 import { initialCustomers } from '../customers';
 import { initialPurchaseOrders } from '../purchases';
 import { initialLabOrders } from '../laboratory';
+import { ScreenId } from '../../stores/useNavStore';
 
 export interface PatientInTrack {
   customer_id: string;
@@ -11,6 +12,17 @@ export interface PatientInTrack {
   last_event: 'dispensed' | 'lab_ordered' | 'lab_ready';
   last_event_at: string;
   lab_order_id: string | null;
+}
+
+export type PendingItemKind = 'purchase_order' | 'lab_order' | 'held_sale';
+
+export interface PendingItem {
+  id: string;
+  kind: PendingItemKind;
+  title: string;
+  subtitle: string;
+  created_at: string;
+  target: ScreenId;
 }
 
 export interface DashboardSummary {
@@ -27,11 +39,19 @@ export interface DashboardSummary {
   emptyItems: number;
   expiredItems: number;
 
-  salesTrend: { date: string; total: number }[];
-  salesByCategory: { category: string; total: number }[];
-  pendingPurchaseOrders: number;
-  pendingLabOrders: number;
+  pending: {
+    purchaseOrders: PendingItem[];
+    labOrders: PendingItem[];
+    total: number;
+  };
   patientsInTrack: PatientInTrack[];
+
+  // Raw data sources for chart building and local recomputation
+  sales: Sale[];
+  inventoryItems: InventoryItem[];
+  medicines: Medicine[];
+  purchaseOrdersList: PurchaseOrder[];
+  labOrdersList: LabOrder[];
 }
 
 export interface GetDashboardSummaryOptions {
@@ -67,8 +87,6 @@ export function getInitialDashboardSummary(
   const transactions = sales.length;
 
   // 2. Profit computation
-  // (sell_price - cost_price) x qty
-  // cost_price is buy_price from matching inventoryItem
   let todayProfit = 0;
   let monthProfit = 0;
 
@@ -100,18 +118,50 @@ export function getInitialDashboardSummary(
     });
   });
 
-  // 3. Supplier Debt from unpaid / partial PurchaseOrders
-  const supplierDebt = purchaseOrders
-    .filter((po) => po.status === 'draft' || po.status === 'pending')
-    .reduce((sum, po) => sum + po.total_cost, 0);
+  // 3. Pending Purchase Orders (status in 'draft', 'pending')
+  const pendingPurchaseOrdersList = purchaseOrders.filter(
+    (po) => po.status === 'draft' || po.status === 'pending'
+  );
+  const supplierDebt = pendingPurchaseOrdersList.reduce((sum, po) => sum + po.total_cost, 0);
 
-  // 4. Customer Debt & Balance
+  const purchaseOrdersPendingItems: PendingItem[] = pendingPurchaseOrdersList.map((po) => ({
+    id: po.id,
+    kind: 'purchase_order',
+    title: `PO #${po.id.slice(0, 8)}`,
+    subtitle: `${po.lines.length} items • TZS ${po.total_cost.toLocaleString()}`,
+    created_at: po.created_at,
+    target: 'purchases',
+  }));
+
+  // 4. Pending Lab Orders (status in 'pending', 'sample_collected', 'result_entered'; report_ready/unsolved/cancelled out)
+  const pendingLabOrdersList = labOrders.filter(
+    (lo) => lo.status === 'pending' || lo.status === 'sample_collected' || lo.status === 'result_entered'
+  );
+  const labOrdersPendingItems: PendingItem[] = pendingLabOrdersList.map((lo) => ({
+    id: lo.id,
+    kind: 'lab_order',
+    title: `Lab #${lo.id.slice(0, 8)}`,
+    subtitle: `Status: ${lo.status}`,
+    created_at: lo.created_at,
+    target: 'lab',
+  }));
+
+  // GAP: Sale entity in packages/types lacks status / held status. No held sales found.
+  const heldSalesItems: PendingItem[] = [];
+
+  const pending = {
+    purchaseOrders: purchaseOrdersPendingItems,
+    labOrders: labOrdersPendingItems,
+    total: purchaseOrdersPendingItems.length + labOrdersPendingItems.length + heldSalesItems.length,
+  };
+
+  // 5. Customer Debt & Balance
   const customerDebt = customers.reduce(
     (sum, c) => sum + (c.outstanding_balance || 0),
     0
   );
 
-  // 5. Inventory Metrics
+  // 6. Inventory Metrics
   const inventoryValue = inventoryItems.reduce(
     (sum, item) => sum + item.sell_price * item.quantity,
     0
@@ -123,56 +173,7 @@ export function getInitialDashboardSummary(
     (i) => new Date(i.expiry_date) < now
   ).length;
 
-  // 6. Sales Trend (last 30 days daily)
-  const salesTrend: { date: string; total: number }[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
-    const dailyTotal = sales
-      .filter((s) => s.created_at.slice(0, 10) === dateStr)
-      .reduce((sum, s) => sum + s.grand_total, 0);
-    salesTrend.push({ date: dateStr, total: dailyTotal });
-  }
-
-  // 7. Sales By Category (last 30 days)
-  const thirtyDaysAgo = new Date(now);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().slice(0, 10);
-
-  const categoryTotals: Record<string, number> = {};
-
-  sales
-    .filter((s) => s.created_at.slice(0, 10) >= thirtyDaysAgoStr)
-    .forEach((s) => {
-      s.lines.forEach((line) => {
-        const med =
-          medicines.find((m) => m.id === line.medicine_id) ||
-          medicines.find(
-            (m) =>
-              m.id ===
-              inventoryItems.find((i) => i.id === line.inventory_item_id)?.medicine_id
-          );
-        const catName = med?.category || 'Uncategorized';
-        categoryTotals[catName] = (categoryTotals[catName] || 0) + line.subtotal;
-      });
-    });
-
-  const salesByCategory = Object.entries(categoryTotals)
-    .map(([category, total]) => ({
-      category,
-      total,
-    }))
-    .sort((a, b) => b.total - a.total);
-
-  // 8. Pending POs & Pending Lab Orders
-  const pendingPurchaseOrders = purchaseOrders.filter(
-    (po) => po.status === 'draft' || po.status === 'pending'
-  ).length;
-
-  const pendingLabOrders = labOrders.filter((lo) => lo.status === 'pending').length;
-
-  // 9. Patients in Track
+  // 7. Patients in Track
   const patientEventMap = new Map<string, PatientInTrack>();
 
   customers.forEach((cust) => {
@@ -249,10 +250,12 @@ export function getInitialDashboardSummary(
     categories,
     emptyItems,
     expiredItems,
-    salesTrend,
-    salesByCategory,
-    pendingPurchaseOrders,
-    pendingLabOrders,
+    pending,
     patientsInTrack,
+    sales,
+    inventoryItems,
+    medicines,
+    purchaseOrdersList: purchaseOrders,
+    labOrdersList: labOrders,
   };
 }

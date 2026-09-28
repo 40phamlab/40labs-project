@@ -1,6 +1,6 @@
 import { describe, test, expect, vi } from 'vitest';
 import { getInitialDashboardSummary } from './summary';
-import type { Sale, InventoryItem, Medicine, PurchaseOrder } from '@40labs/types';
+import type { Sale, InventoryItem, Medicine, PurchaseOrder, LabOrder } from '@40labs/types';
 
 describe('Dashboard Summary Calculations', () => {
   test('computes profit and monthlyProfit correctly using devData', () => {
@@ -224,117 +224,151 @@ describe('Dashboard Summary Calculations', () => {
     });
 
     expect(summary.supplierDebt).toBe(35000);
-    expect(summary.pendingPurchaseOrders).toBe(2);
+    expect(summary.pending.purchaseOrders.length).toBe(2);
   });
 
-  test('groups sales-by-category correctly over the last 30 days', () => {
-    const fixedNow = new Date('2026-03-31T12:00:00Z');
-
-    const medicines: Medicine[] = [
+  test('pending status filters: purchase orders (draft/pending in, completed/cancelled out) and lab orders (pending/sample_collected/result_entered in, report_ready/unsolved/cancelled out)', () => {
+    const testPOs: PurchaseOrder[] = [
       {
-        id: 'med_1',
+        id: 'po_1',
         workspace_id: 'ws_1',
         branch_id: 'br_1',
-        created_at: '2026-01-01',
-        updated_at: '2026-01-01',
-        name: 'Paracetamol',
-        generic_name: null,
-        category: 'Analgesics',
-        unit: 'pack',
-        is_controlled_substance: false,
-        requires_prescription: false,
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        supplier_id: 'sup_1',
+        status: 'draft',
+        lines: [],
+        total_cost: 1000,
+        approved_by_user_id: null,
+        submitted_at: null,
       },
       {
-        id: 'med_2',
+        id: 'po_2',
         workspace_id: 'ws_1',
         branch_id: 'br_1',
-        created_at: '2026-01-01',
-        updated_at: '2026-01-01',
-        name: 'Amoxicillin',
-        generic_name: null,
-        category: 'Antibiotics',
-        unit: 'pack',
-        is_controlled_substance: false,
-        requires_prescription: true,
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        supplier_id: 'sup_1',
+        status: 'pending',
+        lines: [],
+        total_cost: 2000,
+        approved_by_user_id: null,
+        submitted_at: null,
+      },
+      {
+        id: 'po_3',
+        workspace_id: 'ws_1',
+        branch_id: 'br_1',
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        supplier_id: 'sup_1',
+        status: 'completed',
+        lines: [],
+        total_cost: 3000,
+        approved_by_user_id: 'u1',
+        submitted_at: '2026-03-01',
+      },
+      {
+        id: 'po_4',
+        workspace_id: 'ws_1',
+        branch_id: 'br_1',
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        supplier_id: 'sup_1',
+        status: 'cancelled',
+        lines: [],
+        total_cost: 4000,
+        approved_by_user_id: null,
+        submitted_at: null,
       },
     ];
 
-    const sales: Sale[] = [
+    const testLabs: LabOrder[] = [
       {
-        id: 'sale_1',
+        id: 'lo_1',
         workspace_id: 'ws_1',
         branch_id: 'br_1',
-        created_at: '2026-03-25T10:00:00Z',
-        updated_at: '2026-03-25T10:00:00Z',
-        customer_id: null,
-        lines: [
-          {
-            id: 'l1',
-            inventory_item_id: 'inv_1',
-            medicine_id: 'med_1',
-            quantity: 2,
-            unit_price: 3000,
-            subtotal: 6000,
-            dispensed_by_user_id: 'user_1',
-            is_prescription_dispense: false,
-          },
-        ],
-        payment_method: 'cash',
-        discount_amount: 0,
-        discount_authorized_by_user_id: null,
-        tax_amount: 0,
-        grand_total: 6000,
-        currency: 'TZS',
-        synced_at: null,
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        customer_id: 'c_1',
+        sale_id: null,
+        ordered_by_user_id: 'u_1',
+        status: 'pending',
+        test_catalog_id: 't_1',
       },
       {
-        id: 'sale_2',
+        id: 'lo_2',
         workspace_id: 'ws_1',
         branch_id: 'br_1',
-        created_at: '2026-03-30T14:00:00Z',
-        updated_at: '2026-03-30T14:00:00Z',
-        customer_id: null,
-        lines: [
-          {
-            id: 'l2',
-            inventory_item_id: 'inv_2',
-            medicine_id: 'med_2',
-            quantity: 1,
-            unit_price: 5000,
-            subtotal: 5000,
-            dispensed_by_user_id: 'user_1',
-            is_prescription_dispense: true,
-          },
-          {
-            id: 'l3',
-            inventory_item_id: 'inv_1',
-            medicine_id: 'med_1',
-            quantity: 1,
-            unit_price: 3000,
-            subtotal: 3000,
-            dispensed_by_user_id: 'user_1',
-            is_prescription_dispense: false,
-          },
-        ],
-        payment_method: 'cash',
-        discount_amount: 0,
-        discount_authorized_by_user_id: null,
-        tax_amount: 0,
-        grand_total: 8000,
-        currency: 'TZS',
-        synced_at: null,
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        customer_id: 'c_1',
+        sale_id: null,
+        ordered_by_user_id: 'u_1',
+        status: 'sample_collected',
+        test_catalog_id: 't_1',
+      },
+      {
+        id: 'lo_3',
+        workspace_id: 'ws_1',
+        branch_id: 'br_1',
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        customer_id: 'c_1',
+        sale_id: null,
+        ordered_by_user_id: 'u_1',
+        status: 'result_entered',
+        test_catalog_id: 't_1',
+      },
+      {
+        id: 'lo_4',
+        workspace_id: 'ws_1',
+        branch_id: 'br_1',
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        customer_id: 'c_1',
+        sale_id: null,
+        ordered_by_user_id: 'u_1',
+        status: 'report_ready',
+        test_catalog_id: 't_1',
+      },
+      {
+        id: 'lo_5',
+        workspace_id: 'ws_1',
+        branch_id: 'br_1',
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        customer_id: 'c_1',
+        sale_id: null,
+        ordered_by_user_id: 'u_1',
+        status: 'unsolved',
+        test_catalog_id: 't_1',
+      },
+      {
+        id: 'lo_6',
+        workspace_id: 'ws_1',
+        branch_id: 'br_1',
+        created_at: '2026-03-01',
+        updated_at: '2026-03-01',
+        customer_id: 'c_1',
+        sale_id: null,
+        ordered_by_user_id: 'u_1',
+        status: 'cancelled',
+        test_catalog_id: 't_1',
       },
     ];
 
     const summary = getInitialDashboardSummary({
-      sales,
-      medicines,
-      nowDate: fixedNow,
+      purchaseOrders: testPOs,
+      labOrders: testLabs,
+      sales: [],
+      inventoryItems: [],
+      medicines: [],
+      customers: [],
     });
 
-    expect(summary.salesByCategory).toEqual([
-      { category: 'Analgesics', total: 9000 },
-      { category: 'Antibiotics', total: 5000 },
-    ]);
+    expect(summary.pending.purchaseOrders.map((p) => p.id)).toEqual(['po_1', 'po_2']);
+    expect(summary.pending.labOrders.map((l) => l.id)).toEqual(['lo_1', 'lo_2', 'lo_3']);
+    expect(summary.pending.total).toBe(5);
   });
 });
