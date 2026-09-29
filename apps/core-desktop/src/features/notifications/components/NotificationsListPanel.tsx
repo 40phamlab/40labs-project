@@ -9,15 +9,19 @@ import {
   IconButton,
 } from '@40labs/ui-components';
 import { ChevronDown, MailOpen, Share2, Trash2, Archive, CheckCheck, RefreshCw, Plus } from 'lucide-react';
-import type { Notification } from '@40labs/types';
+import type { Notification, MessageChannel } from '@40labs/types';
+import { CHANNEL_CONFIGS } from '@40labs/types';
 import { NotificationListItem } from './NotificationListItem';
+import { ChannelIcon } from './ChannelIndicator';
 
 export interface NotificationsListPanelProps {
   notifications: Notification[];
   selectedId?: string | null;
   categoryFilter?: string | null;
+  channelFilter?: 'all' | MessageChannel;
   onSelectNotification: (id: string) => void;
   onCategoryChange?: (category: string | null) => void;
+  onChannelChange?: (channel: 'all' | MessageChannel) => void;
   onArchiveNotification: (id: string) => void;
   onDeleteNotification: (id: string) => void;
   onMarkAllRead?: () => void;
@@ -37,12 +41,22 @@ const FILTER_OPTIONS: Array<{ label: string; value: string | null }> = [
   { label: 'Archived', value: 'archived' },
 ];
 
+const CHANNEL_FILTER_OPTIONS: Array<{ label: string; value: 'all' | MessageChannel }> = [
+  { label: 'All', value: 'all' },
+  { label: 'aMob', value: 'amob' },
+  { label: 'WhatsApp', value: 'whatsapp' },
+  { label: 'SMS', value: 'sms' },
+  { label: 'Email', value: 'email' },
+];
+
 export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
   notifications,
   selectedId,
   categoryFilter,
+  channelFilter = 'all',
   onSelectNotification,
   onCategoryChange,
+  onChannelChange,
   onArchiveNotification,
   onDeleteNotification,
   onMarkAllRead,
@@ -54,12 +68,14 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
   const [isFilterOpen, setIsFilterOpen] = React.useState(false);
   const [contextMenuId, setContextMenuId] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [localChannelFilter, setLocalChannelFilter] = React.useState<'all' | MessageChannel>('all');
 
-  // Filter notifications by active category filter and search query
-  const filteredNotifications = React.useMemo(() => {
+  const activeChannel = channelFilter !== undefined ? channelFilter : localChannelFilter;
+  const setActiveChannel = onChannelChange || setLocalChannelFilter;
+
+  // Compute base active list (excluding archived unless explicitly requested)
+  const baseActiveList = React.useMemo(() => {
     let list = notifications;
-
-    // Category filtering
     if (!categoryFilter) {
       list = list.filter((n) => n.status !== 'archived');
     } else if (categoryFilter === 'unread') {
@@ -68,6 +84,29 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
       list = list.filter((n) => n.status === 'archived');
     } else {
       list = list.filter((n) => n.category === categoryFilter && n.status !== 'archived');
+    }
+    return list;
+  }, [notifications, categoryFilter]);
+
+  // Channel counts based on active non-archived notifications (or current category filter)
+  const channelCounts = React.useMemo(() => {
+    const counts: Record<'all' | MessageChannel, number> = {
+      all: baseActiveList.length,
+      amob: baseActiveList.filter((n) => (n.channel || 'amob') === 'amob').length,
+      whatsapp: baseActiveList.filter((n) => n.channel === 'whatsapp').length,
+      sms: baseActiveList.filter((n) => n.channel === 'sms').length,
+      email: baseActiveList.filter((n) => n.channel === 'email').length,
+    };
+    return counts;
+  }, [baseActiveList]);
+
+  // Filter notifications by channel and search query
+  const filteredNotifications = React.useMemo(() => {
+    let list = baseActiveList;
+
+    // Channel filtering
+    if (activeChannel !== 'all') {
+      list = list.filter((n) => (n.channel || 'amob') === activeChannel);
     }
 
     // Search filtering
@@ -82,7 +121,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
     }
 
     return list;
-  }, [notifications, categoryFilter, searchQuery]);
+  }, [baseActiveList, activeChannel, searchQuery]);
 
   const currentFilterLabel =
     FILTER_OPTIONS.find((opt) => opt.value === categoryFilter)?.label ||
@@ -91,6 +130,10 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
   const getEmptyMessage = () => {
     if (searchQuery.trim()) {
       return `No notifications matching "${searchQuery}".`;
+    }
+    if (activeChannel !== 'all') {
+      const channelName = CHANNEL_CONFIGS[activeChannel]?.displayName || activeChannel;
+      return `No ${channelName} conversations\nThere are no conversations for this channel.`;
     }
     if (categoryFilter) {
       return `No notifications found under "${categoryFilter}".`;
@@ -151,7 +194,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
         </div>
       </div>
 
-      {/* Search and Filter Row */}
+      {/* Search and Category Filter Row */}
       <div className="flex flex-col gap-2 shrink-0">
         <SearchInput
           placeholder="Search inbox..."
@@ -162,7 +205,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
 
         {/* Category Filter Dropdown */}
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-text-muted font-medium">Filter:</span>
+          <span className="text-[11px] text-text-muted font-medium">Category:</span>
           <Dropdown
             isOpen={isFilterOpen}
             onClose={() => setIsFilterOpen(false)}
@@ -193,14 +236,63 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
         </div>
       </div>
 
+      {/* Channel Filter Segmented / Pill Bar with Counts */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 shrink-0 custom-scrollbar">
+        {CHANNEL_FILTER_OPTIONS.map((opt) => {
+          const isActive = activeChannel === opt.value;
+          const count = channelCounts[opt.value];
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setActiveChannel(opt.value)}
+              className={`
+                flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors shrink-0 border
+                ${
+                  isActive
+                    ? 'bg-primary text-white border-primary shadow-2xs font-bold'
+                    : 'bg-panel-strong/40 text-text-muted hover:text-text border-border/30 hover:bg-panel-strong'
+                }
+              `}
+            >
+              {opt.value !== 'all' && <ChannelIcon channel={opt.value} size={11} className={isActive ? 'text-white' : ''} />}
+              <span>{opt.label}</span>
+              <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-white/20 text-white' : 'bg-panel border border-border/30 text-text-muted'}`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Notifications List */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar flex flex-col gap-1.5">
         {filteredNotifications.length === 0 ? (
           <Panel
             variant="flat"
-            className="p-6 text-center border border-dashed border-border/40 rounded-card my-auto"
+            className="p-6 text-center border border-dashed border-border/40 rounded-card my-auto flex flex-col items-center gap-2"
           >
-            <p className="text-xs text-text-muted">{getEmptyMessage()}</p>
+            <p className="text-xs font-bold text-text">
+              {activeChannel !== 'all'
+                ? `No ${CHANNEL_CONFIGS[activeChannel]?.displayName || activeChannel} conversations`
+                : 'No conversations found'}
+            </p>
+            <p className="text-[11px] text-text-muted">
+              {activeChannel !== 'all'
+                ? 'There are no conversations for this channel.'
+                : getEmptyMessage()}
+            </p>
+            {activeChannel !== 'all' && (
+              <Button
+                type="button"
+                intent="neutral"
+                size="sm"
+                onClick={() => setActiveChannel('all')}
+                className="mt-1 h-7 text-xs"
+              >
+                Return to All Channels
+              </Button>
+            )}
           </Panel>
         ) : (
           filteredNotifications.map((item) => {

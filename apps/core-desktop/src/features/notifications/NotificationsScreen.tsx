@@ -5,6 +5,7 @@ import {
   ConfirmDialog,
 } from '@40labs/ui-components';
 import { Mail } from 'lucide-react';
+import type { MessageChannel } from '@40labs/types';
 import { NotificationsListPanel } from './components/NotificationsListPanel';
 import { NotificationDetailPanel } from './components/NotificationDetailPanel';
 import { NewConversationModal, ContactOption } from './components/NewConversationModal';
@@ -25,6 +26,7 @@ export const NotificationsScreen: React.FC = () => {
   } = useNotifications();
 
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
+  const [channelFilter, setChannelFilter] = React.useState<'all' | MessageChannel>('all');
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const [archiveTargetId, setArchiveTargetId] = React.useState<string | null>(null);
   const [isNewConversationOpen, setIsNewConversationOpen] = React.useState(false);
@@ -77,12 +79,13 @@ export const NotificationsScreen: React.FC = () => {
   );
 
   const handleStartNewConversation = React.useCallback(
-    async (contact: ContactOption, initialMessage: string) => {
+    async (contact: ContactOption, initialMessage: string, channel: MessageChannel) => {
       const newNotif = await createNotification({
         sender_name: contact.name,
         sender_address: contact.identifier,
         body: initialMessage || `Hello ${contact.name}, starting new conversation workflow.`,
         category: contact.type === 'Customer' || contact.type === 'Patient' ? 'customers' : 'business',
+        channel,
       });
       if (newNotif && newNotif.id) {
         setSelectedId(newNotif.id);
@@ -103,8 +106,10 @@ export const NotificationsScreen: React.FC = () => {
               notifications={notifications}
               selectedId={selectedId}
               categoryFilter={categoryFilter}
+              channelFilter={channelFilter}
               onSelectNotification={handleSelectNotification}
               onCategoryChange={setCategoryFilter}
+              onChannelChange={setChannelFilter}
               onArchiveNotification={(id) => setArchiveTargetId(id)}
               onDeleteNotification={(id) => setDeleteTargetId(id)}
               onMarkAllRead={handleMarkAllRead}

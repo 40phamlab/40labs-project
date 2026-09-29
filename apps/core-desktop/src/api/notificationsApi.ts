@@ -1,4 +1,4 @@
-import type { Notification } from '@40labs/types';
+import type { Notification, MessageChannel } from '@40labs/types';
 import { initialNotifications, WORKSPACE_ID, BRANCH_ID } from '../devData';
 
 export interface CreateNotificationPayload {
@@ -6,6 +6,7 @@ export interface CreateNotificationPayload {
   sender_name: string;
   sender_address?: string;
   body: string;
+  channel?: MessageChannel;
 }
 
 let notificationsStore: Notification[] = [...initialNotifications];
@@ -32,6 +33,7 @@ export const notificationsApi = {
       subject: `${payload.category.toUpperCase()} Notification`,
       body: payload.body,
       status: 'unread',
+      channel: payload.channel || 'amob',
       related_entity_type: null,
       related_entity_id: null,
       received_at: now,

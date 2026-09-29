@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Avatar } from '@40labs/ui-components';
 import type { Notification } from '@40labs/types';
+import { ChannelIcon } from './ChannelIndicator';
 
 export interface NotificationListItemProps {
   notification: Notification;
@@ -112,6 +113,8 @@ export const NotificationListItem: React.FC<NotificationListItemProps> = ({
           </span>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Channel Icon */}
+            <ChannelIcon channel={notification.channel || 'amob'} size={13} />
             {isUnread && (
               <span
                 className="w-2 h-2 rounded-full bg-primary shrink-0"

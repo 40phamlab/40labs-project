@@ -8,8 +8,11 @@ import {
   Textarea,
 } from '@40labs/ui-components';
 import { X, UserCheck, MessageSquare, Send } from 'lucide-react';
+import type { MessageChannel } from '@40labs/types';
+import { CHANNEL_CONFIGS } from '@40labs/types';
 import { initialCustomers } from '../../../devData/customers/customers';
 import { initialUsers } from '../../../devData/users/staff';
+import { ChannelIcon } from './ChannelIndicator';
 
 export interface ContactOption {
   id: string;
@@ -79,10 +82,12 @@ const contactTypeBadgeVariants: Record<
   Organization: 'surface',
 };
 
+const CHANNELS: MessageChannel[] = ['amob', 'whatsapp', 'sms', 'email'];
+
 export interface NewConversationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartConversation: (contact: ContactOption, initialMessage: string) => Promise<void>;
+  onStartConversation: (contact: ContactOption, initialMessage: string, channel: MessageChannel) => Promise<void>;
 }
 
 export const NewConversationModal: React.FC<NewConversationModalProps> = ({
@@ -92,6 +97,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedContact, setSelectedContact] = React.useState<ContactOption | null>(null);
+  const [selectedChannel, setSelectedChannel] = React.useState<MessageChannel>('whatsapp');
   const [initialMessage, setInitialMessage] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -99,13 +105,14 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
     if (!isOpen) {
       setSearchQuery('');
       setSelectedContact(null);
+      setSelectedChannel('whatsapp');
       setInitialMessage('');
       setIsSubmitting(false);
     }
   }, [isOpen]);
 
   const filteredContacts = React.useMemo(() => {
-    if (!searchQuery.trim()) return ALL_CONTACTS.slice(0, 8); // Show recent/suggested
+    if (!searchQuery.trim()) return ALL_CONTACTS.slice(0, 8);
     const q = searchQuery.toLowerCase().trim();
     return ALL_CONTACTS.filter(
       (c) =>
@@ -122,7 +129,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
     if (!selectedContact) return;
     setIsSubmitting(true);
     try {
-      await onStartConversation(selectedContact, initialMessage.trim());
+      await onStartConversation(selectedContact, initialMessage.trim(), selectedChannel);
     } finally {
       setIsSubmitting(false);
     }
@@ -139,7 +146,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-bold text-text">New Conversation</h2>
-              <p className="text-[11px] text-text-muted">Select a recipient to start messaging</p>
+              <p className="text-[11px] text-text-muted">Select a recipient and channel to start messaging</p>
             </div>
           </div>
           <IconButton
@@ -183,6 +190,40 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             </div>
           )}
 
+          {/* Channel Selection */}
+          {selectedContact && (
+            <div className="flex flex-col gap-2 animate-fadeIn">
+              <label className="text-xs font-semibold text-text">Channel:</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {CHANNELS.map((ch) => {
+                  const cfg = CHANNEL_CONFIGS[ch];
+                  const isSelected = selectedChannel === ch;
+                  return (
+                    <button
+                      key={ch}
+                      type="button"
+                      onClick={() => setSelectedChannel(ch)}
+                      className={`
+                        flex items-center gap-2 p-2.5 rounded-card border transition-all cursor-pointer text-left
+                        ${
+                          isSelected
+                            ? 'bg-primary/15 border-primary shadow-2xs font-bold text-text'
+                            : 'bg-panel-strong/30 border-border/30 hover:bg-panel-strong/60 text-text-muted'
+                        }
+                      `}
+                    >
+                      <ChannelIcon channel={ch} size={16} />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-text truncate">{cfg.displayName}</span>
+                        <span className="text-[9px] text-text-muted truncate">{cfg.accessibleLabel}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Initial Message Input (Optional) */}
           {selectedContact && (
             <div className="flex flex-col gap-1.5 animate-fadeIn">
@@ -190,7 +231,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
               <Textarea
                 value={initialMessage}
                 onChange={(e) => setInitialMessage(e.target.value)}
-                placeholder="Type your first message to start the conversation..."
+                placeholder={`Type your first message via ${CHANNEL_CONFIGS[selectedChannel].displayName}...`}
                 className="text-xs min-h-[70px] max-h-[120px]"
               />
             </div>
@@ -202,7 +243,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
               {searchQuery.trim() ? 'Search Results' : 'Suggested & Recent Contacts'}
             </span>
 
-            <div className="flex flex-col gap-1 max-h-[240px] overflow-y-auto custom-scrollbar">
+            <div className="flex flex-col gap-1 max-h-[220px] overflow-y-auto custom-scrollbar">
               {filteredContacts.length === 0 ? (
                 <div className="p-6 text-center text-xs text-text-muted border border-dashed border-border/40 rounded-card">
                   No contacts found matching "{searchQuery}".

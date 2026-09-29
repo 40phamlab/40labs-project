@@ -1,4 +1,5 @@
 import { BaseEntity, BusinessId, ISODateString } from './common';
+import { MessageChannel } from './channel';
 
 export type NotificationCategory = 'gov' | 'customers' | 'marketing' | 'business';
 export type NotificationSourceType = 'system' | 'remote';
@@ -12,6 +13,7 @@ export interface Notification extends BaseEntity {
   subject: string;
   body: string;
   status: NotificationStatus;
+  channel: MessageChannel;
   related_entity_type: string | null; // optional deep link, e.g. "PurchaseOrder"
   related_entity_id: string | null;
   received_at: ISODateString;
