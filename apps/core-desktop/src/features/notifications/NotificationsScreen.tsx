@@ -1,16 +1,12 @@
 import * as React from 'react';
 import {
   PageViewport,
-  PageToolbar,
   PageContent,
   ConfirmDialog,
-  IconButton,
-  Button,
 } from '@40labs/ui-components';
-import { RefreshCw, CheckCheck } from 'lucide-react';
+import { Mail } from 'lucide-react';
 import { NotificationsListPanel } from './components/NotificationsListPanel';
 import { NotificationDetailPanel } from './components/NotificationDetailPanel';
-import { NotificationsOverviewPanel } from './components/NotificationsOverviewPanel';
 import { useNotifications } from '../../hooks/useNotifications';
 
 export const NotificationsScreen: React.FC = () => {
@@ -79,35 +75,11 @@ export const NotificationsScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      {/* Page Toolbar */}
-      <PageToolbar
-        right={
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              intent="neutral"
-              size="sm"
-              leftIcon={<CheckCheck size={14} />}
-              onClick={handleMarkAllRead}
-            >
-              Mark All as Read
-            </Button>
-            <IconButton
-              icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-              label="Refresh notifications"
-              intent="ghost"
-              size="sm"
-              onClick={() => refetch()}
-            />
-          </div>
-        }
-      />
-
-      {/* Content */}
+      {/* Content Area - Starts directly at top boundary, removing unnecessary vertical header space */}
       <PageContent scrollable={false} variant="transparent" padding="none">
-        <div className="flex flex-row gap-3.5 w-full h-full overflow-hidden">
-          {/* Left List Pane */}
-          <div className="w-[280px] lg:w-[320px] shrink-0 h-full overflow-hidden">
+        <div className="flex flex-row gap-3 w-full h-full overflow-hidden p-3">
+          {/* Left List Pane (Inbox / Conversations List) */}
+          <div className="w-[300px] lg:w-[350px] shrink-0 h-full overflow-hidden">
             <NotificationsListPanel
               notifications={notifications}
               selectedId={selectedId}
@@ -116,10 +88,13 @@ export const NotificationsScreen: React.FC = () => {
               onCategoryChange={setCategoryFilter}
               onArchiveNotification={(id) => setArchiveTargetId(id)}
               onDeleteNotification={(id) => setDeleteTargetId(id)}
+              onMarkAllRead={handleMarkAllRead}
+              isLoading={isLoading}
+              onRefresh={() => refetch()}
             />
           </div>
 
-          {/* Right Detail / Overview Pane */}
+          {/* Right Main Conversation Workspace */}
           <div className="flex-1 h-full overflow-hidden">
             {selectedNotification ? (
               <NotificationDetailPanel
@@ -130,12 +105,14 @@ export const NotificationsScreen: React.FC = () => {
                 onSendReply={handleSendReply}
               />
             ) : (
-              <div className="h-full overflow-y-auto pr-1 custom-scrollbar">
-                <NotificationsOverviewPanel
-                  notifications={notifications}
-                  activeCategory={categoryFilter}
-                  onSelectCategory={setCategoryFilter}
-                />
+              <div className="w-full h-full flex flex-col items-center justify-center bg-panel border border-border/40 rounded-card p-8 text-center shadow-xs">
+                <div className="w-14 h-14 rounded-full bg-panel-strong/60 flex items-center justify-center text-text-muted mb-3 border border-border/30">
+                  <Mail size={28} />
+                </div>
+                <h3 className="text-sm font-bold text-text mb-1">No Conversation Selected</h3>
+                <p className="text-xs text-text-muted max-w-md">
+                  Select a conversation from the inbox list on the left to view message history, details, and reply.
+                </p>
               </div>
             )}
           </div>
