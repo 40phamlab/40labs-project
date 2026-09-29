@@ -55,3 +55,4 @@ export const initialMedicines: Medicine[] = [
     requires_prescription: false,
   },
 ];
+

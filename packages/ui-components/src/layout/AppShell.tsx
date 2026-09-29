@@ -44,8 +44,10 @@ export interface AppShellProps {
   /** Main application content viewport or PageViewport component */
   children: React.ReactNode;
   className?: string;
-  /** Minimum desktop width (default 1024px) */
+  /** Minimum desktop width (default 1000px) */
   minWidth?: number | string;
+  /** Minimum desktop height (default 650px) */
+  minHeight?: number | string;
   /** Navigation sidebar state */
   navState?: NavigationState;
   /** Initial navigation sidebar state when uncontrolled (default 'expanded') */
@@ -70,7 +72,8 @@ export function AppShell({
   sidebar,
   children,
   className = '',
-  minWidth = 1024,
+  minWidth = 1000,
+  minHeight = 650,
   navState: controlledNavState,
   defaultNavState = 'expanded',
   onNavStateChange,
@@ -156,12 +159,13 @@ export function AppShell({
   );
 
   const minWidthStyle = typeof minWidth === 'number' ? `${minWidth}px` : minWidth;
+  const minHeightStyle = typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
 
   return (
     <AppShellContext.Provider value={contextValue}>
       <div
         className={`flex flex-col h-screen w-screen bg-app-bg text-text-primary font-ui overflow-hidden select-none ${className}`}
-        style={{ minWidth: minWidthStyle }}
+        style={{ minWidth: minWidthStyle, minHeight: minHeightStyle }}
         data-nav-state={navState}
       >
         {/* Top Chrome Header */}

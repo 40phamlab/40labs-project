@@ -116,7 +116,7 @@ export const SchedulingScreen: React.FC = () => {
           {/* Two-Pane Row: List Panel (left) + Detail Panel (right) */}
           <div className="flex flex-row gap-3.5 flex-1 min-h-0 overflow-hidden">
             {/* List Panel */}
-            <div className="w-[360px] flex-shrink-0 h-full overflow-hidden rounded-card border border-border/50 bg-panel shadow-xs">
+            <div className="w-[300px] lg:w-[360px] shrink-0 h-full overflow-hidden rounded-card border border-border/50 bg-panel shadow-xs">
               <ScheduleListPanel
                 schedules={schedules}
                 selectedId={selectedId}

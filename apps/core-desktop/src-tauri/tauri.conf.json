@@ -16,6 +16,8 @@
         "title": "core-desktop",
         "width": 1200,
         "height": 800,
+        "minWidth": 1000,
+        "minHeight": 650,
         "decorations": false
       }
     ],

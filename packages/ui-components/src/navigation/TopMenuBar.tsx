@@ -51,10 +51,10 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
 
   return (
     <div
-      className={`h-10 w-full bg-top-chrome border-b border-border flex items-center justify-between px-2 select-none ${className}`}
+      className={`h-10 w-full bg-top-chrome flex items-center justify-between px-2 select-none ${className}`}
       data-tauri-drag-region
     >
-      <div className="flex items-center gap-1.5 h-full">
+      <div className="flex items-center gap-1.5 h-full min-w-0 flex-1">
         {showSidebarToggle && (
           <IconButton
             icon={<PanelLeft size={15} />}
@@ -158,7 +158,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
       </div>
 
       {/* System Status */}
-      <div className="flex items-center gap-2 pr-2 pointer-events-none">
+      <div className="hidden sm:flex items-center gap-2 pr-2 pointer-events-none shrink-0">
         <div className="flex items-center gap-1.5">
           <div className="w-1.5 h-1.5 rounded-full bg-action-primary" />
           <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Ready</span>
