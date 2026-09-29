@@ -16,16 +16,35 @@ import {
   Trash2,
   Send,
   MessageSquare,
+  Paperclip,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Mic,
+  FileText,
+  Video,
+  X,
+  Smile,
+  Camera,
+  User,
+  BarChart2,
 } from 'lucide-react';
 import type { Notification, NotificationCategory } from '@40labs/types';
 import { CAN_REPLY_BY_CATEGORY } from '../replyPolicy';
+
+export interface AttachmentItem {
+  id: string;
+  type: 'image' | 'file' | 'audio' | 'video' | 'link';
+  name: string;
+  size?: string;
+  url?: string;
+}
 
 export interface NotificationDetailPanelProps {
   notification?: Notification | null;
   onMarkAsRead?: (id: string) => void;
   onArchive?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onSendReply?: (id: string, replyText: string) => void;
+  onSendReply?: (id: string, replyText: string, attachments?: AttachmentItem[]) => void;
   className?: string;
 }
 
@@ -108,6 +127,21 @@ function parseConversationMessages(notification: Notification): MessageBubble[] 
   return messages;
 }
 
+const getAttachmentIcon = (type: string) => {
+  switch (type) {
+    case 'image':
+      return <ImageIcon size={13} className="text-primary" />;
+    case 'audio':
+      return <Mic size={13} className="text-accent" />;
+    case 'video':
+      return <Video size={13} className="text-warning" />;
+    case 'link':
+      return <LinkIcon size={13} className="text-info" />;
+    default:
+      return <FileText size={13} className="text-text-muted" />;
+  }
+};
+
 export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = ({
   notification,
   onMarkAsRead,
@@ -117,11 +151,15 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
   className = '',
 }) => {
   const [replyText, setReplyText] = React.useState('');
+  const [attachments, setAttachments] = React.useState<AttachmentItem[]>([]);
+  const [isAttachMenuOpen, setIsAttachMenuOpen] = React.useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
-  // Clear unsent reply text whenever notification selection changes
+  // Clear unsent reply text and attachments whenever notification selection changes
   React.useEffect(() => {
     setReplyText('');
+    setAttachments([]);
+    setIsAttachMenuOpen(false);
   }, [notification?.id]);
 
   // Scroll to bottom of message thread on new message or selection
@@ -150,18 +188,52 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
   const canReply = CAN_REPLY_BY_CATEGORY[notification.category] ?? false;
   const messages = parseConversationMessages(notification);
 
+  const handleAddAttachment = (type: 'image' | 'file' | 'audio' | 'video' | 'link') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    let name = 'document.pdf';
+    if (type === 'image') name = `photo_${Math.floor(Math.random() * 1000)}.png`;
+    if (type === 'audio') name = `voice_memo_${Math.floor(Math.random() * 1000)}.wav`;
+    if (type === 'video') name = `clip_${Math.floor(Math.random() * 1000)}.mp4`;
+    if (type === 'link') name = 'https://portal.40labs.io/ref';
+
+    setAttachments((prev) => [
+      ...prev,
+      {
+        id,
+        type,
+        name,
+        size: type === 'image' ? '1.2 MB' : type === 'file' ? '450 KB' : '2.4 MB',
+      },
+    ]);
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
   const handleSendReply = () => {
-    if (!replyText.trim() || !notification) return;
-    onSendReply?.(notification.id, replyText.trim());
+    if ((!replyText.trim() && attachments.length === 0) || !notification) return;
+
+    let fullText = replyText.trim();
+    if (attachments.length > 0) {
+      const attSummary = attachments.map((a) => `[Attachment: ${a.type} - ${a.name}]`).join('\n');
+      fullText = fullText ? `${fullText}\n${attSummary}` : attSummary;
+    }
+
+    onSendReply?.(notification.id, fullText, attachments);
     setReplyText('');
+    setAttachments([]);
+    setIsAttachMenuOpen(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendReply();
     }
   };
+
+  const hasContent = replyText.trim().length > 0 || attachments.length > 0;
 
   return (
     <div className={`w-full h-full flex flex-col bg-panel border border-border/40 rounded-card overflow-hidden shadow-xs ${className}`}>
@@ -306,26 +378,148 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Reply Composer at bottom */}
+      {/* WhatsApp-Style Simple Chat Input at bottom */}
       <div className="p-3 bg-panel-strong/30 border-t border-border/30 shrink-0">
         {canReply ? (
-          <div className="flex items-end gap-2 bg-panel p-2 rounded-card border border-border/40 shadow-2xs">
-            <Textarea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Write a reply... (Ctrl+Enter to send)"
-              className="flex-1 text-xs min-h-[50px] max-h-[110px] resize-none border-0 bg-transparent p-1 focus:ring-0 shadow-none"
-            />
-            <IconButton
-              icon={<Send size={15} />}
-              label="Send Reply"
-              intent="primary"
-              size="md"
-              disabled={!replyText.trim()}
-              onClick={handleSendReply}
-              className="shrink-0 rounded-full"
-            />
+          <div className="flex flex-col gap-2 relative">
+            {/* Attachment Preview Tray */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 p-2 bg-panel rounded-card border border-border/40 shadow-2xs">
+                {attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="flex items-center gap-1.5 bg-panel-strong/80 border border-border/30 px-2.5 py-1 rounded-full text-xs text-text shadow-2xs"
+                  >
+                    {getAttachmentIcon(att.type)}
+                    <span className="max-w-[140px] truncate">{att.name}</span>
+                    {att.size && <span className="text-[10px] text-text-muted">({att.size})</span>}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachment(att.id)}
+                      className="text-text-muted hover:text-danger ml-0.5 transition-colors"
+                      title="Remove attachment"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* WhatsApp Attachment Popup Menu */}
+            {isAttachMenuOpen && (
+              <div className="absolute bottom-full left-0 mb-2.5 w-52 bg-panel border border-border/40 rounded-card shadow-xl py-1.5 z-50 flex flex-col gap-0.5 animate-fadeIn">
+                <button
+                  type="button"
+                  onClick={() => { handleAddAttachment('file'); setIsAttachMenuOpen(false); }}
+                  className="flex items-center gap-3 px-3.5 py-2 text-xs text-text hover:bg-panel-strong/60 transition-colors text-left"
+                >
+                  <FileText size={16} className="text-primary" />
+                  <span>Document</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { handleAddAttachment('image'); setIsAttachMenuOpen(false); }}
+                  className="flex items-center gap-3 px-3.5 py-2 text-xs text-text hover:bg-panel-strong/60 transition-colors text-left"
+                >
+                  <ImageIcon size={16} className="text-accent" />
+                  <span>Photos & videos</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { handleAddAttachment('image'); setIsAttachMenuOpen(false); }}
+                  className="flex items-center gap-3 px-3.5 py-2 text-xs text-text hover:bg-panel-strong/60 transition-colors text-left"
+                >
+                  <Camera size={16} className="text-danger" />
+                  <span>Camera</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { handleAddAttachment('audio'); setIsAttachMenuOpen(false); }}
+                  className="flex items-center gap-3 px-3.5 py-2 text-xs text-text hover:bg-panel-strong/60 transition-colors text-left"
+                >
+                  <Mic size={16} className="text-warning" />
+                  <span>Audio</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { handleAddAttachment('file'); setIsAttachMenuOpen(false); }}
+                  className="flex items-center gap-3 px-3.5 py-2 text-xs text-text hover:bg-panel-strong/60 transition-colors text-left"
+                >
+                  <User size={16} className="text-info" />
+                  <span>Contact</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { handleAddAttachment('file'); setIsAttachMenuOpen(false); }}
+                  className="flex items-center gap-3 px-3.5 py-2 text-xs text-text hover:bg-panel-strong/60 transition-colors text-left"
+                >
+                  <BarChart2 size={16} className="text-success" />
+                  <span>Poll</span>
+                </button>
+              </div>
+            )}
+
+            {/* WhatsApp-Style Pill Input Bar */}
+            <div className="flex items-center gap-2 bg-panel px-3 py-2 rounded-full border border-border/40 shadow-2xs">
+              {/* Attachment Plus / Paperclip Button */}
+              <Tooltip content="Attach">
+                <IconButton
+                  icon={<Paperclip size={18} />}
+                  label="Attach"
+                  intent="ghost"
+                  size="sm"
+                  onClick={() => setIsAttachMenuOpen(!isAttachMenuOpen)}
+                  className="text-text-muted hover:text-text hover:bg-panel-strong/50 shrink-0"
+                />
+              </Tooltip>
+
+              {/* Emoji Button */}
+              <Tooltip content="Emoji">
+                <IconButton
+                  icon={<Smile size={18} />}
+                  label="Emoji"
+                  intent="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setReplyText((prev) => prev + ' 👍');
+                  }}
+                  className="text-text-muted hover:text-text hover:bg-panel-strong/50 shrink-0"
+                />
+              </Tooltip>
+
+              {/* Text Input */}
+              <Textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message"
+                className="flex-1 text-xs min-h-[36px] max-h-[100px] resize-none border-0 bg-transparent py-1 px-1 focus:ring-0 shadow-none leading-relaxed"
+              />
+
+              {/* Right Action: Send Button when typing/has attachment, Microphone when empty */}
+              {hasContent ? (
+                <IconButton
+                  icon={<Send size={14} className="text-white" />}
+                  label="Send message"
+                  intent="primary"
+                  size="md"
+                  onClick={handleSendReply}
+                  className="shrink-0 rounded-full w-8 h-8 bg-primary hover:bg-primary-hover shadow-xs flex items-center justify-center"
+                />
+              ) : (
+                <IconButton
+                  icon={<Mic size={18} />}
+                  label="Record voice note"
+                  intent="ghost"
+                  size="sm"
+                  onClick={() => {
+                    handleAddAttachment('audio');
+                  }}
+                  className="text-text-muted hover:text-text hover:bg-panel-strong/50 shrink-0"
+                />
+              )}
+            </div>
           </div>
         ) : (
           <p className="text-xs text-text-muted italic text-center py-1.5">
