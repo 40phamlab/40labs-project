@@ -68,21 +68,21 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
   return (
     <div
       className={`
-        flex flex-wrap items-center justify-between gap-4 px-4 py-3 bg-panel-strong border-t border-border text-xs
+        flex flex-wrap items-center justify-between gap-4 px-3.5 py-2.5 bg-surface-secondary border-t border-border-subtle text-xs
         ${className}
       `}
     >
       <div className="flex items-center gap-4 text-text-muted">
         {totalItems !== undefined && startItem !== undefined && endItem !== undefined ? (
           <span>
-            Showing <strong className="text-text">{startItem}</strong>–
-            <strong className="text-text">{endItem}</strong> of{' '}
-            <strong className="text-text">{totalItems}</strong> entries
+            Showing <strong className="text-text-primary">{startItem}</strong>–
+            <strong className="text-text-primary">{endItem}</strong> of{' '}
+            <strong className="text-text-primary">{totalItems}</strong> entries
           </span>
         ) : (
           <span>
-            Page <strong className="text-text">{currentPage}</strong> of{' '}
-            <strong className="text-text">{Math.max(1, totalPages)}</strong>
+            Page <strong className="text-text-primary">{currentPage}</strong> of{' '}
+            <strong className="text-text-primary">{Math.max(1, totalPages)}</strong>
           </span>
         )}
 
@@ -92,7 +92,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
             <select
               value={pageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="bg-panel border border-border rounded-input px-2 py-1 text-xs text-text focus:outline-none focus:border-primary cursor-pointer"
+              className="bg-surface-primary border border-border-default rounded-input px-2 py-0.5 text-xs text-text-primary focus:outline-none focus:border-border-focus cursor-pointer"
             >
               {pageSizeOptions.map((opt) => (
                 <option key={opt} value={opt}>
@@ -109,7 +109,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           type="button"
           disabled={currentPage <= 1}
           onClick={() => onPageChange(currentPage - 1)}
-          className="px-2.5 py-1 rounded-input bg-panel text-text-muted hover:text-text disabled:opacity-40 disabled:cursor-not-allowed border border-border text-xs transition-colors"
+          className="px-2.5 py-1 rounded-input bg-surface-primary text-text-muted hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed border border-border-default text-xs transition-colors"
         >
           Prev
         </button>
@@ -120,7 +120,7 @@ export const TablePagination: React.FC<TablePaginationProps> = ({
           type="button"
           disabled={currentPage >= totalPages}
           onClick={() => onPageChange(currentPage + 1)}
-          className="px-2.5 py-1 rounded-input bg-panel text-text-muted hover:text-text disabled:opacity-40 disabled:cursor-not-allowed border border-border text-xs transition-colors"
+          className="px-2.5 py-1 rounded-input bg-surface-primary text-text-muted hover:text-text-primary disabled:opacity-40 disabled:cursor-not-allowed border border-border-default text-xs transition-colors"
         >
           Next
         </button>
@@ -299,10 +299,10 @@ export function DataTable<T>({
   const isIndeterminate = selectedCount > 0 && selectedCount < data.length;
 
   return (
-    <div className={`w-full flex flex-col rounded-card border border-border bg-surface-strong overflow-hidden ${className}`}>
+    <div className={`w-full flex flex-col rounded-card border border-border-default bg-surface-primary overflow-hidden ${className}`}>
       {/* Batch Action Bar */}
       {batchActions && selectedCount > 0 && (
-        <div className="flex items-center justify-between px-4 py-2 bg-primary/10 border-b border-primary/20 text-xs text-primary font-medium">
+        <div className="flex items-center justify-between px-3.5 py-2 bg-surface-selected border-b border-border-default text-xs text-action-primary font-medium">
           <span>{selectedCount} row(s) selected</span>
           <div className="flex items-center gap-2">{batchActions}</div>
         </div>

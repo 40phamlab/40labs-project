@@ -50,7 +50,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           ref={ref}
           disabled={disabled}
           className={[
-            'w-full bg-surface-primary text-text-primary appearance-none',
+            'w-full bg-surface-primary text-text-primary appearance-none shadow-elevation-inset',
             'border rounded-input font-ui transition-all duration-150 ease-out',
             'focus:outline-none',
             'disabled:bg-surface-disabled disabled:text-text-disabled disabled:border-border-subtle disabled:cursor-not-allowed disabled:opacity-50',

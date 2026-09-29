@@ -6,7 +6,7 @@ import {
   Button,
   IconButton,
 } from '@40labs/ui-components';
-import { Calendar, Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import { Schedule, ScheduleCategory } from '@40labs/types';
 import { mockSchedules } from '../../lib/mockData';
 import { ScheduleCategoryStrip } from './ScheduleCategoryStrip';
@@ -65,19 +65,6 @@ export const SchedulingScreen: React.FC = () => {
     <PageViewport>
       {/* Top Toolbar */}
       <PageToolbar
-        left={
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center">
-              <Calendar size={18} />
-            </div>
-            <div>
-              <h1 className="font-heading text-sm font-bold text-text">Scheduling & Automation</h1>
-              <p className="text-xs text-text-muted">
-                Manage automated reports, patient refills, reminders, and regulatory syncs.
-              </p>
-            </div>
-          </div>
-        }
         right={
           <div className="flex items-center gap-2">
             <Button

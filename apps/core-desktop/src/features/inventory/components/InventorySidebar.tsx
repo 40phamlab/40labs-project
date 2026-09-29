@@ -58,7 +58,7 @@ export const InventorySidebar: React.FC<InventorySidebarProps> = ({
           )}
         </div>
         <SearchInput
-          placeholder="Search name, generic, batch..."
+          placeholder="Search by name, generic, or batch..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
           onClear={() => onSearchChange('')}

@@ -15,7 +15,7 @@ export interface FilterTabsProps {
 
 /**
  * FilterTabs component for dynamic filtering with optional counts.
- * Uses soft claymorphism tokens.
+ * Follows the 40Labs restrained skeuomorphic design language.
  */
 export const FilterTabs: React.FC<FilterTabsProps> = ({
   tabs,
@@ -25,20 +25,22 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
 }) => {
   return (
     <div
-      className={`flex items-center gap-1.5 p-1.5 bg-panel rounded-card elevation-flat ${className}`}
+      className={`inline-flex items-center gap-1 p-1 bg-surface-secondary border border-border-subtle rounded-input font-ui select-none ${className}`}
     >
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         return (
           <button
             key={tab.id}
+            type="button"
             onClick={() => onChange(tab.id)}
             className={`
-              relative flex items-center gap-2 px-4 py-2 rounded-input text-xs font-semibold transition-all duration-200
+              relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-input text-xs font-medium transition-all duration-150 select-none cursor-pointer
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring
               ${
                 isActive
-                  ? 'bg-panel-strong text-primary elevation-raised'
-                  : 'text-text-muted hover:text-text hover:bg-panel-strong/50'
+                  ? 'bg-surface-elevated text-text-primary border border-border-default shadow-sm font-semibold'
+                  : 'text-text-muted hover:text-text-primary hover:bg-surface-hover/50 border border-transparent'
               }
             `}
           >
@@ -46,11 +48,11 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
             {tab.count !== undefined && (
               <span
                 className={`
-                  inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-mono
+                  inline-flex items-center justify-center px-1.5 py-0.2 rounded-full text-[10px] font-mono leading-none
                   ${
                     isActive
-                      ? 'bg-primary text-surface'
-                      : 'bg-panel-strong text-text-muted'
+                      ? 'bg-action-primary/20 text-action-primary border border-action-primary/30 font-bold'
+                      : 'bg-surface-primary text-text-muted border border-border-subtle'
                   }
                 `}
               >

@@ -18,7 +18,7 @@ describe('InventoryScreen Integration', () => {
 
     // Wait for react-query to resolve and render items
     await waitFor(() => {
-      expect(screen.getByText(/Amoxicillin/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Amoxicillin/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -26,14 +26,14 @@ describe('InventoryScreen Integration', () => {
     renderWithProviders(<InventoryScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Amoxicillin/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Amoxicillin/i).length).toBeGreaterThan(0);
     });
 
     const searchInput = screen.getByPlaceholderText(/search by name, generic, or batch/i);
     await userEvent.type(searchInput, 'Paracetamol');
 
     await waitFor(() => {
-      expect(screen.getByText(/Paracetamol/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Paracetamol/i).length).toBeGreaterThan(0);
       expect(screen.queryByText(/Amoxicillin/i)).not.toBeInTheDocument();
     });
   });

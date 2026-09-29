@@ -102,7 +102,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           className={[
-            'w-full bg-surface-primary text-text-primary placeholder:text-text-muted/60',
+            'w-full bg-surface-primary text-text-primary placeholder:text-text-muted/60 shadow-elevation-inset',
             'border rounded-input font-ui transition-all duration-150 ease-out',
             'focus:outline-none',
             'disabled:bg-surface-disabled disabled:text-text-disabled disabled:border-border-subtle disabled:cursor-not-allowed disabled:opacity-50',

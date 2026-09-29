@@ -22,8 +22,8 @@ export interface KPITileProps {
 }
 
 const toneClasses: Record<KPITone, string> = {
-  default: 'text-text',
-  primary: 'text-primary',
+  default: 'text-text-primary',
+  primary: 'text-action-primary',
   accent: 'text-accent',
   danger: 'text-danger',
 };
@@ -44,31 +44,33 @@ export function KPITile({
     : value;
 
   return (
-    <div className={`bg-panel rounded-card p-4 elevation-raised border border-border/50 flex flex-col gap-1 text-text relative overflow-hidden group ${className}`}>
-      <div className="flex items-center justify-between mb-1">
+    <div className={`bg-panel rounded-card p-3.5 elevation-raised border border-border-default flex flex-col gap-1 text-text-primary relative overflow-hidden group ${className}`}>
+      <div className="flex items-center justify-between mb-0.5">
         <span className="font-ui text-[10px] font-bold uppercase tracking-widest text-text-muted">{title}</span>
-        <div className="text-text-muted group-hover:text-primary transition-colors">
-          {icon}
-        </div>
+        {icon && (
+          <div className="text-text-muted group-hover:text-action-primary transition-colors">
+            {icon}
+          </div>
+        )}
       </div>
 
       <div className="flex items-baseline gap-2">
-        <span className={['font-mono text-2xl font-bold', toneClasses[tone]].join(' ')}>
+        <span className={['font-mono text-xl font-bold tracking-tight', toneClasses[tone]].join(' ')}>
           {displayValue}
         </span>
         {trendPercentage !== undefined && (
-          <div className={`flex items-center gap-0.5 text-[10px] font-bold ${trendDirection === 'up' ? 'text-primary' : 'text-danger'}`}>
+          <div className={`flex items-center gap-0.5 text-[10px] font-bold ${trendDirection === 'up' ? 'text-action-primary' : 'text-danger'}`}>
             {trendDirection === 'up' ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
             {trendPercentage}%
           </div>
         )}
       </div>
 
-      {(subtext) && <span className="font-ui text-[10px] text-text-muted mt-1">{subtext}</span>}
+      {subtext && <span className="font-ui text-[10px] text-text-muted mt-0.5 leading-snug">{subtext}</span>}
 
       {/* Subtle background tone hint */}
-      <div className={`absolute bottom-0 left-0 right-0 h-1 opacity-20 ${
-        tone === 'primary' ? 'bg-primary' : tone === 'accent' ? 'bg-accent' : tone === 'danger' ? 'bg-danger' : 'bg-transparent'
+      <div className={`absolute bottom-0 left-0 right-0 h-0.5 opacity-30 ${
+        tone === 'primary' ? 'bg-action-primary' : tone === 'accent' ? 'bg-accent' : tone === 'danger' ? 'bg-danger' : 'bg-transparent'
       }`} />
     </div>
   );

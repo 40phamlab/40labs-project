@@ -17,17 +17,17 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    'bg-action-primary text-text-inverse hover:bg-action-primary-hover active:bg-action-primary-active border border-transparent shadow-sm',
+    'bg-action-primary text-text-inverse hover:bg-action-primary-hover active:bg-action-primary-active border border-transparent shadow-sm active:shadow-elevation-pressed active:translate-y-[0.5px]',
   secondary:
-    'bg-surface-elevated text-text-primary border border-border-default hover:border-border-strong hover:bg-surface-hover active:bg-surface-active shadow-sm',
+    'bg-surface-elevated text-text-primary border border-border-default hover:border-border-strong hover:bg-surface-hover active:bg-surface-active shadow-sm active:shadow-elevation-pressed active:translate-y-[0.5px]',
   neutral:
-    'bg-surface-secondary text-text-primary border border-border-subtle hover:border-border-default hover:bg-surface-hover active:bg-surface-active shadow-sm',
+    'bg-surface-secondary text-text-primary border border-border-subtle hover:border-border-default hover:bg-surface-hover active:bg-surface-active shadow-sm active:shadow-elevation-pressed active:translate-y-[0.5px]',
   danger:
-    'bg-danger text-text-primary hover:bg-danger/90 active:bg-danger/80 border border-transparent shadow-sm',
+    'bg-danger text-text-primary hover:bg-danger/90 active:bg-danger/80 border border-transparent shadow-sm active:shadow-elevation-pressed active:translate-y-[0.5px]',
   ghost:
-    'bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface-hover active:bg-surface-active border border-transparent',
+    'bg-transparent text-text-secondary hover:text-text-primary hover:bg-surface-hover active:bg-surface-active border border-transparent active:translate-y-[0.5px]',
   accent:
-    'bg-accent text-text-inverse hover:bg-accent/90 active:bg-accent/80 border border-transparent shadow-sm',
+    'bg-accent text-text-inverse hover:bg-accent/90 active:bg-accent/80 border border-transparent shadow-sm active:shadow-elevation-pressed active:translate-y-[0.5px]',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

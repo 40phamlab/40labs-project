@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {
   PageViewport,
-  PageHeader,
+  PageToolbar,
   PageContent,
   FilterTabs,
   Button,
@@ -85,10 +85,15 @@ export const ReportsScreen: React.FC = () => {
 
   return (
     <PageViewport>
-      <PageHeader
-        title="Reports & Analytics"
-        subtitle={categoryConfig.description || 'Aggregation, compliance tracking, and business metrics'}
-        actions={
+      <PageToolbar
+        left={
+          <FilterTabs
+            tabs={CATEGORY_TABS}
+            activeTabId={activeCategory}
+            onChange={(id) => setActiveCategory(id as ReportCategoryId)}
+          />
+        }
+        right={
           <div className="flex items-center gap-2">
             <PeriodSelector
               value={periodOption}
@@ -153,15 +158,6 @@ export const ReportsScreen: React.FC = () => {
       />
 
       <PageContent className="flex flex-col gap-6 p-6 overflow-y-auto">
-        {/* Category Pills */}
-        <div className="flex items-center justify-between">
-          <FilterTabs
-            tabs={CATEGORY_TABS}
-            activeTabId={activeCategory}
-            onChange={(id) => setActiveCategory(id as ReportCategoryId)}
-          />
-        </div>
-
         {/* 3× Chart Cards Row */}
         <ReportChartRow
           categoryId={activeCategory}

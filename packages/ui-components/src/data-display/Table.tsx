@@ -27,8 +27,8 @@ export const Table: React.FC<TableProps> = ({
   return (
     <div
       className={`
-        w-full overflow-x-auto rounded-card bg-surface-strong transition-all duration-150
-        ${bordered ? 'border border-border' : ''}
+        w-full overflow-x-auto rounded-card bg-surface-primary transition-all duration-150 custom-scrollbar
+        ${bordered ? 'border border-border-default' : ''}
         ${containerClassName}
       `}
     >
@@ -59,8 +59,8 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   return (
     <thead
       className={`
-        bg-panel-strong border-b border-border
-        ${sticky ? 'sticky top-0 z-10 bg-panel-strong' : ''}
+        bg-surface-secondary border-b border-border-default
+        ${sticky ? 'sticky top-0 z-10 bg-surface-secondary' : ''}
         ${className}
       `}
       {...props}
@@ -76,8 +76,8 @@ export const TableBody: React.FC<TableBodyProps> = ({ className = '', striped, .
   return (
     <tbody
       className={`
-        divide-y divide-border
-        ${striped ? '[&>tr:nth-child(even)]:bg-panel/30' : ''}
+        divide-y divide-border-subtle
+        ${striped ? '[&>tr:nth-child(even)]:bg-surface-secondary/40' : ''}
         ${className}
       `}
       {...props}
@@ -104,7 +104,7 @@ export const TableRow: React.FC<TableRowProps> = ({
     <tr
       className={`
         transition-colors duration-150
-        ${selected ? 'bg-primary/10 border-l-2 border-l-primary' : hoverable && !disabled ? 'hover:bg-panel/60' : ''}
+        ${selected ? 'bg-surface-selected border-l-2 border-action-primary' : hoverable && !disabled ? 'hover:bg-surface-hover/50' : ''}
         ${clickable && !disabled ? 'cursor-pointer select-none' : ''}
         ${disabled ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''}
         ${className}
@@ -145,14 +145,14 @@ export const TableCell: React.FC<TableCellProps> = ({
   }[align];
 
   const paddingClass = {
-    compact: 'px-3 py-1.5',
-    normal: 'px-4 py-3',
-    spacious: 'px-6 py-4',
+    compact: 'px-2.5 py-1.5',
+    normal: 'px-3.5 py-2.5',
+    spacious: 'px-5 py-3.5',
   }[actualDensity];
 
   const baseClasses = isHeader
     ? 'text-[10px] font-bold uppercase tracking-wider text-text-muted whitespace-nowrap select-none'
-    : 'text-xs text-text';
+    : 'text-xs text-text-primary';
 
   return (
     <Component
@@ -160,7 +160,7 @@ export const TableCell: React.FC<TableCellProps> = ({
         ${baseClasses}
         ${paddingClass}
         ${alignClass}
-        ${truncate ? 'truncate max-w-xs' : ''}
+        ${truncate ? 'truncate max-w-[220px]' : ''}
         ${className}
       `}
       {...props}
@@ -196,8 +196,8 @@ export const SortableHeader: React.FC<SortableHeaderProps> = ({
       isHeader
       align={align}
       className={`
-        cursor-pointer hover:text-text transition-colors select-none group
-        ${active ? 'text-primary font-extrabold' : ''}
+        cursor-pointer hover:text-text-primary transition-colors select-none group
+        ${active ? 'text-action-primary font-bold' : ''}
         ${className}
       `}
       onClick={onSort}
@@ -208,7 +208,7 @@ export const SortableHeader: React.FC<SortableHeaderProps> = ({
         <span
           className={`
             text-[10px] w-3 h-3 flex items-center justify-center transition-transform duration-150
-            ${active ? 'text-primary opacity-100 font-bold' : 'text-text-muted opacity-40 group-hover:opacity-100'}
+            ${active ? 'text-action-primary opacity-100 font-bold' : 'text-text-muted opacity-40 group-hover:opacity-100'}
           `}
         >
           {sortDirection === 'asc' ? '↑' : sortDirection === 'desc' ? '↓' : '↕'}

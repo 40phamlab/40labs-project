@@ -69,10 +69,10 @@ export function Chart<T extends Record<string, any> = Record<string, any>>({
   const resolvedSeries = React.useMemo<ChartSeries[]>(() => {
     if (series) {
       if (typeof series === 'string') {
-        return [{ dataKey: series }];
+        return [{ dataKey: series, name: series }];
       }
       if (Array.isArray(series)) {
-        return series.map((s) => (typeof s === 'string' ? { dataKey: s } : s));
+        return series.map((s) => (typeof s === 'string' ? { dataKey: s, name: s } : s));
       }
       return [series];
     }

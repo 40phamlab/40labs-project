@@ -103,7 +103,7 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Add New Stock Batch"
+      title="Add New Stock Item"
       size="lg"
       footer={
         <div className="flex justify-end gap-3 w-full">
