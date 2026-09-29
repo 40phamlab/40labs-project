@@ -28,6 +28,7 @@ import {
   User,
   BarChart2,
   AlertCircle,
+  ChevronLeft,
 } from 'lucide-react';
 import type { Notification, NotificationCategory, NotificationAttachment } from '@40labs/types';
 import { CHANNEL_CONFIGS } from '@40labs/types';
@@ -43,6 +44,7 @@ export interface NotificationDetailPanelProps {
   onArchive?: (id: string) => void;
   onDelete?: (id: string) => void;
   onSendReply?: (id: string, replyText: string, attachments?: AttachmentItem[]) => void;
+  onBack?: () => void;
   className?: string;
 }
 
@@ -151,6 +153,7 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
   onArchive,
   onDelete,
   onSendReply,
+  onBack,
   className = '',
 }) => {
   const [replyText, setReplyText] = React.useState('');
@@ -254,6 +257,16 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
       <div className="bg-panel-strong/50 flex flex-col gap-2 p-3.5 border-b border-border/30 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
+            {onBack && (
+              <IconButton
+                icon={<ChevronLeft size={16} />}
+                label="Back to inbox"
+                intent="ghost"
+                size="sm"
+                onClick={onBack}
+                className="shrink-0 text-text-muted hover:text-text -ml-1"
+              />
+            )}
             <Avatar name={notification.sender_name} tone={tone} size="md" />
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-2">

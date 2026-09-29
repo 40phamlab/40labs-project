@@ -30,6 +30,16 @@ export const NotificationsScreen: React.FC = () => {
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const [archiveTargetId, setArchiveTargetId] = React.useState<string | null>(null);
   const [isNewConversationOpen, setIsNewConversationOpen] = React.useState(false);
+  const [isNarrowScreen, setIsNarrowScreen] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsNarrowScreen(window.innerWidth < 900);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const selectedNotification = React.useMemo(() => {
     if (!selectedId) return null;
@@ -100,47 +110,81 @@ export const NotificationsScreen: React.FC = () => {
       {/* Content Area - Starts directly at top boundary */}
       <PageContent scrollable={false} variant="transparent" padding="none">
         <div className="flex flex-row gap-3 w-full h-full overflow-hidden p-3">
-          {/* Left List Pane (Inbox / Conversations List) */}
-          <div className="w-[300px] lg:w-[350px] shrink-0 h-full overflow-hidden">
-            <NotificationsListPanel
-              notifications={notifications}
-              selectedId={selectedId}
-              categoryFilter={categoryFilter}
-              channelFilter={channelFilter}
-              onSelectNotification={handleSelectNotification}
-              onCategoryChange={setCategoryFilter}
-              onChannelChange={setChannelFilter}
-              onArchiveNotification={(id) => setArchiveTargetId(id)}
-              onDeleteNotification={(id) => setDeleteTargetId(id)}
-              onMarkAllRead={handleMarkAllRead}
-              onNewConversation={() => setIsNewConversationOpen(true)}
-              isLoading={isLoading}
-              onRefresh={() => refetch()}
-            />
-          </div>
-
-          {/* Right Main Conversation Workspace */}
-          <div className="flex-1 h-full overflow-hidden">
-            {selectedNotification ? (
-              <NotificationDetailPanel
-                notification={selectedNotification}
-                onMarkAsRead={(id) => markAsRead(id)}
-                onArchive={(id) => archiveNotification(id)}
-                onDelete={(id) => setDeleteTargetId(id)}
-                onSendReply={handleSendReply}
-              />
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center bg-panel border border-border/40 rounded-card p-8 text-center shadow-xs">
-                <div className="w-14 h-14 rounded-full bg-panel-strong/60 flex items-center justify-center text-text-muted mb-3 border border-border/30">
-                  <Mail size={28} />
-                </div>
-                <h3 className="text-sm font-bold text-text mb-1">No Conversation Selected</h3>
-                <p className="text-xs text-text-muted max-w-md">
-                  Select a conversation from the inbox list on the left or click <strong className="text-text">+ New</strong> to start a new conversation.
-                </p>
+          {/* Responsive Layout: On narrow screens, show list OR detail. On wide screens, show both side-by-side. */}
+          {isNarrowScreen ? (
+            <div className="w-full h-full overflow-hidden">
+              {selectedNotification ? (
+                <NotificationDetailPanel
+                  notification={selectedNotification}
+                  onMarkAsRead={(id) => markAsRead(id)}
+                  onArchive={(id) => archiveNotification(id)}
+                  onDelete={(id) => setDeleteTargetId(id)}
+                  onSendReply={handleSendReply}
+                  onBack={() => setSelectedId(null)}
+                />
+              ) : (
+                <NotificationsListPanel
+                  notifications={notifications}
+                  selectedId={selectedId}
+                  categoryFilter={categoryFilter}
+                  channelFilter={channelFilter}
+                  onSelectNotification={handleSelectNotification}
+                  onCategoryChange={setCategoryFilter}
+                  onChannelChange={setChannelFilter}
+                  onArchiveNotification={(id) => setArchiveTargetId(id)}
+                  onDeleteNotification={(id) => setDeleteTargetId(id)}
+                  onMarkAllRead={handleMarkAllRead}
+                  onNewConversation={() => setIsNewConversationOpen(true)}
+                  isLoading={isLoading}
+                  onRefresh={() => refetch()}
+                />
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Left List Pane (Inbox / Conversations List) */}
+              <div className="w-[300px] lg:w-[350px] shrink-0 h-full overflow-hidden">
+                <NotificationsListPanel
+                  notifications={notifications}
+                  selectedId={selectedId}
+                  categoryFilter={categoryFilter}
+                  channelFilter={channelFilter}
+                  onSelectNotification={handleSelectNotification}
+                  onCategoryChange={setCategoryFilter}
+                  onChannelChange={setChannelFilter}
+                  onArchiveNotification={(id) => setArchiveTargetId(id)}
+                  onDeleteNotification={(id) => setDeleteTargetId(id)}
+                  onMarkAllRead={handleMarkAllRead}
+                  onNewConversation={() => setIsNewConversationOpen(true)}
+                  isLoading={isLoading}
+                  onRefresh={() => refetch()}
+                />
               </div>
-            )}
-          </div>
+
+              {/* Right Main Conversation Workspace */}
+              <div className="flex-1 h-full overflow-hidden">
+                {selectedNotification ? (
+                  <NotificationDetailPanel
+                    notification={selectedNotification}
+                    onMarkAsRead={(id) => markAsRead(id)}
+                    onArchive={(id) => archiveNotification(id)}
+                    onDelete={(id) => setDeleteTargetId(id)}
+                    onSendReply={handleSendReply}
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-panel border border-border/40 rounded-card p-8 text-center shadow-xs">
+                    <div className="w-14 h-14 rounded-full bg-panel-strong/60 flex items-center justify-center text-text-muted mb-3 border border-border/30">
+                      <Mail size={28} />
+                    </div>
+                    <h3 className="text-sm font-bold text-text mb-1">No Conversation Selected</h3>
+                    <p className="text-xs text-text-muted max-w-md">
+                      Select a conversation from the inbox list on the left or click <strong className="text-text">+ New</strong> to start a new conversation.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </PageContent>
 
