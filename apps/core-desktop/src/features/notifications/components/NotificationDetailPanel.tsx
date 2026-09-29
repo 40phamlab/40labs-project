@@ -29,18 +29,13 @@ import {
   BarChart2,
   AlertCircle,
 } from 'lucide-react';
-import type { Notification, NotificationCategory } from '@40labs/types';
+import type { Notification, NotificationCategory, NotificationAttachment } from '@40labs/types';
 import { CHANNEL_CONFIGS } from '@40labs/types';
 import { CAN_REPLY_BY_CATEGORY } from '../replyPolicy';
 import { ChannelBadge } from './ChannelIndicator';
+import { MessageRenderer } from './renderers/MessageRenderer';
 
-export interface AttachmentItem {
-  id: string;
-  type: 'image' | 'file' | 'audio' | 'video' | 'link';
-  name: string;
-  size?: string;
-  url?: string;
-}
+export interface AttachmentItem extends NotificationAttachment {}
 
 export interface NotificationDetailPanelProps {
   notification?: Notification | null;
@@ -84,6 +79,9 @@ interface MessageBubble {
   senderName: string;
   text: string;
   timestamp: string;
+  htmlContent?: string | null;
+  plainTextContent?: string | null;
+  attachments?: NotificationAttachment[];
 }
 
 function formatTime(isoString: string): string {
@@ -110,6 +108,9 @@ function parseConversationMessages(notification: Notification): MessageBubble[] 
     senderName: notification.sender_name,
     text: initialText,
     timestamp: initialTime,
+    htmlContent: notification.html_content,
+    plainTextContent: notification.plain_text_content,
+    attachments: notification.attachments,
   });
 
   for (let i = 1; i < parts.length; i += 2) {
@@ -193,13 +194,12 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
   const messages = parseConversationMessages(notification);
 
   const handleAddAttachment = (type: 'image' | 'file' | 'audio' | 'video' | 'link') => {
-    // Check capability
     if (
       (type === 'image' && !capabilities.images) ||
       ((type === 'file' || type === 'video') && !capabilities.files) ||
       (type === 'audio' && !capabilities.audio)
     ) {
-      return; // Capability restricted
+      return;
     }
 
     const id = Math.random().toString(36).substring(2, 9);
@@ -337,7 +337,7 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
         </div>
       </div>
 
-      {/* Continuous Message Thread Workspace (Primary Focus) */}
+      {/* Continuous Message Thread Workspace with Unified MessageRenderer */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col gap-4">
         {messages.map((msg) => {
           const isOutgoing = msg.sender === 'outgoing';
@@ -357,13 +357,20 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
               </div>
 
               <div
-                className={`p-3.5 rounded-2xl text-xs leading-relaxed whitespace-pre-wrap font-ui shadow-2xs ${
+                className={`p-3.5 rounded-2xl text-xs leading-relaxed font-ui shadow-2xs max-w-full overflow-hidden ${
                   isOutgoing
                     ? 'bg-primary/15 text-text border border-primary/30 rounded-tr-sm'
                     : 'bg-panel-strong/60 text-text border border-border/30 rounded-tl-sm'
                 }`}
               >
-                {msg.text}
+                <MessageRenderer
+                  content={msg.text}
+                  channel={notification.channel}
+                  contentType={notification.content_type}
+                  htmlContent={msg.htmlContent}
+                  plainTextContent={msg.plainTextContent}
+                  attachments={msg.attachments}
+                />
               </div>
             </div>
           );
@@ -396,7 +403,6 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
       <div className="p-3 bg-panel-strong/30 border-t border-border/30 shrink-0">
         {canReply ? (
           <div className="flex flex-col gap-2 relative">
-            {/* Capability Warning Banner if restricted */}
             {(!capabilities.images || !capabilities.files || !capabilities.audio) && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-warning/10 border border-warning/30 rounded text-[11px] text-text-muted">
                 <AlertCircle size={13} className="text-warning shrink-0" />
@@ -508,7 +514,6 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
 
             {/* WhatsApp-Style Pill Input Bar */}
             <div className="flex items-center gap-2 bg-panel px-3 py-2 rounded-full border border-border/40 shadow-2xs">
-              {/* Attachment Plus / Paperclip Button */}
               <Tooltip content={capabilities.images || capabilities.files ? 'Attach' : 'Attachments not supported on this channel'}>
                 <IconButton
                   icon={<Paperclip size={18} />}
@@ -520,7 +525,6 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
                 />
               </Tooltip>
 
-              {/* Emoji Button */}
               <Tooltip content="Emoji">
                 <IconButton
                   icon={<Smile size={18} />}
@@ -534,7 +538,6 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
                 />
               </Tooltip>
 
-              {/* Text Input */}
               <Textarea
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
@@ -543,7 +546,6 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
                 className="flex-1 text-xs min-h-[36px] max-h-[100px] resize-none border-0 bg-transparent py-1 px-1 focus:ring-0 shadow-none leading-relaxed"
               />
 
-              {/* Right Action: Send Button when typing/has attachment, Microphone when empty */}
               {hasContent ? (
                 <IconButton
                   icon={<Send size={14} className="text-white" />}
