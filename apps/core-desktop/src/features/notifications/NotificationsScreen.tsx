@@ -7,6 +7,7 @@ import {
 import { Mail } from 'lucide-react';
 import { NotificationsListPanel } from './components/NotificationsListPanel';
 import { NotificationDetailPanel } from './components/NotificationDetailPanel';
+import { NewConversationModal, ContactOption } from './components/NewConversationModal';
 import { useNotifications } from '../../hooks/useNotifications';
 
 export const NotificationsScreen: React.FC = () => {
@@ -20,11 +21,13 @@ export const NotificationsScreen: React.FC = () => {
     archiveNotification,
     deleteNotification,
     sendReply,
+    createNotification,
   } = useNotifications();
 
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
   const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
   const [archiveTargetId, setArchiveTargetId] = React.useState<string | null>(null);
+  const [isNewConversationOpen, setIsNewConversationOpen] = React.useState(false);
 
   const selectedNotification = React.useMemo(() => {
     if (!selectedId) return null;
@@ -73,9 +76,25 @@ export const NotificationsScreen: React.FC = () => {
     [sendReply]
   );
 
+  const handleStartNewConversation = React.useCallback(
+    async (contact: ContactOption, initialMessage: string) => {
+      const newNotif = await createNotification({
+        sender_name: contact.name,
+        sender_address: contact.identifier,
+        body: initialMessage || `Hello ${contact.name}, starting new conversation workflow.`,
+        category: contact.type === 'Customer' || contact.type === 'Patient' ? 'customers' : 'business',
+      });
+      if (newNotif && newNotif.id) {
+        setSelectedId(newNotif.id);
+      }
+      setIsNewConversationOpen(false);
+    },
+    [createNotification, setSelectedId]
+  );
+
   return (
     <PageViewport>
-      {/* Content Area - Starts directly at top boundary, removing unnecessary vertical header space */}
+      {/* Content Area - Starts directly at top boundary */}
       <PageContent scrollable={false} variant="transparent" padding="none">
         <div className="flex flex-row gap-3 w-full h-full overflow-hidden p-3">
           {/* Left List Pane (Inbox / Conversations List) */}
@@ -89,6 +108,7 @@ export const NotificationsScreen: React.FC = () => {
               onArchiveNotification={(id) => setArchiveTargetId(id)}
               onDeleteNotification={(id) => setDeleteTargetId(id)}
               onMarkAllRead={handleMarkAllRead}
+              onNewConversation={() => setIsNewConversationOpen(true)}
               isLoading={isLoading}
               onRefresh={() => refetch()}
             />
@@ -111,13 +131,20 @@ export const NotificationsScreen: React.FC = () => {
                 </div>
                 <h3 className="text-sm font-bold text-text mb-1">No Conversation Selected</h3>
                 <p className="text-xs text-text-muted max-w-md">
-                  Select a conversation from the inbox list on the left to view message history, details, and reply.
+                  Select a conversation from the inbox list on the left or click <strong className="text-text">+ New</strong> to start a new conversation.
                 </p>
               </div>
             )}
           </div>
         </div>
       </PageContent>
+
+      {/* New Conversation Modal */}
+      <NewConversationModal
+        isOpen={isNewConversationOpen}
+        onClose={() => setIsNewConversationOpen(false)}
+        onStartConversation={handleStartNewConversation}
+      />
 
       {/* Confirm Archive Dialog */}
       <ConfirmDialog

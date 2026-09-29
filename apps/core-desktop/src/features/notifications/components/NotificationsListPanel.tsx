@@ -8,7 +8,7 @@ import {
   SearchInput,
   IconButton,
 } from '@40labs/ui-components';
-import { ChevronDown, MailOpen, Share2, Trash2, Archive, Flag, CheckCheck, RefreshCw } from 'lucide-react';
+import { ChevronDown, MailOpen, Share2, Trash2, Archive, CheckCheck, RefreshCw, Plus } from 'lucide-react';
 import type { Notification } from '@40labs/types';
 import { NotificationListItem } from './NotificationListItem';
 
@@ -21,6 +21,7 @@ export interface NotificationsListPanelProps {
   onArchiveNotification: (id: string) => void;
   onDeleteNotification: (id: string) => void;
   onMarkAllRead?: () => void;
+  onNewConversation?: () => void;
   isLoading?: boolean;
   onRefresh?: () => void;
   className?: string;
@@ -45,6 +46,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
   onArchiveNotification,
   onDeleteNotification,
   onMarkAllRead,
+  onNewConversation,
   isLoading = false,
   onRefresh,
   className = '',
@@ -100,11 +102,27 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
     <div
       className={`flex flex-col h-full bg-panel border border-border/40 rounded-card p-3 overflow-hidden gap-2.5 ${className}`}
     >
-      {/* Header with Title and Actions */}
+      {/* Header with Title, New Button and Actions */}
       <div className="flex items-center justify-between shrink-0 pb-2 border-b border-border/30">
-        <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
-          Inbox ({filteredNotifications.length})
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
+            Inbox ({filteredNotifications.length})
+          </span>
+          {onNewConversation && (
+            <Tooltip content="Start new conversation">
+              <Button
+                type="button"
+                intent="primary"
+                size="sm"
+                onClick={onNewConversation}
+                className="h-6 px-2 text-[11px] font-semibold gap-1 shadow-2xs rounded-full"
+                leftIcon={<Plus size={12} />}
+              >
+                New
+              </Button>
+            </Tooltip>
+          )}
+        </div>
 
         <div className="flex items-center gap-1.5">
           {onMarkAllRead && (
@@ -247,19 +265,6 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
                     onDeleteNotification(item.id);
                   }}
                 />
-
-                <Tooltip
-                  content="Coming soon — Admin Web App moderation workflow required."
-                  position="right"
-                >
-                  <div className="w-full">
-                    <DropdownMenuItem
-                      label="Report"
-                      icon={<Flag size={14} />}
-                      disabled
-                    />
-                  </div>
-                </Tooltip>
               </Dropdown>
             );
           })
