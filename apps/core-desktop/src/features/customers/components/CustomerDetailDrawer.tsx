@@ -6,7 +6,7 @@ import {
   MoneyDisplay,
   Separator,
 } from '@40labs/ui-components';
-import { Customer } from '@40labs/types';
+import type { Customer } from '@40labs/types';
 
 interface CustomerDetailDrawerProps {
   customer: Customer | null;

@@ -1,4 +1,4 @@
-import { Schedule } from '@40labs/types';
+import type { Schedule } from '@40labs/types';
 import { WORKSPACE_ID, BRANCH_ID, nowIso, daysFromNowIso, daysAgoIso } from '../constants';
 
 export const mockSchedules: Schedule[] = [

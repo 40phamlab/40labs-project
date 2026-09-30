@@ -4,7 +4,7 @@ import { initialSales } from '../sales';
 import { initialCustomers } from '../customers';
 import { initialPurchaseOrders } from '../purchases';
 import { initialLabOrders } from '../laboratory';
-import { ScreenId } from '../../stores/useNavStore';
+import type { ScreenId } from '../../stores/useNavStore';
 
 export interface PatientInTrack {
   customer_id: string;

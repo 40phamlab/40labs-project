@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { AppShell, AppSidebarNav, TopMenuBar, PageViewport, PageContent } from '@40labs/ui-components';
 import { TitleBar } from './components/TitleBar';
-import { useNavStore, ScreenId } from './stores/useNavStore';
+import { useNavStore, type ScreenId } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
 import { SalesScreen } from './features/sales/SalesScreen';
 import { CustomersScreen } from './features/customers/CustomersScreen';
@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { id: 'scheduling', label: 'Scheduling', icon: <Calendar size={18} /> },
   { id: 'education', label: 'Education', icon: <GraduationCap size={18} /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
+  { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
 ];
 
 export default function App() {

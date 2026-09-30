@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Customer, MedicineWithInventory } from '@40labs/types';
+import type { Customer, MedicineWithInventory } from '@40labs/types';
 import {
   FilterTabs,
   EntityProfileHeader,

@@ -28,7 +28,7 @@ interface NavState {
 }
 
 export const useNavStore = create<NavState>((set, get) => ({
-  activeScreen: 'dashboard',
+  activeScreen: 'settings',
   setActiveScreen: (screen) => set({ activeScreen: screen }),
   sidebarState: 'expanded',
   lastVisibleState: 'expanded',

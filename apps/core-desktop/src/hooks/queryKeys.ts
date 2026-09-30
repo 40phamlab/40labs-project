@@ -81,3 +81,9 @@ export const devicesKeys = {
   lists: () => [...devicesKeys.all, 'list'] as const,
   list: () => [...devicesKeys.lists()] as const,
 };
+
+export const backupKeys = {
+  all: ['backup'] as const,
+  schedule: () => [...backupKeys.all, 'schedule'] as const,
+  history: () => [...backupKeys.all, 'history'] as const,
+};

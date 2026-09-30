@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Avatar, Button } from '@40labs/ui-components';
-import { Customer } from '@40labs/types';
+import type { Customer } from '@40labs/types';
 
 interface CustomerListRowProps {
   customer: Customer;

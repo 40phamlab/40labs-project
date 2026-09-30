@@ -1,5 +1,5 @@
 import type { Medicine, InventoryItem, MedicineWithInventory, StockAdjustment, AuditLogEntry } from '@40labs/types';
-import { initialMedicines, initialInventoryItems, initialStockAdjustments, WORKSPACE_ID, BRANCH_ID } from '../devData/index.ts';
+import { initialMedicines, initialInventoryItems, initialStockAdjustments, WORKSPACE_ID, BRANCH_ID } from '../devData';
 import { auditApi } from './auditApi';
 import { isUsingTauriIpc, invokeCommand } from './client';
 

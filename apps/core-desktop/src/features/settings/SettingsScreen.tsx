@@ -30,6 +30,8 @@ import { AppearancePanel } from './components/AppearancePanel';
 import { IntegrationsPanel } from './components/IntegrationsPanel';
 import { DevicesPanel } from './components/DevicesPanel';
 import { SecurityPanel } from './components/SecurityPanel';
+import { BackupPanel } from './components/BackupPanel';
+import { CompliancePanel } from './components/CompliancePanel';
 
 export type SettingsTab =
   | 'business'
@@ -164,14 +166,15 @@ export const SettingsScreen: React.FC = () => {
       return <SecurityPanel onNavigateToDevices={() => setActiveTab('devices')} />;
     }
 
-    const meta = SETTINGS_TAB_TITLES[activeTab];
-    return (
-      <PageContent
-        isEmpty
-        emptyTitle={`${meta.title}`}
-        emptyMessage={`${meta.subtitle} Coming in Phase 9B–9H.`}
-      />
-    );
+    if (activeTab === 'compliance') {
+      return <CompliancePanel />;
+    }
+
+    if (activeTab === 'backup') {
+      return <BackupPanel />;
+    }
+
+    return null;
   };
 
   return (
