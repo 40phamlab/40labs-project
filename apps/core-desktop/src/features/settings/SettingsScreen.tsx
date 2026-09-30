@@ -26,6 +26,7 @@ import { BusinessProfileForm } from './components/BusinessProfileForm';
 import { BranchesTable } from './components/BranchesTable';
 import { BranchFormModal } from './components/BranchFormModal';
 import { UsersRolesPanel } from './components/UsersRolesPanel';
+import { AppearancePanel } from './components/AppearancePanel';
 
 export type SettingsTab =
   | 'business'
@@ -136,6 +137,16 @@ export const SettingsScreen: React.FC = () => {
 
     if (activeTab === 'users-roles') {
       return <UsersRolesPanel />;
+    }
+
+    if (activeTab === 'appearance') {
+      return (
+        <AppearancePanel
+          business={business}
+          onToggle={handleSaveBusiness}
+          isLoading={isLoadingBusiness || isUpdatingBusiness}
+        />
+      );
     }
 
     const meta = SETTINGS_TAB_TITLES[activeTab];

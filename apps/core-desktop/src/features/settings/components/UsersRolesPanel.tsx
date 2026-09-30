@@ -11,7 +11,7 @@ import {
 } from '@40labs/ui-components';
 import { MoreVertical, Plus, Edit, Power } from 'lucide-react';
 import type { User } from '@40labs/types';
-import { useUsers } from '../../../hooks/useUsers';
+import { useUsers, type CreateUserPayload, type UpdateUserPayload } from '../../../hooks/useUsers';
 import { useBusiness } from '../../../hooks/useBusiness';
 import { UserFormModal } from './UserFormModal';
 
@@ -81,11 +81,11 @@ export const UsersRolesPanel: React.FC = () => {
 
   const { branches } = useBusiness();
 
-  const handleSaveUser = async (payload: any) => {
+  const handleSaveUser = async (payload: CreateUserPayload | UpdateUserPayload) => {
     if (selectedUserForEdit) {
-      await updateUser(selectedUserForEdit.id, payload);
+      await updateUser(selectedUserForEdit.id, payload as UpdateUserPayload);
     } else {
-      await createUser(payload);
+      await createUser(payload as CreateUserPayload);
     }
   };
 
