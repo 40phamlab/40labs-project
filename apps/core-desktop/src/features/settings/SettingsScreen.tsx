@@ -15,10 +15,17 @@ import {
   Lock,
   Database,
 } from 'lucide-react';
-import { useBusiness } from '../../hooks/useBusiness';
+import type { Branch } from '@40labs/types';
+import {
+  useBusiness,
+  type UpdateBusinessPayload,
+  type CreateBranchPayload,
+  type UpdateBranchPayload,
+} from '../../hooks/useBusiness';
 import { BusinessProfileForm } from './components/BusinessProfileForm';
 import { BranchesTable } from './components/BranchesTable';
 import { BranchFormModal } from './components/BranchFormModal';
+import { UsersRolesPanel } from './components/UsersRolesPanel';
 
 export type SettingsTab =
   | 'business'
@@ -82,19 +89,19 @@ export const SettingsScreen: React.FC = () => {
     closeBranchModal,
   } = useBusiness();
 
-  const handleSaveBusiness = async (payload: any) => {
+  const handleSaveBusiness = async (payload: UpdateBusinessPayload) => {
     await updateBusiness(payload);
   };
 
-  const handleSaveBranch = async (payload: any) => {
+  const handleSaveBranch = async (payload: CreateBranchPayload | UpdateBranchPayload) => {
     if (selectedBranchForEdit) {
-      await updateBranch(selectedBranchForEdit.id, payload);
+      await updateBranch(selectedBranchForEdit.id, payload as UpdateBranchPayload);
     } else {
-      await createBranch(payload);
+      await createBranch(payload as CreateBranchPayload);
     }
   };
 
-  const handleDeactivateBranch = async (branch: any) => {
+  const handleDeactivateBranch = async (branch: Branch) => {
     const newStatus = branch.status === 'active' ? 'inactive' : 'active';
     await updateBranch(branch.id, { status: newStatus });
   };
@@ -125,6 +132,10 @@ export const SettingsScreen: React.FC = () => {
           />
         </div>
       );
+    }
+
+    if (activeTab === 'users-roles') {
+      return <UsersRolesPanel />;
     }
 
     const meta = SETTINGS_TAB_TITLES[activeTab];

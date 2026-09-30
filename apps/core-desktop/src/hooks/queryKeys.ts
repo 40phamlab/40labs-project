@@ -63,3 +63,10 @@ export const businessKeys = {
   detail: () => [...businessKeys.all, 'detail'] as const,
   branches: () => [...businessKeys.all, 'branches'] as const,
 };
+
+export const usersKeys = {
+  all: ['users'] as const,
+  lists: () => [...usersKeys.all, 'list'] as const,
+  list: () => [...usersKeys.lists()] as const,
+  detail: (id: string) => [...usersKeys.all, 'detail', id] as const,
+};

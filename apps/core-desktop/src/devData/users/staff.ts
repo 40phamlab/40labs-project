@@ -13,6 +13,8 @@ export const initialUsers: User[] = [
     pin_hash: 'mock_hash_sudo',
     permissions: null,
     active: true,
+    contacts: '+255 715 000 111',
+    location: 'Main Branch - Dar es Salaam',
   },
   {
     id: 'user_002',
@@ -33,6 +35,8 @@ export const initialUsers: User[] = [
       can_view_reports: true,
     },
     active: true,
+    contacts: '+255 784 123 456',
+    location: 'Main Branch - Dar es Salaam',
   },
   {
     id: 'user_003',
@@ -53,5 +57,7 @@ export const initialUsers: User[] = [
       can_view_reports: false,
     },
     active: true,
+    contacts: '+255 655 987 654',
+    location: 'Posta Branch',
   },
 ];

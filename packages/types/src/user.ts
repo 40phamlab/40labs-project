@@ -21,6 +21,8 @@ export interface User extends BaseEntity {
   pin_hash: string; // never transmit/store plaintext PIN
   permissions: StaffPermissionSet | null; // null for sudo (implicitly all)
   active: boolean;
+  contacts: string | null;   // new — phone/contact shown in Users table
+  location: string | null;   // new — branch/location label shown in Users table
 }
 
 // Device pairing — Orbit Worker, QR-code, LAN-only, persistent trust
