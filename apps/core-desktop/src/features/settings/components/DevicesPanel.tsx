@@ -9,9 +9,10 @@ import {
   DropdownMenuItem,
   Panel,
   Modal,
+  FilterTabs,
 } from '@40labs/ui-components';
 import { MoreVertical, Shield, Power, Trash2, QrCode } from 'lucide-react';
-import type { PairedDevice } from '@40labs/types';
+import type { PairedDevice, AuditAction } from '@40labs/types';
 import { useDevices } from '../../../hooks/useDevices';
 import { useUsers } from '../../../hooks/useUsers';
 import { auditApi } from '../../../api';
@@ -112,11 +113,11 @@ export const DevicesPanel: React.FC = () => {
     if (!selectedDeviceForPin) return;
     const { device, action } = selectedDeviceForPin;
 
-    const auditAction = action === 'block' ? 'device_block' : 'device_remove';
+    const auditAction: AuditAction = action === 'block' ? 'device_block' : 'device_remove';
 
     // Write audit log first (audit-log-first insert order per GOTCHAS #9)
     await auditApi.recordEntry({
-      action: auditAction as any,
+      action: auditAction,
       performed_by_user_id: device.user_id,
       target_entity_type: 'PairedDevice',
       target_entity_id: device.id,
@@ -237,26 +238,15 @@ export const DevicesPanel: React.FC = () => {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 border-b border-border/40 pb-3">
-          {[
+        <FilterTabs
+          tabs={[
             { id: 'active', label: 'Active Devices' },
             { id: 'recent', label: 'Recent / All Connected' },
             { id: 'all', label: 'All (Including Removed)' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={[
-                'px-3 py-1.5 text-xs font-bold rounded transition-colors',
-                activeTab === tab.id
-                  ? 'bg-primary/20 text-primary border border-primary/30'
-                  : 'text-text-muted hover:text-text-primary hover:bg-panel-subtle',
-              ].join(' ')}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+          ]}
+          activeTabId={activeTab}
+          onChange={(id) => setActiveTab(id as 'active' | 'recent' | 'all')}
+        />
 
         <div className="border border-border/50 rounded-card overflow-hidden">
           <DataTable

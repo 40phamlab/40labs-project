@@ -29,6 +29,7 @@ import { UsersRolesPanel } from './components/UsersRolesPanel';
 import { AppearancePanel } from './components/AppearancePanel';
 import { IntegrationsPanel } from './components/IntegrationsPanel';
 import { DevicesPanel } from './components/DevicesPanel';
+import { SecurityPanel } from './components/SecurityPanel';
 
 export type SettingsTab =
   | 'business'
@@ -157,6 +158,10 @@ export const SettingsScreen: React.FC = () => {
 
     if (activeTab === 'devices') {
       return <DevicesPanel />;
+    }
+
+    if (activeTab === 'security') {
+      return <SecurityPanel onNavigateToDevices={() => setActiveTab('devices')} />;
     }
 
     const meta = SETTINGS_TAB_TITLES[activeTab];

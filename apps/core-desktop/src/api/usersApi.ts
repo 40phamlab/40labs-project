@@ -95,6 +95,27 @@ export const usersApi = {
     return updated;
   },
 
+  changePin: async (userId: string, _currentPin: string, newPin: string): Promise<boolean> => {
+    const idx = usersStore.findIndex((u) => u.id === userId);
+    if (idx === -1) throw new Error(`User ${userId} not found`);
+    usersStore[idx] = {
+      ...usersStore[idx],
+      pin_hash: `mock_hash_${newPin}`,
+      updated_at: new Date().toISOString(),
+    };
+    return true;
+  },
+
+  changePassword: async (userId: string, _currentPassword: string, _newPassword: string): Promise<boolean> => {
+    const idx = usersStore.findIndex((u) => u.id === userId);
+    if (idx === -1) throw new Error(`User ${userId} not found`);
+    usersStore[idx] = {
+      ...usersStore[idx],
+      updated_at: new Date().toISOString(),
+    };
+    return true;
+  },
+
   listPairedDevices: (): PairedDevice[] => [...devicesStore],
 
   // Backwards compatibility aliases

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { User, StaffPermissionSet } from '@40labs/types';
 import { usersApi, CreateUserPayload, UpdateUserPayload } from '../api';
 import { usersKeys } from './queryKeys';
+import { CURRENT_USER_ID } from '../devData/constants';
 
 export type { CreateUserPayload, UpdateUserPayload };
 
@@ -56,6 +57,24 @@ export function useUsers() {
     },
   });
 
+  const changePinMutation = useMutation({
+    mutationFn: async ({ currentPin, newPin }: { currentPin: string; newPin: string }) => {
+      return usersApi.changePin(CURRENT_USER_ID, currentPin, newPin);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: usersKeys.all });
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) => {
+      return usersApi.changePassword(CURRENT_USER_ID, currentPassword, newPassword);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: usersKeys.all });
+    },
+  });
+
   // UI state for User Modal
   const [isUserModalOpen, setIsUserModalOpen] = React.useState(false);
   const [selectedUserForEdit, setSelectedUserForEdit] = React.useState<User | null>(null);
@@ -88,8 +107,15 @@ export function useUsers() {
       updatePermissionsMutation.mutateAsync({ id, permissions }),
     deactivateUser: (id: string) => deactivateUserMutation.mutateAsync(id),
 
+    changePin: (currentPin: string, newPin: string) =>
+      changePinMutation.mutateAsync({ currentPin, newPin }),
+    changePassword: (currentPassword: string, newPassword: string) =>
+      changePasswordMutation.mutateAsync({ currentPassword, newPassword }),
+
     isCreatingUser: createUserMutation.isPending,
     isUpdatingUser: updateUserMutation.isPending,
+    isChangingPin: changePinMutation.isPending,
+    isChangingPassword: changePasswordMutation.isPending,
 
     isUserModalOpen,
     selectedUserForEdit,
