@@ -11,3 +11,4 @@ export * from './auditApi.ts';
 export * from './businessApi.ts';
 export * from './branchesApi.ts';
 export * from './integrationsApi.ts';
+export * from './devicesApi.ts';

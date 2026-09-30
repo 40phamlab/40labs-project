@@ -75,3 +75,9 @@ export const integrationsKeys = {
   all: ['integrations'] as const,
   detail: () => [...integrationsKeys.all, 'detail'] as const,
 };
+
+export const devicesKeys = {
+  all: ['devices'] as const,
+  lists: () => [...devicesKeys.all, 'list'] as const,
+  list: () => [...devicesKeys.lists()] as const,
+};

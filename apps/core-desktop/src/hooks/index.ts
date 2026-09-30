@@ -13,3 +13,4 @@ export * from './useDashboard';
 export * from './useBusiness';
 export * from './useUsers';
 export * from './useIntegrations';
+export * from './useDevices';

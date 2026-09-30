@@ -28,6 +28,7 @@ import { BranchFormModal } from './components/BranchFormModal';
 import { UsersRolesPanel } from './components/UsersRolesPanel';
 import { AppearancePanel } from './components/AppearancePanel';
 import { IntegrationsPanel } from './components/IntegrationsPanel';
+import { DevicesPanel } from './components/DevicesPanel';
 
 export type SettingsTab =
   | 'business'
@@ -152,6 +153,10 @@ export const SettingsScreen: React.FC = () => {
 
     if (activeTab === 'integrations') {
       return <IntegrationsPanel />;
+    }
+
+    if (activeTab === 'devices') {
+      return <DevicesPanel />;
     }
 
     const meta = SETTINGS_TAB_TITLES[activeTab];
