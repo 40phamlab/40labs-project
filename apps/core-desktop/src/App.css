@@ -11,6 +11,8 @@
   .elevation-inset { box-shadow: var(--shadow-elevation-inset); }
   .shadow-surface-pop { box-shadow: var(--shadow-surface-pop); }
   .shadow-inner-soft { box-shadow: var(--shadow-inner-soft); }
+  .drag-region { -webkit-app-region: drag; app-region: drag; }
+  .no-drag { -webkit-app-region: no-drag; app-region: no-drag; }
 }
 
 :root { color-scheme: dark; }

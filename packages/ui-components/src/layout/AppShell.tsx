@@ -44,9 +44,9 @@ export interface AppShellProps {
   /** Main application content viewport or PageViewport component */
   children: React.ReactNode;
   className?: string;
-  /** Minimum desktop width (default 1000px) */
+  /** Minimum desktop width (default 0 for natural shrinking) */
   minWidth?: number | string;
-  /** Minimum desktop height (default 650px) */
+  /** Minimum desktop height (default 0 for natural shrinking) */
   minHeight?: number | string;
   /** Navigation sidebar state */
   navState?: NavigationState;
@@ -72,8 +72,8 @@ export function AppShell({
   sidebar,
   children,
   className = '',
-  minWidth = 1000,
-  minHeight = 650,
+  minWidth = 0,
+  minHeight = 0,
   navState: controlledNavState,
   defaultNavState = 'expanded',
   onNavStateChange,
@@ -158,14 +158,17 @@ export function AppShell({
     ]
   );
 
-  const minWidthStyle = typeof minWidth === 'number' ? `${minWidth}px` : minWidth;
-  const minHeightStyle = typeof minHeight === 'number' ? `${minHeight}px` : minHeight;
+  const minWidthStyle = minWidth !== undefined && minWidth !== 0 ? (typeof minWidth === 'number' ? `${minWidth}px` : minWidth) : undefined;
+  const minHeightStyle = minHeight !== undefined && minHeight !== 0 ? (typeof minHeight === 'number' ? `${minHeight}px` : minHeight) : undefined;
 
   return (
     <AppShellContext.Provider value={contextValue}>
       <div
         className={`flex flex-col h-screen w-screen bg-app-bg text-text-primary font-ui overflow-hidden select-none ${className}`}
-        style={{ minWidth: minWidthStyle, minHeight: minHeightStyle }}
+        style={{
+          ...(minWidthStyle ? { minWidth: minWidthStyle } : {}),
+          ...(minHeightStyle ? { minHeight: minHeightStyle } : {}),
+        }}
         data-nav-state={navState}
       >
         {/* Top Chrome Header */}

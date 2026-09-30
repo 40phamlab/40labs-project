@@ -83,15 +83,17 @@ export default function App() {
   };
 
   const topBarElement = (
-    <div className="flex items-center justify-between w-full h-10 bg-top-chrome border-b border-border select-none" data-tauri-drag-region>
-      <div className="flex-1 min-w-0">
+    <div className="flex items-center justify-between w-full h-10 bg-top-chrome border-b border-border select-none drag-region" data-tauri-drag-region>
+      <div className="flex-1 min-w-0 no-drag">
         <TopMenuBar
           brandName="40Labs"
           onHelpClick={() => console.log('Help clicked')}
           onUpdateClick={() => console.log('Update clicked')}
         />
       </div>
-      <TitleBar />
+      <div className="no-drag">
+        <TitleBar />
+      </div>
     </div>
   );
 

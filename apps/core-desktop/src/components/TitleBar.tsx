@@ -37,7 +37,7 @@ export const TitleBar: React.FC = () => {
 
   return (
     <div
-      className="h-10 flex items-center select-none shrink-0 z-[110]"
+      className="h-10 flex items-center select-none shrink-0 z-[110] no-drag"
       data-tauri-drag-region
     >
       <div className="flex h-full items-center">

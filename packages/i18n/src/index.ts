@@ -70,6 +70,19 @@ export const translations = {
     'dashboard.period7d': 'Siku 7',
     'dashboard.period30d': 'Siku 30',
     'dashboard.period90d': 'Siku 90',
+
+    // Relative Time & Status
+    'dashboard.timeJustNow': 'Sasa hivi',
+    'dashboard.timeMinutesAgo': 'Dakika {n} zilizopita',
+    'dashboard.timeHoursAgo': 'Saa {n} zilizopita',
+    'dashboard.timeYesterday': 'Jana',
+    'dashboard.timeDaysAgo': 'Siku {n} zilizopita',
+    'dashboard.statusPending': 'Inasubiri',
+    'dashboard.statusSampleCollected': 'Sampuli imekusanywa',
+    'dashboard.statusResultEntered': 'Matokeo yameingizwa',
+    'dashboard.statusReportReady': 'Ripoti iko tayari',
+    'dashboard.orderOrdinal': 'Oda #{id}',
+    'dashboard.labOrdinal': 'Jaribio #{id}',
   },
   en: {
     // Dashboard labels
@@ -140,6 +153,19 @@ export const translations = {
     'dashboard.period7d': '7d',
     'dashboard.period30d': '30d',
     'dashboard.period90d': '90d',
+
+    // Relative Time & Status
+    'dashboard.timeJustNow': 'Just now',
+    'dashboard.timeMinutesAgo': '{n}m ago',
+    'dashboard.timeHoursAgo': '{n}h ago',
+    'dashboard.timeYesterday': 'Yesterday',
+    'dashboard.timeDaysAgo': '{n}d ago',
+    'dashboard.statusPending': 'Pending',
+    'dashboard.statusSampleCollected': 'Sample Collected',
+    'dashboard.statusResultEntered': 'Result Entered',
+    'dashboard.statusReportReady': 'Report Ready',
+    'dashboard.orderOrdinal': 'Order #{id}',
+    'dashboard.labOrdinal': 'Test #{id}',
   },
 } as const;
 

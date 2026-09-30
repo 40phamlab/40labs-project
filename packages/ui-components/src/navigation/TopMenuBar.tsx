@@ -54,7 +54,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
       className={`h-10 w-full bg-top-chrome flex items-center justify-between px-2 select-none ${className}`}
       data-tauri-drag-region
     >
-      <div className="flex items-center gap-1.5 h-full min-w-0 flex-1">
+      <div className="flex items-center gap-1.5 h-full min-w-0 flex-1 no-drag">
         {showSidebarToggle && (
           <IconButton
             icon={<PanelLeft size={15} />}

@@ -185,15 +185,23 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
     expect(screen.getByText('Table or list content')).toBeInTheDocument();
   });
 
-  test('enforces minimum application dimensions (minWidth 1000px, minHeight 650px) on shell container', () => {
-    const { container } = render(
+  test('allows natural shrinking without hard minWidth constraints by default, and respects custom minWidth/minHeight when provided', () => {
+    const { container, rerender } = render(
       <AppShell>
         <div>Workspace Content</div>
       </AppShell>
     );
 
     const rootElement = container.firstChild as HTMLElement;
-    expect(rootElement.style.minWidth).toBe('1000px');
-    expect(rootElement.style.minHeight).toBe('650px');
+    expect(rootElement.style.minWidth).toBe('');
+    expect(rootElement.style.minHeight).toBe('');
+
+    rerender(
+      <AppShell minWidth={800} minHeight={500}>
+        <div>Workspace Content</div>
+      </AppShell>
+    );
+    expect(rootElement.style.minWidth).toBe('800px');
+    expect(rootElement.style.minHeight).toBe('500px');
   });
 });

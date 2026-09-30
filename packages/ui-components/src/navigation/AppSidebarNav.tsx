@@ -50,7 +50,6 @@ export function AppSidebarNav({
   collapsed,
   navState: propNavState,
   onNavigate,
-  onToggleCollapse,
   onNavStateChange,
   items,
   pinnedBottomItems = [],
@@ -70,35 +69,17 @@ export function AppSidebarNav({
   const isCompact = currentNavState === 'compact';
   const isHidden = currentNavState === 'hidden';
 
-  const handleCollapse = () => {
+  const handleStateChange = (newState: NavigationState) => {
     if (onNavStateChange) {
-      onNavStateChange('compact');
-    } else if (shell.collapseSidebar) {
-      shell.collapseSidebar();
-    } else {
-      onToggleCollapse?.();
+      onNavStateChange(newState);
+    } else if (shell.setNavState) {
+      shell.setNavState(newState);
     }
   };
 
-  const handleExpand = () => {
-    if (onNavStateChange) {
-      onNavStateChange('expanded');
-    } else if (shell.expandSidebar) {
-      shell.expandSidebar();
-    } else {
-      onToggleCollapse?.();
-    }
-  };
-
-  const handleHide = () => {
-    if (onNavStateChange) {
-      onNavStateChange('hidden');
-    } else if (shell.hideSidebar) {
-      shell.hideSidebar();
-    } else {
-      onToggleCollapse?.();
-    }
-  };
+  const handleCollapse = () => handleStateChange('compact');
+  const handleExpand = () => handleStateChange('expanded');
+  const handleHide = () => handleStateChange('hidden');
 
   if (isHidden) {
     return null;

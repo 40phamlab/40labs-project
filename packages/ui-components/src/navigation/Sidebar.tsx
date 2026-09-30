@@ -10,10 +10,9 @@ export interface SidebarProps {
   className?: string;
 }
 
-export const Sidebar = ({ children, compact, navState, className = '' }: SidebarProps) => {
+export const Sidebar = ({ children, navState, className = '' }: SidebarProps & { compact?: boolean }) => {
   const shell = useAppShell();
-  const effectiveNavState: NavigationState =
-    navState ?? (compact !== undefined ? (compact ? 'compact' : 'expanded') : shell.navState);
+  const effectiveNavState: NavigationState = navState ?? shell.navState;
 
   const isCompact = effectiveNavState === 'compact';
   const isHidden = effectiveNavState === 'hidden';
@@ -32,7 +31,6 @@ export const Sidebar = ({ children, compact, navState, className = '' }: Sidebar
       {Children.map(children, (child) => {
         if (isValidElement(child) && typeof child.type !== 'string') {
           return cloneElement(child as React.ReactElement<any>, {
-            compact: isCompact,
             navState: effectiveNavState,
           });
         }
@@ -45,15 +43,13 @@ export const Sidebar = ({ children, compact, navState, className = '' }: Sidebar
 export interface SidebarSectionProps {
   title?: string;
   children: React.ReactNode;
-  compact?: boolean;
   navState?: NavigationState;
   className?: string;
 }
 
-export const SidebarSection = ({ title, children, compact, navState, className = '' }: SidebarSectionProps) => {
+export const SidebarSection = ({ title, children, navState, className = '' }: SidebarSectionProps & { compact?: boolean }) => {
   const shell = useAppShell();
-  const effectiveNavState: NavigationState =
-    navState ?? (compact !== undefined ? (compact ? 'compact' : 'expanded') : shell.navState);
+  const effectiveNavState: NavigationState = navState ?? shell.navState;
   const isCompact = effectiveNavState === 'compact';
 
   return (
@@ -67,7 +63,6 @@ export const SidebarSection = ({ title, children, compact, navState, className =
         {Children.map(children, (child) => {
           if (isValidElement(child) && typeof child.type !== 'string') {
             return cloneElement(child as React.ReactElement<any>, {
-              compact: isCompact,
               navState: effectiveNavState,
             });
           }
@@ -84,7 +79,6 @@ export interface SidebarItemProps {
   badge?: string | number;
   active?: boolean;
   disabled?: boolean;
-  compact?: boolean;
   navState?: NavigationState;
   onClick?: () => void;
   className?: string;
@@ -96,14 +90,12 @@ export const SidebarItem = ({
   badge,
   active = false,
   disabled = false,
-  compact,
   navState,
   onClick,
   className = '',
-}: SidebarItemProps) => {
+}: SidebarItemProps & { compact?: boolean }) => {
   const shell = useAppShell();
-  const effectiveNavState: NavigationState =
-    navState ?? (compact !== undefined ? (compact ? 'compact' : 'expanded') : shell.navState);
+  const effectiveNavState: NavigationState = navState ?? shell.navState;
   const isCompact = effectiveNavState === 'compact';
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
@@ -177,23 +169,19 @@ export const SidebarItem = ({
 
 export interface SidebarGroupProps {
   children: React.ReactNode;
-  compact?: boolean;
   navState?: NavigationState;
   className?: string;
 }
 
-export const SidebarGroup = ({ children, compact, navState, className = '' }: SidebarGroupProps) => {
+export const SidebarGroup = ({ children, navState, className = '' }: SidebarGroupProps & { compact?: boolean }) => {
   const shell = useAppShell();
-  const effectiveNavState: NavigationState =
-    navState ?? (compact !== undefined ? (compact ? 'compact' : 'expanded') : shell.navState);
-  const isCompact = effectiveNavState === 'compact';
+  const effectiveNavState: NavigationState = navState ?? shell.navState;
 
   return (
     <div className={`space-y-1 ${className}`}>
       {Children.map(children, (child) => {
         if (isValidElement(child) && typeof child.type !== 'string') {
           return cloneElement(child as React.ReactElement<any>, {
-            compact: isCompact,
             navState: effectiveNavState,
           });
         }
