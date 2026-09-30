@@ -12,3 +12,4 @@ export * from './notification';
 export * from './audit-log';
 export * from './reserved';
 export * from './schedule';
+export * from './integrations';

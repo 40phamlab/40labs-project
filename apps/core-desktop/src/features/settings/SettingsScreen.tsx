@@ -27,6 +27,7 @@ import { BranchesTable } from './components/BranchesTable';
 import { BranchFormModal } from './components/BranchFormModal';
 import { UsersRolesPanel } from './components/UsersRolesPanel';
 import { AppearancePanel } from './components/AppearancePanel';
+import { IntegrationsPanel } from './components/IntegrationsPanel';
 
 export type SettingsTab =
   | 'business'
@@ -147,6 +148,10 @@ export const SettingsScreen: React.FC = () => {
           isLoading={isLoadingBusiness || isUpdatingBusiness}
         />
       );
+    }
+
+    if (activeTab === 'integrations') {
+      return <IntegrationsPanel />;
     }
 
     const meta = SETTINGS_TAB_TITLES[activeTab];

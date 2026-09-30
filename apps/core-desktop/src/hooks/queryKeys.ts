@@ -70,3 +70,8 @@ export const usersKeys = {
   list: () => [...usersKeys.lists()] as const,
   detail: (id: string) => [...usersKeys.all, 'detail', id] as const,
 };
+
+export const integrationsKeys = {
+  all: ['integrations'] as const,
+  detail: () => [...integrationsKeys.all, 'detail'] as const,
+};
