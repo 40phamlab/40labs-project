@@ -57,3 +57,9 @@ export const dashboardKeys = {
   all: ['dashboard'] as const,
   summary: () => [...dashboardKeys.all, 'summary'] as const,
 };
+
+export const businessKeys = {
+  all: ['business'] as const,
+  detail: () => [...businessKeys.all, 'detail'] as const,
+  branches: () => [...businessKeys.all, 'branches'] as const,
+};

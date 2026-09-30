@@ -1,9 +1,9 @@
 import type { Business, Branch } from '@40labs/types';
-import { initialBusiness, initialBusinesses, initialBranches } from '../devData';
+import { initialPharmacyBusiness, initialPharmacyBusinesses, initialPharmacyBranches } from '../devData';
 
-let businessStore: Business = { ...initialBusiness };
-let businessesStore: Business[] = [...initialBusinesses];
-let branchesStore: Branch[] = [...initialBranches];
+let businessStore: Business = { ...initialPharmacyBusiness };
+let businessesStore: Business[] = [...initialPharmacyBusinesses];
+let branchesStore: Branch[] = [...initialPharmacyBranches];
 
 export const pharmaciesApi = {
   getBusiness: (): Business => ({ ...businessStore }),

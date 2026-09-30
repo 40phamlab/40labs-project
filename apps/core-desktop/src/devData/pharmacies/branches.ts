@@ -1,7 +1,7 @@
 import type { Branch } from '@40labs/types';
 import { WORKSPACE_ID, BRANCH_ID, daysAgoIso } from '../constants';
 
-export const initialBranches: Branch[] = [
+export const initialPharmacyBranches: Branch[] = [
   {
     id: 'branch_001',
     workspace_id: WORKSPACE_ID,

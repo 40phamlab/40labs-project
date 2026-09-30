@@ -1,6 +1,6 @@
 import type { Notification } from '@40labs/types';
 import { WORKSPACE_ID, BRANCH_ID, daysAgoIso } from '../constants';
-import { initialSecondBusiness } from '../pharmacies/pharmacies';
+import { initialPharmacySecondBusiness } from '../pharmacies/pharmacies';
 
 export const initialNotifications: Notification[] = [
   {
@@ -133,7 +133,7 @@ export const initialNotifications: Notification[] = [
     category: 'business',
     source_type: 'remote',
     sender_name: 'Emy Pharmacy',
-    sender_business_id: initialSecondBusiness.business_id,
+    sender_business_id: initialPharmacySecondBusiness.business_id,
     subject: 'Wholesale Stock Catalog',
     body: 'Shared stock catalog updated for inter-branch wholesale requests.',
     status: 'archived',

@@ -1,7 +1,7 @@
 import type { Business } from '@40labs/types';
 import { WORKSPACE_ID, BRANCH_ID, daysAgoIso } from '../constants';
 
-export const initialBusiness: Business = {
+export const initialPharmacyBusiness: Business = {
   id: 'biz_001',
   workspace_id: WORKSPACE_ID,
   branch_id: BRANCH_ID,
@@ -27,7 +27,7 @@ export const initialBusiness: Business = {
   appearance_mode: 'light',
 };
 
-export const initialSecondBusiness: Business = {
+export const initialPharmacySecondBusiness: Business = {
   id: 'biz_002',
   workspace_id: 'ws_dev_002',
   branch_id: 'br_dev_002',
@@ -53,5 +53,4 @@ export const initialSecondBusiness: Business = {
   appearance_mode: 'light',
 };
 
-export const initialBusinesses: Business[] = [initialBusiness, initialSecondBusiness];
-
+export const initialPharmacyBusinesses: Business[] = [initialPharmacyBusiness, initialPharmacySecondBusiness];
