@@ -18,9 +18,6 @@ const SENDER_TONES: Array<'primary' | 'accent' | 'danger' | 'neutral'> = [
   'neutral',
 ];
 
-/**
- * Deterministic tone mapping based on sender_business_id or sender_name.
- */
 function getSenderTone(key: string): 'primary' | 'accent' | 'danger' | 'neutral' {
   let hash = 0;
   for (let i = 0; i < key.length; i++) {
@@ -29,6 +26,15 @@ function getSenderTone(key: string): 'primary' | 'accent' | 'danger' | 'neutral'
   }
   const index = Math.abs(hash) % SENDER_TONES.length;
   return SENDER_TONES[index];
+}
+
+function stripMarkdownAndHtml(text: string): string {
+  if (!text) return '';
+  let clean = text.replace(/<[^>]*>/g, '');
+  clean = clean.replace(/#{1,6}\s+/g, '');
+  clean = clean.replace(/(\*\*|\*|__|`)/g, '');
+  clean = clean.replace(/^>\s+/gm, '');
+  return clean.trim();
 }
 
 function formatNotificationTime(isoString: string): string {
@@ -79,6 +85,7 @@ export const NotificationListItem: React.FC<NotificationListItemProps> = ({
   const tone = getSenderTone(senderKey);
   const isUnread = notification.status === 'unread';
   const timeDisplay = formatNotificationTime(notification.received_at || notification.created_at);
+  const previewText = stripMarkdownAndHtml(notification.body || notification.subject);
 
   return (
     <div
@@ -89,31 +96,32 @@ export const NotificationListItem: React.FC<NotificationListItemProps> = ({
         onContextMenu?.(e);
       }}
       className={`
-        group relative flex items-start gap-3 p-3 rounded-card transition-colors cursor-pointer border
+        group relative flex items-center gap-3 px-3 py-2.5 h-[72px] rounded-card transition-colors cursor-pointer border min-w-0
         ${
           isSelected
-            ? 'bg-panel-strong border-border/50 shadow-sm'
+            ? 'bg-panel-strong border-border/50 shadow-xs'
             : 'bg-panel border-border/30 hover:bg-panel-strong/60'
         }
         ${className}
       `}
     >
-      {/* Sender Avatar */}
-      <Avatar name={notification.sender_name} tone={tone} size="md" className="shrink-0" />
+      {/* 44px Avatar */}
+      <div className="w-11 h-11 shrink-0 flex items-center justify-center">
+        <Avatar name={notification.sender_name} tone={tone} size="lg" />
+      </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-        <div className="flex items-center justify-between gap-2">
+      <div className="flex-1 min-w-0 flex flex-col gap-0.5 justify-center">
+        <div className="flex items-center justify-between gap-2 min-w-0">
           <span
-            className={`text-xs truncate ${
-              isUnread ? 'font-bold text-text' : 'font-medium text-text/90'
+            className={`text-[15px] truncate ${
+              isUnread ? 'font-semibold text-text' : 'font-medium text-text/90'
             }`}
           >
             {notification.sender_name}
           </span>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Channel Icon */}
             <ChannelIcon channel={notification.channel || 'amob'} size={13} />
             {isUnread && (
               <span
@@ -121,23 +129,17 @@ export const NotificationListItem: React.FC<NotificationListItemProps> = ({
                 title="Unread notification"
               />
             )}
-            <span className="text-[10px] text-text-muted font-mono">{timeDisplay}</span>
+            <span className={`text-xs font-mono ${isUnread ? 'font-semibold text-text' : 'text-text-muted'}`}>
+              {timeDisplay}
+            </span>
           </div>
         </div>
 
-        <p
-          className={`text-xs truncate ${
-            isUnread ? 'font-semibold text-text' : 'text-text-muted'
-          }`}
-        >
-          {notification.subject}
-        </p>
-
-        {notification.body && (
-          <p className="text-[11px] text-text-muted line-clamp-1 opacity-80">
-            {notification.body}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="text-[13px] text-text-muted truncate">
+            {previewText}
           </p>
-        )}
+        </div>
       </div>
     </div>
   );

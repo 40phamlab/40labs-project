@@ -8,7 +8,7 @@ import {
   SearchInput,
   IconButton,
 } from '@40labs/ui-components';
-import { ChevronDown, MailOpen, Share2, Trash2, Archive, CheckCheck, RefreshCw, Plus } from 'lucide-react';
+import { MailOpen, Share2, Trash2, Archive, CheckCheck, RefreshCw, Plus, Filter } from 'lucide-react';
 import type { Notification, MessageChannel } from '@40labs/types';
 import { CHANNEL_CONFIGS } from '@40labs/types';
 import { NotificationListItem } from './NotificationListItem';
@@ -31,8 +31,8 @@ export interface NotificationsListPanelProps {
   className?: string;
 }
 
-const FILTER_OPTIONS: Array<{ label: string; value: string | null }> = [
-  { label: 'All Active', value: null },
+const FILTER_CHIPS: Array<{ label: string; value: string | null }> = [
+  { label: 'All', value: null },
   { label: 'Unread', value: 'unread' },
   { label: 'Gov', value: 'gov' },
   { label: 'Customers', value: 'customers' },
@@ -41,8 +41,8 @@ const FILTER_OPTIONS: Array<{ label: string; value: string | null }> = [
   { label: 'Archived', value: 'archived' },
 ];
 
-const CHANNEL_FILTER_OPTIONS: Array<{ label: string; value: 'all' | MessageChannel }> = [
-  { label: 'All', value: 'all' },
+const CHANNEL_OPTIONS: Array<{ label: string; value: 'all' | MessageChannel }> = [
+  { label: 'All Channels', value: 'all' },
   { label: 'aMob', value: 'amob' },
   { label: 'WhatsApp', value: 'whatsapp' },
   { label: 'SMS', value: 'sms' },
@@ -65,15 +65,21 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
   onRefresh,
   className = '',
 }) => {
-  const [isFilterOpen, setIsFilterOpen] = React.useState(false);
   const [contextMenuId, setContextMenuId] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [localChannelFilter, setLocalChannelFilter] = React.useState<'all' | MessageChannel>('all');
+  const [isChannelDropdownOpen, setIsChannelDropdownOpen] = React.useState(false);
 
   const activeChannel = channelFilter !== undefined ? channelFilter : localChannelFilter;
   const setActiveChannel = onChannelChange || setLocalChannelFilter;
 
-  // Compute base active list (excluding archived unless explicitly requested)
+  // Unread count across notifications
+  const unreadCount = React.useMemo(
+    () => notifications.filter((n) => n.status === 'unread').length,
+    [notifications]
+  );
+
+  // Base list depending on category filter
   const baseActiveList = React.useMemo(() => {
     let list = notifications;
     if (!categoryFilter) {
@@ -88,28 +94,27 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
     return list;
   }, [notifications, categoryFilter]);
 
-  // Channel counts based on active non-archived notifications (or current category filter)
-  const channelCounts = React.useMemo(() => {
-    const counts: Record<'all' | MessageChannel, number> = {
-      all: baseActiveList.length,
-      amob: baseActiveList.filter((n) => (n.channel || 'amob') === 'amob').length,
-      whatsapp: baseActiveList.filter((n) => n.channel === 'whatsapp').length,
-      sms: baseActiveList.filter((n) => n.channel === 'sms').length,
-      email: baseActiveList.filter((n) => n.channel === 'email').length,
+  // Counts for chips
+  const chipCounts = React.useMemo(() => {
+    return {
+      all: notifications.filter((n) => n.status !== 'archived').length,
+      unread: notifications.filter((n) => n.status === 'unread').length,
+      gov: notifications.filter((n) => n.category === 'gov' && n.status !== 'archived').length,
+      customers: notifications.filter((n) => n.category === 'customers' && n.status !== 'archived').length,
+      marketing: notifications.filter((n) => n.category === 'marketing' && n.status !== 'archived').length,
+      business: notifications.filter((n) => n.category === 'business' && n.status !== 'archived').length,
+      archived: notifications.filter((n) => n.status === 'archived').length,
     };
-    return counts;
-  }, [baseActiveList]);
+  }, [notifications]);
 
-  // Filter notifications by channel and search query
+  // Filter by channel and search query
   const filteredNotifications = React.useMemo(() => {
     let list = baseActiveList;
 
-    // Channel filtering
     if (activeChannel !== 'all') {
       list = list.filter((n) => (n.channel || 'amob') === activeChannel);
     }
 
-    // Search filtering
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(
@@ -123,131 +128,121 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
     return list;
   }, [baseActiveList, activeChannel, searchQuery]);
 
-  const currentFilterLabel =
-    FILTER_OPTIONS.find((opt) => opt.value === categoryFilter)?.label ||
-    (categoryFilter ? categoryFilter.toUpperCase() : 'ALL ACTIVE');
-
-  const getEmptyMessage = () => {
-    if (searchQuery.trim()) {
-      return `No notifications matching "${searchQuery}".`;
-    }
-    if (activeChannel !== 'all') {
-      const channelName = CHANNEL_CONFIGS[activeChannel]?.displayName || activeChannel;
-      return `No ${channelName} conversations\nThere are no conversations for this channel.`;
-    }
-    if (categoryFilter) {
-      return `No notifications found under "${categoryFilter}".`;
-    }
-    return 'No active notifications available.';
-  };
-
   return (
     <div
-      className={`flex flex-col h-full bg-panel border border-border/40 rounded-card p-3 overflow-hidden gap-2.5 ${className}`}
+      className={`flex flex-col h-full bg-panel border border-border/40 rounded-card p-3 overflow-hidden gap-2.5 w-[340px] lg:w-[400px] shrink-0 ${className}`}
     >
-      {/* Header with Title, New Button and Actions */}
+      {/* Header row: "Inbox" with unread count, then + New, Refresh IconButton, and ⋮ Dropdown holding "Mark all read" */}
       <div className="flex items-center justify-between shrink-0 pb-2 border-b border-border/30">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
-            Inbox ({filteredNotifications.length})
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[15px] font-semibold text-text truncate">
+            Inbox {unreadCount > 0 && <span className="text-xs text-primary font-bold">({unreadCount})</span>}
           </span>
           {onNewConversation && (
-            <Tooltip content="Start new conversation">
-              <Button
-                type="button"
-                intent="primary"
-                size="sm"
-                onClick={onNewConversation}
-                className="h-6 px-2 text-[11px] font-semibold gap-1 shadow-2xs rounded-full"
-                leftIcon={<Plus size={12} />}
-              >
-                New
-              </Button>
-            </Tooltip>
+            <Button
+              type="button"
+              intent="primary"
+              size="sm"
+              onClick={onNewConversation}
+              className="h-6 px-2.5 text-xs font-semibold gap-1 rounded-full shadow-2xs"
+              leftIcon={<Plus size={12} />}
+            >
+              New
+            </Button>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {onMarkAllRead && (
-            <Tooltip content="Mark all as read" position="bottom">
-              <Button
-                type="button"
-                intent="neutral"
-                size="sm"
-                onClick={onMarkAllRead}
-                className="h-7 px-2 text-[11px]"
-                leftIcon={<CheckCheck size={12} />}
-              >
-                Mark Read
-              </Button>
-            </Tooltip>
-          )}
+        <div className="flex items-center gap-1 shrink-0">
           {onRefresh && (
             <IconButton
-              icon={<RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />}
+              icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
               label="Refresh notifications"
               intent="ghost"
               size="sm"
               onClick={onRefresh}
             />
           )}
+
+          {onMarkAllRead && (
+            <Dropdown
+              isOpen={isChannelDropdownOpen}
+              onClose={() => setIsChannelDropdownOpen(false)}
+              trigger={
+                <IconButton
+                  icon={<Filter size={14} className={activeChannel !== 'all' ? 'text-primary' : ''} />}
+                  label="Filter channels"
+                  intent="ghost"
+                  size="sm"
+                  onClick={() => setIsChannelDropdownOpen(!isChannelDropdownOpen)}
+                  className="relative"
+                >
+                  {activeChannel !== 'all' && (
+                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
+                  )}
+                </IconButton>
+              }
+            >
+              {CHANNEL_OPTIONS.map((opt) => (
+                <DropdownMenuItem
+                  key={opt.value}
+                  label={opt.label}
+                  onClick={() => {
+                    setActiveChannel(opt.value);
+                    setIsChannelDropdownOpen(false);
+                  }}
+                />
+              ))}
+            </DropdownDropdown>
+          )}
+
+          {onMarkAllRead && (
+            <Dropdown
+              isOpen={false}
+              onClose={() => {}}
+              trigger={
+                <IconButton
+                  icon={<CheckCheck size={16} />}
+                  label="Mark all read"
+                  intent="ghost"
+                  size="sm"
+                  onClick={onMarkAllRead}
+                />
+              }
+            />
+          )}
         </div>
       </div>
 
-      {/* Search and Category Filter Row */}
-      <div className="flex flex-col gap-2 shrink-0">
+      {/* Search directly below */}
+      <div className="shrink-0">
         <SearchInput
           placeholder="Search inbox..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="h-8 text-xs"
         />
-
-        {/* Category Filter Dropdown */}
-        <div className="flex items-center justify-between">
-          <span className="text-[11px] text-text-muted font-medium">Category:</span>
-          <Dropdown
-            isOpen={isFilterOpen}
-            onClose={() => setIsFilterOpen(false)}
-            trigger={
-              <Button
-                type="button"
-                intent="neutral"
-                size="sm"
-                className="flex items-center gap-1.5 uppercase font-bold text-[11px] h-7 px-2.5"
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-              >
-                <span>{currentFilterLabel}</span>
-                <ChevronDown size={12} />
-              </Button>
-            }
-          >
-            {FILTER_OPTIONS.map((opt) => (
-              <DropdownMenuItem
-                key={opt.label}
-                label={opt.label}
-                onClick={() => {
-                  onCategoryChange?.(opt.value);
-                  setIsFilterOpen(false);
-                }}
-              />
-            ))}
-          </Dropdown>
-        </div>
       </div>
 
-      {/* Channel Filter Segmented / Pill Bar with Counts */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1 shrink-0 custom-scrollbar">
-        {CHANNEL_FILTER_OPTIONS.map((opt) => {
-          const isActive = activeChannel === opt.value;
-          const count = channelCounts[opt.value];
+      {/* One filter row, horizontally scrollable chip row */}
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 shrink-0 scrollbar-hidden">
+        {FILTER_CHIPS.map((chip) => {
+          const isActive = categoryFilter === chip.value;
+          let count = 0;
+          if (chip.value === null) count = chipCounts.all;
+          else if (chip.value === 'unread') count = chipCounts.unread;
+          else if (chip.value === 'gov') count = chipCounts.gov;
+          else if (chip.value === 'customers') count = chipCounts.customers;
+          else if (chip.value === 'marketing') count = chipCounts.marketing;
+          else if (chip.value === 'business') count = chipCounts.business;
+          else if (chip.value === 'archived') count = chipCounts.archived;
+
           return (
             <button
-              key={opt.value}
+              key={chip.label}
               type="button"
-              onClick={() => setActiveChannel(opt.value)}
+              onClick={() => onCategoryChange?.(chip.value)}
               className={`
-                flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors shrink-0 border
+                flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors shrink-0 border
                 ${
                   isActive
                     ? 'bg-primary text-white border-primary shadow-2xs font-bold'
@@ -255,9 +250,8 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
                 }
               `}
             >
-              {opt.value !== 'all' && <ChannelIcon channel={opt.value} size={11} className={isActive ? 'text-white' : ''} />}
-              <span>{opt.label}</span>
-              <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-white/20 text-white' : 'bg-panel border border-border/30 text-text-muted'}`}>
+              <span>{chip.label}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-white/20 text-white' : 'bg-panel border border-border/30 text-text-muted'}`}>
                 {count}
               </span>
             </button>
@@ -265,34 +259,17 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
         })}
       </div>
 
-      {/* Notifications List */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar flex flex-col gap-1.5">
+      {/* List rows (gap of 2px, padding px-3 py-2.5) */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-hidden flex flex-col gap-0.5">
         {filteredNotifications.length === 0 ? (
           <Panel
             variant="flat"
             className="p-6 text-center border border-dashed border-border/40 rounded-card my-auto flex flex-col items-center gap-2"
           >
-            <p className="text-xs font-bold text-text">
-              {activeChannel !== 'all'
-                ? `No ${CHANNEL_CONFIGS[activeChannel]?.displayName || activeChannel} conversations`
-                : 'No conversations found'}
+            <p className="text-xs font-bold text-text">No conversations found</p>
+            <p className="text-[13px] text-text-muted">
+              {searchQuery.trim() ? `No matches for "${searchQuery}"` : 'Your inbox is empty.'}
             </p>
-            <p className="text-[11px] text-text-muted">
-              {activeChannel !== 'all'
-                ? 'There are no conversations for this channel.'
-                : getEmptyMessage()}
-            </p>
-            {activeChannel !== 'all' && (
-              <Button
-                type="button"
-                intent="neutral"
-                size="sm"
-                onClick={() => setActiveChannel('all')}
-                className="mt-1 h-7 text-xs"
-              >
-                Return to All Channels
-              </Button>
-            )}
           </Panel>
         ) : (
           filteredNotifications.map((item) => {
@@ -324,16 +301,9 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
                   }}
                 />
 
-                <Tooltip
-                  content="Coming soon — cross-business messaging required"
-                  position="right"
-                >
+                <Tooltip content="Coming soon" position="right">
                   <div className="w-full">
-                    <DropdownMenuItem
-                      label="Forward"
-                      icon={<Share2 size={14} />}
-                      disabled
-                    />
+                    <DropdownMenuItem label="Forward" icon={<Share2 size={14} />} disabled />
                   </div>
                 </Tooltip>
 

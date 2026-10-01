@@ -131,32 +131,27 @@ export const NotificationsScreen: React.FC = () => {
     <TabContainer
       overlays={
         <>
-          {/* New Conversation Modal */}
           <NewConversationModal
             isOpen={isNewConversationOpen}
             onClose={() => setIsNewConversationOpen(false)}
             onStartConversation={handleStartNewConversation}
           />
 
-          {/* Confirm Archive Dialog */}
           <ConfirmDialog
             isOpen={Boolean(archiveTargetId)}
             onClose={() => setArchiveTargetId(null)}
             onConfirm={handleConfirmArchive}
             title="Archive this notification?"
-            message="Are you sure you want to archive this notification? It will be moved to your archived notifications list."
             confirmText="Confirm Archive"
             cancelText="Cancel"
             intent="primary"
           />
 
-          {/* Confirm Delete Dialog */}
           <ConfirmDialog
             isOpen={Boolean(deleteTargetId)}
             onClose={() => setDeleteTargetId(null)}
             onConfirm={handleConfirmDelete}
             title="Delete this notification permanently?"
-            message="Are you sure you want to permanently delete this notification? This action cannot be undone."
             confirmText="Delete Permanently"
             cancelText="Cancel"
             intent="danger"
@@ -165,7 +160,6 @@ export const NotificationsScreen: React.FC = () => {
       }
     >
       <div className="flex flex-row gap-3 w-full h-full overflow-hidden">
-        {/* Responsive Layout: On narrow screens, show list OR detail. On wide screens, show both side-by-side. */}
         {isNarrowScreen ? (
           <div className="w-full h-full overflow-hidden">
             {selectedNotification ? (
@@ -197,8 +191,7 @@ export const NotificationsScreen: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Left List Pane (Inbox / Conversations List) */}
-            <div className="w-[300px] lg:w-[350px] shrink-0 h-full overflow-hidden">
+            <div className="h-full overflow-hidden shrink-0">
               <NotificationsListPanel
                 notifications={notifications}
                 selectedId={selectedId}
@@ -216,7 +209,6 @@ export const NotificationsScreen: React.FC = () => {
               />
             </div>
 
-            {/* Right Main Conversation Workspace */}
             <div className="flex-1 h-full overflow-hidden">
               {selectedNotification ? (
                 <NotificationDetailPanel
@@ -228,13 +220,10 @@ export const NotificationsScreen: React.FC = () => {
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-panel border border-border/40 rounded-card p-8 text-center shadow-xs">
-                  <div className="w-14 h-14 rounded-full bg-panel-strong/60 flex items-center justify-center text-text-muted mb-3 border border-border/30">
-                    <Mail size={28} />
+                  <div className="w-12 h-12 rounded-full bg-panel-strong/60 flex items-center justify-center text-text-muted mb-3 border border-border/30">
+                    <Mail size={24} />
                   </div>
-                  <h3 className="text-sm font-bold text-text mb-1">No Conversation Selected</h3>
-                  <p className="text-xs text-text-muted max-w-md">
-                    Select a conversation from the inbox list on the left or click <strong className="text-text">+ New</strong> to start a new conversation.
-                  </p>
+                  <h3 className="text-[15px] font-semibold text-text">No Conversation Selected</h3>
                 </div>
               )}
             </div>
