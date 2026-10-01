@@ -52,6 +52,8 @@ export interface AppShellProps {
   navState?: NavigationState | string;
   /** Initial navigation sidebar state when uncontrolled (default 'open') */
   defaultNavState?: NavigationState | string;
+  /** Last non-closed navigation state when controlled */
+  lastNonClosedState?: 'icon' | 'open';
   /** Callback fired when navigation sidebar state changes */
   onNavStateChange?: (state: NavigationState) => void;
   /** Enable Ctrl+B / Cmd+B keyboard shortcut to toggle sidebar (default true) */
@@ -84,39 +86,47 @@ export function AppShell({
   minHeight = 0,
   navState: controlledNavState,
   defaultNavState = 'open',
+  lastNonClosedState: controlledLastNonClosedState,
   onNavStateChange,
   enableHotkey = true,
   showReopenControl = false,
 }: AppShellProps) {
   const initialNavState = normalizeState(controlledNavState ?? defaultNavState, 'open');
   const [internalNavState, setInternalNavState] = useState<NavigationState>(initialNavState);
-  const [lastNonClosedState, setLastNonClosedState] = useState<'icon' | 'open'>(
+  const [internalLastNonClosedState, setInternalLastNonClosedState] = useState<'icon' | 'open'>(
     initialNavState !== 'closed' ? initialNavState : 'open'
   );
 
   const navState = normalizeState(controlledNavState ?? internalNavState, 'open');
+  const effectiveLastNonClosedState = controlledLastNonClosedState ?? internalLastNonClosedState;
+
+  useEffect(() => {
+    if (navState !== 'closed' && controlledLastNonClosedState === undefined) {
+      setInternalLastNonClosedState(navState);
+    }
+  }, [navState, controlledLastNonClosedState]);
 
   const handleNavStateChange = useCallback(
     (newState: NavigationState) => {
       const normalized = normalizeState(newState);
-      if (normalized !== 'closed') {
-        setLastNonClosedState(normalized);
+      if (normalized !== 'closed' && controlledLastNonClosedState === undefined) {
+        setInternalLastNonClosedState(normalized);
       }
       if (controlledNavState === undefined) {
         setInternalNavState(normalized);
       }
       onNavStateChange?.(normalized);
     },
-    [controlledNavState, onNavStateChange]
+    [controlledNavState, controlledLastNonClosedState, onNavStateChange]
   );
 
   const toggleSidebar = useCallback(() => {
     if (navState === 'closed') {
-      handleNavStateChange(lastNonClosedState);
+      handleNavStateChange(effectiveLastNonClosedState);
     } else {
       handleNavStateChange('closed');
     }
-  }, [navState, lastNonClosedState, handleNavStateChange]);
+  }, [navState, effectiveLastNonClosedState, handleNavStateChange]);
 
   // Keyboard shortcut listener (Ctrl+B / Cmd+B)
   useEffect(() => {
@@ -134,15 +144,15 @@ export function AppShell({
   const contextValue = useMemo<AppShellContextValue>(
     () => ({
       navState,
-      lastVisibleNavState: lastNonClosedState,
+      lastVisibleNavState: effectiveLastNonClosedState,
       setNavState: handleNavStateChange,
       collapseSidebar: () => handleNavStateChange('icon'),
       expandSidebar: () => handleNavStateChange('open'),
       hideSidebar: () => handleNavStateChange('closed'),
-      reopenSidebar: () => handleNavStateChange(lastNonClosedState),
+      reopenSidebar: () => handleNavStateChange(effectiveLastNonClosedState),
       toggleSidebar,
     }),
-    [navState, lastNonClosedState, handleNavStateChange, toggleSidebar]
+    [navState, effectiveLastNonClosedState, handleNavStateChange, toggleSidebar]
   );
 
   const minWidthStyle = minWidth !== undefined && minWidth !== 0 ? (typeof minWidth === 'number' ? `${minWidth}px` : minWidth) : undefined;
@@ -172,7 +182,7 @@ export function AppShell({
             <div className="absolute top-2 left-2 z-40">
               <IconButton
                 icon={<PanelLeftOpen size={16} />}
-                onClick={() => handleNavStateChange(lastNonClosedState)}
+                onClick={() => handleNavStateChange(effectiveLastNonClosedState)}
                 intent="secondary"
                 size="sm"
                 label="Reopen navigation sidebar"

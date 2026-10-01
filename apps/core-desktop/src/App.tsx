@@ -48,6 +48,7 @@ export default function App() {
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
   const sidebarState = useNavStore((s) => s.sidebarState);
   const setSidebarState = useNavStore((s) => s.setSidebarState);
+  const lastNonClosedState = useNavStore((s) => s.lastNonClosedState);
 
   const renderContent = () => {
     switch (activeScreen) {
@@ -118,6 +119,7 @@ export default function App() {
         topBar={topBarElement}
         sidebar={sidebarElement}
         navState={sidebarState}
+        lastNonClosedState={lastNonClosedState}
         onNavStateChange={setSidebarState}
       >
         {renderContent()}

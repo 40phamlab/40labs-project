@@ -7,6 +7,7 @@ import { PageViewport } from './PageViewport';
 import { PageHeader } from './PageHeader';
 import { PageContent } from './PageContent';
 import { AppSidebarNav, NavItem } from '../navigation/AppSidebarNav';
+import { TopMenuBar } from '../navigation/TopMenuBar';
 
 const sampleNavItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -339,5 +340,112 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
     );
     const controls = screen.getByTestId('titlebar-controls');
     expect(controls).toHaveClass('no-drag');
+  });
+
+  test('regression: OPEN → ICON → CLOSED → ICON cycle', async () => {
+    function Harness() {
+      const [navState, setNavState] = React.useState<NavigationState>('open');
+      const [lastNonClosed, setLastNonClosed] = React.useState<'icon' | 'open'>('open');
+
+      return (
+        <AppShell
+          navState={navState}
+          lastNonClosedState={lastNonClosed}
+          onNavStateChange={(state) => {
+            setNavState(state);
+            if (state !== 'closed') setLastNonClosed(state);
+          }}
+          topBar={<TopMenuBar />}
+          sidebar={
+            <AppSidebarNav
+              activeRoute="dashboard"
+              onNavigate={() => {}}
+              items={sampleNavItems}
+            />
+          }
+        >
+          <div data-testid="nav-state">{navState}</div>
+        </AppShell>
+      );
+    }
+
+    render(<Harness />);
+    const navStateEl = screen.getByTestId('nav-state');
+    expect(navStateEl).toHaveTextContent('open');
+
+    // Click active dashboard item while open -> collapses to icon
+    await userEvent.click(screen.getByRole('button', { name: /^dashboard$/i }));
+    expect(navStateEl).toHaveTextContent('icon');
+
+    // Toggle via top menu -> closed
+    await userEvent.click(screen.getByRole('button', { name: /toggle sidebar navigation/i }));
+    expect(navStateEl).toHaveTextContent('closed');
+
+    // Toggle via top menu -> reopens as icon (not open)
+    await userEvent.click(screen.getByRole('button', { name: /show sidebar navigation/i }));
+    expect(navStateEl).toHaveTextContent('icon');
+  });
+
+  test('regression: OPEN → CLOSED → OPEN cycle', async () => {
+    function Harness() {
+      const [navState, setNavState] = React.useState<NavigationState>('open');
+      const [lastNonClosed, setLastNonClosed] = React.useState<'icon' | 'open'>('open');
+
+      return (
+        <AppShell
+          navState={navState}
+          lastNonClosedState={lastNonClosed}
+          onNavStateChange={(state) => {
+            setNavState(state);
+            if (state !== 'closed') setLastNonClosed(state);
+          }}
+          topBar={<TopMenuBar />}
+          sidebar={
+            <AppSidebarNav
+              activeRoute="dashboard"
+              onNavigate={() => {}}
+              items={sampleNavItems}
+            />
+          }
+        >
+          <div data-testid="nav-state">{navState}</div>
+        </AppShell>
+      );
+    }
+
+    render(<Harness />);
+    const navStateEl = screen.getByTestId('nav-state');
+    expect(navStateEl).toHaveTextContent('open');
+
+    // Toggle via top menu -> closed
+    await userEvent.click(screen.getByRole('button', { name: /toggle sidebar navigation/i }));
+    expect(navStateEl).toHaveTextContent('closed');
+
+    // Toggle via top menu -> reopens as open
+    await userEvent.click(screen.getByRole('button', { name: /show sidebar navigation/i }));
+    expect(navStateEl).toHaveTextContent('open');
+  });
+
+  test('clicking different navigation items while ICON keeps sidebar in ICON state and navigates', async () => {
+    const handleNavigate = vi.fn();
+    render(
+      <AppShell
+        navState="icon"
+        sidebar={
+          <AppSidebarNav
+            activeRoute="dashboard"
+            onNavigate={handleNavigate}
+            items={sampleNavItems}
+          />
+        }
+      >
+        <div>Content</div>
+      </AppShell>
+    );
+
+    const salesBtn = screen.getByRole('button', { name: /sales/i });
+    await userEvent.click(salesBtn);
+    expect(handleNavigate).toHaveBeenCalledWith('sales');
+    expect(screen.getByTestId('app-shell-sidebar-container')).toHaveClass('w-16');
   });
 });
