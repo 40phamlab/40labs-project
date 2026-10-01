@@ -83,10 +83,7 @@ export const IntegrationsPanel: React.FC = () => {
       {/* Communications & Channels Panel */}
       <Panel variant="raised" className="p-6 space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-text-primary">Communication Channels & External Integrations</h3>
-          <p className="text-xs text-text-muted">
-            Manage connectivity for notification gateways, web access portals, and communication relays. Note: Toggling configuration works offline; re-authenticating live gateway sessions requires active internet connectivity.
-          </p>
+          <h3 className="text-sm font-bold text-text-primary">Integrations</h3>
         </div>
 
         <div className="space-y-3">
@@ -184,10 +181,7 @@ export const IntegrationsPanel: React.FC = () => {
       {/* Collaborators & Shared Access Panel */}
       <Panel variant="raised" className="p-6 space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-text-primary">Collaborators & System Access</h3>
-          <p className="text-xs text-text-muted">
-            Assign staff members as system collaborators with view or management access scopes. Pulls directly from staff directory.
-          </p>
+          <h3 className="text-sm font-bold text-text-primary">Collaborators</h3>
         </div>
 
         {/* Add Collaborator Form */}

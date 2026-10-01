@@ -221,10 +221,7 @@ export const DevicesPanel: React.FC = () => {
       <Panel variant="raised" className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-text-primary">Orbit Worker & Hardware Device Trust</h3>
-            <p className="text-xs text-text-muted">
-              Manage persistent POS terminals and mobile companion nodes. Pairing is LAN-only; revocation or blocking propagates near-instantly on the local network on next connection attempt.
-            </p>
+            <h3 className="text-sm font-bold text-text-primary">Orbit Worker</h3>
           </div>
           <Button
             type="button"
@@ -266,7 +263,7 @@ export const DevicesPanel: React.FC = () => {
       <Modal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
-        title="Pair Orbit Worker Device (QR Code)"
+        title="Pair Device"
         size="md"
         footer={
           <div className="flex justify-end w-full">

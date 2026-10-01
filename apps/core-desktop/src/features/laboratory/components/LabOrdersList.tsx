@@ -266,7 +266,7 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
     if (activeChannel === 'forwarded') {
       return 'Coming soon — this will show online-ordered tests once patient ordering ships';
     }
-    return 'No unsolved orders found for the selected time range.';
+    return 'No unsolved orders';
   };
 
   const channelLabelMap: Record<ChannelTab, string> = {

@@ -1,10 +1,9 @@
 import * as React from 'react';
 import {
-  PageViewport,
-  PageContent,
   SubNavSection,
 } from '@40labs/ui-components';
 import { SubNavLayout } from '../../components/SubNavLayout';
+import { TabContainer } from '../../components/TabContainer';
 import {
   Building2,
   Users,
@@ -47,7 +46,7 @@ const SETTINGS_SUBNAV_SECTIONS: SubNavSection[] = [
   {
     id: 'settings',
     items: [
-      { id: 'business', label: 'Business & Branches', icon: <Building2 size={16} /> },
+      { id: 'business', label: 'Business', icon: <Building2 size={16} /> },
       { id: 'users-roles', label: 'Users & Roles', icon: <Users size={16} /> },
       { id: 'appearance', label: 'Appearance', icon: <Palette size={16} /> },
       { id: 'integrations', label: 'Integrations', icon: <Puzzle size={16} /> },
@@ -59,15 +58,15 @@ const SETTINGS_SUBNAV_SECTIONS: SubNavSection[] = [
   },
 ];
 
-const SETTINGS_TAB_TITLES: Record<SettingsTab, { title: string; subtitle: string }> = {
-  'business': { title: 'Business Profile & Branches', subtitle: 'Configure institutional details and physical operating locations.' },
-  'users-roles': { title: 'Users & Roles', subtitle: 'Manage staff accounts, access permissions, and RBAC policies.' },
-  'appearance': { title: 'Appearance & Theme', subtitle: 'Customize light and dark display mode preferences.' },
-  'integrations': { title: 'Integrations', subtitle: 'Configure external SMS, WhatsApp, and API webhook integrations.' },
-  'devices': { title: 'Devices & Orbit Worker', subtitle: 'Manage paired POS terminals, local servers, and hardware trust.' },
-  'compliance': { title: 'Regulatory Compliance', subtitle: 'TMDA and Pharmacy Council reporting and licensing configuration.' },
-  'security': { title: 'Security & PINs', subtitle: 'Manage master admin PINs, passwords, and security audit settings.' },
-  'backup': { title: 'Backup & Restore', subtitle: 'Local SQLite snapshot backups and cloud export schedules.' },
+const SETTINGS_TAB_TITLES: Record<SettingsTab, string> = {
+  'business': 'Business',
+  'users-roles': 'Users & Roles',
+  'appearance': 'Appearance',
+  'integrations': 'Integrations',
+  'devices': 'Devices',
+  'compliance': 'Compliance',
+  'security': 'Security',
+  'backup': 'Backup',
 };
 
 export const SettingsScreen: React.FC = () => {
@@ -178,32 +177,30 @@ export const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <PageViewport>
-      <PageContent scrollable={false} variant="transparent" padding="none">
-        <SubNavLayout
-          storageKey="settings"
-          widthClass="w-56"
-          className="p-3"
-          contentClassName="pl-2 pr-1"
-          sections={SETTINGS_SUBNAV_SECTIONS}
-          activeItemId={activeTab}
-          onSelect={(id) => setActiveTab(id as SettingsTab)}
-        >
-          <div className="mb-4">
-            <h1 className="text-lg font-bold text-text-primary">{SETTINGS_TAB_TITLES[activeTab].title}</h1>
-            <p className="text-xs text-text-muted">{SETTINGS_TAB_TITLES[activeTab].subtitle}</p>
-          </div>
-          {renderActivePanel()}
-        </SubNavLayout>
-      </PageContent>
-
-      <BranchFormModal
-        isOpen={isBranchModalOpen}
-        onClose={closeBranchModal}
-        branch={selectedBranchForEdit}
-        onSave={handleSaveBranch}
-        isLoading={isCreatingBranch || isUpdatingBranch}
-      />
-    </PageViewport>
+    <TabContainer
+      overlays={
+        <BranchFormModal
+          isOpen={isBranchModalOpen}
+          onClose={closeBranchModal}
+          branch={selectedBranchForEdit}
+          onSave={handleSaveBranch}
+          isLoading={isCreatingBranch || isUpdatingBranch}
+        />
+      }
+    >
+      <SubNavLayout
+        storageKey="settings"
+        widthClass="w-56"
+        contentClassName="pl-2 pr-1"
+        sections={SETTINGS_SUBNAV_SECTIONS}
+        activeItemId={activeTab}
+        onSelect={(id) => setActiveTab(id as SettingsTab)}
+      >
+        <div className="mb-4">
+          <h1 className="text-lg font-bold text-text-primary">{SETTINGS_TAB_TITLES[activeTab]}</h1>
+        </div>
+        {renderActivePanel()}
+      </SubNavLayout>
+    </TabContainer>
   );
 };

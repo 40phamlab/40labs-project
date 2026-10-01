@@ -146,7 +146,6 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
             </div>
             <div>
               <h2 className="text-sm font-bold text-text">New Conversation</h2>
-              <p className="text-[11px] text-text-muted">Select a recipient and channel to start messaging</p>
             </div>
           </div>
           <IconButton

@@ -1,13 +1,12 @@
 import * as React from 'react';
 import {
-  PageViewport,
   PageToolbar,
-  PageContent,
   Button,
   SearchInput,
   IconButton,
 } from '@40labs/ui-components';
 import { Plus, RefreshCw } from 'lucide-react';
+import { TabContainer } from '../../components/TabContainer';
 import { CustomerStatsBar } from './components/CustomerStatsBar';
 import { CustomerFilterBar } from './components/CustomerFilterBar';
 import { CustomerList } from './components/CustomerList';
@@ -81,81 +80,81 @@ export const CustomersScreen: React.FC = () => {
   }, [setSearchTerm]);
 
   return (
-    <PageViewport>
-      {/* Toolbar */}
-      <PageToolbar
-        left={
-          <CustomerFilterBar
-            timeRange={timeRange}
-            onTimeRangeChange={setTimeRange}
-            balanceFilter={balanceFilter}
-            onBalanceFilterChange={setBalanceFilter}
-            onClearAll={handleClearAll}
+    <TabContainer
+      toolbar={
+        <PageToolbar
+          left={
+            <CustomerFilterBar
+              timeRange={timeRange}
+              onTimeRangeChange={setTimeRange}
+              balanceFilter={balanceFilter}
+              onBalanceFilterChange={setBalanceFilter}
+              onClearAll={handleClearAll}
+            />
+          }
+          right={
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                intent="primary"
+                size="sm"
+                leftIcon={<Plus size={14} />}
+                onClick={() => setAddModalOpen(true)}
+              >
+                Add Customer
+              </Button>
+              <SearchInput
+                className="w-64"
+                placeholder="Search name, phone, email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onClear={() => setSearchTerm('')}
+              />
+              <IconButton
+                icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
+                label="Refresh customers"
+                intent="ghost"
+                size="sm"
+                onClick={() => refetch()}
+              />
+            </div>
+          }
+        />
+      }
+      overlays={
+        <>
+          <AddCustomerModal
+            isOpen={isAddModalOpen}
+            onClose={() => setAddModalOpen(false)}
+            onAdd={async (payload) => {
+              await addCustomer(payload);
+            }}
+            isLoading={isAdding}
           />
-        }
-        right={
-          <div className="flex items-center gap-3">
-            <Button
-              type="button"
-              intent="primary"
-              size="sm"
-              leftIcon={<Plus size={14} />}
-              onClick={() => setAddModalOpen(true)}
-            >
-              Add Customer
-            </Button>
-            <SearchInput
-              className="w-64"
-              placeholder="Search name, phone, email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClear={() => setSearchTerm('')}
-            />
-            <IconButton
-              icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-              label="Refresh customers"
-              intent="ghost"
-              size="sm"
-              onClick={() => refetch()}
-            />
-          </div>
-        }
-      />
 
-      {/* Content */}
-      <PageContent scrollable={false} variant="transparent" padding="none">
-        <div className="flex flex-col gap-3 h-full w-full overflow-hidden">
-          {/* KPI Stats Bar */}
-          <CustomerStatsBar customers={customers} />
+          <CustomerDetailDrawer
+            customer={selectedCustomer}
+            isOpen={Boolean(selectedCustomerId)}
+            onClose={() => setSelectedCustomerId(null)}
+          />
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3 flex-1 min-h-0 w-full overflow-hidden">
+        {/* KPI Stats Bar */}
+        <CustomerStatsBar customers={customers} />
 
-          {/* Table Region */}
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-            <CustomerList
-              customers={filteredCustomers}
-              onViewDetails={setSelectedCustomerId}
-              loading={isLoading}
-              error={isError ? (error as Error) : null}
-              onRetry={() => refetch()}
-            />
-          </div>
+        {/* Table Region */}
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+          <CustomerList
+            customers={filteredCustomers}
+            onViewDetails={setSelectedCustomerId}
+            loading={isLoading}
+            error={isError ? (error as Error) : null}
+            onRetry={() => refetch()}
+          />
         </div>
-      </PageContent>
-
-      {/* Modals & Drawers */}
-      <AddCustomerModal
-        isOpen={isAddModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onAdd={async (payload) => {
-          await addCustomer(payload);
-        }}
-        isLoading={isAdding}
-      />
-
-      <CustomerDetailDrawer
-        customer={selectedCustomer}
-        isOpen={Boolean(selectedCustomerId)}
-        onClose={() => setSelectedCustomerId(null)}
-      />
-    </PageViewport>
+      </div>
+    </TabContainer>
   );
 };

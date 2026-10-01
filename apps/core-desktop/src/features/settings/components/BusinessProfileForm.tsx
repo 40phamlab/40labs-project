@@ -101,9 +101,6 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
       <div className="flex items-center justify-between border-b border-border/40 pb-4">
         <div>
           <h2 className="text-base font-bold text-text-primary">Business Profile</h2>
-          <p className="text-xs text-text-muted">
-            Manage your registered business credentials, official contacts, and location details.
-          </p>
         </div>
         <Button
           type="button"
@@ -123,17 +120,15 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
             name="name"
             value={formData.name}
             onChange={handleChange}
-            placeholder="e.g. Afya Bora Pharmacy"
           />
         </Field>
 
         <Field>
-          <FieldLabel>TIN (Taxpayer Identification Number)</FieldLabel>
+          <FieldLabel>TIN</FieldLabel>
           <Input
             name="tin"
             value={formData.tin}
             onChange={handleChange}
-            placeholder="e.g. 123-456-789"
           />
         </Field>
 
@@ -143,7 +138,6 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
             name="tmda_number"
             value={formData.tmda_number}
             onChange={handleChange}
-            placeholder="e.g. TMDA/PHA/2024/001"
           />
         </Field>
 
@@ -165,7 +159,6 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
             type="email"
             value={formData.email}
             onChange={handleChange}
-            placeholder="contact@business.co.tz"
           />
         </Field>
 
@@ -186,7 +179,6 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
             name="logo_url"
             value={formData.logo_url}
             onChange={handleChange}
-            placeholder="https://... (optional)"
           />
         </Field>
 
@@ -197,7 +189,6 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
               name="region"
               value={formData.region}
               onChange={handleChange}
-              placeholder="e.g. Dar es Salaam"
             />
           </Field>
           <Field>
@@ -206,7 +197,6 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
               name="district"
               value={formData.district}
               onChange={handleChange}
-              placeholder="e.g. Ilala"
             />
           </Field>
           <Field>
@@ -215,7 +205,6 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
               name="place"
               value={formData.place}
               onChange={handleChange}
-              placeholder="e.g. Kariakoo Market St"
             />
           </Field>
         </div>

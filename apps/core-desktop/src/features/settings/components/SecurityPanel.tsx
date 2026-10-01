@@ -45,8 +45,8 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
       setPinError('Current PIN is required.');
       return;
     }
-    if (pinForm.newPin.length < 4) {
-      setPinError('New PIN must be at least 4 digits.');
+    if (pinForm.newPin.length < 4 || pinForm.newPin.length > 6) {
+      setPinError('4-6 digit PIN');
       return;
     }
     if (pinForm.newPin !== pinForm.confirmPin) {
@@ -82,7 +82,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
       return;
     }
     if (passForm.newPassword.length < 6) {
-      setPassError('New password must be at least 6 characters.');
+      setPassError('min 6 chars');
       return;
     }
     if (passForm.newPassword !== passForm.confirmPassword) {
@@ -119,7 +119,6 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
             </div>
             <div>
               <h3 className="text-sm font-bold text-text-primary">Change Master PIN</h3>
-              <p className="text-[11px] text-text-muted">Used for supervisor overrides and point-of-sale authorizations.</p>
             </div>
           </div>
 
@@ -153,7 +152,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
                 maxLength={6}
                 value={pinForm.newPin}
                 onChange={(e) => setPinForm((p) => ({ ...p, newPin: e.target.value }))}
-                placeholder="New 4-6 digit PIN"
+                placeholder="New PIN"
               />
             </Field>
 
@@ -163,7 +162,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
                 maxLength={6}
                 value={pinForm.confirmPin}
                 onChange={(e) => setPinForm((p) => ({ ...p, confirmPin: e.target.value }))}
-                placeholder="Re-enter new PIN"
+                placeholder="Confirm PIN"
               />
             </Field>
 
@@ -187,7 +186,6 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
             </div>
             <div>
               <h3 className="text-sm font-bold text-text-primary">Change Account Password</h3>
-              <p className="text-[11px] text-text-muted">Used for desktop application login and administrative access.</p>
             </div>
           </div>
 
@@ -219,7 +217,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <PasswordInput
                 value={passForm.newPassword}
                 onChange={(e) => setPassForm((p) => ({ ...p, newPassword: e.target.value }))}
-                placeholder="New Password (min 6 chars)"
+                placeholder="New Password"
               />
             </Field>
 
@@ -228,7 +226,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <PasswordInput
                 value={passForm.confirmPassword}
                 onChange={(e) => setPassForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                placeholder="Re-enter new password"
+                placeholder="Confirm Password"
               />
             </Field>
 
@@ -254,9 +252,6 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
             </div>
             <div>
               <h3 className="text-sm font-bold text-text-primary">Paired Devices Summary</h3>
-              <p className="text-xs text-text-muted">
-                Quick status overview of paired Orbit Worker hardware terminals.
-              </p>
             </div>
           </div>
 

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Panel, StatusBadge } from '@40labs/ui-components';
-import { ShieldCheck, Building, FileText, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Building, FileText } from 'lucide-react';
 import { useBusiness } from '../../../hooks/useBusiness';
 import { useFiscalReceipts } from '../../../hooks/useFiscalReceipts';
 
@@ -21,10 +21,7 @@ export const CompliancePanel: React.FC = () => {
             <ShieldCheck size={16} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-text-primary">Tanzania Medicines & Medical Devices Authority (TMDA)</h3>
-            <p className="text-xs text-text-muted">
-              Official institutional registration and premises licensing compliance.
-            </p>
+            <h3 className="text-sm font-bold text-text-primary">TMDA</h3>
           </div>
         </div>
 
@@ -52,10 +49,7 @@ export const CompliancePanel: React.FC = () => {
             <Building size={16} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-text-primary">Pharmacy Council of Tanzania</h3>
-            <p className="text-xs text-text-muted">
-              Supervising Pharmacist and professional practice standard guidelines.
-            </p>
+            <h3 className="text-sm font-bold text-text-primary">Pharmacy Council</h3>
           </div>
         </div>
 
@@ -68,9 +62,6 @@ export const CompliancePanel: React.FC = () => {
             <span className="text-text-muted">Annual Practice Permit</span>
             <StatusBadge status="active" label="VALID UNTIL DEC 2025" />
           </div>
-          <p className="text-[11px] text-text-muted pt-2 border-t border-border/40">
-            All dispensing activities, controlled substance logs, and batch trackings are executed in accordance with Pharmacy Council Regulations and TMDA Good Dispensing Practice (GDP) standards.
-          </p>
         </div>
       </Panel>
 
@@ -81,10 +72,7 @@ export const CompliancePanel: React.FC = () => {
             <FileText size={16} />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-text-primary">Tanzania Revenue Authority (TRA) EFD Integration</h3>
-            <p className="text-xs text-text-muted">
-              Fiscal receipt generation, TIN registration, and EFD electronic signature relay.
-            </p>
+            <h3 className="text-sm font-bold text-text-primary">TRA EFD</h3>
           </div>
         </div>
 
@@ -97,11 +85,6 @@ export const CompliancePanel: React.FC = () => {
               </span>
             </div>
             <StatusBadge status="active" label="TRA CONNECTED" />
-          </div>
-
-          <div className="p-3 bg-success/10 text-success text-xs rounded-card flex items-center gap-2">
-            <CheckCircle2 size={14} className="shrink-0" />
-            <span>TRA EFD Fiscal Gateway active and operational for automated receipt signing.</span>
           </div>
         </div>
       </Panel>

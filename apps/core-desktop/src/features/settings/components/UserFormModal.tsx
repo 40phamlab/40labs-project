@@ -235,20 +235,17 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
               <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">
                 Orbit Worker & POS Permission Matrix
               </h4>
-              <p className="text-[11px] text-text-muted">
-                Configure staff operational boundaries. Note: Sensitive actions marked with a badge require owner or supervisor PIN confirmation at point of execution regardless of these flags.
-              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-2 bg-panel-subtle p-3 rounded-card border border-border/50">
               {[
-                { key: 'can_update_stock', label: 'Can Update Stock & Inventory' },
-                { key: 'can_adjust_stock', label: 'Can Adjust Stock Levels', pinGated: true },
-                { key: 'can_issue_refund', label: 'Can Issue Sales Refunds', pinGated: true },
-                { key: 'can_approve_po', label: 'Can Approve Purchase Orders', pinGated: true },
-                { key: 'can_add_lab_sample', label: 'Can Add Laboratory Samples' },
-                { key: 'can_override_lab_result', label: 'Can Override Lab Results', pinGated: true },
-                { key: 'can_view_reports', label: 'Can View Financial & Operational Reports' },
+                { key: 'can_update_stock', label: 'Update Stock' },
+                { key: 'can_adjust_stock', label: 'Adjust Stock', pinGated: true },
+                { key: 'can_issue_refund', label: 'Issue Refunds', pinGated: true },
+                { key: 'can_approve_po', label: 'Approve Orders', pinGated: true },
+                { key: 'can_add_lab_sample', label: 'Add Samples' },
+                { key: 'can_override_lab_result', label: 'Override Results', pinGated: true },
+                { key: 'can_view_reports', label: 'View Reports' },
               ].map(({ key, label, pinGated }) => {
                 const permKey = key as keyof StaffPermissionSet;
                 return (

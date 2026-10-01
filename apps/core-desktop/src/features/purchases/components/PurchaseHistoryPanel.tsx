@@ -56,7 +56,6 @@ export const PurchaseHistoryPanel: React.FC<PurchaseHistoryPanelProps> = ({
       <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/20">
         <div>
           <h2 className="text-base font-bold text-text">Purchase History</h2>
-          <p className="text-xs text-text-muted">Track procurement orders & deliveries</p>
         </div>
       </div>
 

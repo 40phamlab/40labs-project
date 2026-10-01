@@ -355,7 +355,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
           loading={loading}
           error={error}
           onRetry={onRetry}
-          emptyMessage="No laboratory samples found for the selected time range."
+          emptyMessage="No samples"
         />
       </div>
 

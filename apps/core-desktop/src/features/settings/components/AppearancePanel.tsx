@@ -26,10 +26,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
     <div className="flex flex-col gap-6 pb-8 max-w-2xl">
       <Panel variant="raised" className="p-6 space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-text-primary">Display Theme & Appearance</h3>
-          <p className="text-xs text-text-muted">
-            Configure application display theme. Per institutional guidelines, 40Labs runs exclusively on a precision dark clinical palette optimized for high-contrast pharmacy and laboratory environments.
-          </p>
+          <h3 className="text-sm font-bold text-text-primary">Appearance</h3>
         </div>
 
         <div className="flex items-center justify-between p-4 bg-panel-subtle rounded-card border border-border/50">
@@ -41,11 +38,6 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
               <span className="text-xs font-bold text-text-primary block">
                 {isDarkMode ? 'Dark Clinical Theme (Active)' : 'Light Theme Mode'}
               </span>
-              <span className="text-[11px] text-text-muted">
-                {isDarkMode
-                  ? 'High-contrast professional dark palette (default & locked).'
-                  : 'Standard light display mode.'}
-              </span>
             </div>
           </div>
 
@@ -55,13 +47,6 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
             disabled={isLoading}
             label={isDarkMode ? 'Dark Mode' : 'Light Mode'}
           />
-        </div>
-
-        <div className="p-3 bg-info/10 text-info text-xs rounded-card flex items-start gap-2">
-          <span className="font-bold shrink-0">Note:</span>
-          <span>
-            In accordance with system design lock, typography sizes, border corner radii, and color accent overrides are strictly managed by system design tokens and cannot be customized per-user.
-          </span>
         </div>
       </Panel>
     </div>

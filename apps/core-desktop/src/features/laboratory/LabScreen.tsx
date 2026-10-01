@@ -1,8 +1,6 @@
 import * as React from 'react';
 import {
-  PageViewport,
   PageToolbar,
-  PageContent,
   SubNavSection,
   DataTable,
   ColumnDefinition,
@@ -12,6 +10,7 @@ import {
   Button,
 } from '@40labs/ui-components';
 import { SubNavLayout } from '../../components/SubNavLayout';
+import { TabContainer } from '../../components/TabContainer';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -399,53 +398,51 @@ export const LabScreen: React.FC = () => {
   };
 
   return (
-    <PageViewport>
-      {/* Toolbar */}
-      <PageToolbar
-        right={
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              intent="primary"
-              size="sm"
-              leftIcon={<Plus size={14} />}
-              onClick={() => setIsModalOpen(true)}
-            >
-              New Requisition
-            </Button>
-            <IconButton
-              icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-              label="Refresh laboratory data"
-              intent="ghost"
-              size="sm"
-              onClick={() => refetch()}
-            />
-          </div>
-        }
-      />
-
-      {/* Content */}
-      <PageContent scrollable={false} variant="transparent" padding="none">
-        <SubNavLayout
-          storageKey="lab"
-          widthClass="w-52"
-          sections={LAB_SUBNAV_SECTIONS}
-          activeItemId={activeLabTab}
-          onSelect={(id) => setActiveLabTab(id as LabTab)}
-        >
-          {renderContent()}
-        </SubNavLayout>
-      </PageContent>
-
-      {/* Requisition Modal */}
-      <NewLabOrderModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSubmit={handleAddOrder}
-        customers={customers}
-        testCatalog={testCatalog}
-        isLoading={isCreatingOrder}
-      />
-    </PageViewport>
+    <TabContainer
+      toolbar={
+        <PageToolbar
+          right={
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                intent="primary"
+                size="sm"
+                leftIcon={<Plus size={14} />}
+                onClick={() => setIsModalOpen(true)}
+              >
+                New Requisition
+              </Button>
+              <IconButton
+                icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
+                label="Refresh laboratory data"
+                intent="ghost"
+                size="sm"
+                onClick={() => refetch()}
+              />
+            </div>
+          }
+        />
+      }
+      overlays={
+        <NewLabOrderModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSubmit={handleAddOrder}
+          customers={customers}
+          testCatalog={testCatalog}
+          isLoading={isCreatingOrder}
+        />
+      }
+    >
+      <SubNavLayout
+        storageKey="lab"
+        widthClass="w-52"
+        sections={LAB_SUBNAV_SECTIONS}
+        activeItemId={activeLabTab}
+        onSelect={(id) => setActiveLabTab(id as LabTab)}
+      >
+        {renderContent()}
+      </SubNavLayout>
+    </TabContainer>
   );
 };

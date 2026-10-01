@@ -153,7 +153,7 @@ export const ChannelRecipientModal: React.FC<ChannelRecipientModalProps> = ({
             <Checkbox
               checked={allSelected}
               onChange={(e) => handleToggleAll(e.target.checked)}
-              label="Select All Filtered Contacts"
+              label="Select All"
             />
           </div>
           <span className="font-mono text-xs text-text-muted">

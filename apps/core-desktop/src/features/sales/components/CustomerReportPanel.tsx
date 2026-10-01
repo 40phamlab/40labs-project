@@ -86,7 +86,7 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
         {!selectedCustomer && manualEntry && (manualEntry.full_name.trim().length > 0 || manualEntry.phone.trim().length > 0) && (
           <div className="pt-0.5 px-1">
             <Checkbox
-              label="Save new customer upon checkout"
+              label="Save Customer"
               checked={saveCustomer}
               onChange={(e) => onSaveCustomerChange(e.target.checked)}
             />

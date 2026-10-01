@@ -22,8 +22,7 @@ export const HoldSalesModal: React.FC<HoldSalesModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Held Transactions (Parked Bills)"
-      description="View and resume saved customer bills currently on hold."
+      title="Held Sales"
       size="md"
       footer={
         <Button type="button" intent="neutral" size="sm" onClick={onClose}>
@@ -36,10 +35,7 @@ export const HoldSalesModal: React.FC<HoldSalesModalProps> = ({
           <div className="p-3 rounded-full bg-panel text-text-muted mb-2">
             <PauseCircle size={24} />
           </div>
-          <p className="text-xs font-semibold text-text mb-1">No Held Bills</p>
-          <p className="text-[11px] text-text-muted">
-            Click "Hold Bill" in the sale totals bar during an active sale to temporarily park it.
-          </p>
+          <p className="text-xs font-semibold text-text">No held sales</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">

@@ -1,14 +1,13 @@
 import * as React from 'react';
 import {
-  PageViewport,
   PageToolbar,
-  PageContent,
   FilterTabs,
   Button,
   IconButton,
   Popover,
 } from '@40labs/ui-components';
 import { Download, Share2 } from 'lucide-react';
+import { TabContainer } from '../../components/TabContainer';
 import { useReports } from '../../hooks/useReports';
 import { useToast } from '../../hooks/useToast';
 import {
@@ -84,115 +83,117 @@ export const ReportsScreen: React.FC = () => {
   };
 
   return (
-    <PageViewport>
-      <PageToolbar
-        left={
-          <FilterTabs
-            tabs={CATEGORY_TABS}
-            activeTabId={activeCategory}
-            onChange={(id) => setActiveCategory(id as ReportCategoryId)}
-          />
-        }
-        right={
-          <div className="flex items-center gap-2">
-            <PeriodSelector
-              value={periodOption}
-              onChange={handlePeriodChange}
+    <TabContainer
+      scroll
+      toolbar={
+        <PageToolbar
+          left={
+            <FilterTabs
+              tabs={CATEGORY_TABS}
+              activeTabId={activeCategory}
+              onChange={(id) => setActiveCategory(id as ReportCategoryId)}
             />
-            <Popover
-              isOpen={isDownloadPopoverOpen}
-              onClose={() => setIsDownloadPopoverOpen(false)}
-              title="Download PDF Reports"
-              position="bottom-end"
-              content={
-                <div className="flex flex-col gap-3 w-[300px]">
-                  <ReportSelectionList
-                    selectedCategories={downloadCategories}
-                    onChange={setDownloadCategories}
-                    periodLabel={periodOption.replace('_', ' ').toUpperCase()}
-                    dateRange={dateRange}
-                    getReportForCategory={getReportForCategory}
-                  />
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-                    <Button
-                      type="button"
-                      intent="neutral"
-                      size="sm"
-                      onClick={() => setIsDownloadPopoverOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      intent="primary"
-                      size="sm"
-                      leftIcon={<Download size={14} />}
-                      disabled={downloadCategories.length === 0}
-                      onClick={handleExecuteDownload}
-                    >
-                      Download ({downloadCategories.length})
-                    </Button>
-                  </div>
-                </div>
-              }
-            >
-              <IconButton
-                icon={<Download size={14} />}
-                label="Download PDF report"
-                intent="ghost"
-                size="sm"
-                onClick={() => setIsDownloadPopoverOpen(true)}
+          }
+          right={
+            <div className="flex items-center gap-2">
+              <PeriodSelector
+                value={periodOption}
+                onChange={handlePeriodChange}
               />
-            </Popover>
-            <Button
-              type="button"
-              intent="primary"
-              size="sm"
-              leftIcon={<Share2 size={14} />}
-              onClick={() => setIsShareModalOpen(true)}
-            >
-              Share Report
-            </Button>
-          </div>
-        }
-      />
-
-      <PageContent className="flex flex-col gap-6 p-6 overflow-y-auto">
-        {/* 3× Chart Cards Row */}
-        <ReportChartRow
-          categoryId={activeCategory}
-          primaryConfig={chartConfig}
-          primaryData={chartData}
+              <Popover
+                isOpen={isDownloadPopoverOpen}
+                onClose={() => setIsDownloadPopoverOpen(false)}
+                title="Download PDF Reports"
+                position="bottom-end"
+                content={
+                  <div className="flex flex-col gap-3 w-[300px]">
+                    <ReportSelectionList
+                      selectedCategories={downloadCategories}
+                      onChange={setDownloadCategories}
+                      periodLabel={periodOption.replace('_', ' ').toUpperCase()}
+                      dateRange={dateRange}
+                      getReportForCategory={getReportForCategory}
+                    />
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+                      <Button
+                        type="button"
+                        intent="neutral"
+                        size="sm"
+                        onClick={() => setIsDownloadPopoverOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        intent="primary"
+                        size="sm"
+                        leftIcon={<Download size={14} />}
+                        disabled={downloadCategories.length === 0}
+                        onClick={handleExecuteDownload}
+                      >
+                        Download ({downloadCategories.length})
+                      </Button>
+                    </div>
+                  </div>
+                }
+              >
+                <IconButton
+                  icon={<Download size={14} />}
+                  label="Download PDF report"
+                  intent="ghost"
+                  size="sm"
+                  onClick={() => setIsDownloadPopoverOpen(true)}
+                />
+              </Popover>
+              <Button
+                type="button"
+                intent="primary"
+                size="sm"
+                leftIcon={<Share2 size={14} />}
+                onClick={() => setIsShareModalOpen(true)}
+              >
+                Share Report
+              </Button>
+            </div>
+          }
         />
-
-        {/* Metric Summary Strip */}
-        <ReportSummaryStrip kpis={kpis} />
-
-        {/* Detailed Data Table */}
-        <div className="flex flex-col gap-2">
-          <div className="text-xs font-bold font-heading uppercase tracking-wider text-text-muted px-1">
-            {categoryConfig.label} Detailed Breakdown
-          </div>
-          <ReportTable
-            columns={tableColumns}
-            rows={tableRows}
-            isLoading={isLoading}
-          />
-        </div>
-      </PageContent>
-
-      {/* Share & Outbox Modal */}
-      <ReportShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        activeCategory={activeCategory}
-        periodLabel={periodOption.replace('_', ' ').toUpperCase()}
-        dateRange={dateRange}
-        getReportForCategory={getReportForCategory}
-        onShareComplete={(summary) => {
-          toast.info(summary);
-        }}
+      }
+      bodyClassName="gap-6 p-6"
+      overlays={
+        <ReportShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          activeCategory={activeCategory}
+          periodLabel={periodOption.replace('_', ' ').toUpperCase()}
+          dateRange={dateRange}
+          getReportForCategory={getReportForCategory}
+          onShareComplete={(summary) => {
+            toast.info(summary);
+          }}
+        />
+      }
+    >
+      {/* 3× Chart Cards Row */}
+      <ReportChartRow
+        categoryId={activeCategory}
+        primaryConfig={chartConfig}
+        primaryData={chartData}
       />
-    </PageViewport>
+
+      {/* Metric Summary Strip */}
+      <ReportSummaryStrip kpis={kpis} />
+
+      {/* Detailed Data Table */}
+      <div className="flex flex-col gap-2">
+        <div className="text-xs font-bold font-heading uppercase tracking-wider text-text-muted px-1">
+          {categoryConfig.label} Detailed Breakdown
+        </div>
+        <ReportTable
+          columns={tableColumns}
+          rows={tableRows}
+          isLoading={isLoading}
+        />
+      </div>
+    </TabContainer>
   );
 };

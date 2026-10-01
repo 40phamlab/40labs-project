@@ -1,14 +1,13 @@
 import * as React from 'react';
 import type { MedicineWithInventory } from '@40labs/types';
 import {
-  PageViewport,
   PageToolbar,
-  PageContent,
   IconButton,
   Button,
   Badge,
 } from '@40labs/ui-components';
 import { ChevronLeft, ChevronRight, PauseCircle, Calculator, RefreshCw, PlusCircle } from 'lucide-react';
+import { TabContainer } from '../../components/TabContainer';
 import { MedicineSearchPanel } from './components/MedicineSearchPanel';
 import { SaleCartList } from './components/SaleCartList';
 import { CustomerReportPanel, ConfirmedSaleData } from './components/CustomerReportPanel';
@@ -214,187 +213,188 @@ export const SalesScreen: React.FC = () => {
   }, [cart]);
 
   return (
-    <PageViewport>
-      {/* POS Toolbar */}
-      <PageToolbar
-        left={
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
+    <TabContainer
+      toolbar={
+        <PageToolbar
+          left={
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                intent="neutral"
+                size="sm"
+                leftIcon={<PauseCircle size={14} />}
+                onClick={() => setHoldModalOpen(true)}
+              >
+                Held Bills
+                {heldSales.length > 0 && (
+                  <Badge variant="primary" className="ml-1.5 px-1.5 py-0 text-[9px]">
+                    {heldSales.length}
+                  </Badge>
+                )}
+              </Button>
+
+              <IconButton
+                icon={<Calculator size={14} />}
+                label="Toggle Numpad"
+                intent={showNumpad ? 'primary' : 'ghost'}
+                size="sm"
+                onClick={() => setShowNumpad(!showNumpad)}
+              />
+            </div>
+          }
+          right={
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                intent="ghost"
+                size="sm"
+                leftIcon={<PlusCircle size={14} />}
+                onClick={handleDelete}
+              >
+                New Sale
+              </Button>
+
+              <IconButton
+                icon={<RefreshCw size={14} />}
+                label="Refresh inventory"
+                intent="ghost"
+                size="sm"
+                onClick={() => refetchInventory()}
+              />
+            </div>
+          }
+        />
+      }
+      overlays={
+        <>
+          {/* Receipts Preview Modal */}
+          <ReceiptModal
+            isOpen={isReceiptModalOpen}
+            onClose={() => setReceiptModalOpen(false)}
+            saleData={receiptModalData}
+          />
+
+          {/* Held Bills Modal */}
+          <HoldSalesModal
+            isOpen={isHoldModalOpen}
+            onClose={() => setHoldModalOpen(false)}
+            heldSales={heldSales}
+            onResume={resumeHeldSale}
+            onDelete={deleteHeldSale}
+          />
+        </>
+      }
+    >
+      <div className="relative flex gap-3 flex-1 min-h-0 w-full overflow-hidden">
+        {/* Left Column Toggle when closed */}
+        {!customerPanelOpen && (
+          <div className="absolute left-0 top-0 z-20">
+            <IconButton
+              icon={<ChevronRight size={16} />}
+              label="Open customer panel"
               intent="neutral"
               size="sm"
-              leftIcon={<PauseCircle size={14} />}
-              onClick={() => setHoldModalOpen(true)}
-            >
-              Held Bills
-              {heldSales.length > 0 && (
-                <Badge variant="primary" className="ml-1.5 px-1.5 py-0 text-[9px]">
-                  {heldSales.length}
-                </Badge>
-              )}
-            </Button>
-
-            <IconButton
-              icon={<Calculator size={14} />}
-              label="Toggle Numpad"
-              intent={showNumpad ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setShowNumpad(!showNumpad)}
+              className="shadow-surface-pop border border-border/50"
+              onClick={() => setCustomerPanelOpen(true)}
             />
           </div>
-        }
-        right={
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              intent="ghost"
-              size="sm"
-              leftIcon={<PlusCircle size={14} />}
-              onClick={handleDelete}
-            >
-              New Sale
-            </Button>
+        )}
 
-            <IconButton
-              icon={<RefreshCw size={14} />}
-              label="Refresh inventory"
-              intent="ghost"
-              size="sm"
-              onClick={() => refetchInventory()}
-            />
-          </div>
-        }
-      />
+        {/* Left Column - Customer & Receipt Panel */}
+        <div
+          className={`transition-all duration-200 overflow-hidden flex flex-col shrink-0 ${
+            customerPanelOpen ? 'w-[300px] opacity-100' : 'w-0 opacity-0 -ml-4'
+          }`}
+        >
+          <CustomerReportPanel
+            customers={customers}
+            selectedCustomer={selectedCustomer}
+            onSelectCustomer={(c) => {
+              setSelectedCustomer(c);
+              if (c) setManualEntry({ full_name: '', phone: '' });
+            }}
+            manualEntry={manualEntry}
+            onManualEntryChange={(info) => {
+              setManualEntry(info);
+              setSelectedCustomer(null);
+            }}
+            confirmedSale={confirmedSale}
+            onSendReport={handleSendReportReset}
+            onPrintReceipt={() => setReceiptModalOpen(true)}
+            saveCustomer={saveCustomer}
+            onSaveCustomerChange={setSaveCustomer}
+            onToggleCollapse={() => setCustomerPanelOpen(false)}
+          />
+        </div>
 
-      {/* Content Region */}
-      <PageContent scrollable={false} variant="transparent" padding="none">
-        <div className="relative flex gap-3 h-full w-full overflow-hidden">
-          {/* Left Column Toggle when closed */}
-          {!customerPanelOpen && (
-            <div className="absolute left-0 top-0 z-20">
+        {/* Middle Column - Cart & Totals */}
+        <div className="relative flex-1 min-w-0 flex flex-col gap-3 overflow-hidden">
+          {!storePanelOpen && (
+            <div className="absolute right-0 top-0 z-20">
               <IconButton
-                icon={<ChevronRight size={16} />}
-                label="Open customer panel"
+                icon={<ChevronLeft size={16} />}
+                label="Open store panel"
                 intent="neutral"
                 size="sm"
                 className="shadow-surface-pop border border-border/50"
-                onClick={() => setCustomerPanelOpen(true)}
+                onClick={() => setStorePanelOpen(true)}
               />
             </div>
           )}
 
-          {/* Left Column - Customer & Receipt Panel */}
-          <div
-            className={`transition-all duration-200 overflow-hidden flex flex-col shrink-0 ${
-              customerPanelOpen ? 'w-[300px] opacity-100' : 'w-0 opacity-0 -ml-4'
-            }`}
-          >
-            <CustomerReportPanel
-              customers={customers}
-              selectedCustomer={selectedCustomer}
-              onSelectCustomer={(c) => {
-                setSelectedCustomer(c);
-                if (c) setManualEntry({ full_name: '', phone: '' });
-              }}
-              manualEntry={manualEntry}
-              onManualEntryChange={(info) => {
-                setManualEntry(info);
-                setSelectedCustomer(null);
-              }}
-              confirmedSale={confirmedSale}
-              onSendReport={handleSendReportReset}
-              onPrintReceipt={() => setReceiptModalOpen(true)}
-              saveCustomer={saveCustomer}
-              onSaveCustomerChange={setSaveCustomer}
-              onToggleCollapse={() => setCustomerPanelOpen(false)}
+          {/* Cart Items Region */}
+          <div className="flex-1 min-h-0 overflow-hidden bg-panel-strong/40 rounded-card border border-border/50 p-3 elevation-inset relative flex flex-col gap-2">
+            <SaleCartList
+              lines={cartLinesForList}
+              onQuantityChange={handleQuantityChange}
+              onRemove={removeFromCart}
             />
-          </div>
 
-          {/* Middle Column - Cart & Totals */}
-          <div className="relative flex-1 min-w-0 flex flex-col gap-3 overflow-hidden">
-            {!storePanelOpen && (
-              <div className="absolute right-0 top-0 z-20">
-                <IconButton
-                  icon={<ChevronLeft size={16} />}
-                  label="Open store panel"
-                  intent="neutral"
-                  size="sm"
-                  className="shadow-surface-pop border border-border/50"
-                  onClick={() => setStorePanelOpen(true)}
+            {/* Optional Floating Numpad Panel */}
+            {showNumpad && (
+              <div className="absolute bottom-3 right-3 z-30 w-56 shadow-surface-pop animate-in slide-in-from-bottom-2">
+                <Numpad
+                  value={discountAmount ? String(discountAmount) : ''}
+                  onChange={(val) => setDiscountAmount(Number(val) || 0)}
+                  onConfirm={() => setShowNumpad(false)}
                 />
               </div>
             )}
-
-            {/* Cart Items Region */}
-            <div className="flex-1 min-h-0 overflow-hidden bg-panel-strong/40 rounded-card border border-border/50 p-3 elevation-inset relative flex flex-col gap-2">
-              <SaleCartList
-                lines={cartLinesForList}
-                onQuantityChange={handleQuantityChange}
-                onRemove={removeFromCart}
-              />
-
-              {/* Optional Floating Numpad Panel */}
-              {showNumpad && (
-                <div className="absolute bottom-3 right-3 z-30 w-56 shadow-surface-pop animate-in slide-in-from-bottom-2">
-                  <Numpad
-                    value={discountAmount ? String(discountAmount) : ''}
-                    onChange={(val) => setDiscountAmount(Number(val) || 0)}
-                    onConfirm={() => setShowNumpad(false)}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Totals & Checkout Bar */}
-            <div className="shrink-0">
-              <SaleTotalsBar
-                subtotal={subtotal}
-                discount={discountAmount}
-                onDiscountChange={setDiscountAmount}
-                tax={0}
-                grandTotal={grandTotal}
-                paymentMethod={paymentMethod}
-                onPaymentMethodChange={setPaymentMethod}
-                onConfirm={handleConfirm}
-                onDelete={handleDelete}
-                onHold={cart.length > 0 ? handleHoldSale : undefined}
-                disabled={!canConfirm}
-                isProcessing={isCreatingSale}
-              />
-            </div>
           </div>
 
-          {/* Right Column - Medicine Store Panel */}
-          <div
-            className={`transition-all duration-200 overflow-hidden flex flex-col shrink-0 ${
-              storePanelOpen ? 'w-[320px] opacity-100' : 'w-0 opacity-0 -ml-4'
-            }`}
-          >
-            <MedicineSearchPanel
-              medicines={inventoryItems}
-              completedSales={completedSales}
-              onAdd={handleAddToCart}
-              onToggleCollapse={() => setStorePanelOpen(false)}
+          {/* Totals & Checkout Bar */}
+          <div className="shrink-0">
+            <SaleTotalsBar
+              subtotal={subtotal}
+              discount={discountAmount}
+              onDiscountChange={setDiscountAmount}
+              tax={0}
+              grandTotal={grandTotal}
+              paymentMethod={paymentMethod}
+              onPaymentMethodChange={setPaymentMethod}
+              onConfirm={handleConfirm}
+              onDelete={handleDelete}
+              onHold={cart.length > 0 ? handleHoldSale : undefined}
+              disabled={!canConfirm}
+              isProcessing={isCreatingSale}
             />
           </div>
         </div>
-      </PageContent>
 
-      {/* Receipts Preview Modal */}
-      <ReceiptModal
-        isOpen={isReceiptModalOpen}
-        onClose={() => setReceiptModalOpen(false)}
-        saleData={receiptModalData}
-      />
-
-      {/* Held Bills Modal */}
-      <HoldSalesModal
-        isOpen={isHoldModalOpen}
-        onClose={() => setHoldModalOpen(false)}
-        heldSales={heldSales}
-        onResume={resumeHeldSale}
-        onDelete={deleteHeldSale}
-      />
-    </PageViewport>
+        {/* Right Column - Medicine Store Panel */}
+        <div
+          className={`transition-all duration-200 overflow-hidden flex flex-col shrink-0 ${
+            storePanelOpen ? 'w-[320px] opacity-100' : 'w-0 opacity-0 -ml-4'
+          }`}
+        >
+          <MedicineSearchPanel
+            medicines={inventoryItems}
+            completedSales={completedSales}
+            onAdd={handleAddToCart}
+            onToggleCollapse={() => setStorePanelOpen(false)}
+          />
+        </div>
+      </div>
+    </TabContainer>
   );
 };
