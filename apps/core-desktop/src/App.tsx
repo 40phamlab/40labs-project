@@ -15,7 +15,7 @@ import {
 import { AppShell, AppSidebarNav, TopMenuBar } from '@40labs/ui-components';
 import { TitleBar } from './components/TitleBar';
 import { TabContainer } from './components/TabContainer';
-import { useNavStore, type ScreenId } from './stores/useNavStore';
+import { useNavStore, type ScreenId, VALID_SCREENS } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
 import { SalesScreen } from './features/sales/SalesScreen';
 import { CustomersScreen } from './features/customers/CustomersScreen';
@@ -29,7 +29,11 @@ import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ToastProvider } from './hooks/useToast';
 import './App.css';
 
-const NAV_ITEMS = [
+const isScreenId = (id: string): id is ScreenId => {
+  return (VALID_SCREENS as readonly string[]).includes(id);
+};
+
+const NAV_ITEMS: Array<{ id: ScreenId; label: string; icon: React.ReactNode }> = [
   { id: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
   { id: 'sales', label: 'Sales', icon: <ShoppingCart size={18} /> },
   { id: 'inventory', label: 'Inventory', icon: <Package size={18} /> },
@@ -106,7 +110,11 @@ export default function App() {
       activeRoute={activeScreen}
       navState={sidebarState}
       onNavStateChange={setSidebarState}
-      onNavigate={(id) => setActiveScreen(id as ScreenId)}
+      onNavigate={(id) => {
+        if (isScreenId(id)) {
+          setActiveScreen(id);
+        }
+      }}
       items={NAV_ITEMS}
       pinnedBottomItems={[
         { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },

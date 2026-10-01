@@ -44,4 +44,24 @@ describe('useNavStore navigation persistence and validation', () => {
     const { useNavStore: reloadStore } = await import('./useNavStore');
     expect(reloadStore.getState().activeScreen).toBe('customers');
   });
+
+  it('manages sidebarState and lastNonClosedState correctly', async () => {
+    const { useNavStore } = await import('./useNavStore');
+    expect(useNavStore.getState().sidebarState).toBe('open');
+    expect(useNavStore.getState().lastNonClosedState).toBe('open');
+
+    useNavStore.getState().setSidebarState('icon');
+    expect(useNavStore.getState().sidebarState).toBe('icon');
+    expect(useNavStore.getState().lastNonClosedState).toBe('icon');
+
+    useNavStore.getState().setSidebarState('closed');
+    expect(useNavStore.getState().sidebarState).toBe('closed');
+    expect(useNavStore.getState().lastNonClosedState).toBe('icon'); // preserved non-closed state
+
+    useNavStore.getState().toggleSidebar();
+    expect(useNavStore.getState().sidebarState).toBe('icon'); // restores lastNonClosedState
+
+    useNavStore.getState().toggleSidebar();
+    expect(useNavStore.getState().sidebarState).toBe('closed');
+  });
 });
