@@ -3,7 +3,6 @@ import {
   PageViewport,
   PageToolbar,
   PageContent,
-  ContextualSubNav,
   SubNavSection,
   DataTable,
   ColumnDefinition,
@@ -12,6 +11,7 @@ import {
   IconButton,
   Button,
 } from '@40labs/ui-components';
+import { SubNavLayout } from '../../components/SubNavLayout';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -426,21 +426,15 @@ export const LabScreen: React.FC = () => {
 
       {/* Content */}
       <PageContent scrollable={false} variant="transparent" padding="none">
-        <div className="flex gap-3.5 w-full h-full overflow-hidden">
-          {/* Left SubNav */}
-          <div className="w-52 shrink-0 border-r border-border/40 pr-3 h-full overflow-y-auto custom-scrollbar">
-            <ContextualSubNav
-              sections={LAB_SUBNAV_SECTIONS}
-              activeItemId={activeLabTab}
-              onSelect={(id) => setActiveLabTab(id as LabTab)}
-            />
-          </div>
-
-          {/* Main Content Pane */}
-          <div className="flex-1 min-w-0 h-full overflow-y-auto custom-scrollbar">
-            {renderContent()}
-          </div>
-        </div>
+        <SubNavLayout
+          storageKey="lab"
+          widthClass="w-52"
+          sections={LAB_SUBNAV_SECTIONS}
+          activeItemId={activeLabTab}
+          onSelect={(id) => setActiveLabTab(id as LabTab)}
+        >
+          {renderContent()}
+        </SubNavLayout>
       </PageContent>
 
       {/* Requisition Modal */}

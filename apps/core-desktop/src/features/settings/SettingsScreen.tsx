@@ -2,9 +2,9 @@ import * as React from 'react';
 import {
   PageViewport,
   PageContent,
-  ContextualSubNav,
   SubNavSection,
 } from '@40labs/ui-components';
+import { SubNavLayout } from '../../components/SubNavLayout';
 import {
   Building2,
   Users,
@@ -180,29 +180,21 @@ export const SettingsScreen: React.FC = () => {
   return (
     <PageViewport>
       <PageContent scrollable={false} variant="transparent" padding="none">
-        <div className="flex gap-3.5 w-full h-full overflow-hidden p-3">
-          {/* Left SubNav */}
-          <div className="w-56 shrink-0 border-r border-border/40 pr-3 h-full overflow-y-auto custom-scrollbar">
-            <ContextualSubNav
-              sections={SETTINGS_SUBNAV_SECTIONS}
-              activeItemId={activeTab}
-              onSelect={(id) => setActiveTab(id as SettingsTab)}
-            />
+        <SubNavLayout
+          storageKey="settings"
+          widthClass="w-56"
+          className="p-3"
+          contentClassName="pl-2 pr-1"
+          sections={SETTINGS_SUBNAV_SECTIONS}
+          activeItemId={activeTab}
+          onSelect={(id) => setActiveTab(id as SettingsTab)}
+        >
+          <div className="mb-4">
+            <h1 className="text-lg font-bold text-text-primary">{SETTINGS_TAB_TITLES[activeTab].title}</h1>
+            <p className="text-xs text-text-muted">{SETTINGS_TAB_TITLES[activeTab].subtitle}</p>
           </div>
-
-          {/* Main Content Pane */}
-          <div className="flex-1 min-w-0 h-full overflow-y-auto custom-scrollbar pl-2 pr-1">
-            <div className="mb-4">
-              <h1 className="text-lg font-bold text-text-primary">
-                {SETTINGS_TAB_TITLES[activeTab].title}
-              </h1>
-              <p className="text-xs text-text-muted">
-                {SETTINGS_TAB_TITLES[activeTab].subtitle}
-              </p>
-            </div>
-            {renderActivePanel()}
-          </div>
-        </div>
+          {renderActivePanel()}
+        </SubNavLayout>
       </PageContent>
 
       <BranchFormModal
