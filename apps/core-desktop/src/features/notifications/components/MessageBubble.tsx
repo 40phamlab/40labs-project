@@ -9,6 +9,7 @@ export interface MessageBubbleProps {
   channel?: string;
   contentType?: string;
   isConsecutive?: boolean;
+  onRetry?: () => void;
   className?: string;
 }
 
@@ -28,6 +29,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   channel = 'amob',
   contentType,
   isConsecutive = false,
+  onRetry,
   className = '',
 }) => {
   const isOutgoing = message.direction === 'outgoing';
@@ -38,7 +40,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     type: a.kind as any,
     name: a.file_name,
     size: `${Math.round(a.size_bytes / 1024)} KB`,
-    url: undefined,
+    url: a.url,
+    durationMs: a.duration_ms,
   }));
 
   return (
@@ -65,7 +68,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         <div className="absolute bottom-1 right-3 flex items-center gap-1">
           <span className="text-xs font-mono text-text-muted">{timestamp}</span>
-          {isOutgoing && <MessageStatusIcon status={message.status} />}
+          {isOutgoing && <MessageStatusIcon status={message.status} onRetry={onRetry} />}
         </div>
       </div>
     </div>

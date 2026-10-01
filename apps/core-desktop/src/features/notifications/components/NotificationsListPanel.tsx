@@ -132,7 +132,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
     <div
       className={`flex flex-col h-full bg-panel border border-border/40 rounded-card p-3 overflow-hidden gap-2.5 w-[340px] lg:w-[400px] shrink-0 ${className}`}
     >
-      {/* Header row: "Inbox" with unread count, then + New, Refresh IconButton, and ⋮ Dropdown holding "Mark all read" */}
+      {/* Header row: "Inbox" with unread count, then + New, Refresh IconButton, and Mark all read button */}
       <div className="flex items-center justify-between shrink-0 pb-2 border-b border-border/30">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-[15px] font-semibold text-text truncate">
@@ -163,51 +163,43 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
             />
           )}
 
-          {onMarkAllRead && (
-            <Dropdown
-              isOpen={isChannelDropdownOpen}
-              onClose={() => setIsChannelDropdownOpen(false)}
-              trigger={
-                <IconButton
-                  icon={<Filter size={14} className={activeChannel !== 'all' ? 'text-primary' : ''} />}
-                  label="Filter channels"
-                  intent="ghost"
-                  size="sm"
-                  onClick={() => setIsChannelDropdownOpen(!isChannelDropdownOpen)}
-                  className="relative"
-                >
-                  {activeChannel !== 'all' && (
-                    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
-                  )}
-                </IconButton>
-              }
-            >
-              {CHANNEL_OPTIONS.map((opt) => (
-                <DropdownMenuItem
-                  key={opt.value}
-                  label={opt.label}
-                  onClick={() => {
-                    setActiveChannel(opt.value);
-                    setIsChannelDropdownOpen(false);
-                  }}
-                />
-              ))}
-            </DropdownDropdown>
-          )}
+          <Dropdown
+            isOpen={isChannelDropdownOpen}
+            onClose={() => setIsChannelDropdownOpen(false)}
+            trigger={
+              <IconButton
+                icon={<Filter size={14} className={activeChannel !== 'all' ? 'text-primary' : ''} />}
+                label="Filter channels"
+                intent="ghost"
+                size="sm"
+                onClick={() => setIsChannelDropdownOpen(!isChannelDropdownOpen)}
+                className="relative"
+              >
+                {activeChannel !== 'all' && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
+                )}
+              </IconButton>
+            }
+          >
+            {CHANNEL_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.value}
+                label={opt.label}
+                onClick={() => {
+                  setActiveChannel(opt.value);
+                  setIsChannelDropdownOpen(false);
+                }}
+              />
+            ))}
+          </Dropdown>
 
           {onMarkAllRead && (
-            <Dropdown
-              isOpen={false}
-              onClose={() => {}}
-              trigger={
-                <IconButton
-                  icon={<CheckCheck size={16} />}
-                  label="Mark all read"
-                  intent="ghost"
-                  size="sm"
-                  onClick={onMarkAllRead}
-                />
-              }
+            <IconButton
+              icon={<CheckCheck size={16} />}
+              label="Mark all read"
+              intent="ghost"
+              size="sm"
+              onClick={onMarkAllRead}
             />
           )}
         </div>
