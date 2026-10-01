@@ -4,11 +4,11 @@ import React, { useState, useCallback, useEffect, useMemo, createContext, useCon
 import { PanelLeftOpen } from 'lucide-react';
 import { IconButton } from '../primitives/IconButton';
 
-export type NavigationState = 'expanded' | 'compact' | 'hidden';
+export type NavigationState = 'closed' | 'icon' | 'open';
 
 export interface AppShellContextValue {
   navState: NavigationState;
-  lastVisibleNavState: 'expanded' | 'compact';
+  lastVisibleNavState: 'icon' | 'open';
   setNavState: (state: NavigationState) => void;
   collapseSidebar: () => void;
   expandSidebar: () => void;
@@ -23,8 +23,8 @@ export function useAppShell(): AppShellContextValue {
   const context = useContext(AppShellContext);
   if (!context) {
     return {
-      navState: 'expanded',
-      lastVisibleNavState: 'expanded',
+      navState: 'open',
+      lastVisibleNavState: 'open',
       setNavState: () => {},
       collapseSidebar: () => {},
       expandSidebar: () => {},
@@ -49,23 +49,31 @@ export interface AppShellProps {
   /** Minimum desktop height (default 0 for natural shrinking) */
   minHeight?: number | string;
   /** Navigation sidebar state */
-  navState?: NavigationState;
-  /** Initial navigation sidebar state when uncontrolled (default 'expanded') */
-  defaultNavState?: NavigationState;
+  navState?: NavigationState | string;
+  /** Initial navigation sidebar state when uncontrolled (default 'open') */
+  defaultNavState?: NavigationState | string;
   /** Callback fired when navigation sidebar state changes */
   onNavStateChange?: (state: NavigationState) => void;
   /** Enable Ctrl+B / Cmd+B keyboard shortcut to toggle sidebar (default true) */
   enableHotkey?: boolean;
-  /** Show persistent floating reopen button when sidebar is hidden (default true) */
+  /** Show persistent floating reopen button when sidebar is hidden (default false) */
   showReopenControl?: boolean;
 }
+
+const normalizeState = (state: string | undefined, defaultState: NavigationState = 'open'): NavigationState => {
+  if (state === 'closed' || state === 'icon' || state === 'open') return state;
+  if (state === 'expanded') return 'open';
+  if (state === 'compact') return 'icon';
+  if (state === 'hidden') return 'closed';
+  return defaultState;
+};
 
 /**
  * AppShell
  *
  * Core application shell container establishing a single consistent layout model.
  * Solid dark background, solid top chrome, solid sidebar, and isolated main viewport.
- * Standardizes minimum desktop width behavior and global 3-state navigation layout structure.
+ * Supports 3 distinct navigation states: 'closed', 'icon', 'open'.
  */
 export function AppShell({
   topBar,
@@ -75,48 +83,40 @@ export function AppShell({
   minWidth = 0,
   minHeight = 0,
   navState: controlledNavState,
-  defaultNavState = 'expanded',
+  defaultNavState = 'open',
   onNavStateChange,
   enableHotkey = true,
-  showReopenControl = true,
+  showReopenControl = false,
 }: AppShellProps) {
-  const initialNavState = controlledNavState ?? defaultNavState;
-  const [internalNavState, setInternalNavState] = useState<NavigationState>(defaultNavState);
-  const [lastVisibleNavState, setLastVisibleNavState] = useState<'expanded' | 'compact'>(
-    initialNavState === 'hidden' ? 'expanded' : initialNavState
+  const initialNavState = normalizeState(controlledNavState ?? defaultNavState, 'open');
+  const [internalNavState, setInternalNavState] = useState<NavigationState>(initialNavState);
+  const [lastNonClosedState, setLastNonClosedState] = useState<'icon' | 'open'>(
+    initialNavState !== 'closed' ? initialNavState : 'open'
   );
 
-  const navState = controlledNavState ?? internalNavState;
+  const navState = normalizeState(controlledNavState ?? internalNavState, 'open');
 
   const handleNavStateChange = useCallback(
     (newState: NavigationState) => {
-      if (newState !== 'hidden') {
-        setLastVisibleNavState(newState);
+      const normalized = normalizeState(newState);
+      if (normalized !== 'closed') {
+        setLastNonClosedState(normalized);
       }
       if (controlledNavState === undefined) {
-        setInternalNavState(newState);
+        setInternalNavState(normalized);
       }
-      onNavStateChange?.(newState);
+      onNavStateChange?.(normalized);
     },
     [controlledNavState, onNavStateChange]
   );
 
-  const collapseSidebar = useCallback(() => handleNavStateChange('compact'), [handleNavStateChange]);
-  const expandSidebar = useCallback(() => handleNavStateChange('expanded'), [handleNavStateChange]);
-  const hideSidebar = useCallback(() => handleNavStateChange('hidden'), [handleNavStateChange]);
-  const reopenSidebar = useCallback(
-    () => handleNavStateChange(lastVisibleNavState),
-    [handleNavStateChange, lastVisibleNavState]
-  );
   const toggleSidebar = useCallback(() => {
-    if (navState === 'hidden') {
-      reopenSidebar();
-    } else if (navState === 'expanded') {
-      collapseSidebar();
+    if (navState === 'closed') {
+      handleNavStateChange(lastNonClosedState);
     } else {
-      hideSidebar();
+      handleNavStateChange('closed');
     }
-  }, [navState, reopenSidebar, collapseSidebar, hideSidebar]);
+  }, [navState, lastNonClosedState, handleNavStateChange]);
 
   // Keyboard shortcut listener (Ctrl+B / Cmd+B)
   useEffect(() => {
@@ -124,38 +124,25 @@ export function AppShell({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
-        if (navState === 'hidden') {
-          reopenSidebar();
-        } else {
-          hideSidebar();
-        }
+        toggleSidebar();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [enableHotkey, navState, hideSidebar, reopenSidebar]);
+  }, [enableHotkey, toggleSidebar]);
 
   const contextValue = useMemo<AppShellContextValue>(
     () => ({
       navState,
-      lastVisibleNavState,
+      lastVisibleNavState: lastNonClosedState,
       setNavState: handleNavStateChange,
-      collapseSidebar,
-      expandSidebar,
-      hideSidebar,
-      reopenSidebar,
+      collapseSidebar: () => handleNavStateChange('icon'),
+      expandSidebar: () => handleNavStateChange('open'),
+      hideSidebar: () => handleNavStateChange('closed'),
+      reopenSidebar: () => handleNavStateChange(lastNonClosedState),
       toggleSidebar,
     }),
-    [
-      navState,
-      lastVisibleNavState,
-      handleNavStateChange,
-      collapseSidebar,
-      expandSidebar,
-      hideSidebar,
-      reopenSidebar,
-      toggleSidebar,
-    ]
+    [navState, lastNonClosedState, handleNavStateChange, toggleSidebar]
   );
 
   const minWidthStyle = minWidth !== undefined && minWidth !== 0 ? (typeof minWidth === 'number' ? `${minWidth}px` : minWidth) : undefined;
@@ -181,11 +168,11 @@ export function AppShell({
         {/* Main Container: Sidebar + Viewport */}
         <div className="flex flex-1 min-h-0 w-full overflow-hidden relative">
           {/* Persistent Reopen Control when Hidden */}
-          {navState === 'hidden' && showReopenControl && (
+          {navState === 'closed' && showReopenControl && (
             <div className="absolute top-2 left-2 z-40">
               <IconButton
                 icon={<PanelLeftOpen size={16} />}
-                onClick={reopenSidebar}
+                onClick={() => handleNavStateChange(lastNonClosedState)}
                 intent="secondary"
                 size="sm"
                 label="Reopen navigation sidebar"
@@ -197,14 +184,14 @@ export function AppShell({
 
           {sidebar && (
             <aside
-              className={`shrink-0 h-full z-20 bg-sidebar border-r border-border transition-[width,opacity] duration-200 ease-in-out flex flex-col ${
-                navState === 'hidden'
+              className={`shrink-0 h-full z-20 bg-sidebar border-r border-border transition-[width,opacity] duration-200 ease-in-out flex flex-col absolute md:relative ${
+                navState === 'closed'
                   ? 'w-0 opacity-0 border-r-0 overflow-hidden pointer-events-none'
-                  : navState === 'compact'
-                  ? 'w-16 opacity-100'
-                  : 'w-60 opacity-100'
+                  : navState === 'icon'
+                  ? 'w-16 opacity-100 z-30 md:z-20'
+                  : 'w-60 opacity-100 z-40 md:z-20 shadow-2xl md:shadow-none'
               }`}
-              aria-hidden={navState === 'hidden'}
+              aria-hidden={navState === 'closed'}
               data-testid="app-shell-sidebar-container"
             >
               {sidebar}

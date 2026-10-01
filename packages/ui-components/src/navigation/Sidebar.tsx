@@ -122,8 +122,8 @@ export const SidebarItem = ({
         ${
           active
             ? isCompact
-              ? 'bg-surface-selected text-text-primary font-bold shadow-inner-soft border-l-2 border-action-primary'
-              : 'bg-surface-selected text-text-primary font-semibold border-l-2 border-action-primary pl-2'
+              ? 'bg-surface-selected text-text-primary font-bold shadow-inner-soft'
+              : 'bg-surface-selected text-text-primary font-semibold'
             : 'text-text-muted hover:text-text-primary hover:bg-surface-hover'
         }
         ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}

@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { AppShell } from './AppShell';
+import { AppShell, useAppShell } from './AppShell';
 import { PageViewport } from './PageViewport';
 import { PageHeader } from './PageHeader';
 import { PageContent } from './PageContent';
@@ -15,7 +15,7 @@ const sampleNavItems: NavItem[] = [
 ];
 
 describe('AppShell Layout Component & 3-State Navigation', () => {
-  test('renders AppShell with topBar, sidebar, and main workspace in default expanded state', () => {
+  test('renders AppShell with topBar, sidebar, and main workspace in default open state', () => {
     render(
       <AppShell
         topBar={<div data-testid="top-bar">40Labs Header</div>}
@@ -40,10 +40,10 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 
-  test('renders compact state with icon rail width', () => {
+  test('renders icon-only state with icon rail width', () => {
     render(
       <AppShell
-        navState="compact"
+        navState="icon"
         sidebar={
           <AppSidebarNav
             activeRoute="dashboard"
@@ -61,12 +61,10 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
     expect(screen.getByTestId('main-content')).toBeInTheDocument();
   });
 
-  test('renders hidden state, hides sidebar, and provides persistent reopen button', async () => {
-    const handleStateChange = vi.fn();
-    render(
+  test('renders closed state, hides sidebar, and does not render reopen button by default unless showReopenControl is true', async () => {
+    const { rerender } = render(
       <AppShell
-        navState="hidden"
-        onNavStateChange={handleStateChange}
+        navState="closed"
         sidebar={
           <AppSidebarNav
             activeRoute="dashboard"
@@ -75,7 +73,7 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
           />
         }
       >
-        <div data-testid="main-content">Expanded Workspace</div>
+        <div data-testid="main-content">Workspace</div>
       </AppShell>
     );
 
@@ -83,56 +81,76 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
     expect(sidebarContainer).toHaveClass('w-0');
     expect(sidebarContainer).toHaveAttribute('aria-hidden', 'true');
 
-    // Reopen button must be rendered
+    // Reopen button must not be rendered by default
+    expect(screen.queryByRole('button', { name: /reopen navigation sidebar/i })).not.toBeInTheDocument();
+
+    // Rerender with showReopenControl={true}
+    rerender(
+      <AppShell
+        navState="closed"
+        showReopenControl={true}
+        sidebar={
+          <AppSidebarNav
+            activeRoute="dashboard"
+            onNavigate={() => {}}
+            items={sampleNavItems}
+          />
+        }
+      >
+        <div data-testid="main-content">Workspace</div>
+      </AppShell>
+    );
+
     const reopenButton = screen.getByRole('button', { name: /reopen navigation sidebar/i });
     expect(reopenButton).toBeInTheDocument();
-
-    await userEvent.click(reopenButton);
-    expect(handleStateChange).toHaveBeenCalledWith('expanded');
   });
 
-  test('reopens hidden sidebar restoring previous visible state (compact)', async () => {
-    function TestShellHarness() {
-      const [navState, setNavState] = React.useState<'expanded' | 'compact' | 'hidden'>('compact');
+  test('toggles sidebar open -> closed -> open', async () => {
+    function ToggleTestHarness() {
+      const shell = useAppShell();
       return (
-        <AppShell
-          navState={navState}
-          onNavStateChange={setNavState}
-          sidebar={
-            <AppSidebarNav
-              activeRoute="dashboard"
-              onNavigate={() => {}}
-              items={sampleNavItems}
-            />
-          }
-        >
-          <div data-testid="main-workspace">Workspace Stage</div>
-        </AppShell>
+        <div>
+          <button onClick={shell.toggleSidebar} data-testid="toggle-btn">Toggle</button>
+          <div data-testid="nav-state">{shell.navState}</div>
+        </div>
       );
     }
 
-    render(<TestShellHarness />);
+    render(
+      <AppShell
+        sidebar={
+          <AppSidebarNav
+            activeRoute="dashboard"
+            onNavigate={() => {}}
+            items={sampleNavItems}
+          />
+        }
+      >
+        <ToggleTestHarness />
+      </AppShell>
+    );
 
     const sidebarContainer = screen.getByTestId('app-shell-sidebar-container');
-    expect(sidebarContainer).toHaveClass('w-16');
+    const toggleBtn = screen.getByTestId('toggle-btn');
+    const navStateEl = screen.getByTestId('nav-state');
 
-    // Hide sidebar using header button
-    const hideButton = screen.getByRole('button', { name: /hide sidebar/i });
-    await userEvent.click(hideButton);
+    expect(navStateEl).toHaveTextContent('open');
+    expect(sidebarContainer).toHaveClass('w-60');
 
+    // Toggle to closed
+    await userEvent.click(toggleBtn);
+    expect(navStateEl).toHaveTextContent('closed');
     expect(sidebarContainer).toHaveClass('w-0');
 
-    // Reopen sidebar
-    const reopenButton = screen.getByRole('button', { name: /reopen navigation sidebar/i });
-    await userEvent.click(reopenButton);
-
-    // Should restore previous state ('compact')
-    expect(sidebarContainer).toHaveClass('w-16');
+    // Toggle back to open
+    await userEvent.click(toggleBtn);
+    expect(navStateEl).toHaveTextContent('open');
+    expect(sidebarContainer).toHaveClass('w-60');
   });
 
-  test('toggles sidebar state via keyboard hotkey Ctrl+B', () => {
+  test('toggles sidebar state via keyboard hotkey Ctrl+B (open -> closed -> open)', () => {
     function TestHotkeyHarness() {
-      const [navState, setNavState] = React.useState<'expanded' | 'compact' | 'hidden'>('expanded');
+      const [navState, setNavState] = React.useState<'closed' | 'icon' | 'open'>('open');
       return (
         <AppShell
           navState={navState}
@@ -155,11 +173,11 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
     const sidebarContainer = screen.getByTestId('app-shell-sidebar-container');
     expect(sidebarContainer).toHaveClass('w-60');
 
-    // Press Ctrl+B to hide
+    // Press Ctrl+B to close
     fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
     expect(sidebarContainer).toHaveClass('w-0');
 
-    // Press Ctrl+B to reopen
+    // Press Ctrl+B to reopen (open)
     fireEvent.keyDown(window, { key: 'b', ctrlKey: true });
     expect(sidebarContainer).toHaveClass('w-60');
   });

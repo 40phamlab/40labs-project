@@ -40,7 +40,6 @@ const NAV_ITEMS = [
   { id: 'scheduling', label: 'Scheduling', icon: <Calendar size={18} /> },
   { id: 'education', label: 'Education', icon: <GraduationCap size={18} /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
-  { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
 ];
 
 export default function App() {

@@ -1,9 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronLeft, ChevronRight, EyeOff } from 'lucide-react';
 import { Sidebar, SidebarSection, SidebarItem } from './Sidebar';
-import { IconButton } from '../primitives/IconButton';
 import { useAppShell, NavigationState } from '../layout/AppShell';
 
 export interface NavItem {
@@ -31,43 +29,43 @@ export interface BrandConfig {
 
 export interface AppSidebarNavProps {
   activeRoute: string;
-  collapsed?: boolean;
-  navState?: NavigationState;
+  navState?: NavigationState | string;
   onNavigate: (routeId: string) => void;
-  onToggleCollapse?: () => void;
   onNavStateChange?: (state: NavigationState) => void;
   items: NavItem[];
   pinnedBottomItems?: NavItem[];
   userProfile?: UserSessionData;
   tenantBranding?: BrandConfig;
-  collapseLabel?: string;
-  expandLabel?: string;
-  hideLabel?: string;
 }
+
+const normalizeState = (state: string | undefined, defaultState: NavigationState = 'open'): NavigationState => {
+  if (state === 'closed' || state === 'icon' || state === 'open') return state;
+  if (state === 'expanded') return 'open';
+  if (state === 'compact') return 'icon';
+  if (state === 'hidden') return 'closed';
+  return defaultState;
+};
 
 export function AppSidebarNav({
   activeRoute,
-  collapsed,
   navState: propNavState,
   onNavigate,
   onNavStateChange,
   items,
   pinnedBottomItems = [],
   userProfile,
-  tenantBranding,
-  collapseLabel = 'Collapse sidebar',
-  expandLabel = 'Expand sidebar',
-  hideLabel = 'Hide sidebar',
+  tenantBranding: _tenantBranding,
 }: AppSidebarNavProps) {
   const shell = useAppShell();
 
-  // Resolve state prioritizing propNavState -> collapsed boolean -> AppShellContext
-  const currentNavState: NavigationState =
-    propNavState ??
-    (collapsed !== undefined ? (collapsed ? 'compact' : 'expanded') : shell.navState);
+  const currentNavState: NavigationState = normalizeState((propNavState as string) ?? shell.navState);
 
-  const isCompact = currentNavState === 'compact';
-  const isHidden = currentNavState === 'hidden';
+  const isCompact = currentNavState === 'icon';
+  const isClosed = currentNavState === 'closed';
+
+  if (isClosed) {
+    return null;
+  }
 
   const handleStateChange = (newState: NavigationState) => {
     if (onNavStateChange) {
@@ -77,13 +75,27 @@ export function AppSidebarNav({
     }
   };
 
-  const handleCollapse = () => handleStateChange('compact');
-  const handleExpand = () => handleStateChange('expanded');
-  const handleHide = () => handleStateChange('hidden');
+  const handleItemClick = (itemId: string) => {
+    const isCurrentActive = activeRoute === itemId;
+    const isOpen = currentNavState === 'open';
 
-  if (isHidden) {
-    return null;
-  }
+    if (currentNavState === 'icon') {
+      // Clicking an icon in icon-only state opens the full panel for that section
+      onNavigate(itemId);
+      handleStateChange('open');
+    } else if (isOpen) {
+      if (isCurrentActive) {
+        // Clicking the same active icon again collapses back to icon-only
+        handleStateChange('icon');
+      } else {
+        // Clicking a different icon switches panel content without closing
+        onNavigate(itemId);
+      }
+    } else {
+      onNavigate(itemId);
+      handleStateChange('open');
+    }
+  };
 
   const filteredItems = items.filter(
     (item) =>
@@ -93,109 +105,50 @@ export function AppSidebarNav({
 
   return (
     <Sidebar compact={isCompact} navState={currentNavState} className="h-full bg-sidebar border-r border-border">
-      {/* Top Header / Branding & Navigation Controls */}
-      <div
-        className={`flex items-center h-12 px-3 border-b border-border-subtle ${
-          isCompact ? 'justify-center gap-1 px-1' : 'justify-between'
-        }`}
-      >
-        {!isCompact && (
-          <div className="flex items-center gap-2 min-w-0">
-            {tenantBranding?.logo ? (
-              <div
-                className="w-6 h-6 rounded bg-action-primary flex items-center justify-center text-text-inverse font-bold text-xs shrink-0"
-                style={tenantBranding.themeColor ? { backgroundColor: tenantBranding.themeColor } : undefined}
-              >
-                {tenantBranding.logo}
-              </div>
-            ) : null}
-            {tenantBranding?.brandName && (
-              <span className="font-heading font-bold text-xs tracking-tight text-text-primary truncate">
-                {tenantBranding.brandName}{' '}
-                {tenantBranding.brandTagline && (
-                  <span className="text-action-primary font-normal">{tenantBranding.brandTagline}</span>
-                )}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Action Controls for Navigation State */}
-        <div className="flex items-center gap-1 shrink-0">
-          {isCompact ? (
-            <>
-              <IconButton
-                icon={<ChevronRight size={16} />}
-                onClick={handleExpand}
-                intent="ghost"
-                size="sm"
-                label={expandLabel}
-                title={expandLabel}
-              />
-              <IconButton
-                icon={<EyeOff size={15} />}
-                onClick={handleHide}
-                intent="ghost"
-                size="sm"
-                label={hideLabel}
-                title={hideLabel}
-              />
-            </>
-          ) : (
-            <>
-              <IconButton
-                icon={<ChevronLeft size={16} />}
-                onClick={handleCollapse}
-                intent="ghost"
-                size="sm"
-                label={collapseLabel}
-                title={collapseLabel}
-              />
-              <IconButton
-                icon={<EyeOff size={15} />}
-                onClick={handleHide}
-                intent="ghost"
-                size="sm"
-                label={hideLabel}
-                title={hideLabel}
-              />
-            </>
-          )}
-        </div>
-      </div>
-
       {/* Primary Navigation Section */}
-      <SidebarSection className="flex-1 overflow-y-auto custom-scrollbar py-2">
-        {filteredItems.map((item) => (
-          <SidebarItem
-            key={item.id}
-            icon={item.icon}
-            label={item.label}
-            active={activeRoute === item.id}
-            onClick={() => onNavigate(item.id)}
-            badge={item.badgeCount}
-            compact={isCompact}
-            navState={currentNavState}
-          />
-        ))}
+      <SidebarSection className="flex-1 overflow-y-auto no-scrollbar overscroll-contain py-2">
+        {filteredItems.map((item) => {
+          const isActiveSection = activeRoute === item.id;
+          const isOpenState = currentNavState === 'open';
+
+          return (
+            <SidebarItem
+              key={item.id}
+              icon={item.icon}
+              label={item.label}
+              active={isActiveSection}
+              onClick={() => handleItemClick(item.id)}
+              badge={item.badgeCount}
+              compact={isCompact}
+              navState={currentNavState}
+              aria-expanded={isOpenState && isActiveSection}
+            />
+          );
+        })}
       </SidebarSection>
 
       {/* Pinned Bottom Items & User Profile */}
       <div className="mt-auto shrink-0 border-t border-border-subtle">
         {pinnedBottomItems.length > 0 && (
           <SidebarSection className="py-2">
-            {pinnedBottomItems.map((item) => (
-              <SidebarItem
-                key={item.id}
-                icon={item.icon}
-                label={item.label}
-                active={activeRoute === item.id}
-                onClick={() => onNavigate(item.id)}
-                badge={item.badgeCount}
-                compact={isCompact}
-                navState={currentNavState}
-              />
-            ))}
+            {pinnedBottomItems.map((item) => {
+              const isActiveSection = activeRoute === item.id;
+              const isOpenState = currentNavState === 'open';
+
+              return (
+                <SidebarItem
+                  key={item.id}
+                  icon={item.icon}
+                  label={item.label}
+                  active={isActiveSection}
+                  onClick={() => handleItemClick(item.id)}
+                  badge={item.badgeCount}
+                  compact={isCompact}
+                  navState={currentNavState}
+                  aria-expanded={isOpenState && isActiveSection}
+                />
+              );
+            })}
           </SidebarSection>
         )}
 

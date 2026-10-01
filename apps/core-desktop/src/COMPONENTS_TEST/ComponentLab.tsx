@@ -590,9 +590,7 @@ export function ComponentLab() {
                sidebar={
                  <AppSidebarNav
                    activeRoute={activeRoute}
-                   collapsed={sidebarCollapsed}
                    onNavigate={setActiveRoute}
-                   onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
                    tenantBranding={config.branding}
                    userProfile={config.user}
                    items={config.navigation}

@@ -10,12 +10,12 @@ const sampleNavItems: NavItem[] = [
   { id: 'inventory', label: 'Inventory' },
 ];
 
-describe('Sidebar Navigation Component & 3 States', () => {
-  test('renders navigation items and identifies active item in expanded state', () => {
+describe('Sidebar Navigation Component & 3-State Click Rules', () => {
+  test('renders navigation items and identifies active item in open state', () => {
     render(
       <AppSidebarNav
         activeRoute="sales"
-        navState="expanded"
+        navState="open"
         onNavigate={() => {}}
         items={sampleNavItems}
       />
@@ -28,16 +28,18 @@ describe('Sidebar Navigation Component & 3 States', () => {
 
     const activeItem = screen.getByRole('button', { name: /sales/i });
     expect(activeItem).toHaveAttribute('aria-current', 'page');
+    expect(activeItem).not.toHaveClass('border-l-2');
+    expect(activeItem).not.toHaveClass('border-action-primary');
 
     const inactiveItem = screen.getByRole('button', { name: /dashboard/i });
     expect(inactiveItem).not.toHaveAttribute('aria-current');
   });
 
-  test('renders compact state with accessible tooltips/titles for every item and visual active indicator', () => {
+  test('renders icon-only state with accessible tooltips/titles for every item', () => {
     render(
       <AppSidebarNav
         activeRoute="sales"
-        navState="compact"
+        navState="icon"
         onNavigate={() => {}}
         items={sampleNavItems}
       />
@@ -51,13 +53,57 @@ describe('Sidebar Navigation Component & 3 States', () => {
     expect(dashboardItem).toHaveAttribute('title', 'Dashboard');
   });
 
-  test('calls onNavigate callback when a navigation item is clicked', async () => {
+  test('VS Code-style click rules: icon-only mode click expands to open', async () => {
     const handleNavigate = vi.fn();
+    const handleStateChange = vi.fn();
+
     render(
       <AppSidebarNav
         activeRoute="dashboard"
-        navState="compact"
+        navState="icon"
         onNavigate={handleNavigate}
+        onNavStateChange={handleStateChange}
+        items={sampleNavItems}
+      />
+    );
+
+    const salesButton = screen.getByRole('button', { name: /sales/i });
+    await userEvent.click(salesButton);
+
+    expect(handleNavigate).toHaveBeenCalledWith('sales');
+    expect(handleStateChange).toHaveBeenCalledWith('open');
+  });
+
+  test('VS Code-style click rules: open mode, click active icon collapses to icon', async () => {
+    const handleNavigate = vi.fn();
+    const handleStateChange = vi.fn();
+
+    render(
+      <AppSidebarNav
+        activeRoute="sales"
+        navState="open"
+        onNavigate={handleNavigate}
+        onNavStateChange={handleStateChange}
+        items={sampleNavItems}
+      />
+    );
+
+    const salesButton = screen.getByRole('button', { name: /sales/i });
+    await userEvent.click(salesButton);
+
+    expect(handleStateChange).toHaveBeenCalledWith('icon');
+  });
+
+  test('VS Code-style click rules: open mode, click different icon switches section without closing', async () => {
+    const handleNavigate = vi.fn();
+    const handleStateChange = vi.fn();
+
+    render(
+      <AppSidebarNav
+        activeRoute="dashboard"
+        navState="open"
+        onNavigate={handleNavigate}
+        onNavStateChange={handleStateChange}
         items={sampleNavItems}
       />
     );
@@ -66,29 +112,7 @@ describe('Sidebar Navigation Component & 3 States', () => {
     await userEvent.click(inventoryButton);
 
     expect(handleNavigate).toHaveBeenCalledWith('inventory');
-  });
-
-  test('triggers state transitions via header buttons (collapse and hide)', async () => {
-    const handleStateChange = vi.fn();
-    render(
-      <AppSidebarNav
-        activeRoute="dashboard"
-        navState="expanded"
-        onNavigate={() => {}}
-        onNavStateChange={handleStateChange}
-        items={sampleNavItems}
-      />
-    );
-
-    const collapseButton = screen.getByRole('button', { name: /collapse sidebar/i });
-    await userEvent.click(collapseButton);
-
-    expect(handleStateChange).toHaveBeenCalledWith('compact');
-
-    const hideButton = screen.getByRole('button', { name: /hide sidebar/i });
-    await userEvent.click(hideButton);
-
-    expect(handleStateChange).toHaveBeenCalledWith('hidden');
+    expect(handleStateChange).not.toHaveBeenCalledWith('icon');
   });
 
   test('supports keyboard navigation on sidebar items via Enter and Space keys', () => {
@@ -96,7 +120,7 @@ describe('Sidebar Navigation Component & 3 States', () => {
     render(
       <AppSidebarNav
         activeRoute="dashboard"
-        navState="expanded"
+        navState="open"
         onNavigate={handleNavigate}
         items={sampleNavItems}
       />
