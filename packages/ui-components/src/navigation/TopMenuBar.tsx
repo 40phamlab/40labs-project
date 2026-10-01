@@ -24,6 +24,7 @@ export interface TopMenuBarProps {
   brandName?: string;
   onHelpClick?: () => void;
   onUpdateClick?: () => void;
+  onSettingsClick?: () => void;
   showSidebarToggle?: boolean;
   onToggleSidebar?: () => void;
   className?: string;
@@ -33,6 +34,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   brandName = "40Labs",
   onHelpClick,
   onUpdateClick,
+  onSettingsClick,
   showSidebarToggle = true,
   onToggleSidebar,
   className = "",
@@ -85,19 +87,19 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
               <p className="text-xs font-bold text-text-primary">40Labs Core</p>
               <p className="text-[10px] text-text-muted mt-0.5">Version 0.1.0-alpha</p>
             </div>
-            <DropdownMenuItem label="About 40Labs" icon={<Info size={14} />} />
-            <DropdownMenuItem label="Workspace Settings" icon={<Package size={14} />} />
+            <DropdownMenuItem label="About 40Labs" icon={<Info size={14} />} disabled />
+            <DropdownMenuItem label="Workspace Settings" icon={<Package size={14} />} onClick={onSettingsClick} />
             <div className="h-px bg-border-subtle my-1" />
             <DropdownMenuItem label="Check for Updates..." icon={<RefreshCw size={14} />} onClick={onUpdateClick} />
           </MenuBarItem>
 
           {/* Open Menu */}
           <MenuBarItem label="Open">
-            <DropdownMenuItem label="New Window" icon={<FilePlus size={14} />} />
-            <DropdownMenuItem label="Open File..." icon={<FileText size={14} />} />
-            <DropdownMenuItem label="Open Folder..." icon={<FolderOpen size={14} />} />
+            <DropdownMenuItem label="New Window" icon={<FilePlus size={14} />} disabled />
+            <DropdownMenuItem label="Open File..." icon={<FileText size={14} />} disabled />
+            <DropdownMenuItem label="Open Folder..." icon={<FolderOpen size={14} />} disabled />
             <div className="h-px bg-border-subtle my-1" />
-            <DropdownMenuItem label="Import Data" icon={<Upload size={14} />} />
+            <DropdownMenuItem label="Import Data" icon={<Upload size={14} />} disabled />
             <div className="px-3 py-1.5">
               <p className="text-[9px] font-bold text-text-muted uppercase tracking-wider mb-0.5">Recent</p>
               <p className="text-[10px] text-text-muted italic px-1 py-0.5">No recent items</p>
@@ -129,10 +131,10 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
               icon={<ExternalLink size={14} />}
               onClick={() => onHelpClick?.()}
             />
-            <DropdownMenuItem label="Keyboard Shortcuts" icon={<Command size={14} />} />
-            <DropdownMenuItem label="Report an Issue" icon={<MessageSquare size={14} />} />
+            <DropdownMenuItem label="Keyboard Shortcuts" icon={<Command size={14} />} disabled />
+            <DropdownMenuItem label="Report an Issue" icon={<MessageSquare size={14} />} disabled />
             <div className="h-px bg-border-subtle my-1" />
-            <DropdownMenuItem label="About" icon={<Info size={14} />} />
+            <DropdownMenuItem label="About" icon={<Info size={14} />} disabled />
           </MenuBarItem>
 
           {/* Updates Menu */}
@@ -152,7 +154,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
             </div>
             <div className="h-px bg-border-subtle my-1" />
             <DropdownMenuItem label="Check for Updates" icon={<RefreshCw size={14} />} onClick={onUpdateClick} />
-            <DropdownMenuItem label="View Changelog" icon={<FileText size={14} />} />
+            <DropdownMenuItem label="View Changelog" icon={<FileText size={14} />} disabled />
           </MenuBarItem>
         </MenuBar>
       </div>

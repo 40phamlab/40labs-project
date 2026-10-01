@@ -92,6 +92,7 @@ export default function App() {
           brandName="40Labs"
           onHelpClick={() => console.log('Help clicked')}
           onUpdateClick={() => console.log('Update clicked')}
+          onSettingsClick={() => setActiveScreen('settings')}
         />
       </div>
       <div className="no-drag">
