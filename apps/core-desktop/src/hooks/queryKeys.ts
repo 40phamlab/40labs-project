@@ -44,6 +44,7 @@ export const notificationKeys = {
   lists: () => [...notificationKeys.all, 'list'] as const,
   list: () => [...notificationKeys.lists()] as const,
   detail: (id: string) => [...notificationKeys.all, 'detail', id] as const,
+  messages: (notificationId: string) => [...notificationKeys.all, 'messages', notificationId] as const,
 };
 
 export const auditKeys = {

@@ -19,6 +19,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppState { pool })
         .invoke_handler(tauri::generate_handler![
             commands::system_cmd::system_health_check,
@@ -46,6 +47,14 @@ pub fn run() {
             // Audit
             commands::audit_cmd::get_audit_logs,
             commands::audit_cmd::record_audit_log,
+            // Notifications & Messages
+            commands::notification_cmd::get_notifications,
+            commands::notification_cmd::get_notification_messages,
+            commands::notification_cmd::send_notification_message,
+            commands::notification_cmd::mark_notification_read,
+            commands::notification_cmd::archive_notification,
+            commands::notification_cmd::save_attachment,
+            commands::notification_cmd::export_attachment,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

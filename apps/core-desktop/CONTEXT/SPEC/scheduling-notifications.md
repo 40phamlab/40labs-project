@@ -11,7 +11,7 @@ notification center (Sender.Profile / ALL filter per draft).
 - NotificationCenter (ALL filter, Sender.Profile detail view)
 
 ## API deps
-- GET /notifications, PATCH /notifications/:id/read
+- IPC commands: `get_notifications`, `get_notification_messages`, `send_notification_message`, `mark_notification_read`, `archive_notification`, `save_attachment`, `export_attachment`
 - GET/POST /schedules (reminders, refill schedules)
 
 ## Offline behavior

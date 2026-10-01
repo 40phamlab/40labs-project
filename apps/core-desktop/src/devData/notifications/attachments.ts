@@ -1,0 +1,48 @@
+import type { MessageAttachment } from '@40labs/types';
+import { WORKSPACE_ID, BRANCH_ID, daysAgoIso } from '../constants';
+
+export const initialAttachments: MessageAttachment[] = [
+  {
+    id: 'att_01',
+    workspace_id: WORKSPACE_ID,
+    branch_id: BRANCH_ID,
+    message_id: 'msg_002',
+    kind: 'file',
+    file_name: 'tmda_inspection_q3_notice.pdf',
+    mime_type: 'application/pdf',
+    size_bytes: 1450000,
+    storage_path: `attachments/${WORKSPACE_ID}/att_01`,
+    sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    created_at: daysAgoIso(2),
+    updated_at: daysAgoIso(2),
+  },
+  {
+    id: 'att_02',
+    workspace_id: WORKSPACE_ID,
+    branch_id: BRANCH_ID,
+    message_id: 'msg_003_1',
+    kind: 'image',
+    file_name: 'prescription_photo.png',
+    mime_type: 'image/png',
+    size_bytes: 850000,
+    storage_path: `attachments/${WORKSPACE_ID}/att_02`,
+    sha256: 'd033e22ae348aeb5660fc2140aec35850c4da997b436f92334c1bfb01e3sd789',
+    created_at: daysAgoIso(3),
+    updated_at: daysAgoIso(3),
+  },
+  {
+    id: 'att_03',
+    workspace_id: WORKSPACE_ID,
+    branch_id: BRANCH_ID,
+    message_id: 'msg_003_2',
+    kind: 'audio',
+    file_name: 'voice_note_anna.wav',
+    mime_type: 'audio/wav',
+    size_bytes: 24000,
+    storage_path: `attachments/${WORKSPACE_ID}/att_03`,
+    sha256: '8f434346648aeb5660fc2140aec35850c4da997b436f92334c1bfb01e3290ab',
+    duration_ms: 24000,
+    created_at: daysAgoIso(3),
+    updated_at: daysAgoIso(3),
+  },
+];

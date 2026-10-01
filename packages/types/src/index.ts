@@ -9,6 +9,7 @@ export * from './lab';
 export * from './purchases';
 export * from './channel';
 export * from './notification';
+export * from './message';
 export * from './audit-log';
 export * from './reserved';
 export * from './schedule';

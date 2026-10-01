@@ -35,6 +35,7 @@ import { CHANNEL_CONFIGS } from '@40labs/types';
 import { CAN_REPLY_BY_CATEGORY } from '../replyPolicy';
 import { ChannelBadge } from './ChannelIndicator';
 import { MessageRenderer } from './renderers/MessageRenderer';
+import { useNotificationMessages } from '../../../hooks/useNotifications';
 
 export interface AttachmentItem extends NotificationAttachment {}
 
@@ -161,6 +162,8 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
   const [isAttachMenuOpen, setIsAttachMenuOpen] = React.useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
+  const { messages: rawMessages } = useNotificationMessages(notification?.id || null);
+
   const channel = notification?.channel || 'amob';
   const channelCfg = CHANNEL_CONFIGS[channel] || CHANNEL_CONFIGS.amob;
   const capabilities = channelCfg.capabilities;
@@ -173,7 +176,30 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [notification?.body, notification?.id]);
+  }, [notification?.body, notification?.id, rawMessages]);
+
+  const messages = React.useMemo(() => {
+    if (!notification) return [];
+    if (rawMessages && rawMessages.length > 0) {
+      return rawMessages.map((m) => ({
+        id: m.id,
+        sender: m.direction === 'outgoing' ? ('outgoing' as const) : ('incoming' as const),
+        senderName: m.direction === 'outgoing' ? 'You' : notification.sender_name,
+        text: m.body,
+        timestamp: formatTime(m.sent_at || m.created_at),
+        htmlContent: m.html_content,
+        plainTextContent: null,
+        attachments: m.attachments?.map((a) => ({
+          id: a.id,
+          type: a.kind as any,
+          name: a.file_name,
+          size: `${Math.round(a.size_bytes / 1024)} KB`,
+          url: undefined,
+        })),
+      }));
+    }
+    return parseConversationMessages(notification);
+  }, [notification, rawMessages]);
 
   if (!notification) {
     return (
@@ -194,7 +220,6 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
   const senderKey = notification.sender_business_id ?? notification.sender_name;
   const tone = getSenderTone(senderKey);
   const canReply = CAN_REPLY_BY_CATEGORY[notification.category] ?? false;
-  const messages = parseConversationMessages(notification);
 
   const handleAddAttachment = (type: 'image' | 'file' | 'audio' | 'video' | 'link') => {
     if (
@@ -230,13 +255,7 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
   const handleSendReply = () => {
     if ((!replyText.trim() && attachments.length === 0) || !notification) return;
 
-    let fullText = replyText.trim();
-    if (attachments.length > 0) {
-      const attSummary = attachments.map((a) => `[Attachment: ${a.type} - ${a.name}]`).join('\n');
-      fullText = fullText ? `${fullText}\n${attSummary}` : attSummary;
-    }
-
-    onSendReply?.(notification.id, fullText, attachments);
+    onSendReply?.(notification.id, replyText.trim(), attachments);
     setReplyText('');
     setAttachments([]);
     setIsAttachMenuOpen(false);

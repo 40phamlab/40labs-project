@@ -8,7 +8,7 @@ import { TabContainer } from '../../components/TabContainer';
 import { NotificationsListPanel } from './components/NotificationsListPanel';
 import { NotificationDetailPanel } from './components/NotificationDetailPanel';
 import { NewConversationModal, ContactOption } from './components/NewConversationModal';
-import { useNotifications } from '../../hooks/useNotifications';
+import { useNotifications, useNotificationMessages } from '../../hooks/useNotifications';
 
 export const NotificationsScreen: React.FC = () => {
   const {
@@ -20,9 +20,10 @@ export const NotificationsScreen: React.FC = () => {
     markAsRead,
     archiveNotification,
     deleteNotification,
-    sendReply,
     createNotification,
   } = useNotifications();
+
+  const { sendMessage, saveAttachment } = useNotificationMessages(selectedId);
 
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
   const [channelFilter, setChannelFilter] = React.useState<'all' | MessageChannel>('all');
@@ -81,10 +82,32 @@ export const NotificationsScreen: React.FC = () => {
   }, [notifications, markAsRead]);
 
   const handleSendReply = React.useCallback(
-    async (id: string, replyText: string) => {
-      await sendReply(id, replyText);
+    async (id: string, replyText: string, attachments?: any[]) => {
+      let attachmentIds: string[] = [];
+      if (attachments && attachments.length > 0) {
+        for (const att of attachments) {
+          try {
+            const saved = await saveAttachment({
+              messageId: `msg_rep_${Date.now()}`,
+              kind: att.type === 'image' ? 'image' : att.type === 'audio' ? 'audio' : 'file',
+              fileName: att.name,
+              mimeType: att.type === 'image' ? 'image/png' : att.type === 'audio' ? 'audio/wav' : 'application/pdf',
+              bytes: [1, 2, 3, 4],
+            });
+            attachmentIds.push(saved.id);
+          } catch (err) {
+            console.error('Failed to save attachment:', err);
+          }
+        }
+      }
+
+      await sendMessage({
+        notificationId: id,
+        body: replyText,
+        attachmentIds,
+      });
     },
-    [sendReply]
+    [sendMessage, saveAttachment]
   );
 
   const handleStartNewConversation = React.useCallback(
