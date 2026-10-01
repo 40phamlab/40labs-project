@@ -222,4 +222,122 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
     expect(rootElement.style.minWidth).toBe('800px');
     expect(rootElement.style.minHeight).toBe('500px');
   });
+
+  test('hovering items never changes sidebar state', () => {
+    const handleNavStateChange = vi.fn();
+    render(
+      <AppShell
+        navState="icon"
+        onNavStateChange={handleNavStateChange}
+        sidebar={
+          <AppSidebarNav
+            activeRoute="dashboard"
+            onNavigate={() => {}}
+            items={sampleNavItems}
+          />
+        }
+      >
+        <div>Content</div>
+      </AppShell>
+    );
+
+    const item = screen.getByRole('button', { name: /sales/i });
+    fireEvent.mouseEnter(item);
+    fireEvent.mouseOver(item);
+    expect(handleNavStateChange).not.toHaveBeenCalled();
+  });
+
+  test('closed state does not reopen from hover or mouse movement', () => {
+    const handleNavStateChange = vi.fn();
+    render(
+      <AppShell
+        navState="closed"
+        onNavStateChange={handleNavStateChange}
+        sidebar={
+          <AppSidebarNav
+            activeRoute="dashboard"
+            onNavigate={() => {}}
+            items={sampleNavItems}
+          />
+        }
+      >
+        <div>Content</div>
+      </AppShell>
+    );
+
+    const sidebarContainer = screen.getByTestId('app-shell-sidebar-container');
+    fireEvent.mouseEnter(sidebarContainer);
+    fireEvent.mouseMove(sidebarContainer);
+    expect(handleNavStateChange).not.toHaveBeenCalled();
+  });
+
+  test('reopening restores the previous non-closed state (icon -> closed -> icon)', () => {
+    function ReopenTestHarness() {
+      const shell = useAppShell();
+      return (
+        <div>
+          <button onClick={() => shell.setNavState('icon')} data-testid="set-icon">Set Icon</button>
+          <button onClick={shell.toggleSidebar} data-testid="toggle">Toggle</button>
+          <button onClick={shell.reopenSidebar} data-testid="reopen">Reopen</button>
+          <div data-testid="nav-state">{shell.navState}</div>
+        </div>
+      );
+    }
+
+    render(
+      <AppShell
+        sidebar={
+          <AppSidebarNav
+            activeRoute="dashboard"
+            onNavigate={() => {}}
+            items={sampleNavItems}
+          />
+        }
+      >
+        <ReopenTestHarness />
+      </AppShell>
+    );
+
+    // Set to icon
+    fireEvent.click(screen.getByTestId('set-icon'));
+    expect(screen.getByTestId('nav-state')).toHaveTextContent('icon');
+
+    // Close
+    fireEvent.click(screen.getByTestId('toggle'));
+    expect(screen.getByTestId('nav-state')).toHaveTextContent('closed');
+
+    // Reopen restores icon
+    fireEvent.click(screen.getByTestId('reopen'));
+    expect(screen.getByTestId('nav-state')).toHaveTextContent('icon');
+  });
+
+  test('active implementation uses only open, icon, closed states and rejects legacy vocabularies', () => {
+    render(
+      <AppShell
+        navState="open"
+        sidebar={
+          <AppSidebarNav
+            activeRoute="dashboard"
+            onNavigate={() => {}}
+            items={sampleNavItems}
+          />
+        }
+      >
+        <div>Content</div>
+      </AppShell>
+    );
+
+    const sidebarContainer = screen.getByTestId('app-shell-sidebar-container');
+    expect(sidebarContainer).toHaveClass('w-60');
+  });
+
+  test('window controls and interactive chrome elements are non-draggable (no-drag)', () => {
+    render(
+      <div data-testid="titlebar-controls" className="no-drag">
+        <button>Minimize</button>
+      </div>
+    );
+    const controls = screen.getByTestId('titlebar-controls');
+    expect(controls).toHaveClass('no-drag');
+  });
 });

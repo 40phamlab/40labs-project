@@ -63,16 +63,15 @@ export const useNavStore = create<NavState>((set, get) => ({
   },
   sidebarState: getInitialState(),
   lastNonClosedState: getInitialLastNonClosed(),
-  setSidebarState: (state) => {
-    const normalized = state === 'expanded' ? 'open' : state === 'compact' ? 'icon' : state === 'hidden' ? 'closed' : state;
+  setSidebarState: (state: NavigationState) => {
     set((s) => {
-      const lastNonClosed = normalized !== 'closed' ? normalized : s.lastNonClosedState;
+      const lastNonClosed = state !== 'closed' ? state : s.lastNonClosedState;
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY_STATE, normalized);
+        localStorage.setItem(STORAGE_KEY_STATE, state);
         localStorage.setItem(STORAGE_KEY_LAST_NON_CLOSED, lastNonClosed);
       }
       return {
-        sidebarState: normalized,
+        sidebarState: state,
         lastNonClosedState: lastNonClosed,
       };
     });

@@ -47,7 +47,7 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
     }
   };
 
-  const isNavHidden = shell.navState === 'hidden';
+  const isNavClosed = shell.navState === 'closed';
 
   return (
     <div
@@ -61,9 +61,9 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
             onClick={handleToggle}
             intent="ghost"
             size="sm"
-            label={isNavHidden ? "Show sidebar navigation" : "Toggle sidebar navigation"}
-            title={isNavHidden ? "Show sidebar navigation (Ctrl+B)" : "Toggle sidebar navigation (Ctrl+B)"}
-            className={isNavHidden ? "text-action-primary hover:bg-surface-hover" : "text-text-muted hover:text-text-primary"}
+            label={isNavClosed ? "Show sidebar navigation" : "Toggle sidebar navigation"}
+            title={isNavClosed ? "Show sidebar navigation (Ctrl+B)" : "Toggle sidebar navigation (Ctrl+B)"}
+            className={isNavClosed ? "text-action-primary hover:bg-surface-hover" : "text-text-muted hover:text-text-primary"}
           />
         )}
 

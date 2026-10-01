@@ -53,7 +53,7 @@ describe('Sidebar Navigation Component & 3-State Click Rules', () => {
     expect(dashboardItem).toHaveAttribute('title', 'Dashboard');
   });
 
-  test('VS Code-style click rules: icon-only mode click expands to open', async () => {
+  test('icon-only mode click selects section and sidebar stays in icon state', async () => {
     const handleNavigate = vi.fn();
     const handleStateChange = vi.fn();
 
@@ -71,7 +71,7 @@ describe('Sidebar Navigation Component & 3-State Click Rules', () => {
     await userEvent.click(salesButton);
 
     expect(handleNavigate).toHaveBeenCalledWith('sales');
-    expect(handleStateChange).toHaveBeenCalledWith('open');
+    expect(handleStateChange).not.toHaveBeenCalled();
   });
 
   test('VS Code-style click rules: open mode, click active icon collapses to icon', async () => {

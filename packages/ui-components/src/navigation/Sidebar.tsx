@@ -5,28 +5,24 @@ import { useAppShell, NavigationState } from '../layout/AppShell';
 
 export interface SidebarProps {
   children: React.ReactNode;
-  compact?: boolean;
   navState?: NavigationState;
   className?: string;
 }
 
-export const Sidebar = ({ children, navState, className = '' }: SidebarProps & { compact?: boolean }) => {
+export const Sidebar = ({ children, navState, className = '' }: SidebarProps) => {
   const shell = useAppShell();
   const effectiveNavState: NavigationState = navState ?? shell.navState;
 
-  const isCompact = effectiveNavState === 'compact';
-  const isHidden = effectiveNavState === 'hidden';
+  const isClosed = effectiveNavState === 'closed';
 
-  if (isHidden) {
+  if (isClosed) {
     return null;
   }
 
   return (
     <nav
       aria-label="Sidebar navigation"
-      className={`flex flex-col h-full w-full bg-sidebar border-r border-border transition-[width] duration-200 ease-in-out select-none ${
-        isCompact ? 'w-16' : 'w-60'
-      } ${className}`}
+      className={`flex flex-col h-full w-full bg-sidebar border-r border-border transition-[width] duration-200 ease-in-out select-none ${className}`}
     >
       {Children.map(children, (child) => {
         if (isValidElement(child) && typeof child.type !== 'string') {
@@ -47,14 +43,14 @@ export interface SidebarSectionProps {
   className?: string;
 }
 
-export const SidebarSection = ({ title, children, navState, className = '' }: SidebarSectionProps & { compact?: boolean }) => {
+export const SidebarSection = ({ title, children, navState, className = '' }: SidebarSectionProps) => {
   const shell = useAppShell();
   const effectiveNavState: NavigationState = navState ?? shell.navState;
-  const isCompact = effectiveNavState === 'compact';
+  const isIcon = effectiveNavState === 'icon';
 
   return (
     <div className={`py-2 ${className}`}>
-      {title && !isCompact && (
+      {title && !isIcon && (
         <h3 className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted truncate select-none">
           {title}
         </h3>
@@ -93,10 +89,10 @@ export const SidebarItem = ({
   navState,
   onClick,
   className = '',
-}: SidebarItemProps & { compact?: boolean }) => {
+}: SidebarItemProps) => {
   const shell = useAppShell();
   const effectiveNavState: NavigationState = navState ?? shell.navState;
-  const isCompact = effectiveNavState === 'compact';
+  const isIcon = effectiveNavState === 'icon';
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (disabled) return;
@@ -121,13 +117,13 @@ export const SidebarItem = ({
         focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar
         ${
           active
-            ? isCompact
+            ? isIcon
               ? 'bg-surface-selected text-text-primary font-bold shadow-inner-soft'
               : 'bg-surface-selected text-text-primary font-semibold'
             : 'text-text-muted hover:text-text-primary hover:bg-surface-hover'
         }
         ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-        ${isCompact ? 'justify-center px-0 w-10 mx-auto' : ''}
+        ${isIcon ? 'justify-center px-0 w-10 mx-auto' : ''}
         ${className}
       `}
     >
@@ -140,10 +136,10 @@ export const SidebarItem = ({
           {icon}
         </span>
       )}
-      {!isCompact && (
+      {!isIcon && (
         <span className="flex-1 text-left truncate">{label}</span>
       )}
-      {!isCompact && badge !== undefined && (
+      {!isIcon && badge !== undefined && (
         <span
           className={`
             inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none
@@ -157,7 +153,7 @@ export const SidebarItem = ({
           {badge}
         </span>
       )}
-      {isCompact && badge !== undefined && (
+      {isIcon && badge !== undefined && (
         <span
           className="absolute top-1 right-1 w-2 h-2 rounded-full bg-danger ring-2 ring-sidebar"
           title={`${label}: ${badge}`}
@@ -173,7 +169,7 @@ export interface SidebarGroupProps {
   className?: string;
 }
 
-export const SidebarGroup = ({ children, navState, className = '' }: SidebarGroupProps & { compact?: boolean }) => {
+export const SidebarGroup = ({ children, navState, className = '' }: SidebarGroupProps) => {
   const shell = useAppShell();
   const effectiveNavState: NavigationState = navState ?? shell.navState;
 

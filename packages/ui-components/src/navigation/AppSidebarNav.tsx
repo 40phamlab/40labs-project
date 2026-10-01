@@ -80,9 +80,8 @@ export function AppSidebarNav({
     const isOpen = currentNavState === 'open';
 
     if (currentNavState === 'icon') {
-      // Clicking an icon in icon-only state opens the full panel for that section
+      // Clicking an icon in icon-only state selects that section while keeping sidebar in icon state
       onNavigate(itemId);
-      handleStateChange('open');
     } else if (isOpen) {
       if (isCurrentActive) {
         // Clicking the same active icon again collapses back to icon-only
@@ -93,7 +92,6 @@ export function AppSidebarNav({
       }
     } else {
       onNavigate(itemId);
-      handleStateChange('open');
     }
   };
 
@@ -104,7 +102,7 @@ export function AppSidebarNav({
   );
 
   return (
-    <Sidebar compact={isCompact} navState={currentNavState} className="h-full bg-sidebar border-r border-border">
+    <Sidebar navState={currentNavState} className="h-full bg-sidebar border-r border-border">
       {/* Primary Navigation Section */}
       <SidebarSection className="flex-1 overflow-y-auto no-scrollbar overscroll-contain py-2">
         {filteredItems.map((item) => {
@@ -119,7 +117,6 @@ export function AppSidebarNav({
               active={isActiveSection}
               onClick={() => handleItemClick(item.id)}
               badge={item.badgeCount}
-              compact={isCompact}
               navState={currentNavState}
               aria-expanded={isOpenState && isActiveSection}
             />
@@ -143,7 +140,6 @@ export function AppSidebarNav({
                   active={isActiveSection}
                   onClick={() => handleItemClick(item.id)}
                   badge={item.badgeCount}
-                  compact={isCompact}
                   navState={currentNavState}
                   aria-expanded={isOpenState && isActiveSection}
                 />
