@@ -18,6 +18,23 @@ export type ScreenId =
   | 'education'
   | 'notifications';
 
+export const VALID_SCREENS: readonly ScreenId[] = [
+  'dashboard',
+  'sales',
+  'inventory',
+  'customers',
+  'purchases',
+  'lab',
+  'settings',
+  'scheduling',
+  'e-pharmacy',
+  'reports',
+  'education',
+  'notifications',
+] as const;
+
+const DEFAULT_SCREEN: ScreenId = 'settings';
+
 const STORAGE_KEY_STATE = '40labs_sidebar_state';
 const STORAGE_KEY_SECTION = '40labs_sidebar_section';
 const STORAGE_KEY_LAST_NON_CLOSED = '40labs_sidebar_last_non_closed';
@@ -33,8 +50,12 @@ const getInitialState = (): NavigationState => {
 };
 
 const getInitialSection = (): ScreenId => {
-  if (typeof window === 'undefined') return 'settings';
-  return (localStorage.getItem(STORAGE_KEY_SECTION) as ScreenId) || 'settings';
+  if (typeof window === 'undefined') return DEFAULT_SCREEN;
+  const saved = localStorage.getItem(STORAGE_KEY_SECTION);
+  if (saved && (VALID_SCREENS as readonly string[]).includes(saved)) {
+    return saved as ScreenId;
+  }
+  return DEFAULT_SCREEN;
 };
 
 const getInitialLastNonClosed = (): 'icon' | 'open' => {
@@ -56,9 +77,12 @@ interface NavState {
 export const useNavStore = create<NavState>((set, get) => ({
   activeScreen: getInitialSection(),
   setActiveScreen: (screen) => {
-    set({ activeScreen: screen });
+    const validatedScreen = (VALID_SCREENS as readonly string[]).includes(screen)
+      ? screen
+      : DEFAULT_SCREEN;
+    set({ activeScreen: validatedScreen });
     if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_SECTION, screen);
+      localStorage.setItem(STORAGE_KEY_SECTION, validatedScreen);
     }
   },
   sidebarState: getInitialState(),
