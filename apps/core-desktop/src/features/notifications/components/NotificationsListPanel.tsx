@@ -10,9 +10,7 @@ import {
 } from '@40labs/ui-components';
 import { MailOpen, Share2, Trash2, Archive, CheckCheck, RefreshCw, Plus, Filter } from 'lucide-react';
 import type { Notification, MessageChannel } from '@40labs/types';
-import { CHANNEL_CONFIGS } from '@40labs/types';
 import { NotificationListItem } from './NotificationListItem';
-import { ChannelIcon } from './ChannelIndicator';
 
 export interface NotificationsListPanelProps {
   notifications: Notification[];

@@ -26,7 +26,7 @@ export const ComposerInput: React.FC<ComposerInputProps> = ({
   }, [value]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.nativeEvent.isComposing || e.isComposing) return;
+    if (e.nativeEvent.isComposing || (e as any).isComposing) return;
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onSend();

@@ -1,12 +1,12 @@
 import * as React from 'react';
-import type { NotificationMessage } from '@40labs/types';
+import type { NotificationMessage, MessageChannel } from '@40labs/types';
 import { MessageStatusIcon } from './MessageStatusIcon';
 import { MessageRenderer } from './renderers/MessageRenderer';
 
 export interface MessageBubbleProps {
   message: NotificationMessage;
-  senderName: string;
-  channel?: string;
+  senderName?: string;
+  channel?: MessageChannel | string;
   contentType?: string;
   isConsecutive?: boolean;
   onRetry?: () => void;
@@ -25,17 +25,17 @@ function formatTime(isoString: string): string {
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
-  senderName,
+  senderName: _senderName,
   channel = 'amob',
   contentType,
   isConsecutive = false,
-  onRetry,
+  onRetry: _onRetry,
   className = '',
 }) => {
   const isOutgoing = message.direction === 'outgoing';
   const timestamp = formatTime(message.sent_at || message.created_at);
 
-  const attachments = message.attachments?.map((a) => ({
+  const attachments = message.attachments?.map((a: any) => ({
     id: a.id,
     type: a.kind as any,
     name: a.file_name,
@@ -59,8 +59,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       >
         <MessageRenderer
           content={message.body}
-          channel={channel}
-          contentType={contentType}
+          channel={channel as any}
+          contentType={contentType as any}
           htmlContent={message.html_content}
           plainTextContent={null}
           attachments={attachments}
@@ -68,7 +68,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
         <div className="absolute bottom-1 right-3 flex items-center gap-1">
           <span className="text-xs font-mono text-text-muted">{timestamp}</span>
-          {isOutgoing && <MessageStatusIcon status={message.status} onRetry={onRetry} />}
+          {isOutgoing && <MessageStatusIcon status={message.status} />}
         </div>
       </div>
     </div>

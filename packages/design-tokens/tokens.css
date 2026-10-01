@@ -64,6 +64,8 @@
   --color-info-border: #154562;
 
   --color-focus-ring: #16A34A;
+  --color-grid-lines: rgba(255,255,255,0.03);
+  --color-highlight: #22C55E;
 
   /* Fonts */
   --font-heading: "Sora", sans-serif;

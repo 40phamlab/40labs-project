@@ -1,28 +1,5 @@
 @import "tailwindcss";
-
-@theme inline {
-  /* Mapping dark theme tokens to standard names used by ui-components */
-  --color-primary: #16A34A;
-  --color-accent: #F97316;
-  --color-surface: #0B0F0D;
-  --color-surface-strong: #14532D;
-  --color-panel: #14532D;
-  --color-panel-strong: #16A34A;
-  --color-text: #F8FAFB;
-  --color-text-muted: rgba(248,250,251,0.6);
-  --color-border: rgba(255,255,255,0.1);
-  --color-grid-lines: rgba(255,255,255,0.03);
-
-  --spacing-grid: 40px;
-
-  --radius-card: 16px;
-  --radius-pill: 9999px;
-  --radius-input: 9999px;
-
-  --font-heading: var(--font-geist-sans);
-  --font-ui: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@import "@40labs/design-tokens/tokens.css";
 
 :root {
   --background: #0B0F0D;
@@ -45,14 +22,14 @@ body {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0B0F0D;
+  background: var(--color-app-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: #14532D;
+  background: var(--color-surface-secondary);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #16A34A;
+  background: var(--color-action-primary);
 }
 
 @keyframes marquee {

@@ -23,6 +23,7 @@ module.exports = {
     'text-secondary': colors.textSecondary,
     'text-muted': colors.textMuted,
     'text-disabled': colors.textDisabled,
+    'text-inverse': colors.textInverse,
     'action-primary': colors.actionPrimary,
     'action-primary-hover': colors.actionPrimaryHover,
     'action-primary-active': colors.actionPrimaryActive,
@@ -39,6 +40,8 @@ module.exports = {
     'info-bg': colors.infoBg,
     'info-border': colors.infoBorder,
     'focus-ring': colors.focusRing,
+    'grid-lines': colors.gridLines,
+    highlight: colors.highlight,
 
     // Legacy aliases
     primary: colors.primary,
@@ -50,6 +53,7 @@ module.exports = {
     input: colors.input,
     field: colors.field,
     text: colors.text,
+    'text-on-field': colors.textOnField,
     border: colors.border,
   },
   borderRadius: {

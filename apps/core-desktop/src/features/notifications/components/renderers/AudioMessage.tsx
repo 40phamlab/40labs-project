@@ -12,7 +12,7 @@ export interface AudioMessageProps {
 
 export const AudioMessage: React.FC<AudioMessageProps> = ({
   name = 'Voice message',
-  size,
+  size: _size,
   url,
   durationMs,
   className = '',

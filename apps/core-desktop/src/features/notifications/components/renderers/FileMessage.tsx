@@ -17,7 +17,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
   attachmentId,
   name,
   size = '450 KB',
-  url,
+  url: _url,
   className = '',
 }) => {
   const { toast } = useToast();

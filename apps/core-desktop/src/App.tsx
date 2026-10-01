@@ -12,10 +12,10 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
-import { AppShell, AppSidebarNav, TopMenuBar } from '@40labs/ui-components';
+import { AppShell, AppSidebarNav, TopMenuBar, type NavItem } from '@40labs/ui-components';
 import { TitleBar } from './components/TitleBar';
 import { TabContainer } from './components/TabContainer';
-import { useNavStore, type ScreenId, VALID_SCREENS } from './stores/useNavStore';
+import { useNavStore, type ScreenId } from './stores/useNavStore';
 import { InventoryScreen } from './features/inventory/InventoryScreen';
 import { SalesScreen } from './features/sales/SalesScreen';
 import { CustomersScreen } from './features/customers/CustomersScreen';
@@ -29,11 +29,7 @@ import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ToastProvider } from './hooks/useToast';
 import './App.css';
 
-const isScreenId = (id: string): id is ScreenId => {
-  return (VALID_SCREENS as readonly string[]).includes(id);
-};
-
-const NAV_ITEMS: Array<{ id: ScreenId; label: string; icon: React.ReactNode }> = [
+const NAV_ITEMS: Array<NavItem<ScreenId>> = [
   { id: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
   { id: 'sales', label: 'Sales', icon: <ShoppingCart size={18} /> },
   { id: 'inventory', label: 'Inventory', icon: <Package size={18} /> },
@@ -45,6 +41,10 @@ const NAV_ITEMS: Array<{ id: ScreenId; label: string; icon: React.ReactNode }> =
   { id: 'scheduling', label: 'Scheduling', icon: <Calendar size={18} /> },
   { id: 'education', label: 'Education', icon: <GraduationCap size={18} /> },
   { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
+];
+
+const PINNED_BOTTOM_ITEMS: Array<NavItem<ScreenId>> = [
+  { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
 ];
 
 export default function App() {
@@ -106,19 +106,15 @@ export default function App() {
   );
 
   const sidebarElement = (
-    <AppSidebarNav
+    <AppSidebarNav<ScreenId>
       activeRoute={activeScreen}
       navState={sidebarState}
       onNavStateChange={setSidebarState}
       onNavigate={(id) => {
-        if (isScreenId(id)) {
-          setActiveScreen(id);
-        }
+        setActiveScreen(id);
       }}
       items={NAV_ITEMS}
-      pinnedBottomItems={[
-        { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
-      ]}
+      pinnedBottomItems={PINNED_BOTTOM_ITEMS}
     />
   );
 

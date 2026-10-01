@@ -1,6 +1,5 @@
-import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Notification, NotificationMessage, MessageAttachment } from '@40labs/types';
+import type { Notification, NotificationMessage } from '@40labs/types';
 import { notificationsApi, CreateNotificationPayload, SendMessagePayload, SaveAttachmentPayload } from '../api';
 import { notificationKeys } from './queryKeys';
 import { useNotificationsStore } from '../stores/useNotificationsStore';

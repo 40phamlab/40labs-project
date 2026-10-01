@@ -1,7 +1,7 @@
 import type { MessageAttachment } from '@40labs/types';
 import { WORKSPACE_ID, BRANCH_ID, daysAgoIso } from '../constants';
 
-export const initialAttachments: MessageAttachment[] = [
+export const initialAttachments: Array<MessageAttachment & { url?: string; duration_ms?: number }> = [
   {
     id: 'att_01',
     workspace_id: WORKSPACE_ID,

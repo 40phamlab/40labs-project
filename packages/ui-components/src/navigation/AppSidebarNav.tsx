@@ -4,8 +4,8 @@ import React from 'react';
 import { Sidebar, SidebarSection, SidebarItem } from './Sidebar';
 import { useAppShell, NavigationState } from '../layout/AppShell';
 
-export interface NavItem {
-  id: string;
+export interface NavItem<T extends string = string> {
+  id: T;
   label: string;
   icon?: React.ReactNode;
   route?: string;
@@ -27,13 +27,13 @@ export interface BrandConfig {
   themeColor?: string;
 }
 
-export interface AppSidebarNavProps {
-  activeRoute: string;
+export interface AppSidebarNavProps<T extends string = string> {
+  activeRoute: T;
   navState?: NavigationState | string;
-  onNavigate: (routeId: string) => void;
+  onNavigate: (routeId: T) => void;
   onNavStateChange?: (state: NavigationState) => void;
-  items: NavItem[];
-  pinnedBottomItems?: NavItem[];
+  items: NavItem<T>[];
+  pinnedBottomItems?: NavItem<T>[];
   userProfile?: UserSessionData;
   tenantBranding?: BrandConfig;
 }
@@ -46,7 +46,7 @@ const normalizeState = (state: string | undefined, defaultState: NavigationState
   return defaultState;
 };
 
-export function AppSidebarNav({
+export function AppSidebarNav<T extends string = string>({
   activeRoute,
   navState: propNavState,
   onNavigate,
@@ -55,7 +55,7 @@ export function AppSidebarNav({
   pinnedBottomItems = [],
   userProfile,
   tenantBranding: _tenantBranding,
-}: AppSidebarNavProps) {
+}: AppSidebarNavProps<T>) {
   const shell = useAppShell();
 
   const currentNavState: NavigationState = normalizeState((propNavState as string) ?? shell.navState);
@@ -75,7 +75,7 @@ export function AppSidebarNav({
     }
   };
 
-  const handleItemClick = (itemId: string) => {
+  const handleItemClick = (itemId: T) => {
     const isCurrentActive = activeRoute === itemId;
     const isOpen = currentNavState === 'open';
 

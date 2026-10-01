@@ -142,6 +142,7 @@ export const NotificationsScreen: React.FC = () => {
             onClose={() => setArchiveTargetId(null)}
             onConfirm={handleConfirmArchive}
             title="Archive this notification?"
+            message="This action will move the conversation to your archive."
             confirmText="Confirm Archive"
             cancelText="Cancel"
             intent="primary"
@@ -152,6 +153,7 @@ export const NotificationsScreen: React.FC = () => {
             onClose={() => setDeleteTargetId(null)}
             onConfirm={handleConfirmDelete}
             title="Delete this notification permanently?"
+            message="This action cannot be undone."
             confirmText="Delete Permanently"
             cancelText="Cancel"
             intent="danger"

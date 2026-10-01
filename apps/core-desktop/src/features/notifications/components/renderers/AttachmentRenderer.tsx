@@ -5,7 +5,7 @@ import { AudioMessage } from './AudioMessage';
 import { FileMessage } from './FileMessage';
 
 export interface AttachmentRendererProps {
-  attachments?: Array<NotificationAttachment & { durationMs?: number }>;
+  attachments?: Array<NotificationAttachment & { durationMs?: number; file_name?: string; kind?: string; type?: string; url?: string }>;
   className?: string;
 }
 
@@ -17,7 +17,7 @@ export const AttachmentRenderer: React.FC<AttachmentRendererProps> = ({
 
   return (
     <div className={`flex flex-col gap-2 my-2 ${className}`}>
-      {attachments.map((att) => {
+      {attachments.map((att: any) => {
         if (att.kind === 'image' || att.type === 'image') {
           return <ImageMessage key={att.id} name={att.file_name || att.name} size={att.size} url={att.url} />;
         }
