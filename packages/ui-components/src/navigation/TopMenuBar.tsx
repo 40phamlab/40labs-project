@@ -20,6 +20,15 @@ import { DropdownMenuItem } from './Menu';
 import { IconButton } from '../primitives/IconButton';
 import { useAppShell } from '../layout/AppShell';
 
+export type AppStatus =
+  | 'ready'
+  | 'loading'
+  | 'syncing'
+  | 'offline'
+  | 'error'
+  | 'update available'
+  | 'background task running';
+
 export interface TopMenuBarProps {
   brandName?: string;
   onHelpClick?: () => void;
@@ -27,8 +36,54 @@ export interface TopMenuBarProps {
   onSettingsClick?: () => void;
   showSidebarToggle?: boolean;
   onToggleSidebar?: () => void;
+  systemStatus?: AppStatus;
+  updateStatus?: AppStatus | 'up to date';
   className?: string;
 }
+
+const getSystemStatusConfig = (status: AppStatus) => {
+  switch (status) {
+    case 'ready':
+      return { label: 'Ready', dotColor: 'bg-action-primary', animate: '' };
+    case 'loading':
+      return { label: 'Loading', dotColor: 'bg-warning', animate: 'animate-pulse' };
+    case 'syncing':
+      return { label: 'Syncing', dotColor: 'bg-info', animate: 'animate-pulse' };
+    case 'offline':
+      return { label: 'Offline', dotColor: 'bg-text-muted', animate: '' };
+    case 'error':
+      return { label: 'Error', dotColor: 'bg-danger', animate: '' };
+    case 'update available':
+      return { label: 'Update Available', dotColor: 'bg-action-primary', animate: 'animate-bounce' };
+    case 'background task running':
+      return { label: 'Task Running', dotColor: 'bg-warning', animate: 'animate-pulse' };
+    default:
+      return { label: 'Ready', dotColor: 'bg-action-primary', animate: '' };
+  }
+};
+
+const getUpdateStatusConfig = (status: AppStatus | 'up to date') => {
+  switch (status) {
+    case 'up to date':
+      return { label: "You're up to date", textColor: 'text-action-primary' };
+    case 'ready':
+      return { label: 'Up to date', textColor: 'text-action-primary' };
+    case 'loading':
+      return { label: 'Checking for updates...', textColor: 'text-warning' };
+    case 'syncing':
+      return { label: 'Syncing updates...', textColor: 'text-info' };
+    case 'offline':
+      return { label: 'Offline (cannot check updates)', textColor: 'text-text-muted' };
+    case 'error':
+      return { label: 'Failed to check updates', textColor: 'text-danger' };
+    case 'update available':
+      return { label: 'New update available!', textColor: 'text-action-primary font-bold' };
+    case 'background task running':
+      return { label: 'Background update running...', textColor: 'text-warning' };
+    default:
+      return { label: "You're up to date", textColor: 'text-action-primary' };
+  }
+};
 
 export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   brandName = "40Labs",
@@ -37,6 +92,8 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   onSettingsClick,
   showSidebarToggle = true,
   onToggleSidebar,
+  systemStatus = 'ready',
+  updateStatus = 'up to date',
   className = "",
 }) => {
   const shell = useAppShell();
@@ -50,6 +107,8 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
   };
 
   const isNavClosed = shell.navState === 'closed';
+  const systemConfig = getSystemStatusConfig(systemStatus);
+  const updateConfig = getUpdateStatusConfig(updateStatus);
 
   return (
     <div
@@ -147,9 +206,9 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
             }
           >
             <div className="px-3 py-2">
-              <div className="flex items-center gap-2 text-action-primary">
-                <div className="w-1.5 h-1.5 rounded-full bg-current" />
-                <span className="text-[11px] font-bold">You're up to date</span>
+              <div className={`flex items-center gap-2 ${updateConfig.textColor}`}>
+                <div className={`w-1.5 h-1.5 rounded-full bg-current ${systemConfig.animate}`} />
+                <span className="text-[11px] font-bold">{updateConfig.label}</span>
               </div>
             </div>
             <div className="h-px bg-border-subtle my-1" />
@@ -162,8 +221,10 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
       {/* System Status */}
       <div className="hidden sm:flex items-center gap-2 pr-2 pointer-events-none shrink-0">
         <div className="flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-action-primary" />
-          <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">Ready</span>
+          <div className={`w-1.5 h-1.5 rounded-full ${systemConfig.dotColor} ${systemConfig.animate}`} />
+          <span className="text-[9px] font-bold text-text-muted uppercase tracking-widest">
+            {systemConfig.label}
+          </span>
         </div>
       </div>
     </div>
