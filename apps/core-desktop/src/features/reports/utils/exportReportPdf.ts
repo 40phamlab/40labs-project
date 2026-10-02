@@ -1,3 +1,5 @@
+import { CanonicalReport } from '../types/reportModel';
+
 export interface ReportPdfData {
   title: string;
   categoryLabel: string;
@@ -12,7 +14,23 @@ export interface ReportPdfData {
  * Pure JavaScript client-side PDF generator for reports.
  * 100% offline compatible, produces valid PDF 1.4 Blobs without external dependencies.
  */
-export function createReportPdfBlob(data: ReportPdfData): Blob {
+export function createReportPdfBlob(data: ReportPdfData | CanonicalReport): Blob {
+  // Normalize CanonicalReport to ReportPdfData if necessary
+  let pdfData: ReportPdfData;
+  if ('metadata' in data) {
+    pdfData = {
+      title: data.metadata.title,
+      categoryLabel: data.metadata.categoryLabel,
+      periodLabel: data.metadata.periodLabel,
+      generatedAt: data.metadata.generatedAt,
+      kpis: data.kpis,
+      columns: data.tables[0]?.columns || [],
+      rows: data.tables[0]?.rows || [],
+    };
+  } else {
+    pdfData = data;
+  }
+
   const lines: string[] = [];
 
   const esc = (str: string) =>
@@ -21,7 +39,7 @@ export function createReportPdfBlob(data: ReportPdfData): Blob {
       .replace(/\(/g, '\\(')
       .replace(/\)/g, '\\)');
 
-  const dateStr = data.generatedAt || new Date().toLocaleString();
+  const dateStr = pdfData.generatedAt || new Date().toLocaleString();
 
   // Page stream setup (A4 size: 595 x 842 pt)
   lines.push('BT');
@@ -33,18 +51,18 @@ export function createReportPdfBlob(data: ReportPdfData): Blob {
   lines.push(`(${esc('40LABS POS & PHARMACY MANAGEMENT REPORT')}) Tj T*`);
   lines.push('/F2 10 Tf');
   lines.push('14 TL');
-  lines.push(`(Report: ${esc(data.title.toUpperCase())}) Tj T*`);
-  lines.push(`(Period: ${esc(data.periodLabel)}) Tj T*`);
+  lines.push(`(Report: ${esc(pdfData.title.toUpperCase())}) Tj T*`);
+  lines.push(`(Period: ${esc(pdfData.periodLabel)}) Tj T*`);
   lines.push(`(Generated: ${esc(dateStr)}) Tj T*`);
   lines.push('(========================================================================) Tj T*');
 
   // KPIs Section
-  if (data.kpis && data.kpis.length > 0) {
+  if (pdfData.kpis && pdfData.kpis.length > 0) {
     lines.push('/F1 11 Tf');
     lines.push('(KEY PERFORMANCE INDICATORS) Tj T*');
     lines.push('/F2 9 Tf');
     lines.push('12 TL');
-    data.kpis.forEach((kpi) => {
+    pdfData.kpis.forEach((kpi) => {
       const lineStr = `- ${kpi.label}: ${kpi.value}${kpi.subtext ? ' (' + kpi.subtext + ')' : ''}`;
       lines.push(`(${esc(lineStr)}) Tj T*`);
     });
@@ -52,20 +70,20 @@ export function createReportPdfBlob(data: ReportPdfData): Blob {
   }
 
   // Table Section
-  if (data.columns && data.columns.length > 0 && data.rows && data.rows.length > 0) {
+  if (pdfData.columns && pdfData.columns.length > 0 && pdfData.rows && pdfData.rows.length > 0) {
     lines.push('/F1 11 Tf');
     lines.push('(DETAILED REPORT DATA) Tj T*');
     lines.push('/F1 9 Tf');
 
     // Header row
-    const headersStr = data.columns.map((col) => col.header.padEnd(16, ' ')).join(' ').substring(0, 72);
+    const headersStr = pdfData.columns.map((col) => col.header.padEnd(16, ' ')).join(' ').substring(0, 72);
     lines.push(`(${esc(headersStr)}) Tj T*`);
     lines.push('/F2 8 Tf');
     lines.push('11 TL');
 
-    // Rows (up to 45 rows to fit on page)
-    data.rows.slice(0, 45).forEach((row) => {
-      const rowStr = data.columns
+    // Rows (up to 40 rows to fit on page)
+    pdfData.rows.slice(0, 40).forEach((row) => {
+      const rowStr = pdfData.columns
         .map((col) => {
           const val = String(row[col.key] ?? '—');
           return val.length > 15 ? val.substring(0, 13) + '..' : val.padEnd(16, ' ');
@@ -75,8 +93,8 @@ export function createReportPdfBlob(data: ReportPdfData): Blob {
       lines.push(`(${esc(rowStr)}) Tj T*`);
     });
 
-    if (data.rows.length > 45) {
-      lines.push(`(... and ${data.rows.length - 45} more entries) Tj T*`);
+    if (pdfData.rows.length > 40) {
+      lines.push(`(... and ${pdfData.rows.length - 40} more entries) Tj T*`);
     }
   }
 
@@ -122,12 +140,13 @@ export function createReportPdfBlob(data: ReportPdfData): Blob {
   return new Blob([fullPdf], { type: 'application/pdf' });
 }
 
-export function downloadReportPdf(data: ReportPdfData): void {
+export function downloadReportPdf(data: ReportPdfData | CanonicalReport): void {
   try {
     const blob = createReportPdfBlob(data);
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    const sanitizedTitle = data.title.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const title = 'metadata' in data ? data.metadata.title : data.title;
+    const sanitizedTitle = title.replace(/[^a-zA-Z0-9_-]/g, '_');
     const filename = `${sanitizedTitle}_Report_${new Date().toISOString().split('T')[0]}.pdf`;
     link.href = url;
     link.download = filename;

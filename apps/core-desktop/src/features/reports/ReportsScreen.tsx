@@ -6,7 +6,7 @@ import {
   IconButton,
   Popover,
 } from '@40labs/ui-components';
-import { Download, Share2 } from 'lucide-react';
+import { Download, Share2, Eye } from 'lucide-react';
 import { TabContainer } from '../../components/TabContainer';
 import { useReports } from '../../hooks/useReports';
 import { useToast } from '../../hooks/useToast';
@@ -21,6 +21,8 @@ import { ReportTable } from './components/ReportTable';
 import { downloadReportPdf } from './utils/exportReportPdf';
 import { ReportShareModal } from './components/ReportShareModal';
 import { ReportSelectionList } from './components/ReportSelectionList';
+import { ReportPreviewModal } from './components/ReportPreviewModal';
+import { convertCategoryDataToCanonical, CanonicalReport } from './types/reportModel';
 
 const CATEGORY_TABS = Object.values(reportCategoriesConfig).map((cat) => ({
   id: cat.id,
@@ -33,6 +35,7 @@ export const ReportsScreen: React.FC = () => {
   const [dateRange, setDateRange] = React.useState(() => getPeriodDateRange('last_month'));
 
   const [isShareModalOpen, setIsShareModalOpen] = React.useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isDownloadPopoverOpen, setIsDownloadPopoverOpen] = React.useState(false);
   const [downloadCategories, setDownloadCategories] = React.useState<ReportCategoryId[]>([activeCategory]);
 
@@ -63,19 +66,27 @@ export const ReportsScreen: React.FC = () => {
     }
   }, [activeCategory, isDownloadPopoverOpen]);
 
+  // Construct canonical report for active category
+  const activeCanonicalReport: CanonicalReport = React.useMemo(() => {
+    return convertCategoryDataToCanonical(
+      activeCategory,
+      periodOption.replace('_', ' ').toUpperCase(),
+      dateRange,
+      (catId) => getReportForCategory(catId)
+    );
+  }, [activeCategory, periodOption, dateRange, getReportForCategory]);
+
   const handleExecuteDownload = () => {
     if (downloadCategories.length === 0) return;
 
     downloadCategories.forEach((catId) => {
-      const reportData = getReportForCategory(catId);
-      downloadReportPdf({
-        title: reportData.categoryConfig.label,
-        categoryLabel: reportData.categoryConfig.label,
-        periodLabel: periodOption.replace('_', ' ').toUpperCase(),
-        kpis: reportData.kpis,
-        columns: reportData.tableColumns,
-        rows: reportData.tableRows,
-      });
+      const canonical = convertCategoryDataToCanonical(
+        catId,
+        periodOption.replace('_', ' ').toUpperCase(),
+        dateRange,
+        (id) => getReportForCategory(id)
+      );
+      downloadReportPdf(canonical);
     });
 
     toast.success(`Downloaded ${downloadCategories.length} report PDF(s) successfully.`);
@@ -100,6 +111,15 @@ export const ReportsScreen: React.FC = () => {
                 value={periodOption}
                 onChange={handlePeriodChange}
               />
+              <Button
+                type="button"
+                intent="neutral"
+                size="sm"
+                leftIcon={<Eye size={14} />}
+                onClick={() => setIsPreviewOpen(true)}
+              >
+                Preview
+              </Button>
               <Popover
                 isOpen={isDownloadPopoverOpen}
                 onClose={() => setIsDownloadPopoverOpen(false)}
@@ -160,17 +180,27 @@ export const ReportsScreen: React.FC = () => {
       }
       bodyClassName="gap-6 p-6"
       overlays={
-        <ReportShareModal
-          isOpen={isShareModalOpen}
-          onClose={() => setIsShareModalOpen(false)}
-          activeCategory={activeCategory}
-          periodLabel={periodOption.replace('_', ' ').toUpperCase()}
-          dateRange={dateRange}
-          getReportForCategory={getReportForCategory}
-          onShareComplete={(summary) => {
-            toast.info(summary);
-          }}
-        />
+        <>
+          <ReportShareModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            activeCategory={activeCategory}
+            periodLabel={periodOption.replace('_', ' ').toUpperCase()}
+            dateRange={dateRange}
+            getReportForCategory={getReportForCategory}
+            onShareComplete={(summary) => {
+              toast.info(summary);
+            }}
+          />
+          <ReportPreviewModal
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+            report={activeCanonicalReport}
+            onExportComplete={(format) => {
+              toast.success(`Successfully exported report as ${format.toUpperCase()}`);
+            }}
+          />
+        </>
       }
     >
       {/* 3× Chart Cards Row */}
