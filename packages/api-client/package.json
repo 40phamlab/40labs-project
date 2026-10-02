@@ -5,7 +5,13 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "@40labs/types": "workspace:*",
+    "@40labs/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.66.0",
+    "react": ">=19.1.0"
+  },
+  "devDependencies": {
     "@tanstack/react-query": "^5.66.0",
     "react": "^19.1.0"
   }
