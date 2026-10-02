@@ -1,0 +1,7 @@
+- [x] Update Cargo.toml with axum, sha2, local-ip-address
+- [x] Update db.rs schema and migration for credential_hash
+- [x] Update models/device.rs and repositories/device_repo.rs
+- [x] Implement Axum LAN services (router, pairing, auth middleware)
+- [x] Update devices_cmd.rs for audit log recording on device actions
+- [x] Align TypeScript types and devicesApi.ts
+- [x] Run cargo test and verify all security requirements and pnpm build

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use std::sync::Arc;
-use crate::services::lan_server::LanServerState;
+use crate::services::lan::LanServerState;
 
 pub struct AppState {
     pub pool: SqlitePool,
@@ -268,6 +268,7 @@ async fn init_schema(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             device_type TEXT NOT NULL,
             status TEXT NOT NULL,
             permissions_json TEXT NOT NULL,
+            credential_hash TEXT,
             last_connected_at TEXT,
             paired_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
@@ -276,6 +277,10 @@ async fn init_schema(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     )
     .execute(pool)
     .await?;
+
+    let _ = sqlx::query("ALTER TABLE paired_device ADD COLUMN credential_hash TEXT;")
+        .execute(pool)
+        .await;
 
     Ok(())
 }

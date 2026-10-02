@@ -98,18 +98,40 @@ export const DevicesPanel: React.FC = () => {
   const [pairingSession, setPairingSession] = React.useState<PairingSessionInfo | null>(null);
   const [isGeneratingSession, setIsGeneratingSession] = React.useState(false);
 
-  const [selectedDeviceForPin, setSelectedDeviceForPin] = React.useState<{
-    device: PairedDevice;
-    action: 'block' | 'remove';
-  } | null>(null);
+  const [isPairingConfigOpen, setIsPairingConfigOpen] = React.useState(false);
+  const [selectedUserId, setSelectedUserId] = React.useState<string>('');
+  const [pairingPermissions, setPairingPermissions] = React.useState<Record<string, boolean>>({
+    can_update_stock: false,
+    can_adjust_stock: false,
+    can_issue_refund: false,
+    can_approve_po: false,
+    can_add_lab_sample: false,
+    can_override_lab_result: false,
+    can_view_reports: true,
+  });
 
-  const [selectedDeviceForPerms, setSelectedDeviceForPerms] = React.useState<PairedDevice | null>(null);
-  const [editablePermissions, setEditablePermissions] = React.useState<Record<string, boolean>>({});
+  React.useEffect(() => {
+    if (users.length > 0 && !selectedUserId) {
+      const activeUser = users.find((u) => u.active) || users[0];
+      if (activeUser) {
+        setSelectedUserId(activeUser.id);
+        if (activeUser.permissions) {
+          setPairingPermissions({ ...activeUser.permissions });
+        }
+      }
+    }
+  }, [users, selectedUserId]);
 
-  const handleOpenPairingModal = async () => {
+  const handleOpenPairingConfig = () => {
+    setIsPairingConfigOpen(true);
+  };
+
+  const handleGeneratePairingSession = async () => {
+    if (!selectedUserId) return;
     setIsGeneratingSession(true);
+    setIsPairingConfigOpen(false);
     try {
-      const session = await devicesApi.initiatePairing();
+      const session = await devicesApi.initiatePairing(selectedUserId, pairingPermissions);
       setPairingSession(session);
       setIsQrModalOpen(true);
     } catch (err) {
@@ -123,6 +145,14 @@ export const DevicesPanel: React.FC = () => {
     setIsQrModalOpen(false);
     setPairingSession(null);
   };
+
+  const [selectedDeviceForPin, setSelectedDeviceForPin] = React.useState<{
+    device: PairedDevice;
+    action: 'block' | 'remove';
+  } | null>(null);
+
+  const [selectedDeviceForPerms, setSelectedDeviceForPerms] = React.useState<PairedDevice | null>(null);
+  const [editablePermissions, setEditablePermissions] = React.useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
     if (selectedDeviceForPerms) {
@@ -278,7 +308,7 @@ export const DevicesPanel: React.FC = () => {
             intent="primary"
             size="sm"
             leftIcon={<QrCode size={14} />}
-            onClick={handleOpenPairingModal}
+            onClick={handleOpenPairingConfig}
             disabled={isGeneratingSession}
           >
             {isGeneratingSession ? 'Initializing Session...' : 'Add Device (Pairing QR)'}
@@ -310,6 +340,93 @@ export const DevicesPanel: React.FC = () => {
         </div>
       </Panel>
 
+      {/* Pairing Configuration Modal: Select User & Permissions */}
+      <Modal
+        isOpen={isPairingConfigOpen}
+        onClose={() => setIsPairingConfigOpen(false)}
+        title="Configure Orbit Worker Pairing"
+        size="lg"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <Button intent="neutral" onClick={() => setIsPairingConfigOpen(false)}>
+              Cancel
+            </Button>
+            <Button intent="primary" onClick={handleGeneratePairingSession} disabled={!selectedUserId || isGeneratingSession}>
+              {isGeneratingSession ? 'Generating...' : 'Generate Pairing QR Code'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-text-primary block mb-1.5">Select Staff User</label>
+            <select
+              value={selectedUserId}
+              onChange={(e) => {
+                const uid = e.target.value;
+                setSelectedUserId(uid);
+                const u = users.find((usr) => usr.id === uid);
+                if (u && u.permissions) {
+                  setPairingPermissions({ ...u.permissions });
+                }
+              }}
+              className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
+            >
+              {users.filter((u) => u.active).map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.full_name} ({u.role})
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-text-muted mt-1">
+              The paired device will inherit this user's identity and permissions.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider mb-2">
+              Initial Device Permissions
+            </h4>
+            <div className="space-y-2 bg-panel-subtle p-3 rounded-card border border-border/50 max-h-60 overflow-y-auto">
+              {Object.entries(pairingPermissions).map(([key, enabled]) => {
+                const labelName = key
+                  .replace(/^can_/, '')
+                  .replace(/_/g, ' ')
+                  .replace(/\b\w/g, (l) => l.toUpperCase());
+
+                return (
+                  <div key={key} className="flex items-center justify-between py-1.5 border-b border-border/30 last:border-0">
+                    <span className="text-xs text-text-primary">{labelName}</span>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1 text-xs text-text-primary cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`pairing_${key}`}
+                          checked={enabled === true}
+                          onChange={() => setPairingPermissions((prev) => ({ ...prev, [key]: true }))}
+                          className="accent-primary"
+                        />
+                        <span>Enabled</span>
+                      </label>
+                      <label className="flex items-center gap-1 text-xs text-text-secondary cursor-pointer">
+                        <input
+                          type="radio"
+                          name={`pairing_${key}`}
+                          checked={enabled === false}
+                          onChange={() => setPairingPermissions((prev) => ({ ...prev, [key]: false }))}
+                          className="accent-primary"
+                        />
+                        <span>Disabled</span>
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       {/* QR Code Modal for Pairing */}
       <Modal
         isOpen={isQrModalOpen}
@@ -322,7 +439,7 @@ export const DevicesPanel: React.FC = () => {
               Session Expires: {pairingSession ? new Date(pairingSession.expiresAt).toLocaleTimeString() : ''}
             </span>
             <div className="flex gap-2">
-              <Button intent="neutral" onClick={handleOpenPairingModal} leftIcon={<RefreshCw size={14} />}>
+              <Button intent="neutral" onClick={handleOpenPairingConfig} leftIcon={<RefreshCw size={14} />}>
                 Refresh QR
               </Button>
               <Button intent="primary" onClick={handleClosePairingModal}>

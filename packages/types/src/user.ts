@@ -30,6 +30,9 @@ export interface User extends BaseEntity {
 export interface PairedDevice extends BaseEntity {
   user_id: string;
   device_label: string;
+  device_type: string;
+  permissions_json: string;
+  credential_hash?: string | null;
   paired_at: string;
   last_connected_at: string | null;
   status: 'active' | 'blocked' | 'removed';

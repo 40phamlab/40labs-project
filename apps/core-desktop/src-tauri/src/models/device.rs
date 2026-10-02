@@ -10,9 +10,36 @@ pub struct PairedDevice {
     pub device_type: String,
     pub status: String, // 'active' | 'blocked' | 'removed'
     pub permissions_json: String,
+    pub credential_hash: Option<String>,
     pub last_connected_at: Option<String>,
     pub paired_at: String,
     pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct StaffPermissionSet {
+    pub can_update_stock: bool,
+    pub can_adjust_stock: bool,
+    pub can_issue_refund: bool,
+    pub can_approve_po: bool,
+    pub can_add_lab_sample: bool,
+    pub can_override_lab_result: bool,
+    pub can_view_reports: bool,
+}
+
+impl Default for StaffPermissionSet {
+    fn default() -> Self {
+        Self {
+            can_update_stock: false,
+            can_adjust_stock: false,
+            can_issue_refund: false,
+            can_approve_po: false,
+            can_add_lab_sample: false,
+            can_override_lab_result: false,
+            can_view_reports: true,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,10 +55,16 @@ pub struct PairingSessionInfo {
 #[serde(rename_all = "camelCase")]
 pub struct PairDeviceRequest {
     pub session_id: String,
+    pub token: String,
     pub device_label: String,
     pub device_type: String,
-    pub user_id: String,
-    pub permissions: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairDeviceResponse {
+    pub device: PairedDevice,
+    pub credential: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

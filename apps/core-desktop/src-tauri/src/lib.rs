@@ -5,7 +5,7 @@ pub mod repositories;
 pub mod services;
 
 use db::{init_db_pool, AppState};
-use services::lan_server::LanServerState;
+use services::lan::LanServerState;
 use std::sync::Arc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -22,10 +22,10 @@ pub fn run() {
     let port = 4040;
     let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
     let lan_state_clone = Arc::clone(&lan_state);
-    let pool_clone = pool.clone();
+    let lan_state_for_server = Arc::clone(&lan_state);
 
     runtime.spawn(async move {
-        services::lan_server::start_lan_server(pool_clone, port).await;
+        services::lan::start_lan_server(lan_state_for_server, port).await;
     });
 
     tauri::Builder::default()

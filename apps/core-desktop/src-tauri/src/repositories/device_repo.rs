@@ -7,7 +7,7 @@ use uuid::Uuid;
 pub async fn get_paired_devices(pool: &SqlitePool) -> Result<Vec<PairedDevice>, sqlx::Error> {
     sqlx::query_as::<_, PairedDevice>(
         r#"
-        SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, last_connected_at, paired_at, updated_at
+        SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
         FROM paired_device
         WHERE status != 'removed'
         ORDER BY paired_at DESC
@@ -20,12 +20,25 @@ pub async fn get_paired_devices(pool: &SqlitePool) -> Result<Vec<PairedDevice>, 
 pub async fn get_device_by_id(pool: &SqlitePool, id: &str) -> Result<Option<PairedDevice>, sqlx::Error> {
     sqlx::query_as::<_, PairedDevice>(
         r#"
-        SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, last_connected_at, paired_at, updated_at
+        SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
         FROM paired_device
         WHERE id = ?
         "#,
     )
     .bind(id)
+    .fetch_optional(pool)
+    .await
+}
+
+pub async fn get_device_by_credential_hash(pool: &SqlitePool, credential_hash: &str) -> Result<Option<PairedDevice>, sqlx::Error> {
+    sqlx::query_as::<_, PairedDevice>(
+        r#"
+        SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
+        FROM paired_device
+        WHERE credential_hash = ?
+        "#,
+    )
+    .bind(credential_hash)
     .fetch_optional(pool)
     .await
 }
@@ -36,14 +49,15 @@ pub async fn create_paired_device(
     device_label: &str,
     device_type: &str,
     permissions_json: &str,
+    credential_hash: &str,
 ) -> Result<PairedDevice, sqlx::Error> {
     let id = format!("dev_{}", Uuid::new_v4());
     let now = Utc::now().to_rfc3339();
 
     sqlx::query(
         r#"
-        INSERT INTO paired_device (id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, last_connected_at, paired_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+        INSERT INTO paired_device (id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
         "#,
     )
     .bind(&id)
@@ -53,6 +67,7 @@ pub async fn create_paired_device(
     .bind(device_label)
     .bind(device_type)
     .bind(permissions_json)
+    .bind(credential_hash)
     .bind(&now)
     .bind(&now)
     .bind(&now)

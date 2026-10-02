@@ -23,10 +23,10 @@ export const devicesApi = {
     return [...devicesStore];
   },
 
-  initiatePairing: async (): Promise<PairingSessionInfo> => {
+  initiatePairing: async (userId: string, permissions?: Record<string, boolean>): Promise<PairingSessionInfo> => {
     if (isTauriAvailable()) {
       try {
-        return await invokeCommand<PairingSessionInfo>('initiate_pairing_session');
+        return await invokeCommand<PairingSessionInfo>('initiate_pairing_session', { userId, permissions });
       } catch (err) {
         console.warn('Tauri initiate_pairing_session failed, generating mock session', err);
       }
