@@ -38,6 +38,14 @@ export function useDevices() {
     },
   });
 
+  const updatePermissionsMutation = useMutation({
+    mutationFn: async ({ deviceId, permissions }: { deviceId: string; permissions: Record<string, boolean> }) =>
+      devicesApi.updatePermissions(deviceId, permissions),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: devicesKeys.all });
+    },
+  });
+
   return {
     devices,
     isLoadingDevices,
@@ -48,8 +56,11 @@ export function useDevices() {
     blockDevice: (id: string) => blockDeviceMutation.mutateAsync(id),
     unblockDevice: (id: string) => unblockDeviceMutation.mutateAsync(id),
     removeDevice: (id: string) => removeDeviceMutation.mutateAsync(id),
+    updatePermissions: (deviceId: string, permissions: Record<string, boolean>) =>
+      updatePermissionsMutation.mutateAsync({ deviceId, permissions }),
 
     isBlocking: blockDeviceMutation.isPending,
     isRemoving: removeDeviceMutation.isPending,
+    isUpdatingPermissions: updatePermissionsMutation.isPending,
   };
 }

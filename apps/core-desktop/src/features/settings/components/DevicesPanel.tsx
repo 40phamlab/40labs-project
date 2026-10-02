@@ -11,12 +11,13 @@ import {
   Modal,
   FilterTabs,
 } from '@40labs/ui-components';
-import { MoreVertical, Shield, Power, Trash2, QrCode } from 'lucide-react';
+import { MoreVertical, Shield, Power, Trash2, QrCode, RefreshCw } from 'lucide-react';
 import type { PairedDevice, AuditAction } from '@40labs/types';
 import { useDevices } from '../../../hooks/useDevices';
 import { useUsers } from '../../../hooks/useUsers';
-import { auditApi } from '../../../api';
+import { auditApi, devicesApi, PairingSessionInfo } from '../../../api';
 import { PinConfirmModal } from './PinConfirmModal';
+import { QrCodeSvg } from '../../../components/QrCodeSvg';
 
 const RowActions = ({
   device,
@@ -46,7 +47,7 @@ const RowActions = ({
       }
     >
       <DropdownMenuItem
-        label="View Staff Permissions"
+        label="Edit Permissions"
         icon={<Shield size={14} />}
         onClick={() => {
           onViewPermission(device);
@@ -84,20 +85,60 @@ export const DevicesPanel: React.FC = () => {
     blockDevice,
     unblockDevice,
     removeDevice,
+    updatePermissions,
     isBlocking,
     isRemoving,
+    isUpdatingPermissions,
   } = useDevices();
 
   const { users } = useUsers();
 
   const [activeTab, setActiveTab] = React.useState<'active' | 'recent' | 'all'>('active');
   const [isQrModalOpen, setIsQrModalOpen] = React.useState(false);
+  const [pairingSession, setPairingSession] = React.useState<PairingSessionInfo | null>(null);
+  const [isGeneratingSession, setIsGeneratingSession] = React.useState(false);
+
   const [selectedDeviceForPin, setSelectedDeviceForPin] = React.useState<{
     device: PairedDevice;
     action: 'block' | 'remove';
   } | null>(null);
 
   const [selectedDeviceForPerms, setSelectedDeviceForPerms] = React.useState<PairedDevice | null>(null);
+  const [editablePermissions, setEditablePermissions] = React.useState<Record<string, boolean>>({});
+
+  const handleOpenPairingModal = async () => {
+    setIsGeneratingSession(true);
+    try {
+      const session = await devicesApi.initiatePairing();
+      setPairingSession(session);
+      setIsQrModalOpen(true);
+    } catch (err) {
+      console.error('Failed to initiate pairing session:', err);
+    } finally {
+      setIsGeneratingSession(false);
+    }
+  };
+
+  const handleClosePairingModal = () => {
+    setIsQrModalOpen(false);
+    setPairingSession(null);
+  };
+
+  React.useEffect(() => {
+    if (selectedDeviceForPerms) {
+      const user = users.find((u) => u.id === selectedDeviceForPerms.user_id);
+      const initialPerms = user?.permissions || {
+        can_update_stock: true,
+        can_adjust_stock: false,
+        can_issue_refund: false,
+        can_approve_po: false,
+        can_add_lab_sample: true,
+        can_override_lab_result: false,
+        can_view_reports: true,
+      };
+      setEditablePermissions({ ...initialPerms });
+    }
+  }, [selectedDeviceForPerms, users]);
 
   const filteredDevices = React.useMemo(() => {
     if (activeTab === 'active') {
@@ -112,10 +153,8 @@ export const DevicesPanel: React.FC = () => {
   const handlePinConfirm = async (_pin: string) => {
     if (!selectedDeviceForPin) return;
     const { device, action } = selectedDeviceForPin;
-
     const auditAction: AuditAction = action === 'block' ? 'device_block' : 'device_remove';
 
-    // Write audit log first (audit-log-first insert order per GOTCHAS #9)
     await auditApi.recordEntry({
       action: auditAction,
       performed_by_user_id: device.user_id,
@@ -135,6 +174,16 @@ export const DevicesPanel: React.FC = () => {
     }
 
     setSelectedDeviceForPin(null);
+  };
+
+  const handleSavePermissions = async () => {
+    if (!selectedDeviceForPerms) return;
+    try {
+      await updatePermissions(selectedDeviceForPerms.id, editablePermissions);
+      setSelectedDeviceForPerms(null);
+    } catch (err) {
+      console.error('Failed to update device permissions:', err);
+    }
   };
 
   const pairedUser = selectedDeviceForPerms
@@ -194,7 +243,7 @@ export const DevicesPanel: React.FC = () => {
     {
       key: 'actions',
       header: '',
-      width: '120px',
+      width: '130px',
       align: 'right',
       render: (device) => (
         <div className="flex items-center gap-2 justify-end">
@@ -221,16 +270,18 @@ export const DevicesPanel: React.FC = () => {
       <Panel variant="raised" className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-bold text-text-primary">Orbit Worker</h3>
+            <h3 className="text-sm font-bold text-text-primary">Orbit Worker Mobile Connections</h3>
+            <p className="text-xs text-text-muted">Manage authenticated mobile workers and LAN secure pairing sessions.</p>
           </div>
           <Button
             type="button"
             intent="primary"
             size="sm"
             leftIcon={<QrCode size={14} />}
-            onClick={() => setIsQrModalOpen(true)}
+            onClick={handleOpenPairingModal}
+            disabled={isGeneratingSession}
           >
-            Add Device (Pairing QR)
+            {isGeneratingSession ? 'Initializing Session...' : 'Add Device (Pairing QR)'}
           </Button>
         </div>
 
@@ -262,71 +313,121 @@ export const DevicesPanel: React.FC = () => {
       {/* QR Code Modal for Pairing */}
       <Modal
         isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        title="Pair Device"
+        onClose={handleClosePairingModal}
+        title="Pair Orbit Worker Device (LAN Secure)"
         size="md"
         footer={
-          <div className="flex justify-end w-full">
-            <Button intent="neutral" onClick={() => setIsQrModalOpen(false)}>
-              Close
-            </Button>
+          <div className="flex items-center justify-between w-full">
+            <span className="text-[11px] font-mono text-text-muted">
+              Session Expires: {pairingSession ? new Date(pairingSession.expiresAt).toLocaleTimeString() : ''}
+            </span>
+            <div className="flex gap-2">
+              <Button intent="neutral" onClick={handleOpenPairingModal} leftIcon={<RefreshCw size={14} />}>
+                Refresh QR
+              </Button>
+              <Button intent="primary" onClick={handleClosePairingModal}>
+                Done
+              </Button>
+            </div>
           </div>
         }
       >
         <div className="flex flex-col items-center justify-center p-6 space-y-4 text-center">
-          <div className="w-48 h-48 bg-white p-3 rounded-card flex items-center justify-center border border-border">
-            <div className="w-full h-full border-4 border-dashed border-text-primary/40 flex flex-col items-center justify-center p-2 text-text-primary font-mono text-[10px]">
-              <QrCode size={64} className="text-text-primary mb-2" />
-              <span>ORBIT-PAIRING-TOKEN</span>
-              <span className="text-[9px] text-text-muted">WS_DEV_001://LAN-SECURE</span>
-            </div>
-          </div>
-          <p className="text-xs text-text-muted max-w-sm">
-            Scan this secure QR code using the Orbit Worker companion app on your mobile device or terminal to establish persistent local network trust.
-          </p>
+          {pairingSession ? (
+            <>
+              <QrCodeSvg value={pairingSession.qrPayload} size={200} />
+              <div className="space-y-1">
+                <span className="text-xs font-mono font-semibold text-text-primary block">
+                  Endpoint: {pairingSession.endpoint}
+                </span>
+                <span className="text-[10px] font-mono text-text-muted block">
+                  Session ID: {pairingSession.sessionId}
+                </span>
+              </div>
+              <p className="text-xs text-text-muted max-w-sm">
+                Scan this high-contrast secure QR code using the Orbit Worker mobile app while connected to the same local network (LAN) to complete authenticated pairing.
+              </p>
+            </>
+          ) : (
+            <div className="py-12 text-xs text-text-muted">Initializing pairing session...</div>
+          )}
         </div>
       </Modal>
 
-      {/* Staff Permissions Read-Only Modal */}
+      {/* Edit Permissions Modal with Radio-Style Enable/Disable Controls */}
       <Modal
         isOpen={Boolean(selectedDeviceForPerms)}
         onClose={() => setSelectedDeviceForPerms(null)}
-        title={`Staff Permissions: ${pairedUser ? pairedUser.full_name : 'Unknown User'}`}
-        size="md"
+        title={`Edit Permissions: ${selectedDeviceForPerms?.device_label || 'Device'}`}
+        size="lg"
         footer={
-          <div className="flex justify-end w-full">
+          <div className="flex justify-end gap-2 w-full">
             <Button intent="neutral" onClick={() => setSelectedDeviceForPerms(null)}>
-              Close
+              Cancel
+            </Button>
+            <Button intent="primary" onClick={handleSavePermissions} disabled={isUpdatingPermissions}>
+              {isUpdatingPermissions ? 'Saving...' : 'Save Permissions'}
             </Button>
           </div>
         }
       >
         <div className="space-y-4">
-          <div className="p-3 bg-panel-subtle rounded-card border border-border/50">
-            <span className="text-xs font-bold text-text-primary block">Device: {selectedDeviceForPerms?.device_label}</span>
-            <span className="text-[11px] font-mono text-text-muted">Role: {pairedUser?.role.toUpperCase()}</span>
+          <div className="p-3 bg-panel-subtle rounded-card border border-border/50 flex items-center justify-between">
+            <div>
+              <span className="text-xs font-bold text-text-primary block">Device: {selectedDeviceForPerms?.device_label}</span>
+              <span className="text-[11px] font-mono text-text-muted">User: {pairedUser ? pairedUser.full_name : selectedDeviceForPerms?.user_id}</span>
+            </div>
+            <StatusBadge status="active" label={selectedDeviceForPerms?.status?.toUpperCase() || 'ACTIVE'} />
           </div>
 
           <div>
             <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider mb-2">
-              Assigned Permission Set (Read-Only)
+              Granular Capability Permissions (Radio-Style Controls)
             </h4>
-            {pairedUser?.role === 'sudo' ? (
-              <div className="p-3 bg-info/10 text-info text-xs rounded-card">
-                Sudo user has full administrative privileges and implicit access to all modules.
-              </div>
-            ) : pairedUser?.permissions ? (
-              <div className="grid grid-cols-1 gap-2 bg-panel-subtle p-3 rounded-card border border-border/50">
-                {Object.entries(pairedUser.permissions).map(([key, enabled]) => (
-                  <div key={key} className="flex items-center justify-between text-xs text-text-primary py-1">
-                    <span className="font-medium font-mono">{key}</span>
-                    <StatusBadge status={enabled ? 'active' : 'inactive'} label={enabled ? 'Enabled' : 'Disabled'} />
+            <p className="text-[11px] text-text-muted mb-4">
+              Configure explicit Enabled / Disabled permissions for this device. Authorization is enforced server-side.
+            </p>
+
+            <div className="space-y-3 bg-panel-subtle p-4 rounded-card border border-border/50">
+              {Object.entries(editablePermissions).map(([key, enabled]) => {
+                const labelName = key
+                  .replace(/^can_/, '')
+                  .replace(/_/g, ' ')
+                  .replace(/\b\w/g, (l) => l.toUpperCase());
+
+                return (
+                  <div key={key} className="flex items-center justify-between py-2 border-b border-border/30 last:border-0">
+                    <div>
+                      <span className="text-xs font-semibold text-text-primary block">{labelName}</span>
+                      <span className="text-[10px] font-mono text-text-muted">{key}</span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 text-xs text-text-primary cursor-pointer">
+                        <input
+                          type="radio"
+                          name={key}
+                          checked={enabled === true}
+                          onChange={() => setEditablePermissions((prev) => ({ ...prev, [key]: true }))}
+                          className="accent-primary"
+                        />
+                        <span>Enabled</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
+                        <input
+                          type="radio"
+                          name={key}
+                          checked={enabled === false}
+                          onChange={() => setEditablePermissions((prev) => ({ ...prev, [key]: false }))}
+                          className="accent-primary"
+                        />
+                        <span>Disabled</span>
+                      </label>
+                    </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-text-muted">No specific permissions configured.</div>
-            )}
+                );
+              })}
+            </div>
           </div>
         </div>
       </Modal>

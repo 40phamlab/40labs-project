@@ -1,0 +1,6 @@
+- [x] 1. Implement database schema (`paired_device` table) and Rust data models
+- [x] 2. Implement LAN pairing service & HTTP server in Rust (session management, token expiration, authorization checks)
+- [x] 3. Implement Tauri commands for device pairing, permission updates, and lifecycle management
+- [x] 4. Implement high-contrast SVG QR Code generator component in React
+- [x] 5. Update `DevicesPanel.tsx` and API/hooks for real pairing flow, connection status, and radio-style permissions
+- [x] 6. Run tests and verify build & functionality

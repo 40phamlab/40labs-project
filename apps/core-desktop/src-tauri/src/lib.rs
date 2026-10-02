@@ -5,6 +5,8 @@ pub mod repositories;
 pub mod services;
 
 use db::{init_db_pool, AppState};
+use services::lan_server::LanServerState;
+use std::sync::Arc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -17,10 +19,22 @@ pub fn run() {
             .expect("Failed to initialize SQLite database pool")
     });
 
+    let port = 4040;
+    let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
+    let lan_state_clone = Arc::clone(&lan_state);
+    let pool_clone = pool.clone();
+
+    runtime.spawn(async move {
+        services::lan_server::start_lan_server(pool_clone, port).await;
+    });
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(AppState { pool })
+        .manage(AppState {
+            pool,
+            lan_state: lan_state_clone,
+        })
         .invoke_handler(tauri::generate_handler![
             commands::system_cmd::system_health_check,
             // Inventory
@@ -55,6 +69,13 @@ pub fn run() {
             commands::notification_cmd::archive_notification,
             commands::notification_cmd::save_attachment,
             commands::notification_cmd::export_attachment,
+            // Devices & Pairing
+            commands::devices_cmd::get_paired_devices,
+            commands::devices_cmd::initiate_pairing_session,
+            commands::devices_cmd::update_device_permissions,
+            commands::devices_cmd::block_device,
+            commands::devices_cmd::unblock_device,
+            commands::devices_cmd::remove_device,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

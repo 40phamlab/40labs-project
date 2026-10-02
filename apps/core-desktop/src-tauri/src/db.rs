@@ -4,8 +4,12 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use std::sync::Arc;
+use crate::services::lan_server::LanServerState;
+
 pub struct AppState {
     pub pool: SqlitePool,
+    pub lan_state: Arc<LanServerState>,
 }
 
 /// Centralized resolution of database path and connection URL.
@@ -253,6 +257,20 @@ async fn init_schema(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             target_entity_id TEXT NOT NULL,
             metadata TEXT,
             created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS paired_device (
+            id TEXT PRIMARY KEY,
+            workspace_id TEXT NOT NULL,
+            branch_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            device_label TEXT NOT NULL,
+            device_type TEXT NOT NULL,
+            status TEXT NOT NULL,
+            permissions_json TEXT NOT NULL,
+            last_connected_at TEXT,
+            paired_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
         );
         "#,
     )
