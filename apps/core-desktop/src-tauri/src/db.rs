@@ -273,6 +273,29 @@ async fn init_schema(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             paired_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS staff_notifications (
+            id TEXT PRIMARY KEY,
+            workspace_id TEXT NOT NULL,
+            branch_id TEXT NOT NULL,
+            sender_user_id TEXT NOT NULL,
+            sender_name TEXT NOT NULL,
+            audience TEXT NOT NULL,
+            target_role TEXT,
+            target_user_id TEXT,
+            severity TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS staff_notification_reads (
+            id TEXT PRIMARY KEY,
+            notification_id TEXT NOT NULL REFERENCES staff_notifications(id),
+            user_id TEXT NOT NULL,
+            read_at TEXT NOT NULL,
+            UNIQUE(notification_id, user_id)
+        );
         "#,
     )
     .execute(pool)

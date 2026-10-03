@@ -92,3 +92,60 @@
   "nextCursor": "string | null"
 }
 ```
+
+### 6. `GET /api/v1/staff-notifications`
+- **Auth**: Bearer token (Device credential hash).
+- **Purpose**: Returns staff notifications visible to the current user (broadcasts, role-matching, direct messages to user, and alerts), supporting cursor pagination and read state (`isRead`).
+- **Response Shape**:
+```json
+{
+  "items": [
+    {
+      "id": "string",
+      "senderUserId": "string",
+      "senderName": "string",
+      "audience": "broadcast | role | direct | alert",
+      "targetRole": "string | null",
+      "targetUserId": "string | null",
+      "severity": "info | alert",
+      "subject": "string",
+      "body": "string",
+      "createdAt": "iso-8601",
+      "isRead": false
+    }
+  ],
+  "nextCursor": "string | null"
+}
+```
+
+### 7. `POST /api/v1/staff-notifications`
+- **Auth**: Bearer token (Device credential hash).
+- **Headers**: `Idempotency-Key` (optional string or UUID).
+- **Purpose**: Creates a new staff notification (broadcast, role, direct, or alert).
+- **Permission**: Requires `can_send_notifications: true` for broadcast, role, and alert audiences. Direct messages do not require `can_send_notifications`.
+- **Audit Logging**: Writes an audit log entry for broadcast and alert notifications.
+- **Request Body**:
+```json
+{
+  "audience": "broadcast | role | direct | alert",
+  "targetRole": "string | null",
+  "targetUserId": "string | null",
+  "severity": "info | alert",
+  "subject": "string",
+  "body": "string"
+}
+```
+- **Response Shape**: Created notification object.
+
+### 8. `PATCH /api/v1/staff-notifications/:id/read`
+- **Auth**: Bearer token (Device credential hash).
+- **Purpose**: Marks a staff notification as read for the current staff user.
+- **Response Shape**:
+```json
+{
+  "status": "ok",
+  "id": "string",
+  "readAt": "iso-8601"
+}
+```
+

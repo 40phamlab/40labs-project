@@ -4,4 +4,5 @@ pub mod inventory_repo;
 pub mod lab_repo;
 pub mod sales_repo;
 pub mod notification_repo;
+pub mod staff_notification_repo;
 pub mod device_repo;

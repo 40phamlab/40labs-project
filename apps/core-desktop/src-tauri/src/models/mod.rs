@@ -4,6 +4,7 @@ pub mod inventory;
 pub mod lab;
 pub mod sales;
 pub mod notification;
+pub mod staff_notification;
 pub mod device;
 
 pub const DEFAULT_WORKSPACE_ID: &str = "ws_010101";
