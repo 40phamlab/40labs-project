@@ -1,61 +1,61 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md]
 import React from 'react';
-import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '@40labs/design-tokens';
+import { Tabs, useRouter, usePathname } from 'expo-router';
+import { BottomTabBar, TabItem } from '../../src/components/BottomTabBar';
 import { useI18n } from '../../src/i18n/I18nProvider';
 
 export default function TabLayout() {
   const { t } = useI18n();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const getActiveTabId = () => {
+    if (pathname.includes('/history')) return 'history';
+    if (pathname.includes('/notifications')) return 'notifications';
+    if (pathname.includes('/settings')) return 'settings';
+    return 'home';
+  };
+
+  const tabs: TabItem[] = [
+    { id: 'home', label: t('nav.home'), icon: 'home-outline', activeIcon: 'home' },
+    { id: 'history', label: t('nav.history'), icon: 'time-outline', activeIcon: 'time' },
+    { id: 'notifications', label: t('nav.notifications'), icon: 'notifications-outline', activeIcon: 'notifications' },
+    { id: 'settings', label: t('nav.settings'), icon: 'settings-outline', activeIcon: 'settings' },
+  ];
+
+  const handleTabPress = (id: string) => {
+    switch (id) {
+      case 'home':
+        router.replace('/(tabs)');
+        break;
+      case 'history':
+        router.replace('/(tabs)/history');
+        break;
+      case 'notifications':
+        router.replace('/(tabs)/notifications');
+        break;
+      case 'settings':
+        router.replace('/(tabs)/settings');
+        break;
+    }
+  };
 
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.borderSubtle,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 8,
-        },
-        tabBarActiveTintColor: colors.actionPrimary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontFamily: 'Inter_500Medium',
-        },
-      }}
+      screenOptions={{ headerShown: false }}
+      tabBar={() => (
+        <BottomTabBar
+          tabs={tabs}
+          activeTabId={getActiveTabId()}
+          onTabPress={handleTabPress}
+        />
+      )}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: t('nav.home'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="history"
-        options={{
-          title: t('nav.history'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="time-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: t('nav.notifications'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline" size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: t('nav.settings'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" size={size} color={color} />,
-        }}
-      />
+      <Tabs.Screen name="index" />
+      <Tabs.Screen name="history" />
+      <Tabs.Screen name="notifications" />
+      <Tabs.Screen name="settings" />
     </Tabs>
   );
 }
