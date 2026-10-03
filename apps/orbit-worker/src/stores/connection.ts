@@ -9,7 +9,7 @@ export type ConnectionState = 'unpaired' | 'connecting' | 'connected' | 'unreach
 interface ConnectionStore {
   status: ConnectionState;
   permissions: string[];
-  userInfo: { id?: string; deviceLabel?: string; role?: string } | null;
+  userInfo: { id?: string; deviceLabel?: string; name?: string; role?: string } | null;
   activeBusinessId: string | null;
   setStatus: (status: ConnectionState) => void;
   setUserInfo: (info: any, permissions: string[]) => void;
@@ -78,16 +78,21 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         },
       });
 
-      const deviceMe = await client.getDevicesMe(server.credential);
-      if (deviceMe.status === 'revoked' || deviceMe.status === 'blocked') {
+      const deviceMe: any = await client.getDevicesMe(server.credential);
+      if (deviceMe.device?.status === 'revoked' || deviceMe.device?.status === 'blocked' || deviceMe.status === 'revoked') {
         set({ status: 'revoked' });
         return;
       }
 
+      const rawPerms = deviceMe.permissions || {};
+      const permissionKeys = Array.isArray(rawPerms)
+        ? rawPerms
+        : Object.keys(rawPerms).filter((k) => rawPerms[k]);
+
       set({
         status: 'connected',
-        permissions: deviceMe.permissions || [],
-        userInfo: { id: deviceMe.id, deviceLabel: deviceMe.deviceLabel },
+        permissions: permissionKeys,
+        userInfo: deviceMe.user || { id: deviceMe.id, deviceLabel: deviceMe.deviceLabel },
       });
     } catch (err: any) {
       if (err instanceof ApiError) {

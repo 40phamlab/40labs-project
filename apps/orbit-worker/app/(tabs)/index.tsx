@@ -1,49 +1,189 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { colors } from '@40labs/design-tokens';
 import { useI18n } from '../../src/i18n/I18nProvider';
-import { ScreenHeader, StatusDot, CountBadge, Card, Tile } from '../../src/components';
+import { ScreenHeader, StatusDot, CountBadge, Card, Tile, InlineError } from '../../src/components';
+import { useConnectionStore } from '../../src/stores/connection';
+import { getServerCredential } from '../../src/lib/secure-store';
+import { ApiClient } from '@40labs/api-client';
+import { putCache, getCache, CacheResult } from '../../src/db/cache';
 
 export default function HomeScreen() {
   const { t } = useI18n();
+  const { status, permissions, userInfo, activeBusinessId } = useConnectionStore();
+  const [summary, setSummary] = useState<any>(null);
+  const [cacheMeta, setCacheMeta] = useState<CacheResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const fetchSummary = async () => {
+    if (!activeBusinessId) return;
+    const server = await getServerCredential(activeBusinessId);
+    if (!server) return;
+
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const client = new ApiClient({
+        baseUrl: server.endpoint,
+        transport: {
+          request: async (opts) => {
+            const response = await fetch(`${server.endpoint}${opts.path}`, {
+              method: opts.method,
+              headers: opts.headers,
+              body: opts.body ? JSON.stringify(opts.body) : undefined,
+              signal: opts.signal,
+            });
+            const data = await response.json().catch(() => ({}));
+            return {
+              status: response.status,
+              headers: {},
+              data,
+            };
+          },
+        },
+      });
+
+      const data = await client.request<any>({
+        method: 'GET',
+        path: '/api/v1/me/summary',
+        headers: {
+          Authorization: `Bearer ${server.credential}`,
+        },
+      });
+
+      setSummary(data);
+      putCache('home_summary', data);
+      setCacheMeta(null);
+    } catch (err: any) {
+      const cached = getCache<any>('home_summary');
+      if (cached) {
+        setSummary(cached.data);
+        setCacheMeta(cached);
+      } else {
+        setErrorMessage(t('dashboard.errorLoading'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (status === 'connected') {
+      fetchSummary();
+    } else if (status === 'unreachable') {
+      const cached = getCache<any>('home_summary');
+      if (cached) {
+        setSummary(cached.data);
+        setCacheMeta(cached);
+      }
+    }
+  }, [status, activeBusinessId]);
+
+  const hasPermission = (key: string) => {
+    return permissions.includes(key) || (permissions as any)[key] === true;
+  };
+
+  const handleTilePress = (title: string, permKey: string) => {
+    if (!hasPermission(permKey) && status === 'connected') {
+      Alert.alert('Permission Denied', `You do not have permission (${permKey}) to perform this action.`);
+      return;
+    }
+    Alert.alert(title, t('dashboard.comingSoon'));
+  };
 
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="Daktari / Mwuzaji"
-        subtitle={t('dashboard.title')}
+        title={userInfo?.name || 'Daktari / Mwuzaji'}
+        subtitle={userInfo?.role || t('dashboard.title')}
         rightAction={
           <View style={styles.headerRight}>
-            <StatusDot state="connected" />
-            <CountBadge count={3} />
+            <StatusDot state={status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'offline'} />
+            <CountBadge count={summary?.unreadNotifications || 0} />
           </View>
         }
       />
       <ScrollView contentContainerStyle={styles.content}>
+        {cacheMeta && (
+          <View style={styles.cacheBanner}>
+            <Text style={styles.cacheText}>
+              Offline mode - displaying cached data as of {cacheMeta.asOfText}
+            </Text>
+          </View>
+        )}
+
+        {errorMessage && (
+          <View style={styles.errorContainer}>
+            <InlineError message={errorMessage} onRetry={fetchSummary} />
+          </View>
+        )}
+
         <Card style={styles.todayCard}>
           <Text style={styles.sectionTitle}>{t('dashboard.overview')}</Text>
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>{t('dashboard.todaysSales')}</Text>
-              <Text style={styles.statValue}>TZS 450,000</Text>
+              <Text style={styles.statValue}>TZS {summary?.sales?.toLocaleString() || '0'}</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>{t('dashboard.monthlyProfit')}</Text>
-              <Text style={styles.statValue}>TZS 1,200,000</Text>
+              <Text style={styles.statLabel}>{t('dashboard.patientsInTrack')}</Text>
+              <Text style={styles.statValue}>{summary?.patients || 0}</Text>
+            </View>
+          </View>
+          <View style={[styles.statsGrid, { marginTop: 12 }]}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>{t('dashboard.labTests')}</Text>
+              <Text style={styles.statValue}>{summary?.samples || 0}</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>{t('dashboard.inventoryValue')}</Text>
+              <Text style={styles.statValue}>{summary?.lowStockCount || 0} low</Text>
             </View>
           </View>
         </Card>
 
         <Text style={styles.sectionTitle}>{t('dashboard.quickActions')}</Text>
         <View style={styles.tilesGrid}>
-          <Tile title={t('dashboard.addStock')} value="0 active" state="enabled" />
-          <Tile title={t('dashboard.addPatient')} value="12 today" state="enabled" />
-          <Tile title={t('dashboard.newSale')} value="TZS" state="enabled" />
-          <Tile title={t('dashboard.inventoryValue')} value="TZS 8.5M" state="enabled" />
-          <Tile title={t('dashboard.labTests')} value="4 pending" state="locked" />
-          <Tile title={t('dashboard.businessHealth')} value="98%" state="disabled" />
+          <Tile
+            title={t('dashboard.addStock')}
+            value="Stock"
+            state={hasPermission('can_update_stock') || status !== 'connected' ? 'enabled' : 'locked'}
+            onPress={() => handleTilePress(t('dashboard.addStock'), 'can_update_stock')}
+          />
+          <Tile
+            title={t('dashboard.addPatient')}
+            value="Patient"
+            state={hasPermission('can_manage_customers') || status !== 'connected' ? 'enabled' : 'locked'}
+            onPress={() => handleTilePress(t('dashboard.addPatient'), 'can_manage_customers')}
+          />
+          <Tile
+            title={t('dashboard.newSale')}
+            value="POS"
+            state={hasPermission('can_create_sale') || status !== 'connected' ? 'enabled' : 'locked'}
+            onPress={() => handleTilePress(t('dashboard.newSale'), 'can_create_sale')}
+          />
+          <Tile
+            title={t('dashboard.viewReports')}
+            value="Stock"
+            state={hasPermission('can_view_stock') || status !== 'connected' ? 'enabled' : 'locked'}
+            onPress={() => handleTilePress(t('dashboard.viewReports'), 'can_view_stock')}
+          />
+          <Tile
+            title={t('dashboard.labTests')}
+            value="Lab"
+            state={hasPermission('can_record_lab_result') || status !== 'connected' ? 'enabled' : 'locked'}
+            onPress={() => handleTilePress(t('dashboard.labTests'), 'can_record_lab_result')}
+          />
+          <Tile
+            title={t('dashboard.businessHealth')}
+            value="Alerts"
+            state={hasPermission('can_send_notifications') || status !== 'connected' ? 'enabled' : 'locked'}
+            onPress={() => handleTilePress(t('dashboard.businessHealth'), 'can_send_notifications')}
+          />
         </View>
       </ScrollView>
     </View>
@@ -64,6 +204,21 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
+  cacheBanner: {
+    backgroundColor: colors.surfaceSecondary,
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  cacheText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontFamily: 'Inter_500Medium',
+  },
+  errorContainer: {
+    marginBottom: 12,
+  },
   todayCard: {
     marginBottom: 20,
   },
@@ -76,7 +231,6 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
   },
   statItem: {
     flex: 1,

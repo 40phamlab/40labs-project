@@ -56,3 +56,19 @@
   }
 ]
 ```
+
+### 4. `GET /api/v1/me/summary`
+- **Auth**: Bearer token (Device credential hash).
+- **Purpose**: Returns today's summary metrics (sales, patients, samples, results, lowStockCount, alerts, unreadNotifications) based on Africa/Dar_es_Salaam calendar day.
+- **Response Shape**:
+```json
+{
+  "sales": 0,
+  "patients": 0,
+  "samples": 0,
+  "results": 0,
+  "lowStockCount": 0,
+  "alerts": 0,
+  "unreadNotifications": 0
+}
+```

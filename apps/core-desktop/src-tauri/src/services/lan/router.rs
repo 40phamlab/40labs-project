@@ -88,6 +88,70 @@ pub async fn staff_roster_handler(
     Json(json!(roster))
 }
 
+pub async fn summary_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(_auth): Extension<AuthedDevice>,
+) -> Json<Value> {
+    let today_date_row = sqlx::query("SELECT date('now', '+3 hours') as dt")
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+
+    let today_str = today_date_row
+        .and_then(|r| r.try_get::<String, _>("dt").ok())
+        .unwrap_or_else(|| "2026-10-02".to_string());
+
+    let sales_row = sqlx::query("SELECT COUNT(*) as cnt, COALESCE(SUM(total_amount), 0) as total FROM sale WHERE date(created_at, '+3 hours') = ?")
+        .bind(&today_str)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+    let sales_total: i64 = sales_row.as_ref().and_then(|r| r.try_get("total").ok()).unwrap_or(0);
+
+    let patients_row = sqlx::query("SELECT COUNT(*) as cnt FROM customer WHERE date(created_at, '+3 hours') = ?")
+        .bind(&today_str)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+    let patients_count: i64 = patients_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
+
+    let samples_row = sqlx::query("SELECT COUNT(*) as cnt FROM lab_sample WHERE date(created_at, '+3 hours') = ?")
+        .bind(&today_str)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+    let samples_count: i64 = samples_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
+
+    let results_row = sqlx::query("SELECT COUNT(*) as cnt FROM lab_order WHERE status = 'completed' AND date(updated_at, '+3 hours') = ?")
+        .bind(&today_str)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+    let results_count: i64 = results_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
+
+    let low_stock_row = sqlx::query("SELECT COUNT(*) as cnt FROM inventory_item WHERE quantity <= min_stock_level")
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+    let low_stock_count: i64 = low_stock_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
+
+    Json(json!({
+        "sales": sales_total,
+        "patients": patients_count,
+        "samples": samples_count,
+        "results": results_count,
+        "lowStockCount": low_stock_count,
+        "alerts": 0,
+        "unreadNotifications": 0
+    }))
+}
+
 pub async fn heartbeat_handler(
     State(state): State<Arc<LanServerState>>,
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
@@ -105,6 +169,7 @@ pub fn create_router(state: Arc<LanServerState>) -> Router {
         .route("/devices/me", get(devices_me_handler))
         .route("/devices/me/heartbeat", post(heartbeat_handler))
         .route("/staff/roster", get(staff_roster_handler))
+        .route("/me/summary", get(summary_handler))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&state),
             auth_middleware,
