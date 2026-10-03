@@ -16,6 +16,9 @@ use crate::models::staff_notification::{StaffNotification, CreateStaffNotificati
 use crate::repositories::staff_notification_repo::StaffNotificationRepository;
 use crate::models::audit::AuditLogEntry;
 use crate::repositories::audit_repo::AuditRepository;
+use crate::models::inventory::AddStockRequest;
+use crate::services::inventory_service::InventoryService;
+use crate::repositories::inventory_repo::InventoryRepository;
 
 pub async fn devices_me_handler(
     State(state): State<Arc<LanServerState>>,
@@ -141,7 +144,7 @@ pub async fn summary_handler(
         .flatten();
     let results_count: i64 = results_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
 
-    let low_stock_row = sqlx::query("SELECT COUNT(*) as cnt FROM inventory_item WHERE quantity <= min_stock_level")
+    let low_stock_row = sqlx::query("SELECT COUNT(*) as cnt FROM inventory_item WHERE quantity <= low_stock_threshold")
         .fetch_optional(&state.pool)
         .await
         .ok()
@@ -478,6 +481,70 @@ pub async fn patch_staff_notification_read_handler(
     })))
 }
 
+pub async fn get_stock_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(_auth): Extension<AuthedDevice>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let items = InventoryRepository::list_medicines_with_inventory(&state.pool, false)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let search = params.get("search").map(|s| s.to_lowercase());
+    let low_stock_only = params.get("lowStock").map(|s| s == "true").unwrap_or(false);
+
+    let filtered: Vec<_> = items.into_iter().filter(|item| {
+        if low_stock_only && item.inventory_item.quantity > item.inventory_item.low_stock_threshold {
+            return false;
+        }
+        if let Some(ref q) = search {
+            let name_match = item.medicine.name.to_lowercase().contains(q);
+            let generic_match = item.medicine.generic_name.as_deref().unwrap_or("").to_lowercase().contains(q);
+            let batch_match = item.inventory_item.batch_number.to_lowercase().contains(q);
+            if !name_match && !generic_match && !batch_match {
+                return false;
+            }
+        }
+        true
+    }).collect();
+
+    Ok(Json(json!(filtered)))
+}
+
+pub async fn get_stock_item_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(_auth): Extension<AuthedDevice>,
+    Path(id): Path<String>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let item = InventoryRepository::get_inventory_item_by_id(&state.pool, &id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or_else(|| (StatusCode::NOT_FOUND, "Stock item not found".to_string()))?;
+
+    Ok(Json(json!(item)))
+}
+
+pub async fn post_stock_receipt_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
+    _headers: HeaderMap,
+    Json(payload): Json<AddStockRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
+    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_update = permissions.get("can_update_stock")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    if !can_update {
+        return Err((StatusCode::FORBIDDEN, "Permission 'can_update_stock' required".to_string()));
+    }
+
+    let result = InventoryService::add_stock(&state.pool, payload)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::to_value(result).unwrap())))
+}
+
 pub fn create_router(state: Arc<LanServerState>) -> Router {
     let protected_routes = Router::new()
         .route("/devices/me", get(devices_me_handler))
@@ -487,6 +554,9 @@ pub fn create_router(state: Arc<LanServerState>) -> Router {
         .route("/activity", get(activity_handler))
         .route("/staff-notifications", get(get_staff_notifications_handler).post(post_staff_notification_handler))
         .route("/staff-notifications/:id/read", patch(patch_staff_notification_read_handler))
+        .route("/stock", get(get_stock_handler))
+        .route("/stock/:id", get(get_stock_item_handler))
+        .route("/stock/receipts", post(post_stock_receipt_handler))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&state),
             auth_middleware,
@@ -577,6 +647,37 @@ mod tests {
                 user_id TEXT NOT NULL,
                 read_at TEXT NOT NULL,
                 UNIQUE(notification_id, user_id)
+            );
+
+            CREATE TABLE IF NOT EXISTS medicine (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                branch_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                generic_name TEXT,
+                category TEXT NOT NULL,
+                unit TEXT NOT NULL,
+                is_controlled_substance INTEGER NOT NULL DEFAULT 0,
+                requires_prescription INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS inventory_item (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                branch_id TEXT NOT NULL,
+                medicine_id TEXT NOT NULL REFERENCES medicine(id),
+                batch_number TEXT NOT NULL,
+                expiry_date TEXT NOT NULL,
+                buy_price INTEGER NOT NULL,
+                sell_price INTEGER NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 0,
+                low_stock_threshold INTEGER NOT NULL DEFAULT 5,
+                cold_chain_required INTEGER NOT NULL DEFAULT 0,
+                is_deactivated INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             );
             "#,
         )

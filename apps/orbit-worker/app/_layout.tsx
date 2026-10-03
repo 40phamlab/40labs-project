@@ -26,6 +26,7 @@ function RootContent() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surfaceStrong } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="pair" />
+        <Stack.Screen name="stock" />
       </Stack>
     </>
   );

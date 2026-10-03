@@ -149,3 +149,20 @@
 }
 ```
 
+### 9. `GET /api/v1/stock`
+- **Auth**: Bearer token (Device credential hash).
+- **Purpose**: Returns list of inventory items with medicine details, supporting `search` and `lowStock` query parameters.
+- **Response Shape**: Array of inventory items with embedded medicine info.
+
+### 10. `GET /api/v1/stock/:id`
+- **Auth**: Bearer token (Device credential hash).
+- **Purpose**: Returns single inventory item and medicine details by ID.
+
+### 11. `POST /api/v1/stock/receipts`
+- **Auth**: Bearer token (Device credential hash).
+- **Headers**: `Idempotency-Key` (optional string or UUID).
+- **Purpose**: Receives stock against inventory / medicine. Requires `can_update_stock` permission. Writes audit log.
+- **Request Body**: `AddStockRequest` (medicineName, genericName, category, unit, batchNumber, expiryDate, buyPrice, sellPrice, quantity, lowStockThreshold).
+- **Response Shape**: Created stock item and medicine info.
+
+

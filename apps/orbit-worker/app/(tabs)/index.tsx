@@ -94,7 +94,11 @@ export default function HomeScreen() {
       Alert.alert('Permission Denied', `You do not have permission (${permKey}) to perform this action.`);
       return;
     }
-    Alert.alert(title, t('dashboard.comingSoon'));
+    if (permKey === 'can_update_stock' || permKey === 'can_view_stock') {
+      router.push('/stock');
+    } else {
+      Alert.alert(title, t('dashboard.comingSoon'));
+    }
   };
 
   return (
