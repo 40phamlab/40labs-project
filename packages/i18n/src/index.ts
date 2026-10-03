@@ -1,7 +1,25 @@
-export type Language = 'sw' | 'en';
+export type Language = 'sw-TZ' | 'en' | 'sw';
 
 export const translations = {
-  sw: {
+  'sw-TZ': {
+    // Navigation
+    'nav.home': 'Nyumbani',
+    'nav.history': 'Historia',
+    'nav.notifications': 'Taarifa',
+    'nav.settings': 'Mipangilio',
+
+    // Settings
+    'settings.title': 'Mipangilio',
+    'settings.language': 'Lugha',
+    'settings.theme': 'Mandhari',
+    'settings.dark': 'Giza',
+    'settings.light': 'Nuru',
+
+    // Pairing (Verified by user)
+    'pairing.title': 'unga kifaa',
+    'pairing.code': 'msimbo wa kuunga kifaa',
+    'pairing.scan': 'Tambaza msimbo wa Qr',
+
     // Dashboard labels
     'dashboard.title': 'Dashibodi',
     'dashboard.monthlyProfit': 'Faida ya Mwezi',
@@ -84,7 +102,29 @@ export const translations = {
     'dashboard.orderOrdinal': 'Oda #{id}',
     'dashboard.labOrdinal': 'Jaribio #{id}',
   },
+  sw: {
+    // Alias to sw-TZ
+    ...{},
+  },
   en: {
+    // Navigation
+    'nav.home': 'Home',
+    'nav.history': 'History',
+    'nav.notifications': 'Notifications',
+    'nav.settings': 'Settings',
+
+    // Settings
+    'settings.title': 'Settings',
+    'settings.language': 'Language',
+    'settings.theme': 'Theme',
+    'settings.dark': 'Dark',
+    'settings.light': 'Light',
+
+    // Pairing
+    'pairing.title': 'Pair Device',
+    'pairing.code': 'Pairing Code',
+    'pairing.scan': 'Scan QR Code',
+
     // Dashboard labels
     'dashboard.title': 'Dashboard',
     'dashboard.monthlyProfit': 'Monthly Profit',
@@ -169,8 +209,11 @@ export const translations = {
   },
 } as const;
 
-export type TranslationKey = keyof typeof translations.sw;
+export type TranslationKey = keyof typeof translations['sw-TZ'];
 
-export function t(key: TranslationKey, lang: Language = 'sw'): string {
-  return translations[lang]?.[key] || translations['en']?.[key] || key;
+export function t(key: TranslationKey, lang: Language = 'sw-TZ'): string {
+  const effectiveLang = lang === 'sw' ? 'sw-TZ' : lang;
+  const dict = translations[effectiveLang] || translations['sw-TZ'];
+  const fallbackDict = translations['en'];
+  return (dict as any)[key] || (fallbackDict as any)[key] || key;
 }

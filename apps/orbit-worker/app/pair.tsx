@@ -3,11 +3,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '@40labs/design-tokens';
+import { useI18n } from '../src/i18n/I18nProvider';
 
 export default function PairScreen() {
+  const { t } = useI18n();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Pair Device</Text>
+      <Text style={styles.title}>{t('pairing.title')}</Text>
     </View>
   );
 }

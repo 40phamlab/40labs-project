@@ -3,12 +3,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '@40labs/design-tokens';
-import { t } from '@40labs/i18n';
+import { useI18n } from '../../src/i18n/I18nProvider';
 
 export default function HomeScreen() {
+  const { t } = useI18n();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{t('dashboard.title', 'sw')}</Text>
+      <Text style={styles.title}>{t('dashboard.title')}</Text>
       <Text style={styles.subtitle}>Orbit Worker Home</Text>
     </View>
   );

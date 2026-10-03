@@ -3,11 +3,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '@40labs/design-tokens';
+import { useI18n } from '../../src/i18n/I18nProvider';
 
 export default function HistoryScreen() {
+  const { t } = useI18n();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>History</Text>
+      <Text style={styles.title}>{t('nav.history')}</Text>
     </View>
   );
 }

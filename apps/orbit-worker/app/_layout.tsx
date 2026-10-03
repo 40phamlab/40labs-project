@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { useAppFonts } from '../src/theme/fonts';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
+import { I18nProvider } from '../src/i18n/I18nProvider';
 
 function RootContent() {
   const fontsLoaded = useAppFonts();
@@ -33,7 +34,9 @@ function RootContent() {
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <RootContent />
+      <I18nProvider>
+        <RootContent />
+      </I18nProvider>
     </ThemeProvider>
   );
 }
