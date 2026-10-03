@@ -4,6 +4,10 @@
     "slug": "orbit-worker",
     "version": "1.0.0",
     "orientation": "portrait",
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "icon": "./assets/icon.png",
     "scheme": "orbit-worker",
     "userInterfaceStyle": "dark",
@@ -25,10 +29,6 @@
       },
       "package": "com.fortylabs.orbitworker",
       "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "bundler": "metro"
     },
     "plugins": [
       "expo-router",
