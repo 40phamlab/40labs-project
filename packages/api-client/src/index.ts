@@ -1,1 +1,4 @@
-// TODO: [transport seam: createApiClient({ baseUrl, fetch, getAuthHeaders }), no Tauri imports] [Phase 2]
+export * from './transport';
+export * from './errors';
+export * from './client';
+export * from './fake-transport';
