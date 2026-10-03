@@ -152,6 +152,84 @@ pub async fn summary_handler(
     }))
 }
 
+pub async fn activity_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
+) -> Json<Value> {
+    let user_id = device.user_id;
+
+    let sales = sqlx::query("SELECT id, total_amount, created_at FROM sale WHERE user_id = ? AND created_at >= datetime('now', '-30 days') ORDER BY created_at DESC LIMIT 50")
+        .bind(&user_id)
+        .fetch_all(&state.pool)
+        .await
+        .unwrap_or_default();
+
+    let patients = sqlx::query("SELECT id, full_name, created_at FROM customer WHERE created_at >= datetime('now', '-30 days') ORDER BY created_at DESC LIMIT 50")
+        .fetch_all(&state.pool)
+        .await
+        .unwrap_or_default();
+
+    let samples = sqlx::query("SELECT id, sample_type, created_at FROM lab_sample WHERE created_at >= datetime('now', '-30 days') ORDER BY created_at DESC LIMIT 50")
+        .fetch_all(&state.pool)
+        .await
+        .unwrap_or_default();
+
+    let mut items: Vec<Value> = Vec::new();
+
+    for row in sales {
+        let id: String = row.get("id");
+        let total: i64 = row.get("total_amount");
+        let created_at: String = row.get("created_at");
+        items.push(json!({
+            "id": format!("sale-{}", id),
+            "type": "sale",
+            "title": "Sale Completed",
+            "subject": format!("TZS {}", total),
+            "createdAt": created_at,
+            "status": "done"
+        }));
+    }
+
+    for row in patients {
+        let id: String = row.get("id");
+        let name: String = row.get("full_name");
+        let created_at: String = row.get("created_at");
+        items.push(json!({
+            "id": format!("patient-{}", id),
+            "type": "patient_added",
+            "title": "Patient Added",
+            "subject": name,
+            "createdAt": created_at,
+            "status": "done"
+        }));
+    }
+
+    for row in samples {
+        let id: String = row.get("id");
+        let stype: String = row.get("sample_type");
+        let created_at: String = row.get("created_at");
+        items.push(json!({
+            "id": format!("sample-{}", id),
+            "type": "lab_sample",
+            "title": "Lab Sample Collected",
+            "subject": stype,
+            "createdAt": created_at,
+            "status": "done"
+        }));
+    }
+
+    items.sort_by(|a, b| {
+        let a_time = a.get("createdAt").and_then(|v| v.as_str()).unwrap_or("");
+        let b_time = b.get("createdAt").and_then(|v| v.as_str()).unwrap_or("");
+        b_time.cmp(a_time)
+    });
+
+    Json(json!({
+        "items": items,
+        "nextCursor": null
+    }))
+}
+
 pub async fn heartbeat_handler(
     State(state): State<Arc<LanServerState>>,
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
@@ -170,6 +248,7 @@ pub fn create_router(state: Arc<LanServerState>) -> Router {
         .route("/devices/me/heartbeat", post(heartbeat_handler))
         .route("/staff/roster", get(staff_roster_handler))
         .route("/me/summary", get(summary_handler))
+        .route("/activity", get(activity_handler))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&state),
             auth_middleware,

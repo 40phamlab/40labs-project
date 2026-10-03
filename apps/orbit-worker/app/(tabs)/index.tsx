@@ -1,7 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { colors } from '@40labs/design-tokens';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { ScreenHeader, StatusDot, CountBadge, Card, Tile, InlineError } from '../../src/components';
@@ -9,9 +9,11 @@ import { useConnectionStore } from '../../src/stores/connection';
 import { getServerCredential } from '../../src/lib/secure-store';
 import { ApiClient } from '@40labs/api-client';
 import { putCache, getCache, CacheResult } from '../../src/db/cache';
+import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
   const { t } = useI18n();
+  const router = useRouter();
   const { status, permissions, userInfo, activeBusinessId } = useConnectionStore();
   const [summary, setSummary] = useState<any>(null);
   const [cacheMeta, setCacheMeta] = useState<CacheResult | null>(null);
@@ -125,24 +127,24 @@ export default function HomeScreen() {
         <Card style={styles.todayCard}>
           <Text style={styles.sectionTitle}>{t('dashboard.overview')}</Text>
           <View style={styles.statsGrid}>
-            <View style={styles.statItem}>
+            <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=sales')}>
               <Text style={styles.statLabel}>{t('dashboard.todaysSales')}</Text>
               <Text style={styles.statValue}>TZS {summary?.sales?.toLocaleString() || '0'}</Text>
-            </View>
-            <View style={styles.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=patients')}>
               <Text style={styles.statLabel}>{t('dashboard.patientsInTrack')}</Text>
               <Text style={styles.statValue}>{summary?.patients || 0}</Text>
-            </View>
+            </TouchableOpacity>
           </View>
           <View style={[styles.statsGrid, { marginTop: 12 }]}>
-            <View style={styles.statItem}>
+            <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=lab')}>
               <Text style={styles.statLabel}>{t('dashboard.labTests')}</Text>
               <Text style={styles.statValue}>{summary?.samples || 0}</Text>
-            </View>
-            <View style={styles.statItem}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=stock')}>
               <Text style={styles.statLabel}>{t('dashboard.inventoryValue')}</Text>
               <Text style={styles.statValue}>{summary?.lowStockCount || 0} low</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </Card>
 

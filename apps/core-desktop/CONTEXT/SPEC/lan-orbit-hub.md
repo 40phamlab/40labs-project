@@ -72,3 +72,23 @@
   "unreadNotifications": 0
 }
 ```
+
+### 5. `GET /api/v1/activity`
+- **Auth**: Bearer token (Device credential hash).
+- **Purpose**: Returns current staff user's recent actions (sale, stock_receipt, patient_added, lab_sample, lab_result) newest first within a 30-day window, supporting cursor pagination.
+- **Response Shape**:
+```json
+{
+  "items": [
+    {
+      "id": "string",
+      "type": "sale | stock_receipt | patient_added | lab_sample | lab_result",
+      "title": "string",
+      "subject": "string",
+      "createdAt": "iso-8601",
+      "status": "done | pending | failed"
+    }
+  ],
+  "nextCursor": "string | null"
+}
+```
