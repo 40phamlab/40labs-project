@@ -19,6 +19,10 @@ export const translations = {
     'pairing.title': 'unga kifaa',
     'pairing.code': 'msimbo wa kuunga kifaa',
     'pairing.scan': 'Tambaza msimbo wa Qr',
+    'pairing.cameraPermissionRequired': 'Ruhusa ya kamera inahitajika kutambaza msimbo wa Qr.',
+    'pairing.grantPermission': 'Ruhusa ya Kamera',
+    'pairing.failed': 'Kuunganisha kumeshindwa. Tafadhali hakikisha msimbo wa QR ni sahihi na umeunganishwa kwenye Wi-Fi ya duka.',
+    'pairing.inProgress': 'Inaunganisha...',
 
     // Dashboard labels
     'dashboard.title': 'Dashibodi',
@@ -103,7 +107,6 @@ export const translations = {
     'dashboard.labOrdinal': 'Jaribio #{id}',
   },
   sw: {
-    // Alias to sw-TZ
     ...{},
   },
   en: {
@@ -124,6 +127,10 @@ export const translations = {
     'pairing.title': 'Pair Device',
     'pairing.code': 'Pairing Code',
     'pairing.scan': 'Scan QR Code',
+    'pairing.cameraPermissionRequired': 'Camera permission is required to scan the pairing QR code.',
+    'pairing.grantPermission': 'Grant Permission',
+    'pairing.failed': 'Pairing failed. Please check the QR code and ensure you are connected to the pharmacy Wi-Fi.',
+    'pairing.inProgress': 'Pairing in progress...',
 
     // Dashboard labels
     'dashboard.title': 'Dashboard',
