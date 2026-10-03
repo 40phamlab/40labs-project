@@ -165,4 +165,50 @@
 - **Request Body**: `AddStockRequest` (medicineName, genericName, category, unit, batchNumber, expiryDate, buyPrice, sellPrice, quantity, lowStockThreshold).
 - **Response Shape**: Created stock item and medicine info.
 
+### 12. `GET /api/v1/lab/orders`
+- **Auth**: Bearer token (Device credential hash).
+- **Purpose**: Returns list of lab orders.
+
+### 13. `POST /api/v1/lab/samples`
+- **Auth**: Bearer token (Device credential hash).
+- **Headers**: `Idempotency-Key` (optional string or UUID).
+- **Purpose**: Collects lab sample for an order. Requires `can_add_lab_sample` permission.
+
+### 14. `POST /api/v1/lab/results`
+- **Auth**: Bearer token (Device credential hash).
+- **Headers**: `Idempotency-Key` (optional string or UUID).
+- **Purpose**: Records lab result for an order. Requires `can_record_lab_result` permission.
+
+### 15. `GET /api/v1/customers`
+- **Auth**: Bearer token (Device credential hash).
+- **Purpose**: Returns list of customers, supporting optional `search` query parameter.
+
+### 16. `POST /api/v1/customers`
+- **Auth**: Bearer token (Device credential hash).
+- **Headers**: `Idempotency-Key` (optional string or UUID).
+- **Purpose**: Creates a new customer or detects duplicate phone number (returning 409 Conflict with existing customer data). Requires `can_manage_customers` permission.
+
+### 17. `POST /api/v1/sales`
+- **Auth**: Bearer token (Device credential hash).
+- **Headers**: `Idempotency-Key` (mandatory UUID).
+- **Purpose**: Creates a sale server-side (calculating prices, totals, and tax on the hub). Requires `can_create_sale` permission. Idempotent against lost responses using `Idempotency-Key`.
+- **Request Body**:
+```json
+{
+  "customerId": "string | null",
+  "items": [
+    {
+      "inventoryItemId": "string",
+      "quantity": 1
+    }
+  ],
+  "paymentMethod": "cash | mobile_money | card",
+  "discountAmount": 0
+}
+```
+- **Response Shape**: Created Sale object with calculated lines, totals, and grand total.
+
+
+
+
 

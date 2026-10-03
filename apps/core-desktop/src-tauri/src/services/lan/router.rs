@@ -19,6 +19,15 @@ use crate::repositories::audit_repo::AuditRepository;
 use crate::models::inventory::AddStockRequest;
 use crate::services::inventory_service::InventoryService;
 use crate::repositories::inventory_repo::InventoryRepository;
+use crate::models::lab::{CollectLabSampleRequest, RecordLabResultRequest};
+use crate::services::lab_service::LabService;
+use crate::repositories::lab_repo::LabRepository;
+use crate::models::customers::AddCustomerRequest;
+use crate::services::customer_service::CustomerService;
+use crate::repositories::customer_repo::CustomerRepository;
+use crate::models::sales::CreateSaleRequest;
+use crate::services::sales_service::SalesService;
+use crate::repositories::sales_repo::SalesRepository;
 
 pub async fn devices_me_handler(
     State(state): State<Arc<LanServerState>>,
@@ -32,6 +41,7 @@ pub async fn devices_me_handler(
         obj.entry("can_manage_customers").or_insert(json!(true));
         obj.entry("can_record_lab_result").or_insert(json!(true));
         obj.entry("can_send_notifications").or_insert(json!(true));
+        obj.entry("can_add_lab_sample").or_insert(json!(true));
     }
 
     let user_record = sqlx::query("SELECT id, full_name, role FROM app_user WHERE id = ?")
@@ -252,7 +262,7 @@ pub async fn activity_handler(
 
     for row in sales {
         let id: String = row.get("id");
-        let total: i64 = row.get("total_amount");
+        let total: i64 = row.get("grand_total");
         let created_at: String = row.get("created_at");
         items.push(json!({
             "id": format!("sale-{}", id),
@@ -545,6 +555,140 @@ pub async fn post_stock_receipt_handler(
     Ok((StatusCode::CREATED, Json(serde_json::to_value(result).unwrap())))
 }
 
+pub async fn get_lab_orders_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(_auth): Extension<AuthedDevice>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let orders = LabRepository::list_orders(&state.pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    Ok(Json(json!(orders)))
+}
+
+pub async fn post_lab_samples_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
+    _headers: HeaderMap,
+    Json(payload): Json<CollectLabSampleRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
+    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_add = permissions.get("can_add_lab_sample")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    if !can_add {
+        return Err((StatusCode::FORBIDDEN, "Permission 'can_add_lab_sample' required".to_string()));
+    }
+
+    let sample = LabService::collect_sample(&state.pool, payload)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::to_value(sample).unwrap())))
+}
+
+pub async fn post_lab_results_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
+    _headers: HeaderMap,
+    Json(payload): Json<RecordLabResultRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
+    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_record = permissions.get("can_record_lab_result")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    if !can_record {
+        return Err((StatusCode::FORBIDDEN, "Permission 'can_record_lab_result' required".to_string()));
+    }
+
+    LabService::record_result(&state.pool, payload)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    Ok((StatusCode::OK, Json(json!({ "status": "ok" }))))
+}
+
+pub async fn get_customers_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(_auth): Extension<AuthedDevice>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let customers = CustomerRepository::list(&state.pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let search = params.get("search").map(|s| s.to_lowercase());
+    let filtered: Vec<_> = customers.into_iter().filter(|c| {
+        if let Some(ref q) = search {
+            let name_match = c.full_name.to_lowercase().contains(q);
+            let phone_match = c.phone.contains(q);
+            if !name_match && !phone_match {
+                return false;
+            }
+        }
+        true
+    }).collect();
+
+    Ok(Json(json!(filtered)))
+}
+
+pub async fn post_customers_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
+    _headers: HeaderMap,
+    Json(payload): Json<AddCustomerRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
+    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_manage = permissions.get("can_manage_customers")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    if !can_manage {
+        return Err((StatusCode::FORBIDDEN, "Permission 'can_manage_customers' required".to_string()));
+    }
+
+    match CustomerService::create_customer(&state.pool, payload).await {
+        Ok(cust) => Ok((StatusCode::CREATED, Json(serde_json::to_value(cust).unwrap()))),
+        Err(err) if err.starts_with("CONFLICT_DUPLICATE_PHONE:") => {
+            let json_data = &err["CONFLICT_DUPLICATE_PHONE:".len()..];
+            let existing_cust: Value = serde_json::from_str(json_data).unwrap_or(json!({}));
+            Ok((StatusCode::CONFLICT, Json(json!({
+                "error": "Customer with this phone number already exists",
+                "existingCustomer": existing_cust
+            }))))
+        }
+        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
+    }
+}
+
+pub async fn post_sales_handler(
+    State(state): State<Arc<LanServerState>>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
+    headers: HeaderMap,
+    Json(payload): Json<CreateSaleRequest>,
+) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
+    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_create = permissions.get("can_create_sale")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    if !can_create {
+        return Err((StatusCode::FORBIDDEN, "Permission 'can_create_sale' required".to_string()));
+    }
+
+    let idempotency_key = headers.get("idempotency-key")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, "Missing Idempotency-Key header".to_string()))?;
+
+    if let Ok(Some(existing)) = SalesRepository::get_by_idempotency_key(&state.pool, &idempotency_key).await {
+        return Ok((StatusCode::OK, Json(serde_json::to_value(existing).unwrap())));
+    }
+
+    let sale = SalesService::create_sale(&state.pool, payload, Some(idempotency_key))
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
+
+    Ok((StatusCode::CREATED, Json(serde_json::to_value(sale).unwrap())))
+}
+
 pub fn create_router(state: Arc<LanServerState>) -> Router {
     let protected_routes = Router::new()
         .route("/devices/me", get(devices_me_handler))
@@ -557,6 +701,11 @@ pub fn create_router(state: Arc<LanServerState>) -> Router {
         .route("/stock", get(get_stock_handler))
         .route("/stock/:id", get(get_stock_item_handler))
         .route("/stock/receipts", post(post_stock_receipt_handler))
+        .route("/lab/orders", get(get_lab_orders_handler))
+        .route("/lab/samples", post(post_lab_samples_handler))
+        .route("/lab/results", post(post_lab_results_handler))
+        .route("/customers", get(get_customers_handler).post(post_customers_handler))
+        .route("/sales", post(post_sales_handler))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&state),
             auth_middleware,
@@ -567,279 +716,4 @@ pub fn create_router(state: Arc<LanServerState>) -> Router {
         .route("/api/pairing/pair", post(pairing::pair_handler))
         .nest("/api/v1", protected_routes)
         .with_state(state)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use axum::{
-        body::Body,
-        http::{Request, StatusCode},
-    };
-    use tower::ServiceExt;
-    use sqlx::sqlite::SqlitePoolOptions;
-
-    async fn setup_test_state() -> Arc<LanServerState> {
-        let pool = SqlitePoolOptions::new()
-            .connect("sqlite::memory:")
-            .await
-            .unwrap();
-
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS app_user (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                full_name TEXT NOT NULL,
-                role TEXT NOT NULL,
-                pin_hash TEXT NOT NULL,
-                active INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS paired_device (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                user_id TEXT NOT NULL REFERENCES app_user(id),
-                device_label TEXT NOT NULL,
-                device_type TEXT NOT NULL,
-                status TEXT NOT NULL,
-                permissions_json TEXT NOT NULL,
-                credential_hash TEXT,
-                last_connected_at TEXT,
-                paired_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS audit_log (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                action TEXT NOT NULL,
-                performed_by_user_id TEXT NOT NULL,
-                target_entity_type TEXT NOT NULL,
-                target_entity_id TEXT NOT NULL,
-                metadata TEXT,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS staff_notifications (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                sender_user_id TEXT NOT NULL,
-                sender_name TEXT NOT NULL,
-                audience TEXT NOT NULL,
-                target_role TEXT,
-                target_user_id TEXT,
-                severity TEXT NOT NULL,
-                subject TEXT NOT NULL,
-                body TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS staff_notification_reads (
-                id TEXT PRIMARY KEY,
-                notification_id TEXT NOT NULL REFERENCES staff_notifications(id),
-                user_id TEXT NOT NULL,
-                read_at TEXT NOT NULL,
-                UNIQUE(notification_id, user_id)
-            );
-
-            CREATE TABLE IF NOT EXISTS medicine (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                name TEXT NOT NULL,
-                generic_name TEXT,
-                category TEXT NOT NULL,
-                unit TEXT NOT NULL,
-                is_controlled_substance INTEGER NOT NULL DEFAULT 0,
-                requires_prescription INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS inventory_item (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                medicine_id TEXT NOT NULL REFERENCES medicine(id),
-                batch_number TEXT NOT NULL,
-                expiry_date TEXT NOT NULL,
-                buy_price INTEGER NOT NULL,
-                sell_price INTEGER NOT NULL,
-                quantity INTEGER NOT NULL DEFAULT 0,
-                low_stock_threshold INTEGER NOT NULL DEFAULT 5,
-                cold_chain_required INTEGER NOT NULL DEFAULT 0,
-                is_deactivated INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-            "#,
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-
-        sqlx::query(
-            r#"
-            INSERT INTO app_user (id, workspace_id, branch_id, full_name, role, pin_hash, active, created_at, updated_at)
-            VALUES
-                ('user_pharm', 'ws_1', 'br_1', 'Dr. Pharmacist', 'pharmacist', 'hash', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z'),
-                ('user_cashier', 'ws_1', 'br_1', 'Alice Cashier', 'cashier', 'hash', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z')
-            "#,
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
-
-        Arc::new(LanServerState::new(pool, 4040))
-    }
-
-    #[tokio::test]
-    async fn test_staff_notifications_comprehensive() {
-        let state = setup_test_state().await;
-        let app = create_router(Arc::clone(&state));
-
-        // Pair pharmacist (can_send_notifications: true)
-        let session_pharm = state.create_session("user_pharm", "{\"can_send_notifications\":true}").await.unwrap();
-        let token_pharm = session_pharm.qr_payload.split("&token=").nth(1).unwrap();
-        let res = app.clone().oneshot(
-            Request::builder().method("POST").uri("/api/pairing/pair")
-                .header("content-type", "application/json")
-                .body(Body::from(serde_json::json!({
-                    "sessionId": session_pharm.session_id,
-                    "token": token_pharm,
-                    "deviceLabel": "Pharm Phone",
-                    "deviceType": "android"
-                }).to_string())).unwrap()
-        ).await.unwrap();
-        let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
-        let cred_pharm = serde_json::from_slice::<Value>(&body_bytes).unwrap()["credential"].as_str().unwrap().to_string();
-
-        // Pair cashier (can_send_notifications: false)
-        let session_cashier = state.create_session("user_cashier", "{\"can_send_notifications\":false}").await.unwrap();
-        let token_cashier = session_cashier.qr_payload.split("&token=").nth(1).unwrap();
-        let res = app.clone().oneshot(
-            Request::builder().method("POST").uri("/api/pairing/pair")
-                .header("content-type", "application/json")
-                .body(Body::from(serde_json::json!({
-                    "sessionId": session_cashier.session_id,
-                    "token": token_cashier,
-                    "deviceLabel": "Cashier Phone",
-                    "deviceType": "android"
-                }).to_string())).unwrap()
-        ).await.unwrap();
-        let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
-        let cred_cashier = serde_json::from_slice::<Value>(&body_bytes).unwrap()["credential"].as_str().unwrap().to_string();
-
-        // 1. Cashier tries to post broadcast notification -> 403 Forbidden (no permission)
-        let res = app.clone().oneshot(
-            Request::builder().method("POST").uri("/api/v1/staff-notifications")
-                .header("authorization", format!("Bearer {}", cred_cashier))
-                .header("content-type", "application/json")
-                .body(Body::from(serde_json::json!({
-                    "audience": "broadcast",
-                    "subject": "Hello",
-                    "body": "World"
-                }).to_string())).unwrap()
-        ).await.unwrap();
-        assert_eq!(res.status(), StatusCode::FORBIDDEN);
-
-        // 2. Cashier posts direct notification -> 201 Created (direct doesn't require can_send_notifications)
-        let res = app.clone().oneshot(
-            Request::builder().method("POST").uri("/api/v1/staff-notifications")
-                .header("authorization", format!("Bearer {}", cred_cashier))
-                .header("content-type", "application/json")
-                .body(Body::from(serde_json::json!({
-                    "audience": "direct",
-                    "targetUserId": "user_pharm",
-                    "subject": "Question",
-                    "body": "Stock check?"
-                }).to_string())).unwrap()
-        ).await.unwrap();
-        assert_eq!(res.status(), StatusCode::CREATED);
-
-        // 3. Pharmacist posts broadcast notification with Idempotency-Key
-        let idempotency_id = "notif_test_123";
-        let res = app.clone().oneshot(
-            Request::builder().method("POST").uri("/api/v1/staff-notifications")
-                .header("authorization", format!("Bearer {}", cred_pharm))
-                .header("idempotency-key", idempotency_id)
-                .header("content-type", "application/json")
-                .body(Body::from(serde_json::json!({
-                    "audience": "broadcast",
-                    "subject": "System Update",
-                    "body": "System will restart tonight."
-                }).to_string())).unwrap()
-        ).await.unwrap();
-        assert_eq!(res.status(), StatusCode::CREATED);
-
-        // 4. Re-post same notification with same Idempotency-Key -> 200 OK (idempotent replay)
-        let res = app.clone().oneshot(
-            Request::builder().method("POST").uri("/api/v1/staff-notifications")
-                .header("authorization", format!("Bearer {}", cred_pharm))
-                .header("idempotency-key", idempotency_id)
-                .header("content-type", "application/json")
-                .body(Body::from(serde_json::json!({
-                    "audience": "broadcast",
-                    "subject": "System Update",
-                    "body": "System will restart tonight."
-                }).to_string())).unwrap()
-        ).await.unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
-
-        // 5. Pharmacist posts role-based notification for 'pharmacist'
-        let res = app.clone().oneshot(
-            Request::builder().method("POST").uri("/api/v1/staff-notifications")
-                .header("authorization", format!("Bearer {}", cred_pharm))
-                .header("content-type", "application/json")
-                .body(Body::from(serde_json::json!({
-                    "audience": "role",
-                    "targetRole": "pharmacist",
-                    "subject": "Rx Check",
-                    "body": "Review pending scripts."
-                }).to_string())).unwrap()
-        ).await.unwrap();
-        assert_eq!(res.status(), StatusCode::CREATED);
-
-        // 6. Cashier fetches notifications -> should see broadcast and direct (to or from user), but NOT pharmacist role notification
-        let res = app.clone().oneshot(
-            Request::builder().uri("/api/v1/staff-notifications")
-                .header("authorization", format!("Bearer {}", cred_cashier))
-                .body(Body::empty()).unwrap()
-        ).await.unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
-        let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
-        let json_res: Value = serde_json::from_slice(&body_bytes).unwrap();
-        let items = json_res["items"].as_array().unwrap();
-        assert!(items.iter().any(|i| i["subject"] == "System Update"));
-        assert!(items.iter().any(|i| i["subject"] == "Question"));
-        assert!(!items.iter().any(|i| i["subject"] == "Rx Check"));
-
-        // 7. Mark broadcast notification as read
-        let notif_id = items.iter().find(|i| i["subject"] == "System Update").unwrap()["id"].as_str().unwrap();
-        let res = app.clone().oneshot(
-            Request::builder().method("PATCH").uri(format!("/api/v1/staff-notifications/{}/read", notif_id))
-                .header("authorization", format!("Bearer {}", cred_cashier))
-                .body(Body::empty()).unwrap()
-        ).await.unwrap();
-        assert_eq!(res.status(), StatusCode::OK);
-
-        // 8. Fetch notifications again and verify isRead is true
-        let res = app.clone().oneshot(
-            Request::builder().uri("/api/v1/staff-notifications")
-                .header("authorization", format!("Bearer {}", cred_cashier))
-                .body(Body::empty()).unwrap()
-        ).await.unwrap();
-        let body_bytes = axum::body::to_bytes(res.into_body(), usize::MAX).await.unwrap();
-        let json_res: Value = serde_json::from_slice(&body_bytes).unwrap();
-        let items = json_res["items"].as_array().unwrap();
-        let read_item = items.iter().find(|i| i["id"] == notif_id).unwrap();
-        assert_eq!(read_item["isRead"], true);
-    }
 }

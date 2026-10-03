@@ -208,7 +208,8 @@ async fn init_schema(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             currency TEXT NOT NULL DEFAULT 'TZS',
             synced_at TEXT,
             created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
+            updated_at TEXT NOT NULL,
+            idempotency_key TEXT
         );
 
         CREATE TABLE IF NOT EXISTS sale_line (
@@ -302,6 +303,10 @@ async fn init_schema(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .await?;
 
     let _ = sqlx::query("ALTER TABLE paired_device ADD COLUMN credential_hash TEXT;")
+        .execute(pool)
+        .await;
+
+    let _ = sqlx::query("ALTER TABLE sale ADD COLUMN idempotency_key TEXT;")
         .execute(pool)
         .await;
 

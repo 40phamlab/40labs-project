@@ -19,7 +19,7 @@ pub async fn create_sale(
     state: State<'_, AppState>,
     payload: CreateSaleRequest,
 ) -> Result<Sale, String> {
-    SalesService::create_sale(&state.pool, payload).await
+    SalesService::create_sale(&state.pool, payload, None).await
 }
 
 #[tauri::command]

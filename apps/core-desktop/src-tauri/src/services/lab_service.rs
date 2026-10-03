@@ -3,7 +3,7 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::models::lab::{
-    CollectLabSampleRequest, CreateLabOrderRequest, LabOrder, LabSample,
+    CollectLabSampleRequest, CreateLabOrderRequest, LabOrder, LabSample, RecordLabResultRequest,
 };
 use crate::models::{DEFAULT_BRANCH_ID, DEFAULT_WORKSPACE_ID};
 use crate::repositories::lab_repo::LabRepository;
@@ -63,5 +63,17 @@ impl LabService {
             .map_err(|e| format!("Failed to update order status: {}", e))?;
 
         Ok(sample)
+    }
+
+    pub async fn record_result(
+        pool: &SqlitePool,
+        req: RecordLabResultRequest,
+    ) -> Result<(), String> {
+        let now = Utc::now().to_rfc3339();
+        let target_status = req.status.unwrap_or_else(|| "completed".to_string());
+        LabRepository::update_order_status(pool, &req.lab_order_id, &target_status, &now)
+            .await
+            .map_err(|e| format!("Failed to record lab result: {}", e))?;
+        Ok(())
     }
 }

@@ -16,14 +16,56 @@ struct SaleRow {
     synced_at: Option<String>,
     created_at: String,
     updated_at: String,
+    idempotency_key: Option<String>,
 }
 
 pub struct SalesRepository;
 
 impl SalesRepository {
+    pub async fn get_by_idempotency_key(
+        pool: &SqlitePool,
+        key: &str,
+    ) -> Result<Option<Sale>, sqlx::Error> {
+        let record = sqlx::query_as::<_, SaleRow>(
+            "SELECT id, workspace_id, branch_id, customer_id, payment_method, discount_amount, discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at, created_at, updated_at, idempotency_key FROM sale WHERE idempotency_key = ?"
+        )
+        .bind(key)
+        .fetch_optional(pool)
+        .await?;
+
+        if let Some(r) = record {
+            let lines = sqlx::query_as::<_, SaleLine>(
+                "SELECT * FROM sale_line WHERE sale_id = ?"
+            )
+            .bind(&r.id)
+            .fetch_all(pool)
+            .await?;
+
+            Ok(Some(Sale {
+                id: r.id,
+                workspace_id: r.workspace_id,
+                branch_id: r.branch_id,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+                customer_id: r.customer_id,
+                lines,
+                payment_method: r.payment_method,
+                discount_amount: r.discount_amount,
+                discount_authorized_by_user_id: r.discount_authorized_by_user_id,
+                tax_amount: r.tax_amount,
+                grand_total: r.grand_total,
+                currency: r.currency,
+                synced_at: r.synced_at,
+                idempotency_key: r.idempotency_key,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub async fn list_sales(pool: &SqlitePool) -> Result<Vec<Sale>, sqlx::Error> {
         let sales_records = sqlx::query_as::<_, SaleRow>(
-            "SELECT id, workspace_id, branch_id, customer_id, payment_method, discount_amount, discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at, created_at, updated_at FROM sale ORDER BY created_at DESC"
+            "SELECT id, workspace_id, branch_id, customer_id, payment_method, discount_amount, discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at, created_at, updated_at, idempotency_key FROM sale ORDER BY created_at DESC"
         )
         .fetch_all(pool)
         .await?;
@@ -52,6 +94,7 @@ impl SalesRepository {
                 grand_total: r.grand_total,
                 currency: r.currency,
                 synced_at: r.synced_at,
+                idempotency_key: r.idempotency_key,
             });
         }
 
@@ -64,8 +107,8 @@ impl SalesRepository {
             INSERT INTO sale (
                 id, workspace_id, branch_id, customer_id, payment_method, discount_amount,
                 discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at,
-                created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                created_at, updated_at, idempotency_key
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#
         )
         .bind(&sale.id)
@@ -81,6 +124,7 @@ impl SalesRepository {
         .bind(&sale.synced_at)
         .bind(&sale.created_at)
         .bind(&sale.updated_at)
+        .bind(&sale.idempotency_key)
         .execute(pool)
         .await?;
 

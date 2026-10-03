@@ -12,27 +12,54 @@ impl SalesService {
     pub async fn create_sale(
         pool: &SqlitePool,
         req: CreateSaleRequest,
+        idempotency_key: Option<String>,
     ) -> Result<Sale, String> {
+        if let Some(ref key) = idempotency_key {
+            if let Ok(Some(existing)) = SalesRepository::get_by_idempotency_key(pool, key).await {
+                return Ok(existing);
+            }
+        }
+
         let now = Utc::now().to_rfc3339();
         let sale_id = format!("sale_{}", Uuid::new_v4().simple());
 
-        let lines: Vec<SaleLine> = req
-            .lines
-            .into_iter()
-            .enumerate()
-            .map(|(i, line_input)| SaleLine {
+        let mut lines = Vec::new();
+        for (i, item_input) in req.items.into_iter().enumerate() {
+            // Server-side lookup of sell price and medicine name from inventory item and medicine
+            let inv_row = sqlx::query(
+                r#"
+                SELECT i.sell_price, m.name as medicine_name
+                FROM inventory_item i
+                JOIN medicine m ON m.id = i.medicine_id
+                WHERE i.id = ?
+                "#
+            )
+            .bind(&item_input.inventory_item_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|e| format!("Database error fetching inventory: {}", e))?
+            .ok_or_else(|| format!("Inventory item not found: {}", item_input.inventory_item_id))?;
+
+            use sqlx::Row;
+            let sell_price: i64 = inv_row.get("sell_price");
+            let medicine_name: String = inv_row.get("medicine_name");
+            let qty = item_input.quantity;
+            let subtotal = sell_price * qty;
+
+            lines.push(SaleLine {
                 id: format!("saleline_{}_{}", Uuid::new_v4().simple(), i),
                 sale_id: sale_id.clone(),
-                inventory_item_id: line_input.inventory_item_id,
-                medicine_name: line_input.medicine_name,
-                quantity: line_input.quantity,
-                unit_price: line_input.unit_price,
-                subtotal: line_input.subtotal,
-            })
-            .collect();
+                inventory_item_id: item_input.inventory_item_id,
+                medicine_name,
+                quantity: qty,
+                unit_price: sell_price,
+                subtotal,
+            });
+        }
 
-        let subtotal: i64 = lines.iter().map(|l| l.subtotal).sum();
-        let grand_total = (subtotal - req.discount_amount).max(0);
+        let subtotal_sum: i64 = lines.iter().map(|l| l.subtotal).sum();
+        let discount = req.discount_amount.unwrap_or(0);
+        let grand_total = (subtotal_sum - discount).max(0);
 
         let sale = Sale {
             id: sale_id,
@@ -43,8 +70,8 @@ impl SalesService {
             customer_id: req.customer_id,
             lines,
             payment_method: req.payment_method,
-            discount_amount: req.discount_amount,
-            discount_authorized_by_user_id: if req.discount_amount > 0 {
+            discount_amount: discount,
+            discount_authorized_by_user_id: if discount > 0 {
                 Some("user_001".to_string())
             } else {
                 None
@@ -53,6 +80,7 @@ impl SalesService {
             grand_total,
             currency: "TZS".to_string(),
             synced_at: None,
+            idempotency_key,
         };
 
         SalesRepository::create_sale(pool, &sale)

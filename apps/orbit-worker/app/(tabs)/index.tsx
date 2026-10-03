@@ -96,6 +96,12 @@ export default function HomeScreen() {
     }
     if (permKey === 'can_update_stock' || permKey === 'can_view_stock') {
       router.push('/stock');
+    } else if (permKey === 'can_add_lab_sample') {
+      router.push('/lab-sample');
+    } else if (permKey === 'can_record_lab_result') {
+      router.push('/lab-result');
+    } else if (permKey === 'can_create_sale') {
+      router.push('/pos');
     } else {
       Alert.alert(title, t('dashboard.comingSoon'));
     }

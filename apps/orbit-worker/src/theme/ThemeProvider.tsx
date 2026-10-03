@@ -1,6 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/02_DESIGN-TOKENS.md]
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 import { darkTokens, lightTokens } from '@40labs/design-tokens';
 
@@ -15,18 +16,30 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-let db: SQLite.SQLiteDatabase | null = null;
-try {
-  db = SQLite.openDatabaseSync('orbit_theme.db');
-  db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
-} catch {
-  // Fallback for test environments without SQLite native module
+let db: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    db = SQLite.openDatabaseSync('orbit_theme.db');
+    db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
+  } catch {
+    // Fallback for test environments without SQLite native module
+  }
 }
 
 function getStoredTheme(): ThemeMode {
+  if (Platform.OS === 'web') {
+    try {
+      const val = localStorage.getItem('orbit_theme');
+      if (val === 'dark' || val === 'light') return val;
+    } catch {
+      // ignore
+    }
+    return 'dark';
+  }
+
   if (!db) return 'dark';
   try {
-    const row = db.getFirstSync<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['theme']);
+    const row = db.getFirstSync('SELECT value FROM settings WHERE key = ?', ['theme']) as { value: string } | null;
     if (row && (row.value === 'dark' || row.value === 'light')) {
       return row.value;
     }
@@ -37,6 +50,15 @@ function getStoredTheme(): ThemeMode {
 }
 
 function saveStoredTheme(mode: ThemeMode) {
+  if (Platform.OS === 'web') {
+    try {
+      localStorage.setItem('orbit_theme', mode);
+    } catch {
+      // ignore
+    }
+    return;
+  }
+
   if (!db) return;
   try {
     db.runSync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['theme', mode]);

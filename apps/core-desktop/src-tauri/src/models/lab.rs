@@ -41,3 +41,11 @@ pub struct CollectLabSampleRequest {
     pub lab_order_id: String,
     pub sample_label: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordLabResultRequest {
+    pub lab_order_id: String,
+    pub result_notes: String,
+    pub status: Option<String>,
+}

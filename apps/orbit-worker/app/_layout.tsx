@@ -27,6 +27,9 @@ function RootContent() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="pair" />
         <Stack.Screen name="stock" />
+        <Stack.Screen name="lab-sample" />
+        <Stack.Screen name="lab-result" />
+        <Stack.Screen name="pos" />
       </Stack>
     </>
   );

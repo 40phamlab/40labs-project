@@ -1,6 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/00_OVERVIEW.md]
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
 import { t as baseT, Language, TranslationKey } from '@40labs/i18n';
 
@@ -12,18 +13,30 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
-let db: SQLite.SQLiteDatabase | null = null;
-try {
-  db = SQLite.openDatabaseSync('orbit_theme.db');
-  db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
-} catch {
-  // Fallback for test environments without SQLite native module
+let db: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    db = SQLite.openDatabaseSync('orbit_theme.db');
+    db.execSync('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY NOT NULL, value TEXT NOT NULL);');
+  } catch {
+    // Fallback for test environments without SQLite native module
+  }
 }
 
 function getStoredLanguage(): Language {
+  if (Platform.OS === 'web') {
+    try {
+      const val = localStorage.getItem('orbit_language');
+      if (val === 'sw-TZ' || val === 'en' || val === 'sw') return val;
+    } catch {
+      // ignore
+    }
+    return 'sw-TZ';
+  }
+
   if (!db) return 'sw-TZ';
   try {
-    const row = db.getFirstSync<{ value: string }>('SELECT value FROM settings WHERE key = ?', ['language']);
+    const row = db.getFirstSync('SELECT value FROM settings WHERE key = ?', ['language']) as { value: string } | null;
     if (row && (row.value === 'sw-TZ' || row.value === 'en' || row.value === 'sw')) {
       return row.value as Language;
     }
@@ -34,6 +47,15 @@ function getStoredLanguage(): Language {
 }
 
 function saveStoredLanguage(lang: Language) {
+  if (Platform.OS === 'web') {
+    try {
+      localStorage.setItem('orbit_language', lang);
+    } catch {
+      // ignore
+    }
+    return;
+  }
+
   if (!db) return;
   try {
     db.runSync('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ['language', lang]);

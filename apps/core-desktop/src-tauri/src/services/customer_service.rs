@@ -13,6 +13,14 @@ impl CustomerService {
         pool: &SqlitePool,
         req: AddCustomerRequest,
     ) -> Result<Customer, String> {
+        if let Some(existing) = CustomerRepository::find_by_normalized_phone(pool, &req.phone)
+            .await
+            .map_err(|e| e.to_string())?
+        {
+            let json_str = serde_json::to_string(&existing).unwrap_or_default();
+            return Err(format!("CONFLICT_DUPLICATE_PHONE:{}", json_str));
+        }
+
         let now = Utc::now().to_rfc3339();
         let customer = Customer {
             id: format!("cust_{}", Uuid::new_v4().simple()),
