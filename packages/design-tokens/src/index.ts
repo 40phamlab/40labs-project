@@ -5,7 +5,7 @@ export * from './spacing';
 export * from './elevation';
 export * from './layout';
 
-import { colors, statusColors } from './colors';
+import { colors, lightColors, statusColors } from './colors';
 import { fonts, fontSizes, fontWeights } from './typography';
 import { radius } from './radius';
 import { spacing } from './spacing';
@@ -27,3 +27,17 @@ export const tokens = {
 } as const;
 
 export const darkTokens = tokens;
+
+export const lightTokens = {
+  colors: lightColors,
+  statusColors,
+  fonts,
+  fontSizes,
+  fontWeights,
+  radius,
+  spacing,
+  elevation,
+  controlHeights,
+  iconSizes,
+  layoutWidths,
+} as const;

@@ -5,10 +5,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { useAppFonts } from '../src/theme/fonts';
-import { colors } from '@40labs/design-tokens';
+import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 
-export default function RootLayout() {
+function RootContent() {
   const fontsLoaded = useAppFonts();
+  const { colors, theme } = useTheme();
 
   if (!fontsLoaded) {
     return (
@@ -20,11 +21,19 @@ export default function RootLayout() {
 
   return (
     <>
-      <StatusBar style="light" />
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surfaceStrong } }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="pair" />
       </Stack>
     </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootContent />
+    </ThemeProvider>
   );
 }
