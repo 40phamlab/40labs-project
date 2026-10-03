@@ -97,7 +97,7 @@ pub async fn staff_roster_handler(
 
 pub async fn summary_handler(
     State(state): State<Arc<LanServerState>>,
-    Extension(_auth): Extension<AuthedDevice>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
 ) -> Json<Value> {
     let today_date_row = sqlx::query("SELECT date('now', '+3 hours') as dt")
         .fetch_optional(&state.pool)
@@ -148,14 +148,78 @@ pub async fn summary_handler(
         .flatten();
     let low_stock_count: i64 = low_stock_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
 
+    let user_row = sqlx::query("SELECT role, workspace_id, branch_id FROM app_user WHERE id = ?")
+        .bind(&device.user_id)
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
+
+    let (user_role, workspace_id, branch_id) = match user_row {
+        Some(r) => {
+            let role: String = r.get("role");
+            let ws: String = r.get("workspace_id");
+            let br: String = r.get("branch_id");
+            (role, ws, br)
+        }
+        None => ("staff".to_string(), device.workspace_id.clone(), device.branch_id.clone()),
+    };
+
+    let unread_row = sqlx::query(
+        r#"
+        SELECT COUNT(*) as cnt
+        FROM staff_notifications n
+        WHERE n.workspace_id = ? AND n.branch_id = ?
+          AND (
+              n.audience = 'broadcast'
+              OR n.audience = 'alert'
+              OR n.severity = 'alert'
+              OR (n.audience = 'role' AND n.target_role = ?)
+              OR (n.audience = 'direct' AND (n.target_user_id = ? OR n.sender_user_id = ?))
+          )
+          AND NOT EXISTS (SELECT 1 FROM staff_notification_reads r WHERE r.notification_id = n.id AND r.user_id = ?)
+        "#
+    )
+    .bind(&workspace_id)
+    .bind(&branch_id)
+    .bind(&user_role)
+    .bind(&device.user_id)
+    .bind(&device.user_id)
+    .bind(&device.user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .ok()
+    .flatten();
+
+    let unread_count: i64 = unread_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
+
+    let alerts_row = sqlx::query(
+        r#"
+        SELECT COUNT(*) as cnt
+        FROM staff_notifications n
+        WHERE n.workspace_id = ? AND n.branch_id = ?
+          AND (n.severity = 'alert' OR n.audience = 'alert')
+          AND NOT EXISTS (SELECT 1 FROM staff_notification_reads r WHERE r.notification_id = n.id AND r.user_id = ?)
+        "#
+    )
+    .bind(&workspace_id)
+    .bind(&branch_id)
+    .bind(&device.user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .ok()
+    .flatten();
+
+    let alerts_count: i64 = alerts_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
+
     Json(json!({
         "sales": sales_total,
         "patients": patients_count,
         "samples": samples_count,
         "results": results_count,
         "lowStockCount": low_stock_count,
-        "alerts": 0,
-        "unreadNotifications": 0
+        "alerts": alerts_count,
+        "unreadNotifications": unread_count
     }))
 }
 
