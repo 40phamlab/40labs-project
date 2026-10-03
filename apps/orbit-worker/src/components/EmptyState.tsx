@@ -2,13 +2,13 @@
 // [SPEC: apps/orbit-worker/CONTEXT/02_DESIGN-TOKENS.md]
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/ThemeProvider';
 
 interface EmptyStateProps {
   title: string;
   description?: string;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: string;
   style?: ViewStyle;
   accessibilityLabel?: string;
 }
