@@ -47,7 +47,10 @@ export const ScheduleDetailPanel: React.FC<ScheduleDetailPanelProps> = ({
   const statusType = React.useMemo(() => {
     switch (schedule.status) {
       case 'sent': return 'success';
-      case 'pending': return 'pending';
+      case 'pending':
+      case 'queued_offline': return 'pending';
+      case 'sending': return 'warning';
+      case 'partial': return 'warning';
       case 'failed': return 'error';
       case 'cancelled': default: return 'cancelled';
     }
@@ -163,9 +166,31 @@ export const ScheduleDetailPanel: React.FC<ScheduleDetailPanelProps> = ({
           )}
         </div>
 
-        {/* Section 4: Delivery Log & Timing */}
+        {/* Section 4: Per-Recipient Delivery Log */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Delivery Log & Schedule</h3>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Per-Recipient Delivery Log</h3>
+          <div className="p-4 rounded-xl bg-panel-strong/30 border border-border/40 space-y-2 text-xs font-mono">
+            <div className="flex justify-between text-text-muted pb-1 border-b border-border/30 text-[10px]">
+              <span>RECIPIENT / CONTACT</span>
+              <span>CHANNEL</span>
+              <span>STATUS</span>
+            </div>
+            <div className="flex justify-between text-text items-center py-1">
+              <span>+255 712 345 678 (Juma H.)</span>
+              <span className="uppercase text-[10px] px-1.5 py-0.5 rounded bg-panel">WhatsApp</span>
+              <span className="text-success font-bold text-[10px]">DELIVERED</span>
+            </div>
+            <div className="flex justify-between text-text items-center py-1">
+              <span>+255 784 111 222 (Aisha K.)</span>
+              <span className="uppercase text-[10px] px-1.5 py-0.5 rounded bg-panel">SMS</span>
+              <span className="text-danger font-bold text-[10px]">FAILED (Timeout)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Section 5: Timing */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Schedule & Repeat</h3>
           <div className="p-4 rounded-xl bg-panel-strong/30 border border-border/40 space-y-3 text-xs">
             <div className="flex items-center justify-between">
               <span className="text-text-muted flex items-center gap-1.5">

@@ -6,7 +6,7 @@ export type ScheduleType = 'report' | 'reminder' | 'refill' | 'broadcast';
 export type ScheduleChannel = 'sms' | 'whatsapp' | 'in_app' | 'google_drive' | 'gmail';
 export type RecipientScope =
   | 'all' | 'customers' | 'staff' | 'subscribers' | 'pharmacies' | 'custom';
-export type ScheduleStatus = 'pending' | 'sent' | 'failed' | 'cancelled';
+export type ScheduleStatus = 'pending' | 'queued_offline' | 'sending' | 'sent' | 'partial' | 'failed' | 'cancelled';
 export type RepeatInterval = 'none' | 'daily' | 'weekly' | 'monthly';
 
 export interface Schedule extends BaseEntity {
