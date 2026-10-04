@@ -8,14 +8,18 @@ import {
 import { Plus, RefreshCw } from 'lucide-react';
 import type { Customer } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
+import { useNavStore } from '../../stores/useNavStore';
 import { CustomerStatsBar } from './components/CustomerStatsBar';
 import { CustomerFilterBar } from './components/CustomerFilterBar';
 import { CustomerList } from './components/CustomerList';
 import { CustomerFormModal, CustomerFormPayload } from './components/CustomerFormModal';
-import { CustomerDetailDrawer } from './components/CustomerDetailDrawer';
+import { PatientRecordScreen } from './PatientRecordScreen';
 import { useCustomers } from '../../hooks/useCustomers';
 
 export const CustomersScreen: React.FC = () => {
+  const patientDetailId = useNavStore((s) => s.patientDetailId);
+  const setPatientDetailId = useNavStore((s) => s.setPatientDetailId);
+
   const {
     customers,
     isLoading,
@@ -24,8 +28,6 @@ export const CustomersScreen: React.FC = () => {
     refetch,
     searchTerm,
     setSearchTerm,
-    selectedCustomerId,
-    setSelectedCustomerId,
     isAddModalOpen,
     setAddModalOpen,
     addCustomer,
@@ -77,10 +79,6 @@ export const CustomersScreen: React.FC = () => {
     });
   }, [activeCustomers, searchTerm, timeRange, balanceFilter]);
 
-  const selectedCustomer = React.useMemo(() => {
-    return customers.find((c) => c.id === selectedCustomerId) || null;
-  }, [customers, selectedCustomerId]);
-
   const handleClearAll = React.useCallback(() => {
     setTimeRange('all');
     setBalanceFilter('all');
@@ -130,6 +128,10 @@ export const CustomersScreen: React.FC = () => {
     });
   };
 
+  if (patientDetailId) {
+    return <PatientRecordScreen customerId={patientDetailId} />;
+  }
+
   return (
     <TabContainer
       toolbar={
@@ -176,26 +178,18 @@ export const CustomersScreen: React.FC = () => {
         />
       }
       overlays={
-        <>
-          <CustomerFormModal
-            isOpen={isAddModalOpen || Boolean(editingCustomer)}
-            onClose={() => {
-              setAddModalOpen(false);
-              setEditingCustomer(null);
-            }}
-            onSave={handleSaveCustomer}
-            editCustomer={editingCustomer}
-            isLoading={isAdding || isUpdating}
-            allCustomers={customers}
-            onOpenCustomerProfile={(id) => setSelectedCustomerId(id)}
-          />
-
-          <CustomerDetailDrawer
-            customer={selectedCustomer}
-            isOpen={Boolean(selectedCustomerId)}
-            onClose={() => setSelectedCustomerId(null)}
-          />
-        </>
+        <CustomerFormModal
+          isOpen={isAddModalOpen || Boolean(editingCustomer)}
+          onClose={() => {
+            setAddModalOpen(false);
+            setEditingCustomer(null);
+          }}
+          onSave={handleSaveCustomer}
+          editCustomer={editingCustomer}
+          isLoading={isAdding || isUpdating}
+          allCustomers={customers}
+          onOpenCustomerProfile={(id) => setPatientDetailId(id)}
+        />
       }
     >
       <div className="flex flex-col gap-3 flex-1 min-h-0 w-full overflow-hidden">
@@ -206,7 +200,7 @@ export const CustomersScreen: React.FC = () => {
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
           <CustomerList
             customers={filteredCustomers}
-            onViewDetails={setSelectedCustomerId}
+            onViewDetails={(id) => setPatientDetailId(id)}
             onEditCustomer={(cust) => setEditingCustomer(cust)}
             onArchiveCustomer={handleArchiveCustomer}
             loading={isLoading}

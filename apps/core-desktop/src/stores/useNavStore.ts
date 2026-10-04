@@ -68,6 +68,8 @@ const getInitialLastNonClosed = (): 'icon' | 'open' => {
 interface NavState {
   activeScreen: ScreenId;
   setActiveScreen: (screen: ScreenId) => void;
+  patientDetailId: string | null;
+  setPatientDetailId: (id: string | null) => void;
   sidebarState: NavigationState;
   setSidebarState: (state: NavigationState) => void;
   lastNonClosedState: 'icon' | 'open';
@@ -76,15 +78,17 @@ interface NavState {
 
 export const useNavStore = create<NavState>((set, get) => ({
   activeScreen: getInitialSection(),
+  patientDetailId: null,
   setActiveScreen: (screen) => {
     const validatedScreen = (VALID_SCREENS as readonly string[]).includes(screen)
       ? screen
       : DEFAULT_SCREEN;
-    set({ activeScreen: validatedScreen });
+    set({ activeScreen: validatedScreen, patientDetailId: null });
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_SECTION, validatedScreen);
     }
   },
+  setPatientDetailId: (id) => set({ patientDetailId: id }),
   sidebarState: getInitialState(),
   lastNonClosedState: getInitialLastNonClosed(),
   setSidebarState: (state: NavigationState) => {
