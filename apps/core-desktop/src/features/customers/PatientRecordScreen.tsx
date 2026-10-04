@@ -14,6 +14,7 @@ import { PaymentsBalanceTab } from './components/tabs/PaymentsBalanceTab';
 import { NotesTab } from './components/tabs/NotesTab';
 import { ActivityTab } from './components/tabs/ActivityTab';
 import { CustomerFormModal, CustomerFormPayload } from './components/CustomerFormModal';
+import { PatientExportModal } from './components/PatientExportModal';
 import { requirePin } from './components/CustomerList';
 
 interface PatientRecordScreenProps {
@@ -32,6 +33,9 @@ export const PatientRecordScreen: React.FC<PatientRecordScreenProps> = ({ custom
 
   const [activeTab, setActiveTab] = React.useState<TabId>('overview');
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
+  const [exportModalMode, setExportModalMode] = React.useState<'export' | 'share'>('export');
+  const [exportModalChannel, setExportModalChannel] = React.useState<'whatsapp' | 'gmail' | 'drive'>('whatsapp');
   const [copiedEmail, setCopiedEmail] = React.useState(false);
   const [isShareMenuOpen, setIsShareMenuOpen] = React.useState(false);
 
@@ -169,7 +173,10 @@ export const PatientRecordScreen: React.FC<PatientRecordScreenProps> = ({ custom
               intent="neutral"
               size="sm"
               leftIcon={<Download size={14} />}
-              onClick={() => console.log('Export PDF')}
+              onClick={() => {
+                setExportModalMode('export');
+                setIsExportModalOpen(true);
+              }}
             >
               Export PDF
             </Button>
@@ -188,16 +195,43 @@ export const PatientRecordScreen: React.FC<PatientRecordScreenProps> = ({ custom
                   </Button>
                 }
               >
-                <DropdownMenuItem label="WhatsApp" onClick={() => setIsShareMenuOpen(false)} />
-                <DropdownMenuItem label="Email" onClick={() => setIsShareMenuOpen(false)} />
-                <DropdownMenuItem label="Google Drive" onClick={() => setIsShareMenuOpen(false)} />
+                <DropdownMenuItem
+                  label="WhatsApp"
+                  onClick={() => {
+                    setIsShareMenuOpen(false);
+                    setExportModalMode('share');
+                    setExportModalChannel('whatsapp');
+                    setIsExportModalOpen(true);
+                  }}
+                />
+                <DropdownMenuItem
+                  label="Email"
+                  onClick={() => {
+                    setIsShareMenuOpen(false);
+                    setExportModalMode('share');
+                    setExportModalChannel('gmail');
+                    setIsExportModalOpen(true);
+                  }}
+                />
+                <DropdownMenuItem
+                  label="Google Drive"
+                  onClick={() => {
+                    setIsShareMenuOpen(false);
+                    setExportModalMode('share');
+                    setExportModalChannel('drive');
+                    setIsExportModalOpen(true);
+                  }}
+                />
               </Dropdown>
             </div>
             <Button
               intent="neutral"
               size="sm"
               leftIcon={<Printer size={14} />}
-              onClick={() => window.print()}
+              onClick={() => {
+                setExportModalMode('export');
+                setIsExportModalOpen(true);
+              }}
             >
               Print
             </Button>
@@ -255,6 +289,15 @@ export const PatientRecordScreen: React.FC<PatientRecordScreenProps> = ({ custom
         editCustomer={customer}
         isLoading={isUpdating}
         allCustomers={customers}
+      />
+
+      {/* Export / Share Modal */}
+      <PatientExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        customer={customer}
+        initialMode={exportModalMode}
+        initialChannel={exportModalChannel}
       />
     </div>
   );

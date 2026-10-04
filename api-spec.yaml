@@ -1,0 +1,90 @@
+openapi: 3.0.3
+info:
+  title: 40Labs Healthcare Platform API - Patient Report Export & Share
+  version: 1.0.0
+paths:
+  /api/v1/patients/{customerId}/export:
+    post:
+      summary: Export patient record report as PDF
+      description: Generates a confidential PDF patient report based on selected sections and date range. Requires PIN verification and logs an immutable audit entry.
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sections:
+                  type: array
+                  items:
+                    type: string
+                    enum: [demographics, allergies, medications, dispensing, labs, purchases, balance]
+                dateRange:
+                  type: string
+                  enum: [all, 30d, 90d, custom]
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: PDF report generated successfully
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: PIN verification required / unauthorized
+        '403':
+          description: Access forbidden / role check failed
+
+  /api/v1/patients/{customerId}/share:
+    post:
+      summary: Share patient report via delivery channel (WhatsApp, Gmail SMTP, Google Drive)
+      description: Generates and shares the confidential patient report PDF via the specified channel. If offline, enqueues request as queued_offline. Never includes raw patient data in message body (attachment only).
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel:
+                  type: string
+                  enum: [whatsapp, gmail, drive]
+                recipient:
+                  type: string
+                sections:
+                  type: array
+                  items:
+                    type: string
+                dateRange:
+                  type: string
+      responses:
+        '200':
+          description: Report shared or queued successfully (offline)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [sent, queued_offline, saved_locally]
+                  message:
+                    type: string
