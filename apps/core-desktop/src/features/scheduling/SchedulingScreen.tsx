@@ -1,27 +1,34 @@
+// [PHASE: MVP]
 import * as React from 'react';
-import {
-  PageToolbar,
-  Button,
-  IconButton,
-} from '@40labs/ui-components';
-import { Plus, RefreshCw } from 'lucide-react';
-import { Schedule, ScheduleCategory } from '@40labs/types';
+import { PageToolbar, Button, IconButton } from '@40labs/ui-components';
+import { Plus, RefreshCw, CheckCircle2, Clock, AlertTriangle, Send } from 'lucide-react';
+import type { Schedule } from '@40labs/types';
 import { mockSchedules } from '../../lib/mockData';
 import { TabContainer } from '../../components/TabContainer';
-import { ScheduleCategoryStrip } from './ScheduleCategoryStrip';
 import { ScheduleListPanel } from './ScheduleListPanel';
 import { ScheduleDetailPanel } from './ScheduleDetailPanel';
 import { NewScheduleModal } from './NewScheduleModal';
 
 export const SchedulingScreen: React.FC = () => {
   const [schedules, setSchedules] = React.useState<Schedule[]>(mockSchedules);
-  const [activeCategory, setActiveCategory] = React.useState<ScheduleCategory | null>(null);
-  const [selectedId, setSelectedId] = React.useState<string | null>(schedules[0]?.id || null);
+  const [selectedId, setSelectedId] = React.useState<string | null>(mockSchedules[0]?.id || null);
   const [isLoading, setIsLoading] = React.useState(false);
 
   // Modal states
   const [isNewModalOpen, setIsNewModalOpen] = React.useState(false);
   const [editingSchedule, setEditingSchedule] = React.useState<Schedule | null>(null);
+
+  // Responsive width tracking (< 1100px)
+  const [windowWidth, setWindowWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [mobileDetailActive, setMobileDetailActive] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isNarrow = windowWidth < 1100;
 
   const handleRefresh = React.useCallback(() => {
     setIsLoading(true);
@@ -35,6 +42,14 @@ export const SchedulingScreen: React.FC = () => {
     if (!selectedId) return null;
     return schedules.find((s) => s.id === selectedId) || null;
   }, [schedules, selectedId]);
+
+  const stats = React.useMemo(() => {
+    const active = schedules.filter((s) => s.status === 'pending').length;
+    const pending = active;
+    const sentToday = schedules.filter((s) => s.status === 'sent').length;
+    const failed = schedules.filter((s) => s.status === 'failed').length;
+    return { active, pending, sentToday, failed };
+  }, [schedules]);
 
   const handleSaveSchedule = React.useCallback((saved: Schedule) => {
     setSchedules((prev) => {
@@ -54,18 +69,31 @@ export const SchedulingScreen: React.FC = () => {
     }
   }, [selectedId]);
 
-  const handleStopSchedule = React.useCallback((id: string) => {
-    setSchedules((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, status: 'cancelled', updated_at: new Date().toISOString() } : s))
-    );
-  }, []);
-
   return (
     <TabContainer
       toolbar={
         <PageToolbar
+          left={
+            <div className="flex items-center gap-4">
+              <h2 className="text-base font-heading font-bold text-text">Scheduling & Campaigns</h2>
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-panel-strong/40 border border-border/40 text-[11px] font-mono">
+                  <Clock size={12} className="text-accent" /> Active: <strong>{stats.active}</strong>
+                </span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-panel-strong/40 border border-border/40 text-[11px] font-mono">
+                  <Send size={12} className="text-warning" /> Pending: <strong>{stats.pending}</strong>
+                </span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-panel-strong/40 border border-border/40 text-[11px] font-mono">
+                  <CheckCircle2 size={12} className="text-success" /> Sent Today: <strong>{stats.sentToday}</strong>
+                </span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-panel-strong/40 border border-border/40 text-[11px] font-mono">
+                  <AlertTriangle size={12} className="text-danger" /> Failed: <strong>{stats.failed}</strong>
+                </span>
+              </div>
+            </div>
+          }
           right={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Button
                 type="button"
                 intent="primary"
@@ -76,7 +104,7 @@ export const SchedulingScreen: React.FC = () => {
                   setIsNewModalOpen(true);
                 }}
               >
-                New Schedule
+                + New Schedule
               </Button>
               <IconButton
                 icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
@@ -101,48 +129,72 @@ export const SchedulingScreen: React.FC = () => {
         />
       }
     >
-      {/* Main Content Area — 2-Pane Layout with Top Category Strip */}
-      <div className="flex flex-col gap-3.5 flex-1 min-h-0 w-full overflow-hidden">
-        {/* Top Category Strip */}
-        <ScheduleCategoryStrip
-          schedules={schedules}
-          activeCategory={activeCategory}
-          onSelectCategory={setActiveCategory}
-        />
+      <div className="flex flex-row flex-1 min-h-0 w-full overflow-hidden bg-surface">
+        {/* Responsive Master-Detail */}
+        {isNarrow ? (
+          mobileDetailActive && selectedSchedule ? (
+            <div className="flex-1 h-full overflow-hidden bg-panel">
+              <ScheduleDetailPanel
+                schedule={selectedSchedule}
+                onEdit={() => setEditingSchedule(selectedSchedule)}
+                onDelete={handleDeleteSchedule}
+                onSendNow={(id) => {
+                  setSchedules((prev) =>
+                    prev.map((s) => (s.id === id ? { ...s, status: 'sent', sent_count: s.sent_count + 1, updated_at: new Date().toISOString() } : s))
+                  );
+                }}
+                onRetryFailed={(id) => {
+                  setSchedules((prev) =>
+                    prev.map((s) => (s.id === id ? { ...s, status: 'sent', failure_count: 0, sent_count: s.sent_count + s.failure_count, updated_at: new Date().toISOString() } : s))
+                  );
+                }}
+                onBack={() => setMobileDetailActive(false)}
+                isMobileView={true}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 h-full overflow-hidden bg-panel">
+              <ScheduleListPanel
+                schedules={schedules}
+                selectedId={selectedId}
+                onSelectSchedule={(id) => {
+                  setSelectedId(id);
+                  setMobileDetailActive(true);
+                }}
+              />
+            </div>
+          )
+        ) : (
+          <>
+            {/* List Column (380–420px) */}
+            <div className="w-[400px] shrink-0 h-full overflow-hidden border-r border-border/50 bg-panel shadow-xs">
+              <ScheduleListPanel
+                schedules={schedules}
+                selectedId={selectedId}
+                onSelectSchedule={setSelectedId}
+              />
+            </div>
 
-        {/* Two-Pane Row: List Panel (left) + Detail Panel (right) */}
-        <div className="flex flex-row gap-3.5 flex-1 min-h-0 overflow-hidden">
-          {/* List Panel */}
-          <div className="w-[300px] lg:w-[360px] shrink-0 h-full overflow-hidden rounded-card border border-border/50 bg-panel shadow-xs">
-            <ScheduleListPanel
-              schedules={schedules}
-              selectedId={selectedId}
-              activeCategory={activeCategory}
-              onSelectSchedule={setSelectedId}
-              onOpenNewModal={() => {
-                setEditingSchedule(null);
-                setIsNewModalOpen(true);
-              }}
-              onEditSchedule={(sch) => setEditingSchedule(sch)}
-              onStopSchedule={handleStopSchedule}
-            />
-          </div>
-
-          {/* Detail Panel */}
-          <div className="flex-1 h-full overflow-hidden rounded-card border border-border/50 bg-panel shadow-xs">
-            <ScheduleDetailPanel
-              schedule={selectedSchedule}
-              onEdit={() => selectedSchedule && setEditingSchedule(selectedSchedule)}
-              onDelete={handleDeleteSchedule}
-              onStop={handleStopSchedule}
-              onSendNow={(id) => {
-                setSchedules((prev) =>
-                  prev.map((s) => (s.id === id ? { ...s, status: 'sent', sent_count: s.sent_count + 1, updated_at: new Date().toISOString() } : s))
-                );
-              }}
-            />
-          </div>
-        </div>
+            {/* Detail Pane */}
+            <div className="flex-1 h-full overflow-hidden bg-panel shadow-xs">
+              <ScheduleDetailPanel
+                schedule={selectedSchedule}
+                onEdit={() => selectedSchedule && setEditingSchedule(selectedSchedule)}
+                onDelete={handleDeleteSchedule}
+                onSendNow={(id) => {
+                  setSchedules((prev) =>
+                    prev.map((s) => (s.id === id ? { ...s, status: 'sent', sent_count: s.sent_count + 1, updated_at: new Date().toISOString() } : s))
+                  );
+                }}
+                onRetryFailed={(id) => {
+                  setSchedules((prev) =>
+                    prev.map((s) => (s.id === id ? { ...s, status: 'sent', failure_count: 0, sent_count: s.sent_count + s.failure_count, updated_at: new Date().toISOString() } : s))
+                  );
+                }}
+              />
+            </div>
+          </>
+        )}
       </div>
     </TabContainer>
   );

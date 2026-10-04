@@ -1,7 +1,8 @@
+// [PHASE: MVP]
 import { BaseEntity, ISODateString } from './common';
 
 export type ScheduleCategory = 'reports' | 'marketing' | 'patients' | 'gov';
-export type ScheduleType = 'report' | 'reminder' | 'refill';
+export type ScheduleType = 'report' | 'reminder' | 'refill' | 'broadcast';
 export type ScheduleChannel = 'sms' | 'whatsapp' | 'in_app' | 'google_drive' | 'gmail';
 export type RecipientScope =
   | 'all' | 'customers' | 'staff' | 'subscribers' | 'pharmacies' | 'custom';
