@@ -4,9 +4,18 @@ export const translations = {
   'sw-TZ': {
     // Navigation
     'nav.home': 'Nyumbani',
-    'nav.history': 'Historia',
+    'nav.sales': 'Mauzo na POS',
+    'nav.inventory': 'Akiba',
+    'nav.purchases': 'Ununuzi',
+    'nav.patients': 'Wagonjwa',
+    'nav.lab': 'Maabara',
+    'nav.dispensary': 'Duka la Dawa',
+    'nav.reports': 'Ripoti',
+    'nav.scheduling': 'Ratiba',
+    'nav.training': 'Mafunzo',
     'nav.notifications': 'Taarifa',
     'nav.settings': 'Mipangilio',
+    'nav.history': 'Historia',
 
     // Settings
     'settings.title': 'Mipangilio',
@@ -111,6 +120,21 @@ export const translations = {
     'dashboard.statusReportReady': 'Ripoti iko tayari',
     'dashboard.orderOrdinal': 'Oda #{id}',
     'dashboard.labOrdinal': 'Jaribio #{id}',
+
+    // EmptyState
+    'emptystate.empty.title': 'Hakuna data bado',
+    'emptystate.empty.desc': 'Ongeza kipengele chako cha kwanza kuanza.',
+    'emptystate.filtered.title': 'Hakuna matokeo kwa vichujio hivi',
+    'emptystate.filtered.desc': 'Jaribu kubadilisha vigezo vya utafutaji au vichujio.',
+    'emptystate.filtered.action': 'Futa Vichujio',
+    'emptystate.error.title': 'Imeshindikana kupakia data',
+    'emptystate.error.desc': 'Kosa la kimfumo limetokea. Tafadhali jaribu tena.',
+    'emptystate.error.action': 'Jaribu Tena',
+    'emptystate.offline.title': 'Hauko mtandaoni',
+    'emptystate.offline.desc': 'Imehifadhiwa ndani. Itasawazisha utakapounganishwa.',
+    'emptystate.noAccess.title': 'Huna ruhusa',
+    'emptystate.noAccess.desc': 'Huna idhini ya kufikia eneo hili.',
+    'value.notProvided': 'Haikutolewa',
   },
   sw: {
     ...{},
@@ -118,9 +142,18 @@ export const translations = {
   en: {
     // Navigation
     'nav.home': 'Home',
-    'nav.history': 'History',
+    'nav.sales': 'Sales/POS',
+    'nav.inventory': 'Inventory',
+    'nav.purchases': 'Purchases',
+    'nav.patients': 'Patients',
+    'nav.lab': 'Lab',
+    'nav.dispensary': 'Dispensary',
+    'nav.reports': 'Reports',
+    'nav.scheduling': 'Scheduling',
+    'nav.training': 'Training',
     'nav.notifications': 'Notifications',
     'nav.settings': 'Settings',
+    'nav.history': 'History',
 
     // Settings
     'settings.title': 'Settings',
@@ -128,6 +161,21 @@ export const translations = {
     'settings.theme': 'Theme',
     'settings.dark': 'Dark',
     'settings.light': 'Light',
+
+    // EmptyState
+    'emptystate.empty.title': 'No items yet',
+    'emptystate.empty.desc': 'Add your first item to get started.',
+    'emptystate.filtered.title': 'No results for these filters',
+    'emptystate.filtered.desc': 'Try adjusting your search filters.',
+    'emptystate.filtered.action': 'Clear Filters',
+    'emptystate.error.title': 'Failed to load data',
+    'emptystate.error.desc': 'An unexpected error occurred. Please try again.',
+    'emptystate.error.action': 'Retry',
+    'emptystate.offline.title': 'Offline mode',
+    'emptystate.offline.desc': 'Saved locally. Will sync when online.',
+    'emptystate.noAccess.title': 'Access restricted',
+    'emptystate.noAccess.desc': 'You do not have permission to view this section.',
+    'value.notProvided': 'Not provided',
 
     // Pairing
     'pairing.title': 'Pair Device',
@@ -173,7 +221,7 @@ export const translations = {
     'dashboard.purchaseOrders': 'Purchase Orders',
     'dashboard.lab40Labs': '40Labs (Lab)',
     'dashboard.ePharmacy': 'ePharmacy',
-    'dashboard.comingSoon': 'Coming soon',
+    'dashboard.comingSoon': 'In Progress',
     'dashboard.totalStock': 'Total Stock',
     'dashboard.categories': 'Categories',
     'dashboard.emptyItems': 'Empty',

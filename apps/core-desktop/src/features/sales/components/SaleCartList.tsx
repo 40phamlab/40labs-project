@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ShoppingBag } from 'lucide-react';
+import { EmptyState } from '@40labs/ui-components';
 import { CartItemRow, CartItemModel } from './CartItemRow';
 import { MedicineWithInventory } from '@40labs/types';
 
@@ -21,14 +21,13 @@ export const SaleCartList: React.FC<SaleCartListProps> = ({
 }) => {
   if (lines.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center border border-dashed border-border/30 rounded-card bg-panel/30">
-        <div className="p-3 rounded-full bg-panel text-text-muted mb-2">
-          <ShoppingBag size={24} />
-        </div>
-        <p className="text-xs font-semibold text-text mb-1">Active Cart is Empty</p>
-        <p className="text-[11px] text-text-muted max-w-xs">
-          Search and click any medicine from the right panel to add it to this sale.
-        </p>
+      <div className="flex items-center justify-center h-full">
+        <EmptyState
+          variant="empty"
+          title="Active Cart is Empty"
+          description="Search and click any medicine from the right panel to add it to this sale."
+          compact
+        />
       </div>
     );
   }

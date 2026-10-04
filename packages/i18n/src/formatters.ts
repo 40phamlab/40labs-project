@@ -50,3 +50,19 @@ export function formatRelative(d: string | Date | number, lang: Language = 'sw-T
     return formatDate(date, lang);
   }
 }
+
+export function formatMoneyOrUnknown(amount: number | null | undefined, currency: string = 'TZS'): string {
+  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) {
+    return '—';
+  }
+  const num = Number(amount);
+  return `${currency} ${num.toLocaleString('en-US')}`;
+}
+
+export function formatNumberOrUnknown(value: number | null | undefined): string {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  return Number(value).toLocaleString('en-US');
+}
+

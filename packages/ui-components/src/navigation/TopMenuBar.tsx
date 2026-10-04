@@ -168,17 +168,19 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
           {/* Branch Menu - RESERVED */}
           <MenuBarItem
             label={
-              <div className="flex items-center gap-1.5 opacity-50">
+              <div className="flex items-center gap-1.5 opacity-50" aria-disabled="true">
                 <Layers size={13} />
                 <span>Branch</span>
               </div>
             }
             disabled
+            aria-disabled="true"
+            title="Multi-branch — coming in a later version"
           >
-            <div className="px-3 py-2 max-w-[200px]">
-              <p className="text-[11px] font-bold text-text-primary">Switch Branch</p>
-              <p className="text-[10px] text-text-muted mt-1 leading-relaxed italic">
-                Multi-branch support is scheduled for the v3.5 update.
+            <div className="px-3 py-2 max-w-[200px]" title="Multi-branch — coming in a later version">
+              <p className="text-ui-small font-bold text-text-primary">Switch Branch</p>
+              <p className="text-mono text-text-muted mt-1 leading-relaxed">
+                Multi-branch — coming in a later version
               </p>
             </div>
           </MenuBarItem>

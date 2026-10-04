@@ -64,9 +64,9 @@ export const MenuBarItem: React.FC<MenuBarItemProps> = ({
         aria-expanded={isOpen}
         aria-haspopup={children ? 'menu' : undefined}
         className={`
-          h-full px-2.5 text-[11px] font-medium transition-colors outline-none select-none flex items-center
+          h-full px-2.5 text-ui-small text-text-secondary transition-colors outline-none select-none flex items-center
           focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset
-          ${isOpen ? 'bg-surface-hover text-text-primary' : 'text-text-muted hover:bg-surface-hover hover:text-text-primary'}
+          ${isOpen ? 'bg-surface-hover text-text-primary' : 'hover:bg-surface-hover hover:text-action-primary'}
           ${isActive ? 'text-action-primary' : ''}
           ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
           ${className}

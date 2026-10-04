@@ -74,6 +74,11 @@ interface NavState {
   setSidebarState: (state: NavigationState) => void;
   lastNonClosedState: 'icon' | 'open';
   toggleSidebar: () => void;
+  sidebar: {
+    expanded: boolean;
+    setExpanded: (expanded: boolean) => void;
+    toggle: () => void;
+  };
 }
 
 export const useNavStore = create<NavState>((set, get) => ({
@@ -101,6 +106,10 @@ export const useNavStore = create<NavState>((set, get) => ({
       return {
         sidebarState: state,
         lastNonClosedState: lastNonClosed,
+        sidebar: {
+          ...s.sidebar,
+          expanded: state === 'open',
+        },
       };
     });
   },
@@ -110,6 +119,24 @@ export const useNavStore = create<NavState>((set, get) => ({
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEY_STATE, newState);
     }
-    set({ sidebarState: newState });
+    set({
+      sidebarState: newState,
+      sidebar: {
+        ...get().sidebar,
+        expanded: newState === 'open',
+      },
+    });
+  },
+  sidebar: {
+    expanded: getInitialState() === 'open',
+    setExpanded: (expanded: boolean) => {
+      const newState: NavigationState = expanded ? 'open' : 'icon';
+      get().setSidebarState(newState);
+    },
+    toggle: () => {
+      const { sidebarState } = get();
+      const newState: NavigationState = sidebarState === 'open' ? 'icon' : 'open';
+      get().setSidebarState(newState);
+    },
   },
 }));

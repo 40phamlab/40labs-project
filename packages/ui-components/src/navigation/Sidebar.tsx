@@ -2,6 +2,7 @@
 
 import React, { Children, isValidElement, cloneElement, KeyboardEvent } from 'react';
 import { useAppShell, NavigationState } from '../layout/AppShell';
+import { Tooltip } from '../overlays/Tooltip';
 
 export interface SidebarProps {
   children: React.ReactNode;
@@ -102,19 +103,22 @@ export const SidebarItem = ({
     }
   };
 
-  return (
+  const hasBadge = badge !== undefined && badge !== null && badge !== '' && (typeof badge === 'number' ? badge > 0 : true);
+  const ariaLabelText = hasBadge ? `${label}, ${badge} unread` : label;
+
+  const buttonElement = (
     <button
       type="button"
       disabled={disabled}
       onClick={!disabled ? onClick : undefined}
       onKeyDown={handleKeyDown}
       title={label}
-      aria-label={label}
+      aria-label={ariaLabelText}
       aria-current={active ? 'page' : undefined}
       className={`
         w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium
         transition-colors duration-150 outline-none relative group select-none
-        focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1 focus-visible:ring-offset-sidebar
+        focus-visible:ring-2 focus-visible:ring-[#16A34A] focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar
         ${
           active
             ? isIcon
@@ -143,11 +147,7 @@ export const SidebarItem = ({
         <span
           className={`
             inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none
-            ${
-              active
-                ? 'bg-action-primary text-text-inverse'
-                : 'bg-surface-elevated text-text-secondary border border-border-subtle'
-            }
+            bg-[#F97316] text-white
           `}
         >
           {badge}
@@ -155,12 +155,23 @@ export const SidebarItem = ({
       )}
       {isIcon && badge !== undefined && (
         <span
-          className="absolute top-1 right-1 w-2 h-2 rounded-full bg-danger ring-2 ring-sidebar"
+          className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#F97316] ring-2 ring-sidebar"
           title={`${label}: ${badge}`}
+          aria-label={`${badge} unread`}
         />
       )}
     </button>
   );
+
+  if (isIcon) {
+    return (
+      <Tooltip content={label} position="right" delay={300}>
+        {buttonElement}
+      </Tooltip>
+    );
+  }
+
+  return buttonElement;
 };
 
 export interface SidebarGroupProps {

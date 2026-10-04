@@ -4,6 +4,7 @@ import {
   Dropdown,
   DropdownMenuItem,
   IconButton,
+  EmptyState,
   type ColumnDefinition,
 } from '@40labs/ui-components';
 import type { Customer } from '@40labs/types';
@@ -11,7 +12,7 @@ import { formatDate, formatPhoneTZ } from '@40labs/i18n';
 import { MoreVertical, Eye, Edit, Archive } from 'lucide-react';
 
 export async function requirePin(action: string): Promise<boolean> {
-  // TODO: wire in auth phase
+  // TODO: [wire in auth phase] [phase: auth]
   console.warn(`[PIN Gated Action] ${action} requested.`);
   return true;
 }
@@ -139,7 +140,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       loading={loading}
       error={error}
       onRetry={onRetry}
-      emptyMessage="No customers found matching your current search or filters."
+      emptyState={<EmptyState variant="filtered" />}
       keyExtractor={(item) => item.id}
       density="compact"
       onRowClick={(item) => onViewDetails(item.id)}

@@ -32,6 +32,7 @@ export * from './feedback/NotificationIndicator';
 export * from './feedback/Alert';
 export * from './feedback/Progress';
 export * from './feedback/Toast';
+export * from './feedback/EmptyState';
 
 // Overlays
 export * from './overlays';

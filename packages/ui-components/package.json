@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@40labs/design-tokens": "workspace:*",
+    "@40labs/i18n": "workspace:*",
     "@40labs/types": "workspace:*",
     "lucide-react": "^0.475.0",
     "recharts": "^3.10.1"

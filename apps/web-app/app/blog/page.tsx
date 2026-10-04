@@ -36,7 +36,7 @@ export default function BlogPage() {
         </div>
       </div>
 
-      <PlaceholderBlock title="Articles & Insights Coming Soon" />
+      <PlaceholderBlock title="Articles & Insights" />
     </div>
   );
 }

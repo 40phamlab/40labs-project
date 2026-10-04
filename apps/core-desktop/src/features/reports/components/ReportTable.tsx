@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { DataTable, ColumnDefinition } from '@40labs/ui-components';
+import { DataTable, ColumnDefinition, EmptyState } from '@40labs/ui-components';
 import { TableColumn } from '../config/reportCategories';
 
 export interface ReportTableProps {
@@ -40,7 +40,7 @@ export const ReportTable: React.FC<ReportTableProps> = ({
         columns={formattedColumns}
         loading={isLoading}
         density="compact"
-        emptyMessage="No report entries found for the selected period."
+        emptyState={<EmptyState variant="empty" />}
       />
     </div>
   );

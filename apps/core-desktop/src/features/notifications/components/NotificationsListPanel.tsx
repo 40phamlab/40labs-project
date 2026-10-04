@@ -7,6 +7,7 @@ import {
   Tooltip,
   SearchInput,
   IconButton,
+  EmptyState,
 } from '@40labs/ui-components';
 import { MailOpen, Share2, Trash2, Archive, CheckCheck, RefreshCw, Plus, Filter } from 'lucide-react';
 import type { Notification, MessageChannel } from '@40labs/types';
@@ -252,15 +253,13 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
       {/* List rows (gap of 2px, padding px-3 py-2.5) */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-hidden flex flex-col gap-0.5">
         {filteredNotifications.length === 0 ? (
-          <Panel
-            variant="flat"
-            className="p-6 text-center border border-dashed border-border/40 rounded-card my-auto flex flex-col items-center gap-2"
-          >
-            <p className="text-xs font-bold text-text">No conversations found</p>
-            <p className="text-[13px] text-text-muted">
-              {searchQuery.trim() ? `No matches for "${searchQuery}"` : 'Your inbox is empty.'}
-            </p>
-          </Panel>
+          <div className="my-auto p-4">
+            <EmptyState
+              variant={searchQuery.trim() ? 'filtered' : 'empty'}
+              description={searchQuery.trim() ? `No matches for "${searchQuery}"` : undefined}
+              compact
+            />
+          </div>
         ) : (
           filteredNotifications.map((item) => {
             const isMenuOpen = contextMenuId === item.id;
@@ -291,7 +290,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
                   }}
                 />
 
-                <Tooltip content="Coming soon" position="right">
+                <Tooltip content="Forward message" position="right">
                   <div className="w-full">
                     <DropdownMenuItem label="Forward" icon={<Share2 size={14} />} disabled />
                   </div>

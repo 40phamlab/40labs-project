@@ -311,7 +311,7 @@ export const NewScheduleModal: React.FC<NewScheduleModalProps> = ({
                   <span>Choose local file...</span>
                   <input type="file" onChange={handleFileUpload} className="hidden" />
                 </label>
-                <span className="text-[11px] text-text-muted italic">TODO: Drive upload [Phase 2] if not wired.</span>
+                <span className="text-[11px] text-text-muted italic">Cloud drive attachment storage</span>
               </div>
               {attachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-1">

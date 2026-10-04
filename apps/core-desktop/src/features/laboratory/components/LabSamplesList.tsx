@@ -10,6 +10,7 @@ import {
   BadgeVariant,
   Drawer,
   ToastContainer,
+  EmptyState,
 } from '@40labs/ui-components';
 import {
   MoreVertical,
@@ -355,7 +356,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
           loading={loading}
           error={error}
           onRetry={onRetry}
-          emptyMessage="No samples"
+          emptyState={<EmptyState variant="empty" />}
         />
       </div>
 

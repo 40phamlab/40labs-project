@@ -64,4 +64,18 @@ describe('useNavStore navigation persistence and validation', () => {
     useNavStore.getState().toggleSidebar();
     expect(useNavStore.getState().sidebarState).toBe('closed');
   });
+
+  it('manages sidebar.expanded UI slice correctly', async () => {
+    const { useNavStore } = await import('./useNavStore');
+    expect(useNavStore.getState().sidebar.expanded).toBe(true);
+    expect(useNavStore.getState().sidebarState).toBe('open');
+
+    useNavStore.getState().sidebar.setExpanded(false);
+    expect(useNavStore.getState().sidebar.expanded).toBe(false);
+    expect(useNavStore.getState().sidebarState).toBe('icon');
+
+    useNavStore.getState().sidebar.toggle();
+    expect(useNavStore.getState().sidebar.expanded).toBe(true);
+    expect(useNavStore.getState().sidebarState).toBe('open');
+  });
 });

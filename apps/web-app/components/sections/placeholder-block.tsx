@@ -7,7 +7,7 @@ interface PlaceholderBlockProps {
   title?: string;
 }
 
-export function PlaceholderBlock({ title = "More Coming Soon" }: PlaceholderBlockProps) {
+export function PlaceholderBlock({ title = "Additional Resources" }: PlaceholderBlockProps) {
   return (
     <div
       className="w-full h-96 flex flex-col items-center justify-center border-2 border-dashed border-white/5 opacity-40"

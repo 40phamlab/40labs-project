@@ -17,8 +17,8 @@ export interface TooltipProps {
 export const Tooltip: React.FC<TooltipProps> = ({
   content,
   children,
-  position = 'top',
-  delay = 200,
+  position = 'right',
+  delay = 300,
   className = '',
   disabled = false,
 }) => {
@@ -109,8 +109,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
               zIndex,
             }}
             className={`
-              px-2 py-1 bg-surface-strong border border-border rounded-input
-              text-[10px] font-bold uppercase tracking-wider text-text elevation-raised whitespace-nowrap
+              px-3 py-1.5 bg-[#F8FAFB] dark:bg-[#1E293B] border border-border rounded-[8px]
+              text-[13px] font-normal text-text-primary shadow-md whitespace-nowrap
               pointer-events-none transition-opacity duration-150 animate-in fade-in
               ${className}
             `}

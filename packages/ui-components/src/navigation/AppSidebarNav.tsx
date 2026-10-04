@@ -3,10 +3,12 @@
 import React from 'react';
 import { Sidebar, SidebarSection, SidebarItem } from './Sidebar';
 import { useAppShell, NavigationState } from '../layout/AppShell';
+import { t, TranslationKey } from '@40labs/i18n';
 
 export interface NavItem<T extends string = string> {
   id: T;
-  label: string;
+  label?: string;
+  labelKey?: TranslationKey | string;
   icon?: React.ReactNode;
   route?: string;
   permissionRequired?: string;
@@ -108,12 +110,13 @@ export function AppSidebarNav<T extends string = string>({
         {filteredItems.map((item) => {
           const isActiveSection = activeRoute === item.id;
           const isOpenState = currentNavState === 'open';
+          const resolvedLabel = item.labelKey ? t(item.labelKey as any) : (item.label || item.id);
 
           return (
             <SidebarItem
               key={item.id}
               icon={item.icon}
-              label={item.label}
+              label={resolvedLabel}
               active={isActiveSection}
               onClick={() => handleItemClick(item.id)}
               badge={item.badgeCount}
@@ -131,12 +134,13 @@ export function AppSidebarNav<T extends string = string>({
             {pinnedBottomItems.map((item) => {
               const isActiveSection = activeRoute === item.id;
               const isOpenState = currentNavState === 'open';
+              const resolvedLabel = item.labelKey ? t(item.labelKey as any) : (item.label || item.id);
 
               return (
                 <SidebarItem
                   key={item.id}
                   icon={item.icon}
-                  label={item.label}
+                  label={resolvedLabel}
                   active={isActiveSection}
                   onClick={() => handleItemClick(item.id)}
                   badge={item.badgeCount}

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { EmptyState, LoadingState, ErrorState } from '../data-display/States';
+import { LoadingState, ErrorState } from '../data-display/States';
+import { EmptyState } from '../feedback/EmptyState';
 
 export interface PageContentProps {
   children?: React.ReactNode;

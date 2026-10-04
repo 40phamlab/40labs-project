@@ -1,7 +1,7 @@
 // [PHASE: MVP]
 import * as React from 'react';
 import type { Schedule } from '@40labs/types';
-import { Select } from '@40labs/ui-components';
+import { Select, EmptyState } from '@40labs/ui-components';
 import { Search, X } from 'lucide-react';
 import { ScheduleListItem } from './ScheduleListItem';
 
@@ -132,9 +132,7 @@ export const ScheduleListPanel: React.FC<ScheduleListPanelProps> = ({
       {/* List */}
       <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 custom-scrollbar">
         {filteredSchedules.length === 0 ? (
-          <div className="p-8 text-center border border-dashed border-border/40 rounded-xl my-auto bg-panel-strong/20">
-            <p className="text-xs text-text-muted">No schedules found matching criteria.</p>
-          </div>
+          <EmptyState variant="filtered" compact />
         ) : (
           filteredSchedules.map((schedule) => (
             <ScheduleListItem

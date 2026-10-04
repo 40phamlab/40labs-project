@@ -315,6 +315,9 @@ importers:
       '@40labs/design-tokens':
         specifier: workspace:*
         version: link:../design-tokens
+      '@40labs/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@40labs/types':
         specifier: workspace:*
         version: link:../types

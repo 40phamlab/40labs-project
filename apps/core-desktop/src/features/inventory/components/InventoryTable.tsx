@@ -7,6 +7,7 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuItem,
+  EmptyState,
 } from '@40labs/ui-components';
 import {
   MoreVertical,
@@ -229,7 +230,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       loading={loading}
       error={error}
       onRetry={onRetry}
-      emptyMessage="No inventory items found matching your criteria."
+      emptyState={<EmptyState variant="filtered" />}
       keyExtractor={(item) => item.id}
       density="compact"
     />

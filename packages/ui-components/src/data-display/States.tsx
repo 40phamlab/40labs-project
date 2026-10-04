@@ -1,39 +1,8 @@
 import * as React from 'react';
-import { AlertTriangle, CheckCircle, Database } from 'lucide-react';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { Spinner } from '../feedback/Spinner';
 import { Skeleton } from '../feedback/Skeleton';
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableDensity } from './Table';
-
-export interface EmptyStateProps {
-  title?: string;
-  message?: string;
-  icon?: React.ReactNode;
-  action?: React.ReactNode;
-  className?: string;
-}
-
-export const EmptyState: React.FC<EmptyStateProps> = ({
-  title = 'No data found',
-  message = 'Try adjusting your filters or search terms.',
-  icon = <Database size={32} className="opacity-40" />,
-  action,
-  className = '',
-}) => {
-  return (
-    <div
-      className={`
-        flex flex-col items-center justify-center p-12 text-center
-        bg-surface-strong rounded-card border border-border border-dashed
-        ${className}
-      `}
-    >
-      {icon && <div className="mb-3 text-text-muted flex items-center justify-center">{icon}</div>}
-      <h3 className="text-sm font-bold text-text mb-1">{title}</h3>
-      <p className="text-xs text-text-muted max-w-xs">{message}</p>
-      {action && <div className="mt-5">{action}</div>}
-    </div>
-  );
-};
 
 export interface LoadingStateProps {
   message?: string;

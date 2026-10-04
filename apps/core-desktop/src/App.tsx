@@ -1,3 +1,4 @@
+import * as React from 'react';
 import {
   Home,
   ShoppingCart,
@@ -27,32 +28,39 @@ import { ReportsScreen } from './features/reports/ReportsScreen';
 import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ToastProvider } from './hooks/useToast';
+import { useNotifications } from './hooks/useNotifications';
 import './App.css';
-
-const NAV_ITEMS: Array<NavItem<ScreenId>> = [
-  { id: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
-  { id: 'sales', label: 'Sales', icon: <ShoppingCart size={18} /> },
-  { id: 'inventory', label: 'Inventory', icon: <Package size={18} /> },
-  { id: 'purchases', label: 'Purchases', icon: <ShoppingBag size={18} /> },
-  { id: 'customers', label: 'Customers', icon: <Users size={18} /> },
-  { id: 'lab', label: 'Lab', icon: <FlaskConical size={18} /> },
-  { id: 'e-pharmacy', label: 'e-pharmacy', icon: <Stethoscope size={18} /> },
-  { id: 'reports', label: 'Reports', icon: <BarChart3 size={18} /> },
-  { id: 'scheduling', label: 'Scheduling', icon: <Calendar size={18} /> },
-  { id: 'education', label: 'Education', icon: <GraduationCap size={18} /> },
-  { id: 'notifications', label: 'Notifications', icon: <Bell size={18} /> },
-];
-
-const PINNED_BOTTOM_ITEMS: Array<NavItem<ScreenId>> = [
-  { id: 'settings', label: 'Settings', icon: <Settings size={18} /> },
-];
 
 export default function App() {
   const activeScreen = useNavStore((s) => s.activeScreen);
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
   const sidebarState = useNavStore((s) => s.sidebarState);
   const setSidebarState = useNavStore((s) => s.setSidebarState);
+  const toggleSidebar = useNavStore((s) => s.sidebar.toggle);
   const lastNonClosedState = useNavStore((s) => s.lastNonClosedState);
+
+  const { notifications } = useNotifications();
+  const unreadCount = React.useMemo(() => {
+    return notifications.filter((n) => n.status === 'unread').length;
+  }, [notifications]);
+
+  const NAV_ITEMS: Array<NavItem<ScreenId>> = [
+    { id: 'dashboard', labelKey: 'nav.home', route: 'dashboard', icon: <Home size={18} /> },
+    { id: 'sales', labelKey: 'nav.sales', route: 'sales', icon: <ShoppingCart size={18} /> },
+    { id: 'inventory', labelKey: 'nav.inventory', route: 'inventory', icon: <Package size={18} /> },
+    { id: 'purchases', labelKey: 'nav.purchases', route: 'purchases', icon: <ShoppingBag size={18} /> },
+    { id: 'customers', labelKey: 'nav.patients', route: 'customers', icon: <Users size={18} /> },
+    { id: 'lab', labelKey: 'nav.lab', route: 'lab', icon: <FlaskConical size={18} /> },
+    { id: 'e-pharmacy', labelKey: 'nav.dispensary', route: 'e-pharmacy', icon: <Stethoscope size={18} /> },
+    { id: 'reports', labelKey: 'nav.reports', route: 'reports', icon: <BarChart3 size={18} /> },
+    { id: 'scheduling', labelKey: 'nav.scheduling', route: 'scheduling', icon: <Calendar size={18} /> },
+    { id: 'education', labelKey: 'nav.training', route: 'education', icon: <GraduationCap size={18} /> },
+    { id: 'notifications', labelKey: 'nav.notifications', route: 'notifications', icon: <Bell size={18} />, badgeCount: unreadCount > 0 ? unreadCount : undefined },
+  ];
+
+  const PINNED_BOTTOM_ITEMS: Array<NavItem<ScreenId>> = [
+    { id: 'settings', labelKey: 'nav.settings', route: 'settings', icon: <Settings size={18} /> },
+  ];
 
   const renderContent = () => {
     switch (activeScreen) {
@@ -97,6 +105,7 @@ export default function App() {
           onHelpClick={() => console.log('Help clicked')}
           onUpdateClick={() => console.log('Update clicked')}
           onSettingsClick={() => setActiveScreen('settings')}
+          onToggleSidebar={toggleSidebar}
         />
       </div>
       <div className="no-drag">

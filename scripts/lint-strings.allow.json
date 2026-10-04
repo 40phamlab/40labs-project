@@ -1,0 +1,7 @@
+[
+  {
+    "file": "packages/ui-components/src/navigation/TopMenuBar.tsx",
+    "string": "Multi-branch — coming in a later version",
+    "reason": "Explicitly permitted Branch disabled menu tooltip allowed via Prompt D allow-list spec"
+  }
+]

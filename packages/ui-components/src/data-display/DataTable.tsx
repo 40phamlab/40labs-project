@@ -9,7 +9,8 @@ import {
   TableDensity,
   TableCellAlign,
 } from './Table';
-import { EmptyState, LoadingState, ErrorState, SkeletonTable } from './States';
+import { LoadingState, ErrorState, SkeletonTable } from './States';
+import { EmptyState } from '../feedback/EmptyState';
 
 export type ColumnAlign = TableCellAlign;
 

@@ -222,7 +222,7 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
                 }}
               />
 
-              <Tooltip content="Coming soon — patient ordering and inter-lab routing required" position="left">
+              <Tooltip content="Patient ordering and inter-lab routing (v3.5)" position="left">
                 <div className="w-full">
                   <DropdownMenuItem
                     label="Forward"
@@ -232,7 +232,7 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
                 </div>
               </Tooltip>
 
-              <Tooltip content="Coming soon — patient messaging required" position="left">
+              <Tooltip content="Direct patient messaging via WhatsApp/SMS" position="left">
                 <div className="w-full">
                   <DropdownMenuItem
                     label="Contact"
@@ -261,10 +261,10 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
 
   const getEmptyMessage = () => {
     if (activeChannel === 'online') {
-      return 'Coming soon — this will show online-ordered tests once patient ordering ships';
+      return 'Shows online-ordered tests once patient ordering integration is active';
     }
     if (activeChannel === 'forwarded') {
-      return 'Coming soon — this will show online-ordered tests once patient ordering ships';
+      return 'Shows online-ordered tests once patient ordering integration is active';
     }
     return 'No unsolved orders';
   };

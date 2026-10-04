@@ -95,3 +95,49 @@
   --shadow-surface-pop: 0 4px 16px rgba(0,0,0,0.7);
   --shadow-inner-soft: inset 0 2px 4px rgba(0,0,0,0.6);
 }
+
+.text-title-page {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+}
+.text-title-section {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.text-body {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+.text-ui-small {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+.text-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.text-stat-number {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.text-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
+}
