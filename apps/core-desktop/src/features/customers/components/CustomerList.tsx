@@ -1,43 +1,51 @@
 import * as React from 'react';
 import {
   DataTable,
-  Button,
-  MoneyDisplay,
-  Avatar,
+  Dropdown,
+  DropdownMenuItem,
+  IconButton,
   type ColumnDefinition,
 } from '@40labs/ui-components';
 import type { Customer } from '@40labs/types';
+import { formatDate, formatPhoneTZ } from '@40labs/i18n';
+import { MoreVertical, Eye, Edit, Archive } from 'lucide-react';
+
+export async function requirePin(action: string): Promise<boolean> {
+  // TODO: wire in auth phase
+  console.warn(`[PIN Gated Action] ${action} requested.`);
+  return true;
+}
 
 interface CustomerListProps {
   customers: Customer[];
   onViewDetails: (id: string) => void;
+  onEditCustomer?: (customer: Customer) => void;
+  onArchiveCustomer?: (id: string) => void;
   loading?: boolean;
   error?: string | Error | null;
   onRetry?: () => void;
 }
 
-/**
- * CustomerList
- *
- * Renders a data table of customer records with loading, error, and empty states.
- */
 export const CustomerList: React.FC<CustomerListProps> = ({
   customers,
   onViewDetails,
+  onEditCustomer,
+  onArchiveCustomer,
   loading,
   error,
   onRetry,
 }) => {
+  const [activeMenuId, setActiveMenuId] = React.useState<string | null>(null);
+
   const columns: ColumnDefinition<Customer>[] = [
     {
       key: 'full_name',
       header: 'Customer',
       render: (item) => (
         <div className="flex items-center gap-3">
-          <Avatar size="sm" name={item.full_name} />
           <div className="flex flex-col">
             <span className="font-semibold text-text">{item.full_name}</span>
-            <span className="text-xs text-text-muted">{item.phone}</span>
+            <span className="text-xs text-text-muted">{formatPhoneTZ(item.phone)}</span>
           </div>
         </div>
       ),
@@ -54,12 +62,9 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       header: 'Balance',
       align: 'right',
       render: (item) => (
-        <MoneyDisplay
-          amount={item.outstanding_balance}
-          colorize={item.outstanding_balance > 0}
-          emphasis="strong"
-          className="text-xs"
-        />
+        <span className={`text-xs font-mono font-bold ${item.outstanding_balance > 0 ? 'text-warning' : 'text-text'}`}>
+          {item.outstanding_balance} TZS
+        </span>
       ),
     },
     {
@@ -67,7 +72,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       header: 'Created',
       render: (item) => (
         <span className="text-xs text-text-muted font-mono">
-          {new Date(item.created_at).toLocaleDateString()}
+          {formatDate(item.created_at)}
         </span>
       ),
     },
@@ -75,16 +80,55 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       key: 'actions',
       header: '',
       align: 'right',
-      width: '120px',
-      render: (item) => (
-        <Button
-          intent="neutral"
-          size="sm"
-          onClick={() => onViewDetails(item.id)}
-        >
-          View Profile
-        </Button>
-      ),
+      width: '100px',
+      render: (item) => {
+        const isOpen = activeMenuId === item.id;
+        return (
+          <div onClick={(e) => e.stopPropagation()} className="relative flex justify-end">
+            <Dropdown
+              isOpen={isOpen}
+              onClose={() => setActiveMenuId(null)}
+              trigger={
+                <IconButton
+                  icon={<MoreVertical size={16} />}
+                  label="Actions"
+                  intent="ghost"
+                  size="sm"
+                  onClick={() => setActiveMenuId(isOpen ? null : item.id)}
+                />
+              }
+            >
+              <DropdownMenuItem
+                icon={<Eye size={14} />}
+                label="View Profile"
+                onClick={() => {
+                  setActiveMenuId(null);
+                  onViewDetails(item.id);
+                }}
+              />
+              <DropdownMenuItem
+                icon={<Edit size={14} />}
+                label="Edit"
+                onClick={() => {
+                  setActiveMenuId(null);
+                  onEditCustomer?.(item);
+                }}
+              />
+              <DropdownMenuItem
+                icon={<Archive size={14} />}
+                label="Archive"
+                onClick={async () => {
+                  setActiveMenuId(null);
+                  const authorized = await requirePin('customer.archive');
+                  if (authorized) {
+                    onArchiveCustomer?.(item.id);
+                  }
+                }}
+              />
+            </Dropdown>
+          </div>
+        );
+      },
     },
   ];
 
@@ -98,6 +142,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       emptyMessage="No customers found matching your current search or filters."
       keyExtractor={(item) => item.id}
       density="compact"
+      onRowClick={(item) => onViewDetails(item.id)}
     />
   );
 };

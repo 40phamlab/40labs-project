@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Avatar, Button } from '@40labs/ui-components';
 import type { Customer } from '@40labs/types';
+import { formatPhoneTZ } from '@40labs/i18n';
 
 interface CustomerListRowProps {
   customer: Customer;
@@ -28,7 +29,7 @@ export const CustomerListRow: React.FC<CustomerListRowProps> = ({
             {customer.full_name}
           </span>
           <span className="text-xs text-text-muted mt-0.5">
-            {customer.phone}
+            {formatPhoneTZ(customer.phone)}
           </span>
         </div>
       </div>

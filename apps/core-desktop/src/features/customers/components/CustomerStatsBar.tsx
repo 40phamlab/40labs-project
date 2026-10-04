@@ -9,7 +9,7 @@ export interface CustomerStatsBarProps {
 /**
  * CustomerStatsBar
  *
- * Top strip of the Customers screen. Renders summary metrics for customers, debtors, and payables.
+ * Top strip of the Customers screen. Renders summary metrics for customers, debtors, and receivables.
  */
 export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({ customers }) => {
   const counts = React.useMemo(() => {
@@ -34,7 +34,7 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({ customers })
   const kpis = React.useMemo(
     () => [
       { label: 'New Today', value: counts.today },
-      { label: 'Last Month', value: counts.lastMonth },
+      { label: 'New Last Month', value: counts.lastMonth },
       { label: 'Total Directory', value: counts.all },
     ],
     [counts]
@@ -62,7 +62,7 @@ export const CustomerStatsBar: React.FC<CustomerStatsBarProps> = ({ customers })
         </div>
         <div className="flex flex-col pl-6">
           <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
-            Credit Balance (Payables)
+            Owed to You (Receivables)
           </span>
           <span className="text-lg font-bold text-text mt-0.5">{counts.payables}</span>
         </div>

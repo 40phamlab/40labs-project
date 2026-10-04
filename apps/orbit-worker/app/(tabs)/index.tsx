@@ -2,7 +2,7 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { colors } from '@40labs/design-tokens';
+import { colors, radius } from '@40labs/design-tokens';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { ScreenHeader, StatusDot, CountBadge, Card, Tile, InlineError } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
@@ -10,6 +10,7 @@ import { getServerCredential } from '../../src/lib/secure-store';
 import { ApiClient } from '@40labs/api-client';
 import { putCache, getCache, CacheResult } from '../../src/db/cache';
 import { useRouter } from 'expo-router';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function HomeScreen() {
   const { t } = useI18n();
@@ -21,7 +22,7 @@ export default function HomeScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchSummary = async () => {
-    if (!activeBusinessId) return;
+    if (!activeBusinessId || status === 'unpaired') return;
     const server = await getServerCredential(activeBusinessId);
     if (!server) return;
 
@@ -74,6 +75,10 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    useConnectionStore.getState().initialize();
+  }, []);
+
+  useEffect(() => {
     if (status === 'connected') {
       fetchSummary();
     } else if (status === 'unreachable') {
@@ -90,6 +95,10 @@ export default function HomeScreen() {
   };
 
   const handleTilePress = (title: string, permKey: string) => {
+    if (status === 'unpaired') {
+      router.push('/pair');
+      return;
+    }
     if (!hasPermission(permKey) && status === 'connected') {
       Alert.alert('Permission Denied', `You do not have permission (${permKey}) to perform this action.`);
       return;
@@ -106,6 +115,36 @@ export default function HomeScreen() {
       Alert.alert(title, t('dashboard.comingSoon'));
     }
   };
+
+  if (status === 'unpaired') {
+    return (
+      <View style={styles.container}>
+        <ScreenHeader
+          title="Orbit Worker"
+          subtitle={t('dashboard.title')}
+          rightAction={
+            <View style={styles.headerRight}>
+              <StatusDot state="offline" />
+            </View>
+          }
+        />
+        <ScrollView contentContainerStyle={styles.content}>
+          <Card style={styles.notConnectedCard}>
+            <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} style={{ alignSelf: 'center', marginBottom: 12 }} />
+            <Text style={[styles.notConnectedTitle, { color: colors.textPrimary }]}>{t('pairing.notConnected')}</Text>
+            <Text style={[styles.notConnectedSubtitle, { color: colors.textMuted }]}>{t('pairing.connectPrompt')}</Text>
+            <TouchableOpacity
+              style={[styles.connectButton, { backgroundColor: colors.actionPrimary }]}
+              onPress={() => router.push('/pair')}
+            >
+              <Ionicons name="qr-code-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.connectButtonText}>{t('pairing.scanToConnect')}</Text>
+            </TouchableOpacity>
+          </Card>
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -263,5 +302,35 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     justifyContent: 'space-between',
+  },
+  notConnectedCard: {
+    padding: 32,
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  notConnectedTitle: {
+    fontSize: 18,
+    fontFamily: 'Sora_600SemiBold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  notConnectedSubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  connectButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: radius.card,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  connectButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
   },
 });

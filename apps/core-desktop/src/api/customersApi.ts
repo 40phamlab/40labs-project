@@ -1,4 +1,4 @@
-import type { Customer } from '@40labs/types';
+import type { Customer, AllergyItem, EmergencyContact } from '@40labs/types';
 import { initialCustomers, WORKSPACE_ID, BRANCH_ID } from '../devData';
 import { isUsingTauriIpc, invokeCommand } from './client';
 
@@ -7,14 +7,33 @@ export interface AddCustomerPayload {
   phone: string;
   email?: string;
   notes?: string;
+  dob?: string;
+  sex?: 'male' | 'female' | 'other';
+  bloodGroup?: string;
+  allergies?: AllergyItem[];
+  chronicConditions?: string[];
+  currentMedications?: string[];
+  emergencyContact?: EmergencyContact;
+  wardDistrict?: string;
+  pharmacyNotes?: string;
 }
 
 export interface UpdateCustomerPayload {
   fullName?: string;
   phone?: string;
-  email?: string;
-  notes?: string;
+  email?: string | null;
+  notes?: string | null;
   outstandingBalance?: number;
+  dob?: string | null;
+  sex?: 'male' | 'female' | 'other' | null;
+  bloodGroup?: string | null;
+  allergies?: AllergyItem[] | null;
+  chronicConditions?: string[] | null;
+  currentMedications?: string[] | null;
+  emergencyContact?: EmergencyContact | null;
+  wardDistrict?: string | null;
+  pharmacyNotes?: string | null;
+  archivedAt?: string | null;
 }
 
 let customersStore: Customer[] = [...initialCustomers];
@@ -51,6 +70,16 @@ export const customersApi = {
       email: payload.email || null,
       outstanding_balance: 0,
       notes: payload.notes || null,
+      dob: payload.dob || null,
+      sex: payload.sex || null,
+      blood_group: payload.bloodGroup || null,
+      allergies: payload.allergies ? JSON.stringify(payload.allergies) : null,
+      chronic_conditions: payload.chronicConditions ? JSON.stringify(payload.chronicConditions) : null,
+      current_medications: payload.currentMedications ? JSON.stringify(payload.currentMedications) : null,
+      emergency_contact: payload.emergencyContact ? JSON.stringify(payload.emergencyContact) : null,
+      ward_district: payload.wardDistrict || null,
+      pharmacy_notes: payload.pharmacyNotes || null,
+      archived_at: null,
       amob_patient_id: null,
     };
 
@@ -74,6 +103,16 @@ export const customersApi = {
       email: updates.email !== undefined ? updates.email : existing.email,
       notes: updates.notes !== undefined ? updates.notes : existing.notes,
       outstanding_balance: updates.outstandingBalance ?? existing.outstanding_balance,
+      dob: updates.dob !== undefined ? updates.dob : existing.dob,
+      sex: updates.sex !== undefined ? updates.sex : existing.sex,
+      blood_group: updates.bloodGroup !== undefined ? updates.bloodGroup : existing.blood_group,
+      allergies: updates.allergies !== undefined ? (updates.allergies ? JSON.stringify(updates.allergies) : null) : existing.allergies,
+      chronic_conditions: updates.chronicConditions !== undefined ? (updates.chronicConditions ? JSON.stringify(updates.chronicConditions) : null) : existing.chronic_conditions,
+      current_medications: updates.currentMedications !== undefined ? (updates.currentMedications ? JSON.stringify(updates.currentMedications) : null) : existing.current_medications,
+      emergency_contact: updates.emergencyContact !== undefined ? (updates.emergencyContact ? JSON.stringify(updates.emergencyContact) : null) : existing.emergency_contact,
+      ward_district: updates.wardDistrict !== undefined ? updates.wardDistrict : existing.ward_district,
+      pharmacy_notes: updates.pharmacyNotes !== undefined ? updates.pharmacyNotes : existing.pharmacy_notes,
+      archived_at: updates.archivedAt !== undefined ? updates.archivedAt : existing.archived_at,
       updated_at: new Date().toISOString(),
     };
 
@@ -92,7 +131,7 @@ export const customersApi = {
   },
 
   archive: (id: string): Promise<boolean> => {
-    return customersApi.delete(id);
+    return customersApi.update(id, { archivedAt: new Date().toISOString() }).then((res) => res !== null);
   },
 
   // Backwards compatibility aliases

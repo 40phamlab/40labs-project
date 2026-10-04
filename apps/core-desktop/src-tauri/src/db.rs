@@ -146,10 +146,22 @@ async fn init_schema(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             email TEXT,
             outstanding_balance INTEGER NOT NULL DEFAULT 0,
             notes TEXT,
+            dob TEXT,
+            sex TEXT,
+            blood_group TEXT,
+            allergies TEXT,
+            chronic_conditions TEXT,
+            current_medications TEXT,
+            emergency_contact TEXT,
+            ward_district TEXT,
+            pharmacy_notes TEXT,
+            archived_at TEXT,
             amob_patient_id TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_workspace_phone ON customer(workspace_id, phone);
 
         CREATE TABLE IF NOT EXISTS medicine (
             id TEXT PRIMARY KEY,

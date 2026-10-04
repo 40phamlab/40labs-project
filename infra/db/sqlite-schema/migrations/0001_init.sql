@@ -109,8 +109,16 @@ CREATE TABLE customer (
   email TEXT,
   outstanding_balance INTEGER NOT NULL DEFAULT 0, -- TZS, smallest unit
   notes TEXT,
-  -- Reserved for aMob — inert until aMob ships (post-MVP). Do not build
-  -- UI reading/writing this column.
+  dob TEXT,
+  sex TEXT,
+  blood_group TEXT,
+  allergies TEXT,
+  chronic_conditions TEXT,
+  current_medications TEXT,
+  emergency_contact TEXT,
+  ward_district TEXT,
+  pharmacy_notes TEXT,
+  archived_at TEXT,
   amob_patient_id TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
@@ -118,6 +126,7 @@ CREATE TABLE customer (
 
 CREATE INDEX idx_customer_phone ON customer(phone);
 CREATE INDEX idx_customer_workspace ON customer(workspace_id, branch_id);
+CREATE UNIQUE INDEX idx_customer_workspace_phone ON customer(workspace_id, phone);
 
 -- ============================================================
 -- MEDICINE / INVENTORY (shared — never duplicated per module)

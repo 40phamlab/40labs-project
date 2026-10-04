@@ -23,6 +23,12 @@ export const translations = {
     'pairing.grantPermission': 'Ruhusa ya Kamera',
     'pairing.failed': 'Kuunganisha kumeshindwa. Tafadhali hakikisha msimbo wa QR ni sahihi na umeunganishwa kwenye Wi-Fi ya duka.',
     'pairing.inProgress': 'Inaunganisha...',
+    'pairing.scanToConnect': 'Tambaza ili Kuunganisha',
+    'pairing.uploadQr': 'Pakia Picha ya Msimbo wa QR',
+    'pairing.uploadError': 'Imeshindikana kusoma msimbo wa QR kutoka kwenye picha iliyochaguliwa. Tafadhali jaribu nyingine.',
+    'pairing.notConnected': 'Haujaunganishwa na kitovu cha duka.',
+    'pairing.connectPrompt': 'Unganisha kifaa chako kuwezesha mauzo, akiba na maabara.',
+    'pairing.or': 'AU',
 
     // Dashboard labels
     'dashboard.title': 'Dashibodi',
@@ -131,6 +137,12 @@ export const translations = {
     'pairing.grantPermission': 'Grant Permission',
     'pairing.failed': 'Pairing failed. Please check the QR code and ensure you are connected to the pharmacy Wi-Fi.',
     'pairing.inProgress': 'Pairing in progress...',
+    'pairing.scanToConnect': 'Scan to Connect',
+    'pairing.uploadQr': 'Upload QR Code Image',
+    'pairing.uploadError': 'Failed to read QR code from the selected image. Please try another.',
+    'pairing.notConnected': 'Not connected to a pharmacy hub.',
+    'pairing.connectPrompt': 'Connect your device to enable sales, stock, and lab operations.',
+    'pairing.or': 'OR',
 
     // Dashboard labels
     'dashboard.title': 'Dashboard',
@@ -224,3 +236,6 @@ export function t(key: TranslationKey, lang: Language = 'sw-TZ'): string {
   const fallbackDict = translations['en'];
   return (dict as any)[key] || (fallbackDict as any)[key] || key;
 }
+
+export * from './phone';
+export * from './formatters';

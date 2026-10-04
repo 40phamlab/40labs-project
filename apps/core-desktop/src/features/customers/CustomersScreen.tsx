@@ -6,11 +6,12 @@ import {
   IconButton,
 } from '@40labs/ui-components';
 import { Plus, RefreshCw } from 'lucide-react';
+import type { Customer } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
 import { CustomerStatsBar } from './components/CustomerStatsBar';
 import { CustomerFilterBar } from './components/CustomerFilterBar';
 import { CustomerList } from './components/CustomerList';
-import { AddCustomerModal } from './components/AddCustomerModal';
+import { CustomerFormModal, CustomerFormPayload } from './components/CustomerFormModal';
 import { CustomerDetailDrawer } from './components/CustomerDetailDrawer';
 import { useCustomers } from '../../hooks/useCustomers';
 
@@ -28,14 +29,21 @@ export const CustomersScreen: React.FC = () => {
     isAddModalOpen,
     setAddModalOpen,
     addCustomer,
+    updateCustomer,
     isAdding,
+    isUpdating,
   } = useCustomers();
 
+  const [editingCustomer, setEditingCustomer] = React.useState<Customer | null>(null);
   const [timeRange, setTimeRange] = React.useState('all');
   const [balanceFilter, setBalanceFilter] = React.useState('all');
 
+  const activeCustomers = React.useMemo(() => {
+    return customers.filter((c) => !c.archived_at);
+  }, [customers]);
+
   const filteredCustomers = React.useMemo(() => {
-    return customers.filter((c) => {
+    return activeCustomers.filter((c) => {
       const q = searchTerm.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -67,7 +75,7 @@ export const CustomersScreen: React.FC = () => {
 
       return matchesSearch && matchesTime && matchesBalance;
     });
-  }, [customers, searchTerm, timeRange, balanceFilter]);
+  }, [activeCustomers, searchTerm, timeRange, balanceFilter]);
 
   const selectedCustomer = React.useMemo(() => {
     return customers.find((c) => c.id === selectedCustomerId) || null;
@@ -78,6 +86,49 @@ export const CustomersScreen: React.FC = () => {
     setBalanceFilter('all');
     setSearchTerm('');
   }, [setSearchTerm]);
+
+  const handleSaveCustomer = async (payload: CustomerFormPayload) => {
+    if (editingCustomer) {
+      await updateCustomer(editingCustomer.id, {
+        fullName: payload.fullName,
+        phone: payload.phone,
+        email: payload.email || null,
+        notes: payload.notes || null,
+        dob: payload.dob || null,
+        sex: payload.sex || null,
+        bloodGroup: payload.bloodGroup || null,
+        allergies: payload.allergies ? (payload.allergies as any) : null,
+        chronicConditions: payload.chronicConditions || null,
+        currentMedications: payload.currentMedications || null,
+        emergencyContact: payload.emergencyContact ? (payload.emergencyContact as any) : null,
+        wardDistrict: payload.wardDistrict || null,
+        pharmacyNotes: payload.pharmacyNotes || null,
+      });
+      setEditingCustomer(null);
+    } else {
+      await addCustomer({
+        fullName: payload.fullName,
+        phone: payload.phone,
+        email: payload.email,
+        notes: payload.notes,
+        dob: payload.dob,
+        sex: payload.sex,
+        bloodGroup: payload.bloodGroup,
+        allergies: payload.allergies as any,
+        chronicConditions: payload.chronicConditions,
+        currentMedications: payload.currentMedications,
+        emergencyContact: payload.emergencyContact as any,
+        wardDistrict: payload.wardDistrict,
+        pharmacyNotes: payload.pharmacyNotes,
+      });
+    }
+  };
+
+  const handleArchiveCustomer = async (id: string) => {
+    await updateCustomer(id, {
+      archivedAt: new Date().toISOString(),
+    });
+  };
 
   return (
     <TabContainer
@@ -99,7 +150,10 @@ export const CustomersScreen: React.FC = () => {
                 intent="primary"
                 size="sm"
                 leftIcon={<Plus size={14} />}
-                onClick={() => setAddModalOpen(true)}
+                onClick={() => {
+                  setEditingCustomer(null);
+                  setAddModalOpen(true);
+                }}
               >
                 Add Customer
               </Button>
@@ -123,13 +177,17 @@ export const CustomersScreen: React.FC = () => {
       }
       overlays={
         <>
-          <AddCustomerModal
-            isOpen={isAddModalOpen}
-            onClose={() => setAddModalOpen(false)}
-            onAdd={async (payload) => {
-              await addCustomer(payload);
+          <CustomerFormModal
+            isOpen={isAddModalOpen || Boolean(editingCustomer)}
+            onClose={() => {
+              setAddModalOpen(false);
+              setEditingCustomer(null);
             }}
-            isLoading={isAdding}
+            onSave={handleSaveCustomer}
+            editCustomer={editingCustomer}
+            isLoading={isAdding || isUpdating}
+            allCustomers={customers}
+            onOpenCustomerProfile={(id) => setSelectedCustomerId(id)}
           />
 
           <CustomerDetailDrawer
@@ -142,13 +200,15 @@ export const CustomersScreen: React.FC = () => {
     >
       <div className="flex flex-col gap-3 flex-1 min-h-0 w-full overflow-hidden">
         {/* KPI Stats Bar */}
-        <CustomerStatsBar customers={customers} />
+        <CustomerStatsBar customers={activeCustomers} />
 
         {/* Table Region */}
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
           <CustomerList
             customers={filteredCustomers}
             onViewDetails={setSelectedCustomerId}
+            onEditCustomer={(cust) => setEditingCustomer(cust)}
+            onArchiveCustomer={handleArchiveCustomer}
             loading={isLoading}
             error={isError ? (error as Error) : null}
             onRetry={() => refetch()}

@@ -6,6 +6,7 @@ import {
   Button,
 } from '@40labs/ui-components';
 import { Clock, FileText, Trash2, Edit3, Send, Calendar, Square } from 'lucide-react';
+import { formatDateTime } from '@40labs/i18n';
 
 interface ScheduleDetailPanelProps {
   schedule?: Schedule | null;
@@ -144,7 +145,7 @@ export const ScheduleDetailPanel: React.FC<ScheduleDetailPanelProps> = ({
         <div className="flex items-center justify-between p-3 rounded-card bg-panel-strong/40 border border-border/40 text-xs text-text-muted">
           <div className="flex items-center gap-2">
             <Clock size={14} className="text-accent" />
-            <span>Scheduled: <strong className="font-mono text-text">{new Date(schedule.scheduled_at).toLocaleString()}</strong></span>
+            <span>Scheduled: <strong className="font-mono text-text">{formatDateTime(schedule.scheduled_at)}</strong></span>
           </div>
           <div>
             <span>Repeat: <strong className="font-mono text-text uppercase">{schedule.repeat_interval}</strong></span>

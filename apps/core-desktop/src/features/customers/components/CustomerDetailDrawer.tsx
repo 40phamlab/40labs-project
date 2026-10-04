@@ -7,6 +7,7 @@ import {
   Separator,
 } from '@40labs/ui-components';
 import type { Customer } from '@40labs/types';
+import { formatDate, formatPhoneTZ } from '@40labs/i18n';
 
 interface CustomerDetailDrawerProps {
   customer: Customer | null;
@@ -25,7 +26,7 @@ export const CustomerDetailDrawer: React.FC<CustomerDetailDrawerProps> = ({
     id: customer.id,
     name: customer.full_name,
     email: customer.email || undefined,
-    phone: customer.phone,
+    phone: formatPhoneTZ(customer.phone),
     statusIndicator: (customer.outstanding_balance > 0 ? 'warn' : 'active') as
       | 'warn'
       | 'active',
@@ -66,11 +67,7 @@ export const CustomerDetailDrawer: React.FC<CustomerDetailDrawerProps> = ({
           />
           <KeyValue
             label="Member Since"
-            value={new Date(customer.created_at).toLocaleDateString('en-GB', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}
+            value={formatDate(customer.created_at)}
           />
         </div>
 
