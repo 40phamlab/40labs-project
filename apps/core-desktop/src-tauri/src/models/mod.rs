@@ -1,4 +1,5 @@
 pub mod audit;
+pub mod auth;
 pub mod customers;
 pub mod inventory;
 pub mod lab;

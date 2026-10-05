@@ -103,10 +103,13 @@ fn resolve_prod_database_path() -> PathBuf {
 
 pub async fn init_db_pool() -> Result<SqlitePool, Box<dyn std::error::Error>> {
     let db_url = resolve_db_url();
+    init_db_pool_with_url(&db_url).await
+}
 
+pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn std::error::Error>> {
     println!("[40Labs DB] Initializing SQLx connection pool at: {}", db_url);
 
-    let connect_options = SqliteConnectOptions::from_str(&db_url)?
+    let connect_options = SqliteConnectOptions::from_str(db_url)?
         .create_if_missing(true)
         .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true);
@@ -151,7 +154,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_init_db_pool_migrations_and_foreign_keys() {
-        let pool = init_db_pool().await.expect("Failed to initialize pool");
+        let pool = init_db_pool_with_url("sqlite::memory:")
+            .await
+            .expect("Failed to initialize pool");
 
         let row: (i64,) = sqlx::query_as("SELECT 1")
             .fetch_one(&pool)
@@ -174,13 +179,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_audit_log_immutability_triggers() {
-        let pool = init_db_pool().await.expect("Failed to initialize pool");
+        let pool = init_db_pool_with_url("sqlite::memory:")
+            .await
+            .expect("Failed to initialize pool");
 
         // Insert required parent user first
         sqlx::query(
             r#"
-            INSERT OR IGNORE INTO app_user (id, workspace_id, branch_id, full_name, role, pin_hash, active, created_at, updated_at)
-            VALUES ('user_test_audit', 'ws_1', 'br_1', 'Audit Tester', 'staff', 'hash', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z')
+            INSERT OR IGNORE INTO app_user (id, workspace_id, branch_id, username, first_name, last_name, full_name, role, role_preset, active, created_at, updated_at)
+            VALUES ('user_test_audit', 'ws_1', 'br_1', 'audittester', 'Audit', 'Tester', 'Audit Tester', 'staff', 'admin', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z')
             "#,
         )
         .execute(&pool)

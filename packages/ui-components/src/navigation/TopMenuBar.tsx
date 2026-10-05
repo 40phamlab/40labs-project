@@ -175,7 +175,6 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
             }
             disabled
             aria-disabled="true"
-            title="Multi-branch — coming in a later version"
           >
             <div className="px-3 py-2 max-w-[200px]" title="Multi-branch — coming in a later version">
               <p className="text-ui-small font-bold text-text-primary">Switch Branch</p>

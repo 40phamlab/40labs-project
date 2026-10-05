@@ -33,17 +33,31 @@ export const usersApi = {
   },
 
   create: async (payload: CreateUserPayload): Promise<User> => {
+    const parts = payload.full_name.trim().split(' ');
+    const firstName = parts[0] || 'User';
+    const lastName = parts.slice(1).join(' ') || 'Name';
+
     const newUser: User = {
       id: `user_${Date.now()}`,
       workspace_id: WORKSPACE_ID,
       branch_id: payload.branch_id || BRANCH_ID,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      full_name: payload.full_name,
+      username: `user_${Date.now()}`,
+      first_name: firstName,
+      last_name: lastName,
+      full_name: `${firstName} ${lastName}`,
+      phone: payload.contacts || null,
       role: payload.role,
+      role_preset: payload.role === 'sudo' ? 'sudo' : 'pharmacist',
+      is_superintendent: false,
+      active: true,
+      owner_id: null,
+      must_change_credentials: false,
+      last_login_at: null,
+      created_by_user_id: null,
       pin_hash: `mock_hash_${Date.now()}`,
       permissions: payload.role === 'sudo' ? null : payload.permissions,
-      active: true,
       contacts: payload.contacts,
       location: payload.location,
     };

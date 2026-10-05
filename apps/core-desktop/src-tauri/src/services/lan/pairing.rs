@@ -164,8 +164,8 @@ mod tests {
 
         sqlx::query(
             r#"
-            INSERT INTO app_user (id, workspace_id, branch_id, full_name, role, pin_hash, active, created_at, updated_at)
-            VALUES ('user_active', 'ws_1', 'br_1', 'Active User', 'staff', 'hash', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z')
+            INSERT INTO app_user (id, workspace_id, branch_id, username, first_name, last_name, full_name, role, role_preset, active, created_at, updated_at)
+            VALUES ('user_active', 'ws_1', 'br_1', 'activeuser', 'Active', 'User', 'Active User', 'staff', 'admin', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z')
             "#,
         )
         .execute(&pool)

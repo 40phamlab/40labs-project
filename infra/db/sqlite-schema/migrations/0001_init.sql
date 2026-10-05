@@ -54,20 +54,44 @@ CREATE TABLE branch (
 );
 
 -- ============================================================
--- USERS / DEVICES
+-- USERS / DEVICES / OWNERS
 -- ============================================================
+
+CREATE TABLE owner (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  branch_id TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  phone_verified_at TEXT,
+  email TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
 
 CREATE TABLE app_user (
   id TEXT PRIMARY KEY,
   workspace_id TEXT NOT NULL,
   branch_id TEXT NOT NULL,
+  username TEXT NOT NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
   full_name TEXT NOT NULL,
+  phone TEXT,
   role TEXT NOT NULL CHECK (role IN ('sudo','staff')),
-  pin_hash TEXT NOT NULL, -- never store plaintext PIN
+  role_preset TEXT NOT NULL,
+  is_superintendent INTEGER NOT NULL DEFAULT 0 CHECK (is_superintendent IN (0,1)),
   active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+  owner_id TEXT REFERENCES owner(id),
+  must_change_credentials INTEGER NOT NULL DEFAULT 0 CHECK (must_change_credentials IN (0,1)),
+  last_login_at TEXT,
+  created_by_user_id TEXT,
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+
+CREATE UNIQUE INDEX idx_app_user_workspace_username ON app_user(workspace_id, username);
 
 -- Staff permission set — one row per staff user. SUDO users have no row
 -- here (app logic treats missing row = implicit all-permissions).
@@ -395,12 +419,8 @@ CREATE TABLE audit_log (
   id TEXT PRIMARY KEY,
   workspace_id TEXT NOT NULL,
   branch_id TEXT NOT NULL,
-  action TEXT NOT NULL CHECK (action IN (
-    'stock_adjustment','refund','po_approval','lab_result_override',
-    'discount_authorization','pin_change','password_change',
-    'device_block','device_remove'
-  )),
-  performed_by_user_id TEXT NOT NULL REFERENCES app_user(id),
+  action TEXT NOT NULL,
+  performed_by_user_id TEXT REFERENCES app_user(id),
   target_entity_type TEXT NOT NULL,
   target_entity_id TEXT NOT NULL,
   metadata TEXT NOT NULL DEFAULT '{}', -- JSON

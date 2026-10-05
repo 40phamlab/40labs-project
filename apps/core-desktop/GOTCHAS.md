@@ -60,3 +60,5 @@ you or the coding agent almost makes one of these mistakes.
     apps/core-desktop/src/App.css, or its Tailwind classes will be
     silently dropped from the build with no error, no warning — they
     just won't exist in the output CSS.
+
+   11. **0001 is frozen after Phase 1A; never edit shipped migrations.** Any future schema change must be a new sequential migration file in `infra/db/sqlite-schema/migrations/`.

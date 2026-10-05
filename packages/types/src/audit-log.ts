@@ -7,7 +7,8 @@ export type AuditAction =
   | 'pin_change'
   | 'password_change'
   | 'device_block'
-  | 'device_remove';
+  | 'device_remove'
+  | (string & {});
 
 // Immutable, append-only. NEVER updated or deleted, at the DB layer, not
 // just the API layer. No `updated_at`-driven edit path should ever touch this.
@@ -16,7 +17,7 @@ export interface AuditLogEntry {
   workspace_id: string;
   branch_id: string;
   action: AuditAction;
-  performed_by_user_id: string;
+  performed_by_user_id: string | null; // null = unauthenticated actor
   target_entity_type: string; // e.g. "InventoryItem", "Sale"
   target_entity_id: string;
   metadata: Record<string, unknown>;
