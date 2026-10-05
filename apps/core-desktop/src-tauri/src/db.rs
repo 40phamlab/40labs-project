@@ -116,213 +116,12 @@ pub async fn init_db_pool() -> Result<SqlitePool, Box<dyn std::error::Error>> {
         .connect_with(connect_options)
         .await?;
 
-    // Run core schema initialization if tables do not exist
-    init_schema(&pool).await?;
+    // TODO: [reason: at-rest encryption deferred] [phase 2] swap here (SQLCipher)
+    sqlx::migrate!("../../../infra/db/sqlite-schema/migrations")
+        .run(&pool)
+        .await?;
 
     Ok(pool)
-}
-
-async fn init_schema(pool: &SqlitePool) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS app_user (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            full_name TEXT NOT NULL,
-            role TEXT NOT NULL,
-            pin_hash TEXT NOT NULL,
-            active INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS customer (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            full_name TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            email TEXT,
-            outstanding_balance INTEGER NOT NULL DEFAULT 0,
-            notes TEXT,
-            dob TEXT,
-            sex TEXT,
-            blood_group TEXT,
-            allergies TEXT,
-            chronic_conditions TEXT,
-            current_medications TEXT,
-            emergency_contact TEXT,
-            ward_district TEXT,
-            pharmacy_notes TEXT,
-            archived_at TEXT,
-            amob_patient_id TEXT,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_workspace_phone ON customer(workspace_id, phone);
-
-        CREATE TABLE IF NOT EXISTS medicine (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            name TEXT NOT NULL,
-            generic_name TEXT,
-            category TEXT NOT NULL,
-            unit TEXT NOT NULL,
-            is_controlled_substance INTEGER NOT NULL DEFAULT 0,
-            requires_prescription INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS inventory_item (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            medicine_id TEXT NOT NULL REFERENCES medicine(id),
-            batch_number TEXT NOT NULL,
-            expiry_date TEXT NOT NULL,
-            buy_price INTEGER NOT NULL,
-            sell_price INTEGER NOT NULL,
-            quantity INTEGER NOT NULL DEFAULT 0,
-            low_stock_threshold INTEGER NOT NULL DEFAULT 5,
-            cold_chain_required INTEGER NOT NULL DEFAULT 0,
-            is_deactivated INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS stock_adjustment (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            inventory_item_id TEXT NOT NULL REFERENCES inventory_item(id),
-            adjusted_by_user_id TEXT NOT NULL,
-            delta INTEGER NOT NULL,
-            reason TEXT NOT NULL,
-            audit_log_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS sale (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            customer_id TEXT REFERENCES customer(id),
-            payment_method TEXT NOT NULL,
-            discount_amount INTEGER NOT NULL DEFAULT 0,
-            discount_authorized_by_user_id TEXT,
-            tax_amount INTEGER NOT NULL DEFAULT 0,
-            grand_total INTEGER NOT NULL,
-            currency TEXT NOT NULL DEFAULT 'TZS',
-            synced_at TEXT,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            idempotency_key TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS sale_line (
-            id TEXT PRIMARY KEY,
-            sale_id TEXT NOT NULL REFERENCES sale(id),
-            inventory_item_id TEXT NOT NULL REFERENCES inventory_item(id),
-            medicine_name TEXT NOT NULL,
-            quantity INTEGER NOT NULL,
-            unit_price INTEGER NOT NULL,
-            subtotal INTEGER NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS lab_order (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            customer_id TEXT NOT NULL REFERENCES customer(id),
-            sale_id TEXT,
-            ordered_by_user_id TEXT NOT NULL,
-            status TEXT NOT NULL,
-            test_catalog_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS lab_sample (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            lab_order_id TEXT NOT NULL REFERENCES lab_order(id),
-            collected_by_user_id TEXT NOT NULL,
-            collected_at TEXT NOT NULL,
-            sample_label TEXT NOT NULL,
-            status TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS audit_log (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            action TEXT NOT NULL,
-            performed_by_user_id TEXT NOT NULL,
-            target_entity_type TEXT NOT NULL,
-            target_entity_id TEXT NOT NULL,
-            metadata TEXT,
-            created_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS paired_device (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            user_id TEXT NOT NULL,
-            device_label TEXT NOT NULL,
-            device_type TEXT NOT NULL,
-            status TEXT NOT NULL,
-            permissions_json TEXT NOT NULL,
-            credential_hash TEXT,
-            last_connected_at TEXT,
-            paired_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS staff_notifications (
-            id TEXT PRIMARY KEY,
-            workspace_id TEXT NOT NULL,
-            branch_id TEXT NOT NULL,
-            sender_user_id TEXT NOT NULL,
-            sender_name TEXT NOT NULL,
-            audience TEXT NOT NULL,
-            target_role TEXT,
-            target_user_id TEXT,
-            severity TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            body TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS staff_notification_reads (
-            id TEXT PRIMARY KEY,
-            notification_id TEXT NOT NULL REFERENCES staff_notifications(id),
-            user_id TEXT NOT NULL,
-            read_at TEXT NOT NULL,
-            UNIQUE(notification_id, user_id)
-        );
-        "#,
-    )
-    .execute(pool)
-    .await?;
-
-    let _ = sqlx::query("ALTER TABLE paired_device ADD COLUMN credential_hash TEXT;")
-        .execute(pool)
-        .await;
-
-    let _ = sqlx::query("ALTER TABLE sale ADD COLUMN idempotency_key TEXT;")
-        .execute(pool)
-        .await;
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -351,12 +150,81 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_init_db_pool() {
+    async fn test_init_db_pool_migrations_and_foreign_keys() {
         let pool = init_db_pool().await.expect("Failed to initialize pool");
+
         let row: (i64,) = sqlx::query_as("SELECT 1")
             .fetch_one(&pool)
             .await
             .expect("Failed query");
         assert_eq!(row.0, 1);
+
+        // Verify foreign key integrity
+        let fk_violations: Vec<(String, Option<i64>, String, i64)> =
+            sqlx::query_as("PRAGMA foreign_key_check")
+                .fetch_all(&pool)
+                .await
+                .expect("Failed foreign_key_check PRAGMA");
+        assert!(
+            fk_violations.is_empty(),
+            "Expected 0 foreign key violations, found: {:?}",
+            fk_violations
+        );
+    }
+
+    #[tokio::test]
+    async fn test_audit_log_immutability_triggers() {
+        let pool = init_db_pool().await.expect("Failed to initialize pool");
+
+        // Insert required parent user first
+        sqlx::query(
+            r#"
+            INSERT OR IGNORE INTO app_user (id, workspace_id, branch_id, full_name, role, pin_hash, active, created_at, updated_at)
+            VALUES ('user_test_audit', 'ws_1', 'br_1', 'Audit Tester', 'staff', 'hash', 1, '2025-01-01T00:00:00Z', '2025-01-01T00:00:00Z')
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let audit_id = format!("audit_test_{}", uuid::Uuid::new_v4());
+
+        // Insert audit log row
+        sqlx::query(
+            r#"
+            INSERT INTO audit_log (id, workspace_id, branch_id, action, performed_by_user_id, target_entity_type, target_entity_id, metadata)
+            VALUES (?, 'ws_1', 'br_1', 'pin_change', 'user_test_audit', 'app_user', 'user_test_audit', '{}')
+            "#,
+        )
+        .bind(&audit_id)
+        .execute(&pool)
+        .await
+        .expect("Failed inserting audit log row");
+
+        // Verify UPDATE is rejected by trigger
+        let update_res = sqlx::query("UPDATE audit_log SET metadata = '{\"tampered\": true}' WHERE id = ?")
+            .bind(&audit_id)
+            .execute(&pool)
+            .await;
+        assert!(update_res.is_err(), "Expected UPDATE on audit_log to fail");
+        let err_msg = update_res.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("audit_log is append-only"),
+            "Expected 'audit_log is append-only' error, got: {}",
+            err_msg
+        );
+
+        // Verify DELETE is rejected by trigger
+        let delete_res = sqlx::query("DELETE FROM audit_log WHERE id = ?")
+            .bind(&audit_id)
+            .execute(&pool)
+            .await;
+        assert!(delete_res.is_err(), "Expected DELETE on audit_log to fail");
+        let delete_err_msg = delete_res.unwrap_err().to_string();
+        assert!(
+            delete_err_msg.contains("audit_log is append-only"),
+            "Expected 'audit_log is append-only' error, got: {}",
+            delete_err_msg
+        );
     }
 }

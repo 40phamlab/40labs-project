@@ -157,51 +157,10 @@ mod tests {
             .await
             .unwrap();
 
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS app_user (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                full_name TEXT NOT NULL,
-                role TEXT NOT NULL,
-                pin_hash TEXT NOT NULL,
-                active INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS paired_device (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                user_id TEXT NOT NULL REFERENCES app_user(id),
-                device_label TEXT NOT NULL,
-                device_type TEXT NOT NULL,
-                status TEXT NOT NULL,
-                permissions_json TEXT NOT NULL,
-                credential_hash TEXT,
-                last_connected_at TEXT,
-                paired_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            );
-
-            CREATE TABLE IF NOT EXISTS audit_log (
-                id TEXT PRIMARY KEY,
-                workspace_id TEXT NOT NULL,
-                branch_id TEXT NOT NULL,
-                action TEXT NOT NULL,
-                performed_by_user_id TEXT NOT NULL,
-                target_entity_type TEXT NOT NULL,
-                target_entity_id TEXT NOT NULL,
-                metadata TEXT,
-                created_at TEXT NOT NULL
-            );
-            "#,
-        )
-        .execute(&pool)
-        .await
-        .unwrap();
+        sqlx::migrate!("../../../infra/db/sqlite-schema/migrations")
+            .run(&pool)
+            .await
+            .unwrap();
 
         sqlx::query(
             r#"

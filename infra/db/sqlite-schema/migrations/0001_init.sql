@@ -89,11 +89,37 @@ CREATE TABLE paired_device (
   branch_id TEXT NOT NULL,
   user_id TEXT NOT NULL REFERENCES app_user(id),
   device_label TEXT NOT NULL,
-  paired_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  last_connected_at TEXT,
+  device_type TEXT NOT NULL DEFAULT 'android',
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','blocked','removed')),
+  permissions_json TEXT NOT NULL DEFAULT '{}',
+  credential_hash TEXT,
+  last_connected_at TEXT,
+  paired_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE staff_notifications (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  branch_id TEXT NOT NULL,
+  sender_user_id TEXT NOT NULL,
+  sender_name TEXT NOT NULL,
+  audience TEXT NOT NULL,
+  target_role TEXT,
+  target_user_id TEXT,
+  severity TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE TABLE staff_notification_reads (
+  id TEXT PRIMARY KEY,
+  notification_id TEXT NOT NULL REFERENCES staff_notifications(id),
+  user_id TEXT NOT NULL,
+  read_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE(notification_id, user_id)
 );
 
 -- ============================================================
@@ -160,6 +186,7 @@ CREATE TABLE inventory_item (
   quantity INTEGER NOT NULL DEFAULT 0,
   low_stock_threshold INTEGER NOT NULL DEFAULT 10,
   cold_chain_required INTEGER NOT NULL DEFAULT 0 CHECK (cold_chain_required IN (0,1)),
+  is_deactivated INTEGER NOT NULL DEFAULT 0 CHECK (is_deactivated IN (0,1)),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
@@ -198,7 +225,8 @@ CREATE TABLE sale (
   currency TEXT NOT NULL DEFAULT 'TZS' CHECK (currency = 'TZS'),
   synced_at TEXT, -- null = still queued for Postgres sync
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  idempotency_key TEXT
 );
 
 CREATE INDEX idx_sale_customer ON sale(customer_id);
@@ -210,11 +238,12 @@ CREATE TABLE sale_line (
   id TEXT PRIMARY KEY,
   sale_id TEXT NOT NULL REFERENCES sale(id),
   inventory_item_id TEXT NOT NULL REFERENCES inventory_item(id),
-  medicine_id TEXT NOT NULL REFERENCES medicine(id),
+  medicine_id TEXT REFERENCES medicine(id),
+  medicine_name TEXT NOT NULL DEFAULT '',
   quantity INTEGER NOT NULL,
   unit_price INTEGER NOT NULL,
   subtotal INTEGER NOT NULL,
-  dispensed_by_user_id TEXT NOT NULL REFERENCES app_user(id), -- superintendent pharmacist record
+  dispensed_by_user_id TEXT REFERENCES app_user(id), -- superintendent pharmacist record
   is_prescription_dispense INTEGER NOT NULL DEFAULT 0 CHECK (is_prescription_dispense IN (0,1))
 );
 
