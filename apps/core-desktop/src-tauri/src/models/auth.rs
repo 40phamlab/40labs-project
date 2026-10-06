@@ -39,6 +39,34 @@ impl RolePreset {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
+pub enum Permission {
+    UpdateStock,
+    AdjustStock,
+    IssueRefund,
+    ApprovePo,
+    AddLabSample,
+    OverrideLabResult,
+    ViewReports,
+    Custom(String),
+}
+
+impl Permission {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Permission::UpdateStock => "can_update_stock",
+            Permission::AdjustStock => "can_adjust_stock",
+            Permission::IssueRefund => "can_issue_refund",
+            Permission::ApprovePo => "can_approve_po",
+            Permission::AddLabSample => "can_add_lab_sample",
+            Permission::OverrideLabResult => "can_override_lab_result",
+            Permission::ViewReports => "can_view_reports",
+            Permission::Custom(s) => s.as_str(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
 pub enum OnboardingState {
     Registered,
     OwnerFirstLogin,

@@ -44,6 +44,8 @@ export interface Business extends BaseEntity {
   terms_text_sha256?: string | null;
   terms_accepted_at?: string | null;
   terms_accepted_by_user_id?: string | null;
+  scale?: string | null;
+  idle_lock_minutes?: number;
 }
 
 export interface Branch extends BaseEntity {

@@ -120,7 +120,7 @@ pub async fn pair_handler(
         branch_id: DEFAULT_BRANCH_ID.to_string(),
         created_at: chrono::Utc::now().to_rfc3339(),
         action: "device_pair".to_string(),
-        performed_by_user_id: user_id.clone(),
+        performed_by_user_id: Some(user_id.clone()),
         target_entity_type: "PairedDevice".to_string(),
         target_entity_id: device.id.clone(),
         metadata: Some(serde_json::json!({ "device_label": label, "device_type": dev_type }).to_string()),

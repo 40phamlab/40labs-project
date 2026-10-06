@@ -460,7 +460,7 @@ pub async fn post_staff_notification_handler(
             branch_id,
             created_at: now,
             action: audit_action.to_string(),
-            performed_by_user_id: device.user_id.clone(),
+            performed_by_user_id: Some(device.user_id.clone()),
             target_entity_type: "staff_notification".to_string(),
             target_entity_id: notification_id,
             metadata: Some(json!({

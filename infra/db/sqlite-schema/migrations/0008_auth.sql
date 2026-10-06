@@ -105,3 +105,5 @@ ALTER TABLE business ADD COLUMN terms_locale TEXT;
 ALTER TABLE business ADD COLUMN terms_text_sha256 TEXT;
 ALTER TABLE business ADD COLUMN terms_accepted_at TEXT;
 ALTER TABLE business ADD COLUMN terms_accepted_by_user_id TEXT;
+ALTER TABLE business ADD COLUMN scale TEXT;
+ALTER TABLE business ADD COLUMN idle_lock_minutes INTEGER NOT NULL DEFAULT 5 CHECK (idle_lock_minutes BETWEEN 1 AND 30);

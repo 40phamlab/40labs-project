@@ -67,7 +67,7 @@ impl InventoryService {
             workspace_id: DEFAULT_WORKSPACE_ID.to_string(),
             branch_id: DEFAULT_BRANCH_ID.to_string(),
             action: "stock_adjustment".to_string(),
-            performed_by_user_id: "user_001".to_string(),
+            performed_by_user_id: Some("user_001".to_string()),
             target_entity_type: "InventoryItem".to_string(),
             target_entity_id: inv_id,
             metadata: Some(
@@ -153,7 +153,7 @@ impl InventoryService {
             workspace_id: DEFAULT_WORKSPACE_ID.to_string(),
             branch_id: DEFAULT_BRANCH_ID.to_string(),
             action: "stock_adjustment".to_string(),
-            performed_by_user_id: req.authorized_by_user_id.unwrap_or_else(|| "user_001".to_string()),
+            performed_by_user_id: Some(req.authorized_by_user_id.unwrap_or_else(|| "user_001".to_string())),
             target_entity_type: "InventoryItem".to_string(),
             target_entity_id: req.inventory_item_id.clone(),
             metadata: Some(
