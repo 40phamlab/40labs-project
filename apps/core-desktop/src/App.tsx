@@ -99,7 +99,7 @@ export default function App() {
 
   const topBarElement = (
     <div className="flex items-center justify-between w-full h-10 bg-top-chrome border-b border-border select-none drag-region" data-tauri-drag-region>
-      <div className="flex-1 min-w-0 no-drag">
+      <div className="flex-1 min-w-0 h-full">
         <TopMenuBar
           brandName="40Labs"
           onHelpClick={() => console.log('Help clicked')}
@@ -108,7 +108,7 @@ export default function App() {
           onToggleSidebar={toggleSidebar}
         />
       </div>
-      <div className="no-drag">
+      <div className="no-drag shrink-0 h-full" data-tauri-drag-region="false">
         <TitleBar />
       </div>
     </div>

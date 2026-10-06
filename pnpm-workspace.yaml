@@ -5,6 +5,8 @@ packages:
 
 overrides:
   pretty-format: "29.7.0"
+  react: "19.2.8"
+  react-dom: "19.2.8"
 
 allowBuilds:
   esbuild: true

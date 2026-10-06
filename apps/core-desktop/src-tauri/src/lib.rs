@@ -3,9 +3,13 @@ pub mod db;
 pub mod models;
 pub mod repositories;
 pub mod services;
+pub mod auth;
+pub mod security;
 
 use db::{init_db_pool, AppState};
 use services::lan::LanServerState;
+use auth::{AuthState, RealClock};
+use security::keystore::Keystore;
 use std::sync::Arc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -18,6 +22,9 @@ pub fn run() {
             .await
             .expect("Failed to initialize SQLite database pool")
     });
+
+    let keystore = Arc::new(Keystore::init().expect("Failed to initialize security keystore"));
+    let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
 
     let port = 4040;
     let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
@@ -34,9 +41,18 @@ pub fn run() {
         .manage(AppState {
             pool,
             lan_state: lan_state_clone,
+            auth_state,
+            keystore,
         })
         .invoke_handler(tauri::generate_handler![
             commands::system_cmd::system_health_check,
+            // Auth
+            commands::auth_cmd::auth_status,
+            commands::auth_cmd::auth_login,
+            commands::auth_cmd::auth_logout,
+            commands::auth_cmd::auth_lock,
+            commands::auth_cmd::auth_unlock_pin,
+            commands::auth_cmd::auth_step_up,
             // Inventory
             commands::inventory_cmd::get_inventory_list,
             commands::inventory_cmd::get_inventory_item,
@@ -60,7 +76,6 @@ pub fn run() {
             commands::lab_cmd::update_lab_sample_status,
             // Audit
             commands::audit_cmd::get_audit_logs,
-            commands::audit_cmd::record_audit_log,
             // Notifications & Messages
             commands::notification_cmd::get_notifications,
             commands::notification_cmd::get_notification_messages,

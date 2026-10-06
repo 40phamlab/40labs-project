@@ -6,10 +6,14 @@ use std::str::FromStr;
 
 use std::sync::Arc;
 use crate::services::lan::LanServerState;
+use crate::auth::AuthState;
+use crate::security::keystore::Keystore;
 
 pub struct AppState {
     pub pool: SqlitePool,
     pub lan_state: Arc<LanServerState>,
+    pub auth_state: Arc<AuthState>,
+    pub keystore: Arc<Keystore>,
 }
 
 /// Centralized resolution of database path and connection URL.

@@ -38,12 +38,14 @@ export const TitleBar: React.FC = () => {
   return (
     <div
       className="h-10 flex items-center select-none shrink-0 z-[110] no-drag"
+      data-tauri-drag-region="false"
     >
-      <div className="flex h-full items-center">
+      <div className="flex h-full items-center no-drag" data-tauri-drag-region="false">
         <button
           type="button"
           onClick={handleMinimize}
-          className="w-10 h-full flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer"
+          className="w-10 h-full flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer no-drag"
+          data-tauri-drag-region="false"
           title="Minimize"
           aria-label="Minimize Window"
         >
@@ -52,7 +54,8 @@ export const TitleBar: React.FC = () => {
         <button
           type="button"
           onClick={handleMaximize}
-          className="w-10 h-full flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer"
+          className="w-10 h-full flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer no-drag"
+          data-tauri-drag-region="false"
           title="Maximize"
           aria-label="Maximize Window"
         >
@@ -61,7 +64,8 @@ export const TitleBar: React.FC = () => {
         <button
           type="button"
           onClick={handleClose}
-          className="w-10 h-full flex items-center justify-center text-text-muted hover:text-white hover:bg-danger transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer"
+          className="w-10 h-full flex items-center justify-center text-text-muted hover:text-white hover:bg-danger transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer no-drag"
+          data-tauri-drag-region="false"
           title="Close"
           aria-label="Close Window"
         >

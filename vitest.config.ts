@@ -4,9 +4,8 @@ import { createRequire } from 'module';
 import path from 'path';
 
 const require = createRequire(import.meta.url);
-const testingLibraryPath = require.resolve('@testing-library/react');
-const reactDomPath = path.dirname(require.resolve('react-dom/package.json', { paths: [testingLibraryPath] }));
-const reactPath = path.dirname(require.resolve('react/package.json', { paths: [testingLibraryPath] }));
+const reactDomPath = path.dirname(require.resolve('react-dom/package.json'));
+const reactPath = path.dirname(require.resolve('react/package.json'));
 
 export default defineConfig({
   plugins: [react()],
@@ -16,8 +15,14 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: [
       'tests/**/*.test.{ts,tsx}',
-      'apps/**/*.test.{ts,tsx}',
+      'apps/core-desktop/**/*.test.{ts,tsx}',
+      'apps/web-app/**/*.test.{ts,tsx}',
+      'apps/admin-web/**/*.test.{ts,tsx}',
       'packages/**/*.test.{ts,tsx}',
+    ],
+    exclude: [
+      '**/node_modules/**',
+      'apps/orbit-worker/**',
     ],
   },
   resolve: {

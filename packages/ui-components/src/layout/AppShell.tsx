@@ -170,7 +170,7 @@ export function AppShell({
       >
         {/* Top Chrome Header */}
         {topBar && (
-          <header className="shrink-0 w-full z-30 bg-top-chrome border-b border-border min-h-[40px]">
+          <header className="shrink-0 w-full z-30 bg-top-chrome border-b border-border min-h-[40px] drag-region" data-tauri-drag-region>
             {topBar}
           </header>
         )}

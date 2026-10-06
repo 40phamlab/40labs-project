@@ -6,3 +6,8 @@ pub mod sales_repo;
 pub mod notification_repo;
 pub mod staff_notification_repo;
 pub mod device_repo;
+pub mod user_repo;
+pub mod credential_repo;
+pub mod recovery_repo;
+pub mod device_binding_repo;
+pub mod business_repo;

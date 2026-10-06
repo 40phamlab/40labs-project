@@ -49,10 +49,11 @@ export const MenuBarItem: React.FC<MenuBarItemProps> = ({
   });
 
   return (
-    <div className="relative flex items-center h-full">
+    <div className="relative flex items-center h-full no-drag" data-tauri-drag-region="false">
       <button
         ref={triggerRef}
         type="button"
+        data-tauri-drag-region="false"
         onClick={(e) => {
           e.stopPropagation();
           if (!disabled) onOpen?.();
@@ -64,7 +65,7 @@ export const MenuBarItem: React.FC<MenuBarItemProps> = ({
         aria-expanded={isOpen}
         aria-haspopup={children ? 'menu' : undefined}
         className={`
-          h-full px-2.5 text-ui-small text-text-secondary transition-colors outline-none select-none flex items-center
+          h-full px-2.5 text-ui-small text-text-secondary transition-colors outline-none select-none flex items-center no-drag
           focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-inset
           ${isOpen ? 'bg-surface-hover text-text-primary' : 'hover:bg-surface-hover hover:text-action-primary'}
           ${isActive ? 'text-action-primary' : ''}
@@ -137,7 +138,8 @@ export const MenuBar: React.FC<MenuBarProps> = ({ children, className = '' }) =>
     <div
       ref={containerRef}
       role="menubar"
-      className={`flex items-center h-full ${className}`}
+      data-tauri-drag-region="false"
+      className={`flex items-center h-full no-drag ${className}`}
     >
       {React.Children.map(children, (child, index) => {
         if (React.isValidElement<MenuBarItemProps>(child)) {

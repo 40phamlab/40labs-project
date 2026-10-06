@@ -112,10 +112,10 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
 
   return (
     <div
-      className={`h-10 w-full bg-top-chrome flex items-center justify-between px-2 select-none ${className}`}
+      className={`h-10 w-full bg-top-chrome flex items-center justify-between px-2 select-none drag-region ${className}`}
       data-tauri-drag-region
     >
-      <div className="flex items-center gap-1.5 h-full min-w-0 flex-1 no-drag">
+      <div className="flex items-center gap-1.5 h-full min-w-0 no-drag shrink-0" data-tauri-drag-region="false">
         {showSidebarToggle && (
           <IconButton
             icon={<PanelLeft size={15} />}
@@ -124,11 +124,12 @@ export const TopMenuBar: React.FC<TopMenuBarProps> = ({
             size="sm"
             label={isNavClosed ? "Show sidebar navigation" : "Toggle sidebar navigation"}
             title={isNavClosed ? "Show sidebar navigation (Ctrl+B)" : "Toggle sidebar navigation (Ctrl+B)"}
-            className={isNavClosed ? "text-action-primary hover:bg-surface-hover" : "text-text-muted hover:text-text-primary"}
+            className={isNavClosed ? "text-action-primary hover:bg-surface-hover no-drag" : "text-text-muted hover:text-text-primary no-drag"}
+            data-tauri-drag-region="false"
           />
         )}
 
-        <MenuBar>
+        <MenuBar className="no-drag" data-tauri-drag-region="false">
           {/* 40Labs Brand Menu */}
           <MenuBarItem
             label={
