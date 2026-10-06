@@ -36,7 +36,7 @@ export default function App() {
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
   const sidebarState = useNavStore((s) => s.sidebarState);
   const setSidebarState = useNavStore((s) => s.setSidebarState);
-  const toggleSidebar = useNavStore((s) => s.sidebar.toggle);
+  const toggleSidebar = useNavStore((s) => s.toggleSidebar);
   const lastNonClosedState = useNavStore((s) => s.lastNonClosedState);
 
   const { notifications } = useNotifications();

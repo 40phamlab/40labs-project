@@ -342,10 +342,10 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
     expect(controls).toHaveClass('no-drag');
   });
 
-  test('regression: OPEN → ICON → CLOSED → ICON cycle', async () => {
+  test('regression: ICON → CLOSED → ICON cycle via explicit sidebar toggle', async () => {
     function Harness() {
-      const [navState, setNavState] = React.useState<NavigationState>('open');
-      const [lastNonClosed, setLastNonClosed] = React.useState<'icon' | 'open'>('open');
+      const [navState, setNavState] = React.useState<NavigationState>('icon');
+      const [lastNonClosed, setLastNonClosed] = React.useState<'icon' | 'open'>('icon');
 
       return (
         <AppShell
@@ -371,17 +371,13 @@ describe('AppShell Layout Component & 3-State Navigation', () => {
 
     render(<Harness />);
     const navStateEl = screen.getByTestId('nav-state');
-    expect(navStateEl).toHaveTextContent('open');
-
-    // Click active dashboard item while open -> collapses to icon
-    await userEvent.click(screen.getByRole('button', { name: /^dashboard$/i }));
     expect(navStateEl).toHaveTextContent('icon');
 
     // Toggle via top menu -> closed
     await userEvent.click(screen.getByRole('button', { name: /toggle sidebar navigation/i }));
     expect(navStateEl).toHaveTextContent('closed');
 
-    // Toggle via top menu -> reopens as icon (not open)
+    // Toggle via top menu -> reopens as icon
     await userEvent.click(screen.getByRole('button', { name: /show sidebar navigation/i }));
     expect(navStateEl).toHaveTextContent('icon');
   });

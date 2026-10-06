@@ -74,7 +74,7 @@ describe('Sidebar Navigation Component & 3-State Click Rules', () => {
     expect(handleStateChange).not.toHaveBeenCalled();
   });
 
-  test('VS Code-style click rules: open mode, click active icon collapses to icon', async () => {
+  test('open mode: clicking navigation items only changes active route and never changes sidebar state', async () => {
     const handleNavigate = vi.fn();
     const handleStateChange = vi.fn();
 
@@ -91,28 +91,8 @@ describe('Sidebar Navigation Component & 3-State Click Rules', () => {
     const salesButton = screen.getByRole('button', { name: /sales/i });
     await userEvent.click(salesButton);
 
-    expect(handleStateChange).toHaveBeenCalledWith('icon');
-  });
-
-  test('VS Code-style click rules: open mode, click different icon switches section without closing', async () => {
-    const handleNavigate = vi.fn();
-    const handleStateChange = vi.fn();
-
-    render(
-      <AppSidebarNav
-        activeRoute="dashboard"
-        navState="open"
-        onNavigate={handleNavigate}
-        onNavStateChange={handleStateChange}
-        items={sampleNavItems}
-      />
-    );
-
-    const inventoryButton = screen.getByRole('button', { name: /inventory/i });
-    await userEvent.click(inventoryButton);
-
-    expect(handleNavigate).toHaveBeenCalledWith('inventory');
-    expect(handleStateChange).not.toHaveBeenCalledWith('icon');
+    expect(handleNavigate).toHaveBeenCalledWith('sales');
+    expect(handleStateChange).not.toHaveBeenCalled();
   });
 
   test('supports keyboard navigation on sidebar items via Enter and Space keys', () => {

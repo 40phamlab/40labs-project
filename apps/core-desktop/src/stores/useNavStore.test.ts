@@ -78,4 +78,38 @@ describe('useNavStore navigation persistence and validation', () => {
     expect(useNavStore.getState().sidebar.expanded).toBe(true);
     expect(useNavStore.getState().sidebarState).toBe('open');
   });
+
+  it('navigating across 5+ screens in all 3 states (open, icon, closed) never changes sidebarState', async () => {
+    const { useNavStore } = await import('./useNavStore');
+
+    const screensToVisit = ['dashboard', 'sales', 'inventory', 'customers', 'purchases', 'lab'] as const;
+
+    // Test in OPEN state
+    useNavStore.getState().setSidebarState('open');
+    for (const screen of screensToVisit) {
+      useNavStore.getState().setActiveScreen(screen);
+      expect(useNavStore.getState().activeScreen).toBe(screen);
+      expect(useNavStore.getState().sidebarState).toBe('open');
+    }
+
+    // Test in ICON state
+    useNavStore.getState().setSidebarState('icon');
+    for (const screen of screensToVisit) {
+      useNavStore.getState().setActiveScreen(screen);
+      expect(useNavStore.getState().activeScreen).toBe(screen);
+      expect(useNavStore.getState().sidebarState).toBe('icon');
+    }
+
+    // Test in CLOSED state
+    useNavStore.getState().setSidebarState('closed');
+    for (const screen of screensToVisit) {
+      useNavStore.getState().setActiveScreen(screen);
+      expect(useNavStore.getState().activeScreen).toBe(screen);
+      expect(useNavStore.getState().sidebarState).toBe('closed');
+    }
+
+    // Restore from closed toggles to last non-closed state ('icon')
+    useNavStore.getState().toggleSidebar();
+    expect(useNavStore.getState().sidebarState).toBe('icon');
+  });
 });

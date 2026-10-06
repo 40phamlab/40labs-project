@@ -116,16 +116,7 @@ export const useNavStore = create<NavState>((set, get) => ({
   toggleSidebar: () => {
     const { sidebarState, lastNonClosedState } = get();
     const newState = sidebarState === 'closed' ? lastNonClosedState : 'closed';
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_STATE, newState);
-    }
-    set({
-      sidebarState: newState,
-      sidebar: {
-        ...get().sidebar,
-        expanded: newState === 'open',
-      },
-    });
+    get().setSidebarState(newState);
   },
   sidebar: {
     expanded: getInitialState() === 'open',

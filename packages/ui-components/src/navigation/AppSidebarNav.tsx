@@ -52,7 +52,7 @@ export function AppSidebarNav<T extends string = string>({
   activeRoute,
   navState: propNavState,
   onNavigate,
-  onNavStateChange,
+  onNavStateChange: _onNavStateChange,
   items,
   pinnedBottomItems = [],
   userProfile,
@@ -69,32 +69,8 @@ export function AppSidebarNav<T extends string = string>({
     return null;
   }
 
-  const handleStateChange = (newState: NavigationState) => {
-    if (onNavStateChange) {
-      onNavStateChange(newState);
-    } else if (shell.setNavState) {
-      shell.setNavState(newState);
-    }
-  };
-
   const handleItemClick = (itemId: T) => {
-    const isCurrentActive = activeRoute === itemId;
-    const isOpen = currentNavState === 'open';
-
-    if (currentNavState === 'icon') {
-      // Clicking an icon in icon-only state selects that section while keeping sidebar in icon state
-      onNavigate(itemId);
-    } else if (isOpen) {
-      if (isCurrentActive) {
-        // Clicking the same active icon again collapses back to icon-only
-        handleStateChange('icon');
-      } else {
-        // Clicking a different icon switches panel content without closing
-        onNavigate(itemId);
-      }
-    } else {
-      onNavigate(itemId);
-    }
+    onNavigate(itemId);
   };
 
   const filteredItems = items.filter(
