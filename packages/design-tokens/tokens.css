@@ -5,6 +5,17 @@
   --color-top-chrome: #121815;
   --color-sidebar: #121815;
 
+  /* Public Website Brand Tokens */
+  --color-surface-dark-bg: #0B0F0D;
+  --color-surface-dark-raised: #14532D;
+  --color-surface-dark-highlight: #16A34A;
+  --color-accent-orange: #F97316;
+  --color-text-on-dark: #F8FAFB;
+  --color-text-on-dark-muted: rgba(248, 250, 251, 0.6);
+  --shadow-skeu-outer: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-skeu-inset: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --radius-card-lg: 16px;
+
   /* Solid Surfaces */
   --color-surface-primary: #1A221E;
   --color-surface-secondary: #222C27;

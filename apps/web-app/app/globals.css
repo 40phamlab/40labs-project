@@ -1,37 +1,177 @@
 @import "tailwindcss";
 @import "@40labs/design-tokens/tokens.css";
 
+/* ==========================================================================
+   40Labs Public Website — Visual & Structural Foundation
+   ================================================================---------- */
+
 :root {
   --background: #0B0F0D;
   --foreground: #F8FAFB;
+  --surface-dark-bg: #0B0F0D;
+  --surface-dark-raised: #14532D;
+  --surface-dark-highlight: #16A34A;
+  --accent-orange: #F97316;
+  --text-on-dark: #F8FAFB;
+  --text-on-dark-muted: rgba(248, 250, 251, 0.6);
+  --shadow-skeu-outer: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-skeu-inset: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --radius-card-lg: 16px;
+  --radius-pill: 9999px;
+  --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-normal: 200ms;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-ui, "Inter", sans-serif);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* Custom scrollbar */
+/* Container & Layout Rules */
+.web-container {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .web-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .web-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Surface & Card Rules (Skeuomorphic Depth) */
+.web-card {
+  background-color: var(--color-surface-primary, #1A221E);
+  border: 1px solid var(--color-border-default, #28362E);
+  border-radius: var(--radius-card-lg, 16px);
+  box-shadow: var(--shadow-skeu-outer);
+  position: relative;
+  transition: transform var(--duration-normal) var(--transition-timing),
+              border-color var(--duration-normal) var(--transition-timing),
+              box-shadow var(--duration-normal) var(--transition-timing);
+}
+
+.web-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--shadow-skeu-inset);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  pointer-events: none;
+}
+
+.web-card:hover {
+  border-color: var(--color-border-focus, #16A34A);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+
+.web-pill {
+  border-radius: var(--radius-pill);
+  background-color: var(--color-surface-secondary, #222C27);
+  border: 1px solid var(--color-border-default, #28362E);
+  box-shadow: var(--shadow-skeu-outer);
+  position: relative;
+}
+
+.web-pill::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--shadow-skeu-inset);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  pointer-events: none;
+}
+
+/* Interactive States: Hover, Focus, Active */
+button, a, input, select, textarea {
+  transition: all var(--duration-normal) var(--transition-timing);
+}
+
+button:focus-visible, a:focus-visible, input:focus-visible {
+  outline: 2px solid var(--color-focus-ring, #16A34A);
+  outline-offset: 2px;
+}
+
+button:active, .interactive-press:active {
+  transform: scale(0.98);
+}
+
+/* Typography Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading, "Sora", sans-serif);
+  color: var(--color-text-primary, #F8FAFB);
+  letter-spacing: -0.02em;
+}
+
+.web-title-hero {
+  font-family: var(--font-heading, "Sora", sans-serif);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.web-title-section {
+  font-family: var(--font-heading, "Sora", sans-serif);
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.web-body {
+  font-family: var(--font-ui, "Inter", sans-serif);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--color-text-secondary, #CBD5E1);
+}
+
+.web-muted {
+  color: var(--text-on-dark-muted);
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--color-app-bg);
+  background: var(--color-app-bg, #0B0F0D);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-surface-secondary);
+  background: var(--color-surface-secondary, #222C27);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-action-primary);
+  background: var(--color-action-primary, #16A34A);
 }
 
+/* Animations & Marquee */
 @keyframes marquee {
   0% {
     transform: translateX(0);
@@ -47,4 +187,14 @@ body {
 
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+/* Accessibility & Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

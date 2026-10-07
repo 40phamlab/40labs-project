@@ -7,6 +7,14 @@ export const colors = {
   topChrome: '#121815',
   sidebar: '#121815',
 
+  // Public Website / Skeuomorphic Brand Tokens
+  surfaceDarkBg: '#0B0F0D',
+  surfaceDarkRaised: '#14532D',
+  surfaceDarkHighlight: '#16A34A',
+  accentOrange: '#F97316',
+  textOnDark: '#F8FAFB',
+  textOnDarkMuted: 'rgba(248, 250, 251, 0.6)',
+
   // Solid Surfaces
   surfacePrimary: '#1A221E',
   surfaceSecondary: '#222C27',
