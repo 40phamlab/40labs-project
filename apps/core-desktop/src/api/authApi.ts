@@ -1,43 +1,218 @@
-import { invoke } from '@tauri-apps/api/core';
 import type { Business } from '@40labs/types';
+import { invokeCommand, isUsingTauriIpc } from './client';
 
 export interface AuthStatusResponse {
   deviceBound: boolean;
   business: Business | null;
   session: {
     userId: string;
+    displayName: string;
     role: string;
     locked: boolean;
+    mustChangeCredentials: boolean;
+    pinSet: boolean;
+    hasRecoveryCodes: boolean;
   } | null;
+  onboardingState?: string;
+  idleLockMinutes?: number;
 }
 
-export interface AuthErrorResponse {
-  code: string;
-  retryAfterSecs?: number | null;
+export interface AuthApi {
+  status(): Promise<AuthStatusResponse>;
+  login(username: string, password: string): Promise<void>;
+  logout(): Promise<void>;
+  lock(): Promise<void>;
+  unlockPin(pin: string): Promise<void>;
+  setPin(pin: string): Promise<void>;
+  stepUp(permission: string, pin: string, approverUserId?: string): Promise<string>;
+  listApprovers(permission: string): Promise<Array<{ userId: string; displayName: string; role: string }>>;
+  changePassword(oldPassword: string, newPassword: string): Promise<void>;
+  changePin(oldPin: string, newPin: string): Promise<void>;
+  resetOwnPin(password: string, newPin: string): Promise<void>;
+  usersList(): Promise<Array<any>>;
+  userCreate(payload: any): Promise<any>;
+  userUpdate(userId: string, payload: any): Promise<any>;
+  userSetActive(userId: string, active: boolean): Promise<void>;
+  userResetCredentials(userId: string): Promise<string>;
+  recoveryRedeem(code: string): Promise<void>;
+  recoveryRegenerate(password: string): Promise<Array<string>>;
+  recoveryGenerateInitial(): Promise<Array<string>>;
+  registrationCommit(payload: any): Promise<void>;
+  otpRequest(phone: string): Promise<void>;
+  otpVerify(phone: string, code: string): Promise<string>;
+  onboardingAdvance(state: string): Promise<void>;
+  businessSetIdleLock(minutes: number): Promise<void>;
 }
 
-export const authApi = {
-  status: async (): Promise<AuthStatusResponse> => {
-    return invoke<AuthStatusResponse>('auth_status');
+// Mock state for browser dev preview (!isTauri())
+let mockState: AuthStatusResponse = {
+  deviceBound: true,
+  business: {
+    business_id: 'AFYA-TEST01',
+    workspace_id: 'ws-01',
+    name: 'Afya Bora Pharmacy',
+    role_scopes: 'pharmacy',
+    business_type: 'Pharmacy',
+    scale: 'medium',
+    contacts: { mobile: '+255712345678', email: 'info@afyabora.co.tz', whatsapp: null },
+    address: { region: 'Dar es Salaam', district: 'Kinondoni', place: 'Mwananyamala' },
+    owner_id: 'user-sudo-1',
+    onboarding_state: 'setup_complete',
+    idle_lock_minutes: 5,
+    terms_version: '1.0',
+    terms_locale: 'sw-TZ',
+    terms_text_sha256: 'abc123sha',
+    terms_accepted_at: '2026-10-01T00:00:00Z',
+    terms_accepted_by_user_id: 'user-sudo-1',
+    created_at: '2026-10-01T00:00:00Z',
+    updated_at: '2026-10-01T00:00:00Z',
   },
-
-  login: async (username: string, password: string): Promise<void> => {
-    return invoke<void>('auth_login', { username, password });
+  session: {
+    userId: 'user-sudo-1',
+    displayName: 'Juma Mwanga',
+    role: 'sudo',
+    locked: false,
+    mustChangeCredentials: false,
+    pinSet: true,
+    hasRecoveryCodes: true,
   },
+  onboardingState: 'setup_complete',
+  idleLockMinutes: 5,
+};
 
-  logout: async (): Promise<void> => {
-    return invoke<void>('auth_logout');
+export const tauriAuthApi: AuthApi = {
+  status: () => invokeCommand<AuthStatusResponse>('auth_status'),
+  login: (username, password) => invokeCommand<void>('auth_login', { username, password }),
+  logout: () => invokeCommand<void>('auth_logout'),
+  lock: () => invokeCommand<void>('auth_lock'),
+  unlockPin: (pin) => invokeCommand<void>('auth_unlock_pin', { pin }),
+  setPin: (pin) => invokeCommand<void>('auth_set_pin', { pin }),
+  stepUp: (permission, pin, approverUserId) => invokeCommand<string>('auth_step_up', { permission, pin, approverUserId }),
+  listApprovers: (permission) => invokeCommand<Array<{ userId: string; displayName: string; role: string }>>('auth_list_approvers', { permission }),
+  changePassword: (oldPassword, newPassword) => invokeCommand<void>('auth_change_password', { oldPassword, newPassword }),
+  changePin: (oldPin, newPin) => invokeCommand<void>('auth_change_pin', { oldPin, newPin }),
+  resetOwnPin: (password, newPin) => invokeCommand<void>('auth_reset_own_pin', { password, newPin }),
+  usersList: () => invokeCommand<Array<any>>('user_list'),
+  userCreate: (payload) => invokeCommand<any>('user_create', { payload }),
+  userUpdate: (userId, payload) => invokeCommand<any>('user_update', { userId, payload }),
+  userSetActive: (userId, active) => invokeCommand<void>('user_set_active', { userId, active }),
+  userResetCredentials: (userId) => invokeCommand<string>('user_reset_credentials', { userId }),
+  recoveryRedeem: (code) => invokeCommand<void>('recovery_redeem', { code }),
+  recoveryRegenerate: (password) => invokeCommand<Array<string>>('recovery_regenerate', { password }),
+  recoveryGenerateInitial: () => invokeCommand<Array<string>>('recovery_generate_initial'),
+  registrationCommit: (payload) => invokeCommand<void>('registration_commit', { payload }),
+  otpRequest: (phone) => invokeCommand<void>('otp_request', { phone }),
+  otpVerify: (phone, code) => invokeCommand<string>('otp_verify', { phone, code }),
+  onboardingAdvance: (state) => invokeCommand<void>('onboarding_advance', { state }),
+  businessSetIdleLock: (minutes) => invokeCommand<void>('business_set_idle_lock', { minutes }),
+};
+
+export const mockAuthApi: AuthApi = {
+  status: async () => ({ ...mockState }),
+  login: async (username, password) => {
+    if (!username || !password) {
+      throw { code: 'INVALID_CREDENTIALS' };
+    }
+    mockState.session = {
+      userId: 'user-mock-1',
+      displayName: username,
+      role: username.includes('sudo') ? 'sudo' : 'staff',
+      locked: false,
+      mustChangeCredentials: false,
+      pinSet: true,
+      hasRecoveryCodes: true,
+    };
   },
-
-  lock: async (): Promise<void> => {
-    return invoke<void>('auth_lock');
+  logout: async () => {
+    mockState.session = null;
   },
-
-  unlockPin: async (pin: string): Promise<void> => {
-    return invoke<void>('auth_unlock_pin', { pin });
+  lock: async () => {
+    if (mockState.session) {
+      mockState.session.locked = true;
+    }
   },
-
-  stepUp: async (permission: string, pin: string): Promise<string> => {
-    return invoke<string>('auth_step_up', { permission, pin });
+  unlockPin: async (pin) => {
+    if (pin.length !== 6) {
+      throw { code: 'INVALID_CREDENTIALS' };
+    }
+    if (mockState.session) {
+      mockState.session.locked = false;
+    }
+  },
+  setPin: async (pin) => {
+    if (pin.length !== 6) {
+      throw { code: 'POLICY_VIOLATION' };
+    }
+    if (mockState.session) {
+      mockState.session.pinSet = true;
+    }
+  },
+  stepUp: async (permission, pin) => {
+    if (!pin || pin.length !== 6) {
+      throw { code: 'INVALID_CREDENTIALS' };
+    }
+    return `grant-${Math.random().toString(36).substring(2, 9)}`;
+  },
+  listApprovers: async () => [
+    { userId: 'user-sudo-1', displayName: 'Juma Mwanga (SUDO)', role: 'sudo' },
+  ],
+  changePassword: async () => {},
+  changePin: async () => {},
+  resetOwnPin: async () => {},
+  usersList: async () => [],
+  userCreate: async (p) => p,
+  userUpdate: async (_id, p) => p,
+  userSetActive: async () => {},
+  userResetCredentials: async () => 'temp-pass-123',
+  recoveryRedeem: async () => {},
+  recoveryRegenerate: async () => ['ABCDE-12345', 'FGHIJ-67890'],
+  recoveryGenerateInitial: async () => ['ABCDE-12345', 'FGHIJ-67890'],
+  registrationCommit: async (payload) => {
+    mockState.deviceBound = true;
+    mockState.business = {
+      business_id: 'AFYA-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+      workspace_id: 'ws-' + Math.random().toString(36).substring(2, 6),
+      name: payload.name || 'New Business',
+      role_scopes: payload.role_scopes || 'pharmacy',
+      business_type: payload.type || 'Pharmacy',
+      scale: payload.scale || 'medium',
+      contacts: { mobile: payload.phone || '+255700000000', email: payload.email || null, whatsapp: null },
+      address: { region: payload.region || 'Dar es Salaam', district: payload.district || '', place: payload.mtaa || '' },
+      owner_id: 'owner-1',
+      onboarding_state: 'owner_first_login',
+      idle_lock_minutes: 5,
+      terms_version: '1.0',
+      terms_locale: 'sw-TZ',
+      terms_text_sha256: 'mocksha',
+      terms_accepted_at: new Date().toISOString(),
+      terms_accepted_by_user_id: 'owner-1',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    mockState.session = null;
+  },
+  otpRequest: async () => {},
+  otpVerify: async () => 'mock-verification-token',
+  onboardingAdvance: async (state) => {
+    if (mockState.business) {
+      mockState.business.onboarding_state = state as any;
+    }
+  },
+  businessSetIdleLock: async (minutes) => {
+    if (mockState.business) {
+      mockState.business.idle_lock_minutes = minutes;
+    }
+    mockState.idleLockMinutes = minutes;
   },
 };
+
+export const authApi: AuthApi = new Proxy({} as AuthApi, {
+  get(_target, prop: keyof AuthApi) {
+    const api = isUsingTauriIpc() ? tauriAuthApi : mockAuthApi;
+    const fn = api[prop];
+    if (typeof fn === 'function') {
+      return fn.bind(api);
+    }
+    return fn;
+  },
+});

@@ -29,6 +29,7 @@ import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ToastProvider } from './hooks/useToast';
 import { useNotifications } from './hooks/useNotifications';
+import { AuthGate } from './features/auth/AuthGate';
 import './App.css';
 
 export default function App() {
@@ -129,15 +130,17 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <AppShell
-        topBar={topBarElement}
-        sidebar={sidebarElement}
-        navState={sidebarState}
-        lastNonClosedState={lastNonClosedState}
-        onNavStateChange={setSidebarState}
-      >
-        {renderContent()}
-      </AppShell>
+      <AuthGate>
+        <AppShell
+          topBar={topBarElement}
+          sidebar={sidebarElement}
+          navState={sidebarState}
+          lastNonClosedState={lastNonClosedState}
+          onNavStateChange={setSidebarState}
+        >
+          {renderContent()}
+        </AppShell>
+      </AuthGate>
     </ToastProvider>
   );
 }
