@@ -33,13 +33,13 @@ export function DashboardShell({
         <div className="flex-1 flex min-w-0 overflow-hidden">
           {/* Optional Inner Contextual Sidebar Slot */}
           {showSubNav && subNav && (
-            <aside className="flex-shrink-0 w-64 h-full bg-surface-strong/40 border-r border-border/10 overflow-y-auto no-scrollbar p-2">
+            <aside className="flex-shrink-0 w-64 h-full bg-surface-strong/40 border-r border-border/10 overflow-y-auto custom-scrollbar p-2">
               {subNav}
             </aside>
           )}
 
           {/* Main Workspace Stage */}
-          <main className="flex-1 min-w-0 h-full overflow-y-auto bg-surface relative no-scrollbar">
+          <main className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto bg-surface relative custom-scrollbar">
             <div className="p-8 max-w-[1600px] mx-auto">
               {children}
             </div>

@@ -53,6 +53,7 @@ pub fn run() {
             commands::auth_cmd::auth_lock,
             commands::auth_cmd::auth_unlock_pin,
             commands::auth_cmd::auth_step_up,
+            commands::auth_cmd::auth_list_approvers,
             // Inventory
             commands::inventory_cmd::get_inventory_list,
             commands::inventory_cmd::get_inventory_item,

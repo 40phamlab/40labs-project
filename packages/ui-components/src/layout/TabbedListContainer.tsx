@@ -6,6 +6,8 @@ export interface TabbedListContainerProps {
   activeTabId: string;
   onTabChange: (id: string) => void;
   children: React.ReactNode;
+  /** Whether the content region is scrollable (default: true). Set false when children manage their own scrolling */
+  scrollable?: boolean;
   className?: string;
 }
 
@@ -18,10 +20,11 @@ export const TabbedListContainer: React.FC<TabbedListContainerProps> = ({
   activeTabId,
   onTabChange,
   children,
+  scrollable = true,
   className = '',
 }) => {
   return (
-    <div className={`flex flex-col h-full overflow-hidden ${className}`}>
+    <div className={`flex flex-col h-full min-h-0 min-w-0 overflow-hidden ${className}`}>
       <div className="shrink-0 mb-4">
         <FilterTabs
           tabs={tabs}
@@ -30,7 +33,11 @@ export const TabbedListContainer: React.FC<TabbedListContainerProps> = ({
           className="bg-transparent !p-0 elevation-none"
         />
       </div>
-      <div className="flex-1 overflow-y-auto scrollbar-thin space-y-2 pr-1">
+      <div
+        className={`flex-1 min-h-0 min-w-0 space-y-2 pr-1 ${
+          scrollable ? 'overflow-y-auto custom-scrollbar' : 'overflow-hidden'
+        }`}
+      >
         {children}
       </div>
     </div>

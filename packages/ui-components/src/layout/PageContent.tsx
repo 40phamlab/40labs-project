@@ -64,7 +64,7 @@ export function PageContent({
     ? 'overflow-y-auto custom-scrollbar'
     : 'overflow-hidden';
 
-  const baseClasses = `flex-1 min-h-0 w-full flex flex-col ${scrollClasses} ${variantClasses[variant]} ${paddingClasses[padding]} ${className}`;
+  const baseClasses = `flex-1 min-h-0 min-w-0 w-full flex flex-col ${scrollClasses} ${variantClasses[variant]} ${paddingClasses[padding]} ${className}`;
 
   if (loading) {
     return (

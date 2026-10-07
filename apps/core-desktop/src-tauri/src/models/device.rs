@@ -26,6 +26,8 @@ pub struct StaffPermissionSet {
     pub can_add_lab_sample: bool,
     pub can_override_lab_result: bool,
     pub can_view_reports: bool,
+    #[serde(rename = "branches.manage", skip_serializing_if = "Option::is_none")]
+    pub branches_manage: Option<bool>,
 }
 
 impl Default for StaffPermissionSet {
@@ -38,6 +40,7 @@ impl Default for StaffPermissionSet {
             can_add_lab_sample: false,
             can_override_lab_result: false,
             can_view_reports: true,
+            branches_manage: Some(false),
         }
     }
 }

@@ -80,6 +80,7 @@ pub struct RecordStockActionRequest {
     pub reason: String,
     pub authorized_pin: Option<String>,
     pub authorized_by_user_id: Option<String>,
+    pub step_up_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

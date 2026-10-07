@@ -6,18 +6,21 @@ pub struct InventoryRepository;
 impl InventoryRepository {
     pub async fn list_medicines_with_inventory(
         pool: &SqlitePool,
+        workspace_id: &str,
         include_deactivated: bool,
     ) -> Result<Vec<MedicineWithInventory>, sqlx::Error> {
         let items: Vec<InventoryItem> = if include_deactivated {
             sqlx::query_as::<_, InventoryItem>(
-                "SELECT * FROM inventory_item ORDER BY created_at DESC"
+                "SELECT * FROM inventory_item WHERE workspace_id = ? ORDER BY created_at DESC"
             )
+            .bind(workspace_id)
             .fetch_all(pool)
             .await?
         } else {
             sqlx::query_as::<_, InventoryItem>(
-                "SELECT * FROM inventory_item WHERE is_deactivated = 0 ORDER BY created_at DESC"
+                "SELECT * FROM inventory_item WHERE workspace_id = ? AND is_deactivated = 0 ORDER BY created_at DESC"
             )
+            .bind(workspace_id)
             .fetch_all(pool)
             .await?
         };
@@ -25,8 +28,9 @@ impl InventoryRepository {
         let mut result = Vec::new();
         for item in items {
             let medicine = sqlx::query_as::<_, Medicine>(
-                "SELECT * FROM medicine WHERE id = ?"
+                "SELECT * FROM medicine WHERE workspace_id = ? AND id = ?"
             )
+            .bind(workspace_id)
             .bind(&item.medicine_id)
             .fetch_optional(pool)
             .await?;
@@ -44,19 +48,22 @@ impl InventoryRepository {
 
     pub async fn get_inventory_item_by_id(
         pool: &SqlitePool,
+        workspace_id: &str,
         id: &str,
     ) -> Result<Option<MedicineWithInventory>, sqlx::Error> {
         let item = sqlx::query_as::<_, InventoryItem>(
-            "SELECT * FROM inventory_item WHERE id = ?"
+            "SELECT * FROM inventory_item WHERE workspace_id = ? AND id = ?"
         )
+        .bind(workspace_id)
         .bind(id)
         .fetch_optional(pool)
         .await?;
 
         if let Some(inv_item) = item {
             let medicine = sqlx::query_as::<_, Medicine>(
-                "SELECT * FROM medicine WHERE id = ?"
+                "SELECT * FROM medicine WHERE workspace_id = ? AND id = ?"
             )
+            .bind(workspace_id)
             .bind(&inv_item.medicine_id)
             .fetch_optional(pool)
             .await?;
@@ -73,7 +80,7 @@ impl InventoryRepository {
     }
 
     pub async fn create_medicine(
-        pool: &SqlitePool,
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
         med: &Medicine,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
@@ -95,14 +102,14 @@ impl InventoryRepository {
         .bind(med.requires_prescription)
         .bind(&med.created_at)
         .bind(&med.updated_at)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
         Ok(())
     }
 
     pub async fn create_inventory_item(
-        pool: &SqlitePool,
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
         item: &InventoryItem,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
@@ -128,34 +135,36 @@ impl InventoryRepository {
         .bind(item.is_deactivated)
         .bind(&item.created_at)
         .bind(&item.updated_at)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
         Ok(())
     }
 
     pub async fn update_inventory_quantity(
-        pool: &SqlitePool,
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        workspace_id: &str,
         id: &str,
         new_quantity: i64,
         is_deactivated: bool,
         updated_at: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "UPDATE inventory_item SET quantity = ?, is_deactivated = ?, updated_at = ? WHERE id = ?"
+            "UPDATE inventory_item SET quantity = ?, is_deactivated = ?, updated_at = ? WHERE workspace_id = ? AND id = ?"
         )
         .bind(new_quantity)
         .bind(is_deactivated)
         .bind(updated_at)
+        .bind(workspace_id)
         .bind(id)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
         Ok(())
     }
 
     pub async fn create_stock_adjustment(
-        pool: &SqlitePool,
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
         adj: &StockAdjustment,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
@@ -176,7 +185,7 @@ impl InventoryRepository {
         .bind(&adj.audit_log_id)
         .bind(&adj.created_at)
         .bind(&adj.updated_at)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
         Ok(())

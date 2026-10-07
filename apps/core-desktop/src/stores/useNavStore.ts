@@ -33,7 +33,7 @@ export const VALID_SCREENS: readonly ScreenId[] = [
   'notifications',
 ] as const;
 
-const DEFAULT_SCREEN: ScreenId = 'settings';
+const DEFAULT_SCREEN: ScreenId = 'dashboard';
 
 const STORAGE_KEY_STATE = '40labs_sidebar_state';
 const STORAGE_KEY_SECTION = '40labs_sidebar_section';

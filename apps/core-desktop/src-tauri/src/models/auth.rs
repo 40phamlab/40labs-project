@@ -47,6 +47,14 @@ pub enum Permission {
     AddLabSample,
     OverrideLabResult,
     ViewReports,
+    InventoryAdjust,
+    UsersManage,
+    BranchesManage,
+    SettingsManage,
+    SalesRefund,
+    InteractionOverride,
+    PurchasesApprove,
+    SalesDiscount,
     Custom(String),
 }
 
@@ -60,8 +68,20 @@ impl Permission {
             Permission::AddLabSample => "can_add_lab_sample",
             Permission::OverrideLabResult => "can_override_lab_result",
             Permission::ViewReports => "can_view_reports",
+            Permission::InventoryAdjust => "inventory.adjust",
+            Permission::UsersManage => "users.manage",
+            Permission::BranchesManage => "branches.manage",
+            Permission::SettingsManage => "settings.manage",
+            Permission::SalesRefund => "sales.refund",
+            Permission::InteractionOverride => "interaction.override",
+            Permission::PurchasesApprove => "purchases.approve",
+            Permission::SalesDiscount => "sales.discount",
             Permission::Custom(s) => s.as_str(),
         }
+    }
+
+    pub fn is_flagged(&self) -> bool {
+        matches!(self, Permission::BranchesManage) || self.as_str() == "branches.manage"
     }
 }
 

@@ -208,7 +208,7 @@ export function AppShell({
             </aside>
           )}
 
-          <main className="flex-1 min-w-0 h-full overflow-hidden relative" data-testid="app-shell-main-workspace">
+          <main className="flex-1 min-w-0 min-h-0 h-full overflow-hidden relative" data-testid="app-shell-main-workspace">
             {children}
           </main>
         </div>

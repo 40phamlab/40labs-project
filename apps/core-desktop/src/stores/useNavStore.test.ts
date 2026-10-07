@@ -19,12 +19,12 @@ describe('useNavStore navigation persistence and validation', () => {
   it('falls back to default screen when an invalid persisted screen is present', async () => {
     localStorage.setItem('40labs_sidebar_section', 'old-screen-that-no-longer-exists');
     const { useNavStore } = await import('./useNavStore');
-    expect(useNavStore.getState().activeScreen).toBe('settings');
+    expect(useNavStore.getState().activeScreen).toBe('dashboard');
   });
 
   it('falls back to default screen when persisted screen is missing', async () => {
     const { useNavStore } = await import('./useNavStore');
-    expect(useNavStore.getState().activeScreen).toBe('settings');
+    expect(useNavStore.getState().activeScreen).toBe('dashboard');
   });
 
   it('persists correctly upon navigation to a valid screen', async () => {

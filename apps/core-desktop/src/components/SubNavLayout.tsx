@@ -33,7 +33,7 @@ export const SubNavLayout: React.FC<SubNavLayoutProps> = ({
   const setOpen = useLayoutStore((s) => s.setSubNavOpen);
 
   return (
-    <div className={`flex w-full h-full overflow-hidden ${className}`}>
+    <div className={`flex w-full h-full min-h-0 min-w-0 overflow-hidden ${className}`}>
       <aside
         aria-hidden={!open}
         inert={!open}
@@ -69,7 +69,7 @@ export const SubNavLayout: React.FC<SubNavLayoutProps> = ({
         </div>
       )}
 
-      <div className={`flex-1 min-w-0 h-full overflow-y-auto custom-scrollbar ${contentClassName}`}>
+      <div className={`flex-1 min-w-0 min-h-0 h-full overflow-y-auto custom-scrollbar ${contentClassName}`}>
         {children}
       </div>
     </div>

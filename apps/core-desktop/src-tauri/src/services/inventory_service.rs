@@ -2,13 +2,13 @@ use chrono::Utc;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
+use crate::auth::{AuthContext, AuthEngine};
 use crate::models::audit::AuditLogEntry;
 use crate::models::inventory::{
     AddStockRequest, InventoryItem, Medicine, MedicineWithInventory,
     RecordStockActionRequest, RecordStockActionResult, StockAdjustment,
 };
-use crate::models::{DEFAULT_BRANCH_ID, DEFAULT_WORKSPACE_ID};
-use crate::repositories::audit_repo::AuditRepository;
+use crate::repositories::audit_repo::audit;
 use crate::repositories::inventory_repo::InventoryRepository;
 
 pub struct InventoryService;
@@ -16,6 +16,7 @@ pub struct InventoryService;
 impl InventoryService {
     pub async fn add_stock(
         pool: &SqlitePool,
+        ctx: &AuthContext,
         req: AddStockRequest,
     ) -> Result<MedicineWithInventory, String> {
         let now = Utc::now().to_rfc3339();
@@ -24,8 +25,8 @@ impl InventoryService {
 
         let medicine = Medicine {
             id: med_id.clone(),
-            workspace_id: DEFAULT_WORKSPACE_ID.to_string(),
-            branch_id: DEFAULT_BRANCH_ID.to_string(),
+            workspace_id: ctx.workspace_id.clone(),
+            branch_id: ctx.branch_id.clone(),
             created_at: now.clone(),
             updated_at: now.clone(),
             name: req.medicine_name,
@@ -38,8 +39,8 @@ impl InventoryService {
 
         let inventory_item = InventoryItem {
             id: inv_id.clone(),
-            workspace_id: DEFAULT_WORKSPACE_ID.to_string(),
-            branch_id: DEFAULT_BRANCH_ID.to_string(),
+            workspace_id: ctx.workspace_id.clone(),
+            branch_id: ctx.branch_id.clone(),
             created_at: now.clone(),
             updated_at: now.clone(),
             medicine_id: med_id,
@@ -53,23 +54,16 @@ impl InventoryService {
             is_deactivated: false,
         };
 
-        InventoryRepository::create_medicine(pool, &medicine)
-            .await
-            .map_err(|e| format!("Failed to create medicine: {}", e))?;
+        let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
-        InventoryRepository::create_inventory_item(pool, &inventory_item)
-            .await
-            .map_err(|e| format!("Failed to create inventory item: {}", e))?;
-
-        // Write initial audit log
         let audit_entry = AuditLogEntry {
             id: format!("audit_{}", Uuid::new_v4().simple()),
-            workspace_id: DEFAULT_WORKSPACE_ID.to_string(),
-            branch_id: DEFAULT_BRANCH_ID.to_string(),
+            workspace_id: ctx.workspace_id.clone(),
+            branch_id: ctx.branch_id.clone(),
             action: "stock_adjustment".to_string(),
-            performed_by_user_id: Some("user_001".to_string()),
+            performed_by_user_id: Some(ctx.user_id.clone()),
             target_entity_type: "InventoryItem".to_string(),
-            target_entity_id: inv_id,
+            target_entity_id: inv_id.clone(),
             metadata: Some(
                 serde_json::json!({
                     "actionType": "initial_stock_creation",
@@ -77,12 +71,22 @@ impl InventoryService {
                 })
                 .to_string(),
             ),
-            created_at: now,
+            created_at: now.clone(),
         };
 
-        AuditRepository::create(pool, &audit_entry)
+        audit::append(&mut *tx, &audit_entry)
             .await
-            .map_err(|e| format!("Failed to record audit log: {}", e))?;
+            .map_err(|e| format!("Audit error: {}", e))?;
+
+        InventoryRepository::create_medicine(&mut *tx, &medicine)
+            .await
+            .map_err(|e| format!("Failed to create medicine: {}", e))?;
+
+        InventoryRepository::create_inventory_item(&mut *tx, &inventory_item)
+            .await
+            .map_err(|e| format!("Failed to create inventory item: {}", e))?;
+
+        tx.commit().await.map_err(|e| e.to_string())?;
 
         Ok(MedicineWithInventory {
             inventory_item,
@@ -92,12 +96,34 @@ impl InventoryService {
 
     pub async fn record_stock_action(
         pool: &SqlitePool,
+        engine: &AuthEngine,
+        ctx: &AuthContext,
         req: RecordStockActionRequest,
     ) -> Result<RecordStockActionResult, String> {
-        let existing = InventoryRepository::get_inventory_item_by_id(pool, &req.inventory_item_id)
+        let existing = InventoryRepository::get_inventory_item_by_id(pool, &ctx.workspace_id, &req.inventory_item_id)
             .await
             .map_err(|e| format!("Failed to fetch inventory item: {}", e))?
             .ok_or_else(|| "Inventory item not found".to_string())?;
+
+        let is_adjustment = matches!(
+            req.action.as_str(),
+            "damaged" | "expired" | "transferred" | "disposed" | "deactivated" | "adjustment" | "write_off"
+        );
+
+        let adjusted_by = if is_adjustment {
+            let token = req.step_up_token.as_deref().ok_or_else(|| "Step-up token required".to_string())?;
+            engine
+                .consume_step_up(
+                    &ctx.user_id,
+                    "inventory.adjust",
+                    Some(&req.inventory_item_id),
+                    token,
+                )
+                .await
+                .map_err(|e| format!("Step-up required or failed: {:?}", e))?
+        } else {
+            ctx.user_id.clone()
+        };
 
         let now = Utc::now().to_rfc3339();
         let current_qty = existing.inventory_item.quantity;
@@ -116,7 +142,7 @@ impl InventoryService {
                 computed_delta = -amount;
                 new_qty = (current_qty - amount).max(0);
             }
-            "disposed" => {
+            "disposed" | "write_off" => {
                 let amount = req.quantity_delta.unwrap_or(current_qty).abs();
                 computed_delta = -amount;
                 new_qty = (current_qty - amount).max(0);
@@ -137,23 +163,15 @@ impl InventoryService {
             }
         }
 
-        InventoryRepository::update_inventory_quantity(
-            pool,
-            &req.inventory_item_id,
-            new_qty,
-            is_deactivated,
-            &now,
-        )
-        .await
-        .map_err(|e| format!("Failed to update inventory quantity: {}", e))?;
+        let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
         let audit_id = format!("audit_{}", Uuid::new_v4().simple());
         let audit_entry = AuditLogEntry {
             id: audit_id.clone(),
-            workspace_id: DEFAULT_WORKSPACE_ID.to_string(),
-            branch_id: DEFAULT_BRANCH_ID.to_string(),
+            workspace_id: ctx.workspace_id.clone(),
+            branch_id: ctx.branch_id.clone(),
             action: "stock_adjustment".to_string(),
-            performed_by_user_id: Some(req.authorized_by_user_id.unwrap_or_else(|| "user_001".to_string())),
+            performed_by_user_id: Some(ctx.user_id.clone()),
             target_entity_type: "InventoryItem".to_string(),
             target_entity_id: req.inventory_item_id.clone(),
             metadata: Some(
@@ -163,33 +181,47 @@ impl InventoryService {
                     "previousQuantity": current_qty,
                     "newQuantity": new_qty,
                     "reason": req.reason,
+                    "authorizedByUserId": adjusted_by,
                 })
                 .to_string(),
             ),
             created_at: now.clone(),
         };
 
-        AuditRepository::create(pool, &audit_entry)
+        audit::append(&mut *tx, &audit_entry)
             .await
-            .map_err(|e| format!("Failed to write audit entry: {}", e))?;
+            .map_err(|e| format!("Audit error: {}", e))?;
+
+        InventoryRepository::update_inventory_quantity(
+            &mut *tx,
+            &ctx.workspace_id,
+            &req.inventory_item_id,
+            new_qty,
+            is_deactivated,
+            &now,
+        )
+        .await
+        .map_err(|e| format!("Failed to update inventory quantity: {}", e))?;
 
         let adj_id = format!("adj_{}", Uuid::new_v4().simple());
         let adjustment = StockAdjustment {
             id: adj_id,
-            workspace_id: DEFAULT_WORKSPACE_ID.to_string(),
-            branch_id: DEFAULT_BRANCH_ID.to_string(),
+            workspace_id: ctx.workspace_id.clone(),
+            branch_id: ctx.branch_id.clone(),
             created_at: now.clone(),
             updated_at: now,
             inventory_item_id: req.inventory_item_id.clone(),
-            adjusted_by_user_id: "user_001".to_string(),
+            adjusted_by_user_id: adjusted_by,
             delta: computed_delta,
             reason: req.reason,
             audit_log_id: audit_id.clone(),
         };
 
-        InventoryRepository::create_stock_adjustment(pool, &adjustment)
+        InventoryRepository::create_stock_adjustment(&mut *tx, &adjustment)
             .await
             .map_err(|e| format!("Failed to create stock adjustment: {}", e))?;
+
+        tx.commit().await.map_err(|e| e.to_string())?;
 
         let mut updated_item = existing;
         updated_item.inventory_item.quantity = new_qty;

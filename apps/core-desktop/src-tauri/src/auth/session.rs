@@ -33,9 +33,19 @@ pub struct Session {
 
 #[derive(Debug, Clone)]
 pub struct StepUpGrant {
-    pub user_id: String,
+    pub actor_user_id: String,
     pub permission: String,
+    pub approver_user_id: String,
+    pub target: Option<String>,
+    pub uses_remaining: u32,
     pub expires_at: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApproverInfo {
+    pub user_id: String,
+    pub display_name: String,
 }
 
 pub struct AuthState {

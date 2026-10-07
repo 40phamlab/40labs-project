@@ -1,30 +1,31 @@
 use sqlx::SqlitePool;
 use crate::models::device::PairedDevice;
-use crate::models::{DEFAULT_WORKSPACE_ID, DEFAULT_BRANCH_ID};
 use chrono::Utc;
 use uuid::Uuid;
 
-pub async fn get_paired_devices(pool: &SqlitePool) -> Result<Vec<PairedDevice>, sqlx::Error> {
+pub async fn get_paired_devices(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<PairedDevice>, sqlx::Error> {
     sqlx::query_as::<_, PairedDevice>(
         r#"
         SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
         FROM paired_device
-        WHERE status != 'removed'
+        WHERE workspace_id = ? AND status != 'removed'
         ORDER BY paired_at DESC
         "#,
     )
+    .bind(workspace_id)
     .fetch_all(pool)
     .await
 }
 
-pub async fn get_device_by_id(pool: &SqlitePool, id: &str) -> Result<Option<PairedDevice>, sqlx::Error> {
+pub async fn get_device_by_id(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<Option<PairedDevice>, sqlx::Error> {
     sqlx::query_as::<_, PairedDevice>(
         r#"
         SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
         FROM paired_device
-        WHERE id = ?
+        WHERE workspace_id = ? AND id = ?
         "#,
     )
+    .bind(workspace_id)
     .bind(id)
     .fetch_optional(pool)
     .await
@@ -45,6 +46,8 @@ pub async fn get_device_by_credential_hash(pool: &SqlitePool, credential_hash: &
 
 pub async fn create_paired_device(
     pool: &SqlitePool,
+    workspace_id: &str,
+    branch_id: &str,
     user_id: &str,
     device_label: &str,
     device_type: &str,
@@ -61,8 +64,8 @@ pub async fn create_paired_device(
         "#,
     )
     .bind(&id)
-    .bind(DEFAULT_WORKSPACE_ID)
-    .bind(DEFAULT_BRANCH_ID)
+    .bind(workspace_id)
+    .bind(branch_id)
     .bind(user_id)
     .bind(device_label)
     .bind(device_type)
@@ -74,56 +77,59 @@ pub async fn create_paired_device(
     .execute(pool)
     .await?;
 
-    get_device_by_id(pool, &id)
+    get_device_by_id(pool, workspace_id, &id)
         .await?
         .ok_or_else(|| sqlx::Error::RowNotFound)
 }
 
-pub async fn update_device_status(pool: &SqlitePool, id: &str, status: &str) -> Result<(), sqlx::Error> {
+pub async fn update_device_status(pool: &SqlitePool, workspace_id: &str, id: &str, status: &str) -> Result<(), sqlx::Error> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"
         UPDATE paired_device
         SET status = ?, updated_at = ?
-        WHERE id = ?
+        WHERE workspace_id = ? AND id = ?
         "#,
     )
     .bind(status)
     .bind(&now)
+    .bind(workspace_id)
     .bind(id)
     .execute(pool)
     .await?;
     Ok(())
 }
 
-pub async fn update_device_permissions(pool: &SqlitePool, id: &str, permissions_json: &str) -> Result<(), sqlx::Error> {
+pub async fn update_device_permissions(pool: &SqlitePool, workspace_id: &str, id: &str, permissions_json: &str) -> Result<(), sqlx::Error> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"
         UPDATE paired_device
         SET permissions_json = ?, updated_at = ?
-        WHERE id = ?
+        WHERE workspace_id = ? AND id = ?
         "#,
     )
     .bind(permissions_json)
     .bind(&now)
+    .bind(workspace_id)
     .bind(id)
     .execute(pool)
     .await?;
     Ok(())
 }
 
-pub async fn update_last_connected(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
+pub async fn update_last_connected(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<(), sqlx::Error> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"
         UPDATE paired_device
         SET last_connected_at = ?, updated_at = ?
-        WHERE id = ?
+        WHERE workspace_id = ? AND id = ?
         "#,
     )
     .bind(&now)
     .bind(&now)
+    .bind(workspace_id)
     .bind(id)
     .execute(pool)
     .await?;

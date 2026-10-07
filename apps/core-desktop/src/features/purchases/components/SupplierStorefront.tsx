@@ -445,11 +445,12 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
       )}
 
       {/* Main Tabbed Layout */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
         <TabbedListContainer
           tabs={tabs}
           activeTabId={activeTab}
           onTabChange={setActiveTab}
+          scrollable={activeTab !== 'cart'}
         >
           {activeTab === 'products' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-1">

@@ -1,6 +1,7 @@
 use tauri::State;
 use zeroize::Zeroizing;
 
+use crate::auth::session::ApproverInfo;
 use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::AppState;
 
@@ -58,7 +59,19 @@ pub async fn auth_unlock_pin(state: State<'_, AppState>, pin: String) -> Result<
 }
 
 #[tauri::command]
-pub async fn auth_step_up(state: State<'_, AppState>, permission: String, pin: String) -> Result<String, AuthErrorResponse> {
+pub async fn auth_step_up(
+    state: State<'_, AppState>,
+    permission: String,
+    pin: String,
+    approver_user_id: Option<String>,
+    target: Option<String>,
+) -> Result<String, AuthErrorResponse> {
     let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    engine.step_up(&permission, &pin).await.map_err(|e| e.to_response())
+    engine.step_up(&permission, &pin, approver_user_id, target).await.map_err(|e| e.to_response())
+}
+
+#[tauri::command]
+pub async fn auth_list_approvers(state: State<'_, AppState>) -> Result<Vec<ApproverInfo>, AuthErrorResponse> {
+    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
+    engine.list_approvers().await.map_err(|e| e.to_response())
 }

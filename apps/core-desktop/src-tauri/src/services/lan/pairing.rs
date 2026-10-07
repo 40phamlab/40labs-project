@@ -12,7 +12,6 @@ use uuid::Uuid;
 
 use crate::models::device::{PairDeviceRequest, PairDeviceResponse};
 use crate::models::audit::AuditLogEntry;
-use crate::models::{DEFAULT_WORKSPACE_ID, DEFAULT_BRANCH_ID};
 use crate::repositories::{device_repo, audit_repo::AuditRepository};
 use super::LanServerState;
 
@@ -94,9 +93,14 @@ pub async fn pair_handler(
     hasher.update(raw_credential.as_bytes());
     let credential_hash = format!("{:x}", hasher.finalize());
 
+    const DEFAULT_WORKSPACE_ID: &str = "ws_010101";
+    const DEFAULT_BRANCH_ID: &str = "br_010101";
+
     // 5. Create paired device in database
     let device = match device_repo::create_paired_device(
         &state.pool,
+        DEFAULT_WORKSPACE_ID,
+        DEFAULT_BRANCH_ID,
         &user_id,
         label,
         dev_type,
@@ -317,7 +321,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         // Block device immediately in DB
-        device_repo::update_device_status(&state.pool, device_id, "blocked").await.unwrap();
+        device_repo::update_device_status(&state.pool, "ws_010101", device_id, "blocked").await.unwrap();
 
         // Next request should be forbidden immediately without restart
         let response = app

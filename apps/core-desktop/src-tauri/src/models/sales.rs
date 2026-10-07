@@ -47,6 +47,7 @@ pub struct CreateSaleRequest {
     pub items: Vec<CreateSaleItemInput>,
     pub payment_method: String,
     pub discount_amount: Option<i64>,
+    pub step_up_token: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

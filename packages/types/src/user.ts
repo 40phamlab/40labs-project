@@ -4,6 +4,25 @@ export type UserRole = 'sudo' | 'staff';
 
 export type RolePreset = 'sudo' | 'admin' | 'pharmacist' | 'lab_technician';
 
+export type PermissionKey =
+  | 'inventory.adjust'
+  | 'users.manage'
+  | 'branches.manage'
+  | 'settings.manage'
+  | 'sales.refund'
+  | 'interaction.override'
+  | 'purchases.approve'
+  | 'sales.discount'
+  | 'can_update_stock'
+  | 'can_adjust_stock'
+  | 'can_issue_refund'
+  | 'can_approve_po'
+  | 'can_add_lab_sample'
+  | 'can_override_lab_result'
+  | 'can_view_reports';
+
+export const FLAGGED_PERMISSIONS: PermissionKey[] = ['branches.manage'];
+
 export interface Owner extends BaseEntity {
   first_name: string;
   last_name: string;
@@ -85,6 +104,8 @@ export interface StaffPermissionSet {
   can_add_lab_sample: boolean;
   can_override_lab_result: boolean;
   can_view_reports: boolean;
+  'branches.manage'?: boolean;
+  [key: string]: boolean | undefined;
 }
 
 // Device pairing — Orbit Worker, QR-code, LAN-only

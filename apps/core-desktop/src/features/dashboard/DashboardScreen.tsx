@@ -28,7 +28,7 @@ export const DashboardScreen: React.FC = () => {
 
   if (isLoading || !summary) {
     return (
-      <div className="p-8 max-w-[1600px] mx-auto space-y-6 h-full overflow-y-auto">
+      <div className="p-8 max-w-[1600px] mx-auto space-y-6 h-full min-h-0 min-w-0 overflow-y-auto custom-scrollbar">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-24 w-full" />
@@ -46,7 +46,7 @@ export const DashboardScreen: React.FC = () => {
 
   if (isError) {
     return (
-      <div className="p-8 max-w-[1600px] mx-auto h-full overflow-y-auto">
+      <div className="p-8 max-w-[1600px] mx-auto h-full min-h-0 min-w-0 overflow-y-auto custom-scrollbar">
         <Alert intent="danger" title={t('dashboard.errorLoading')}>
           <div className="flex items-center justify-between">
             <span>{error instanceof Error ? error.message : String(error)}</span>
@@ -64,7 +64,7 @@ export const DashboardScreen: React.FC = () => {
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto">
+    <div className="h-full w-full min-h-0 min-w-0">
       <DashboardGrid>
         {/* Main Column (~9 cols) */}
         <DashboardSection colSpan={9} className="space-y-6">

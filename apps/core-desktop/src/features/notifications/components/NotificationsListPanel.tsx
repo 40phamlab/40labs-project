@@ -214,7 +214,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
       </div>
 
       {/* One filter row, horizontally scrollable chip row */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1 shrink-0 scrollbar-hidden">
+      <div className="flex items-center gap-1 overflow-x-auto pb-1 shrink-0 custom-scrollbar">
         {FILTER_CHIPS.map((chip) => {
           const isActive = categoryFilter === chip.value;
           let count = 0;
@@ -250,7 +250,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
       </div>
 
       {/* List rows (gap of 2px, padding px-3 py-2.5) */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1 scrollbar-hidden flex flex-col gap-0.5">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar flex flex-col gap-0.5">
         {filteredNotifications.length === 0 ? (
           <div className="my-auto p-4">
             <EmptyState

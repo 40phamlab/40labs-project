@@ -1,83 +1,27 @@
 openapi: 3.0.3
 info:
-  title: 40Labs Healthcare Platform API - Patient Report Export & Share
-  version: 1.0.0
+  title: 40Labs Healthcare Platform API - Device Activation V2
+  version: 2.0.0
 paths:
-  /api/v1/patients/{customerId}/export:
+  /api/v1/activation/otp/request:
     post:
-      summary: Export patient record report as PDF
-      description: Generates a confidential PDF patient report based on selected sections and date range. Requires PIN verification and logs an immutable audit entry.
-      parameters:
-        - name: customerId
-          in: path
-          required: true
-          schema:
-            type: string
+      summary: Request OTP for device activation
+      description: Sends a one-time password (OTP) via SMS to the owner phone number.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - phone
               properties:
-                sections:
-                  type: array
-                  items:
-                    type: string
-                    enum: [demographics, allergies, medications, dispensing, labs, purchases, balance]
-                dateRange:
+                phone:
                   type: string
-                  enum: [all, 30d, 90d, custom]
-                startDate:
-                  type: string
-                  format: date
-                endDate:
-                  type: string
-                  format: date
+                  example: "+255712345678"
       responses:
         '200':
-          description: PDF report generated successfully
-          content:
-            application/pdf:
-              schema:
-                type: string
-                format: binary
-        '401':
-          description: PIN verification required / unauthorized
-        '403':
-          description: Access forbidden / role check failed
-
-  /api/v1/patients/{customerId}/share:
-    post:
-      summary: Share patient report via delivery channel (WhatsApp, Gmail SMTP, Google Drive)
-      description: Generates and shares the confidential patient report PDF via the specified channel. If offline, enqueues request as queued_offline. Never includes raw patient data in message body (attachment only).
-      parameters:
-        - name: customerId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                channel:
-                  type: string
-                  enum: [whatsapp, gmail, drive]
-                recipient:
-                  type: string
-                sections:
-                  type: array
-                  items:
-                    type: string
-                dateRange:
-                  type: string
-      responses:
-        '200':
-          description: Report shared or queued successfully (offline)
+          description: OTP sent successfully
           content:
             application/json:
               schema:
@@ -85,6 +29,97 @@ paths:
                 properties:
                   status:
                     type: string
-                    enum: [sent, queued_offline, saved_locally]
-                  message:
+                    example: "otp_sent"
+                  expires_in_secs:
+                    type: integer
+                    example: 300
+        '400':
+          description: Invalid phone number
+        '429':
+          description: Rate limit exceeded
+
+  /api/v1/activation/otp/verify:
+    post:
+      summary: Verify OTP code
+      description: Verifies the SMS OTP code and returns a single-use verification token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - code
+              properties:
+                phone:
+                  type: string
+                code:
+                  type: string
+      responses:
+        '200':
+          description: OTP verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verification_token:
                     type: string
+        '400':
+          description: Invalid or expired OTP code
+
+  /api/v1/activation/register:
+    post:
+      summary: Register primary device and business activation
+      description: Registers business details, owner account, terms acceptance, and primary device public key. Returns a cryptographically signed ActivationGrant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - verification_token
+                - business_name
+                - owner_first_name
+                - owner_last_name
+                - device_public_key
+                - terms_accepted
+              properties:
+                verification_token:
+                  type: string
+                business_name:
+                  type: string
+                owner_first_name:
+                  type: string
+                owner_last_name:
+                  type: string
+                owner_email:
+                  type: string
+                  nullable: true
+                device_public_key:
+                  type: string
+                terms_accepted:
+                  type: boolean
+      responses:
+        '200':
+          description: Device and business activated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  activation_grant:
+                    type: string
+                    description: Cryptographically signed grant for primary device
+                  business_id:
+                    type: string
+                  workspace_id:
+                    type: string
+                  branch_id:
+                    type: string
+        '400':
+          description: Invalid request or verification token
+        '409':
+          description: Business or primary device already registered

@@ -4,18 +4,20 @@ use crate::models::notification::{Notification, NotificationMessage, MessageAtta
 pub struct NotificationRepository;
 
 impl NotificationRepository {
-    pub async fn list(pool: &SqlitePool) -> Result<Vec<Notification>, sqlx::Error> {
+    pub async fn list(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<Notification>, sqlx::Error> {
         sqlx::query_as::<_, Notification>(
-            "SELECT * FROM notifications ORDER BY received_at DESC"
+            "SELECT * FROM notifications WHERE workspace_id = ? ORDER BY received_at DESC"
         )
+        .bind(workspace_id)
         .fetch_all(pool)
         .await
     }
 
-    pub async fn get_by_id(pool: &SqlitePool, id: &str) -> Result<Option<Notification>, sqlx::Error> {
+    pub async fn get_by_id(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<Option<Notification>, sqlx::Error> {
         sqlx::query_as::<_, Notification>(
-            "SELECT * FROM notifications WHERE id = ?"
+            "SELECT * FROM notifications WHERE workspace_id = ? AND id = ?"
         )
+        .bind(workspace_id)
         .bind(id)
         .fetch_optional(pool)
         .await
@@ -57,13 +59,14 @@ impl NotificationRepository {
         Ok(())
     }
 
-    pub async fn update_status(pool: &SqlitePool, id: &str, status: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_status(pool: &SqlitePool, workspace_id: &str, id: &str, status: &str) -> Result<(), sqlx::Error> {
         let now = chrono::Utc::now().to_rfc3339();
         sqlx::query(
-            "UPDATE notifications SET status = ?, updated_at = ? WHERE id = ?"
+            "UPDATE notifications SET status = ?, updated_at = ? WHERE workspace_id = ? AND id = ?"
         )
         .bind(status)
         .bind(now)
+        .bind(workspace_id)
         .bind(id)
         .execute(pool)
         .await?;
@@ -71,12 +74,13 @@ impl NotificationRepository {
         Ok(())
     }
 
-    pub async fn soft_delete(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
+    pub async fn soft_delete(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<(), sqlx::Error> {
         let now = chrono::Utc::now().to_rfc3339();
         sqlx::query(
-            "UPDATE notifications SET status = 'archived', updated_at = ? WHERE id = ?"
+            "UPDATE notifications SET status = 'archived', updated_at = ? WHERE workspace_id = ? AND id = ?"
         )
         .bind(now)
+        .bind(workspace_id)
         .bind(id)
         .execute(pool)
         .await?;
@@ -84,18 +88,20 @@ impl NotificationRepository {
         Ok(())
     }
 
-    pub async fn list_messages(pool: &SqlitePool, notification_id: &str) -> Result<Vec<NotificationMessage>, sqlx::Error> {
+    pub async fn list_messages(pool: &SqlitePool, workspace_id: &str, notification_id: &str) -> Result<Vec<NotificationMessage>, sqlx::Error> {
         let mut messages = sqlx::query_as::<_, NotificationMessage>(
-            "SELECT * FROM notification_messages WHERE notification_id = ? ORDER BY sent_at ASC"
+            "SELECT * FROM notification_messages WHERE workspace_id = ? AND notification_id = ? ORDER BY sent_at ASC"
         )
+        .bind(workspace_id)
         .bind(notification_id)
         .fetch_all(pool)
         .await?;
 
         for msg in &mut messages {
             let attachments = sqlx::query_as::<_, MessageAttachment>(
-                "SELECT * FROM message_attachments WHERE message_id = ?"
+                "SELECT * FROM message_attachments WHERE workspace_id = ? AND message_id = ?"
             )
+            .bind(workspace_id)
             .bind(&msg.id)
             .fetch_all(pool)
             .await?;
@@ -132,10 +138,11 @@ impl NotificationRepository {
         Ok(())
     }
 
-    pub async fn get_attachment(pool: &SqlitePool, attachment_id: &str) -> Result<Option<MessageAttachment>, sqlx::Error> {
+    pub async fn get_attachment(pool: &SqlitePool, workspace_id: &str, attachment_id: &str) -> Result<Option<MessageAttachment>, sqlx::Error> {
         sqlx::query_as::<_, MessageAttachment>(
-            "SELECT * FROM message_attachments WHERE id = ?"
+            "SELECT * FROM message_attachments WHERE workspace_id = ? AND id = ?"
         )
+        .bind(workspace_id)
         .bind(attachment_id)
         .fetch_optional(pool)
         .await

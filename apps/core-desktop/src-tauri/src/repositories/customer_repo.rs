@@ -24,18 +24,20 @@ pub fn normalize_tz_phone(phone: &str) -> Option<String> {
 pub struct CustomerRepository;
 
 impl CustomerRepository {
-    pub async fn list(pool: &SqlitePool) -> Result<Vec<Customer>, sqlx::Error> {
+    pub async fn list(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<Customer>, sqlx::Error> {
         sqlx::query_as::<_, Customer>(
-            "SELECT * FROM customer ORDER BY created_at DESC"
+            "SELECT * FROM customer WHERE workspace_id = ? ORDER BY created_at DESC"
         )
+        .bind(workspace_id)
         .fetch_all(pool)
         .await
     }
 
-    pub async fn get_by_id(pool: &SqlitePool, id: &str) -> Result<Option<Customer>, sqlx::Error> {
+    pub async fn get_by_id(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<Option<Customer>, sqlx::Error> {
         sqlx::query_as::<_, Customer>(
-            "SELECT * FROM customer WHERE id = ?"
+            "SELECT * FROM customer WHERE workspace_id = ? AND id = ?"
         )
+        .bind(workspace_id)
         .bind(id)
         .fetch_optional(pool)
         .await
@@ -55,7 +57,7 @@ impl CustomerRepository {
         .await
     }
 
-    pub async fn create(pool: &SqlitePool, customer: &Customer) -> Result<(), sqlx::Error> {
+    pub async fn create(executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>, customer: &Customer) -> Result<(), sqlx::Error> {
         let norm_phone = normalize_tz_phone(&customer.phone).unwrap_or_else(|| customer.phone.clone());
         sqlx::query(
             r#"
@@ -88,13 +90,13 @@ impl CustomerRepository {
         .bind(&customer.amob_patient_id)
         .bind(&customer.created_at)
         .bind(&customer.updated_at)
-        .execute(pool)
+        .execute(executor)
         .await?;
 
         Ok(())
     }
 
-    pub async fn update(pool: &SqlitePool, customer: &Customer) -> Result<(), sqlx::Error> {
+    pub async fn update(executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>, customer: &Customer) -> Result<(), sqlx::Error> {
         let norm_phone = normalize_tz_phone(&customer.phone).unwrap_or_else(|| customer.phone.clone());
         sqlx::query(
             r#"
@@ -115,7 +117,7 @@ impl CustomerRepository {
                 pharmacy_notes = ?,
                 archived_at = ?,
                 updated_at = ?
-            WHERE id = ?
+            WHERE id = ? AND workspace_id = ?
             "#
         )
         .bind(&customer.full_name)
@@ -135,7 +137,8 @@ impl CustomerRepository {
         .bind(&customer.archived_at)
         .bind(&customer.updated_at)
         .bind(&customer.id)
-        .execute(pool)
+        .bind(&customer.workspace_id)
+        .execute(executor)
         .await?;
 
         Ok(())

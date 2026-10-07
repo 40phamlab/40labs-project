@@ -1,4 +1,4 @@
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, SqliteConnection};
 use crate::models::sales::{Sale, SaleLine};
 
 #[derive(Debug, sqlx::FromRow)]
@@ -24,11 +24,13 @@ pub struct SalesRepository;
 impl SalesRepository {
     pub async fn get_by_idempotency_key(
         pool: &SqlitePool,
+        workspace_id: &str,
         key: &str,
     ) -> Result<Option<Sale>, sqlx::Error> {
         let record = sqlx::query_as::<_, SaleRow>(
-            "SELECT id, workspace_id, branch_id, customer_id, payment_method, discount_amount, discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at, created_at, updated_at, idempotency_key FROM sale WHERE idempotency_key = ?"
+            "SELECT id, workspace_id, branch_id, customer_id, payment_method, discount_amount, discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at, created_at, updated_at, idempotency_key FROM sale WHERE workspace_id = ? AND idempotency_key = ?"
         )
+        .bind(workspace_id)
         .bind(key)
         .fetch_optional(pool)
         .await?;
@@ -63,10 +65,11 @@ impl SalesRepository {
         }
     }
 
-    pub async fn list_sales(pool: &SqlitePool) -> Result<Vec<Sale>, sqlx::Error> {
+    pub async fn list_sales(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<Sale>, sqlx::Error> {
         let sales_records = sqlx::query_as::<_, SaleRow>(
-            "SELECT id, workspace_id, branch_id, customer_id, payment_method, discount_amount, discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at, created_at, updated_at, idempotency_key FROM sale ORDER BY created_at DESC"
+            "SELECT id, workspace_id, branch_id, customer_id, payment_method, discount_amount, discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at, created_at, updated_at, idempotency_key FROM sale WHERE workspace_id = ? ORDER BY created_at DESC"
         )
+        .bind(workspace_id)
         .fetch_all(pool)
         .await?;
 
@@ -101,7 +104,7 @@ impl SalesRepository {
         Ok(sales)
     }
 
-    pub async fn create_sale(pool: &SqlitePool, sale: &Sale) -> Result<(), sqlx::Error> {
+    pub async fn create_sale(executor: &mut SqliteConnection, sale: &Sale) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO sale (
@@ -125,7 +128,7 @@ impl SalesRepository {
         .bind(&sale.created_at)
         .bind(&sale.updated_at)
         .bind(&sale.idempotency_key)
-        .execute(pool)
+        .execute(&mut *executor)
         .await?;
 
         for line in &sale.lines {
@@ -143,7 +146,7 @@ impl SalesRepository {
             .bind(line.quantity)
             .bind(line.unit_price)
             .bind(line.subtotal)
-            .execute(pool)
+            .execute(&mut *executor)
             .await?;
         }
 

@@ -12,6 +12,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 use super::{pairing, auth::{AuthedDevice, auth_middleware}, LanServerState};
+use crate::auth::AuthContext;
 use crate::models::staff_notification::{StaffNotification, CreateStaffNotificationPayload};
 use crate::repositories::staff_notification_repo::StaffNotificationRepository;
 use crate::models::audit::AuditLogEntry;
@@ -318,7 +319,7 @@ pub async fn heartbeat_handler(
     State(state): State<Arc<LanServerState>>,
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
 ) -> Json<Value> {
-    let _ = crate::repositories::device_repo::update_last_connected(&state.pool, &device.id).await;
+    let _ = crate::repositories::device_repo::update_last_connected(&state.pool, &device.workspace_id, &device.id).await;
     Json(json!({
         "status": "ok",
         "deviceId": device.id,
@@ -493,10 +494,10 @@ pub async fn patch_staff_notification_read_handler(
 
 pub async fn get_stock_handler(
     State(state): State<Arc<LanServerState>>,
-    Extension(_auth): Extension<AuthedDevice>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let items = InventoryRepository::list_medicines_with_inventory(&state.pool, false)
+    let items = InventoryRepository::list_medicines_with_inventory(&state.pool, &device.workspace_id, false)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -523,10 +524,10 @@ pub async fn get_stock_handler(
 
 pub async fn get_stock_item_handler(
     State(state): State<Arc<LanServerState>>,
-    Extension(_auth): Extension<AuthedDevice>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let item = InventoryRepository::get_inventory_item_by_id(&state.pool, &id)
+    let item = InventoryRepository::get_inventory_item_by_id(&state.pool, &device.workspace_id, &id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or_else(|| (StatusCode::NOT_FOUND, "Stock item not found".to_string()))?;
@@ -548,7 +549,13 @@ pub async fn post_stock_receipt_handler(
         return Err((StatusCode::FORBIDDEN, "Permission 'can_update_stock' required".to_string()));
     }
 
-    let result = InventoryService::add_stock(&state.pool, payload)
+    let ctx = AuthContext {
+        user_id: device.user_id.clone(),
+        workspace_id: device.workspace_id.clone(),
+        branch_id: device.branch_id.clone(),
+    };
+
+    let result = InventoryService::add_stock(&state.pool, &ctx, payload)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
@@ -557,9 +564,9 @@ pub async fn post_stock_receipt_handler(
 
 pub async fn get_lab_orders_handler(
     State(state): State<Arc<LanServerState>>,
-    Extension(_auth): Extension<AuthedDevice>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let orders = LabRepository::list_orders(&state.pool)
+    let orders = LabRepository::list_orders(&state.pool, &device.workspace_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(json!(orders)))
@@ -579,7 +586,13 @@ pub async fn post_lab_samples_handler(
         return Err((StatusCode::FORBIDDEN, "Permission 'can_add_lab_sample' required".to_string()));
     }
 
-    let sample = LabService::collect_sample(&state.pool, payload)
+    let ctx = AuthContext {
+        user_id: device.user_id.clone(),
+        workspace_id: device.workspace_id.clone(),
+        branch_id: device.branch_id.clone(),
+    };
+
+    let sample = LabService::collect_sample(&state.pool, &ctx, payload)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
@@ -600,7 +613,13 @@ pub async fn post_lab_results_handler(
         return Err((StatusCode::FORBIDDEN, "Permission 'can_record_lab_result' required".to_string()));
     }
 
-    LabService::record_result(&state.pool, payload)
+    let ctx = AuthContext {
+        user_id: device.user_id.clone(),
+        workspace_id: device.workspace_id.clone(),
+        branch_id: device.branch_id.clone(),
+    };
+
+    LabService::record_result(&state.pool, &ctx, payload)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
@@ -609,10 +628,10 @@ pub async fn post_lab_results_handler(
 
 pub async fn get_customers_handler(
     State(state): State<Arc<LanServerState>>,
-    Extension(_auth): Extension<AuthedDevice>,
+    Extension(AuthedDevice { device }): Extension<AuthedDevice>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let customers = CustomerRepository::list(&state.pool)
+    let customers = CustomerRepository::list(&state.pool, &device.workspace_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -645,7 +664,13 @@ pub async fn post_customers_handler(
         return Err((StatusCode::FORBIDDEN, "Permission 'can_manage_customers' required".to_string()));
     }
 
-    match CustomerService::create_customer(&state.pool, payload).await {
+    let ctx = AuthContext {
+        user_id: device.user_id.clone(),
+        workspace_id: device.workspace_id.clone(),
+        branch_id: device.branch_id.clone(),
+    };
+
+    match CustomerService::create_customer(&state.pool, &ctx, payload).await {
         Ok(cust) => Ok((StatusCode::CREATED, Json(serde_json::to_value(cust).unwrap()))),
         Err(err) if err.starts_with("CONFLICT_DUPLICATE_PHONE:") => {
             let json_data = &err["CONFLICT_DUPLICATE_PHONE:".len()..];
@@ -678,11 +703,17 @@ pub async fn post_sales_handler(
         .map(|s| s.to_string())
         .ok_or_else(|| (StatusCode::BAD_REQUEST, "Missing Idempotency-Key header".to_string()))?;
 
-    if let Ok(Some(existing)) = SalesRepository::get_by_idempotency_key(&state.pool, &idempotency_key).await {
+    if let Ok(Some(existing)) = SalesRepository::get_by_idempotency_key(&state.pool, &device.workspace_id, &idempotency_key).await {
         return Ok((StatusCode::OK, Json(serde_json::to_value(existing).unwrap())));
     }
 
-    let sale = SalesService::create_sale(&state.pool, payload, Some(idempotency_key))
+    let ctx = AuthContext {
+        user_id: device.user_id.clone(),
+        workspace_id: device.workspace_id.clone(),
+        branch_id: device.branch_id.clone(),
+    };
+
+    let sale = SalesService::create_sale(&state.pool, &ctx, payload, None, Some(idempotency_key))
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 

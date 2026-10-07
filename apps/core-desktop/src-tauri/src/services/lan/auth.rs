@@ -79,7 +79,7 @@ pub async fn auth_middleware(
     };
 
     if should_update {
-        let _ = device_repo::update_last_connected(&state.pool, &device.id).await;
+        let _ = device_repo::update_last_connected(&state.pool, &device.workspace_id, &device.id).await;
     }
 
     req.extensions_mut().insert(AuthedDevice { device });

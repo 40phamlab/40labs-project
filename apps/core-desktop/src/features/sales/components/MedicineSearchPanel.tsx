@@ -113,7 +113,7 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
 
       {/* Quick Category Filter Pills */}
       {categories.length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto pb-1 shrink-0 no-scrollbar">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 shrink-0 custom-scrollbar">
           <button
             type="button"
             onClick={() => setSelectedCategory(null)}
