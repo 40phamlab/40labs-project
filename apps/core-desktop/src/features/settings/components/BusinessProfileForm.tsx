@@ -9,6 +9,8 @@ import {
 } from '@40labs/ui-components';
 import type { Business } from '@40labs/types';
 import type { UpdateBusinessPayload } from '../../../hooks/useBusiness';
+import { useStepUp } from '../../auth/stepup/StepUpProvider';
+import { auditApi } from '../../../api';
 
 interface BusinessProfileFormProps {
   business?: Business;
@@ -21,6 +23,8 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
   onSave,
   isLoading = false,
 }) => {
+  const { requestStepUp } = useStepUp();
+
   const [formData, setFormData] = React.useState({
     name: business?.name || '',
     tin: business?.tin || '',
@@ -32,6 +36,8 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
     district: business?.address?.district || '',
     place: business?.address?.place || '',
     logo_url: business?.logo_url || '',
+    lipa_namba: business?.lipa_namba || '',
+    payment_number: business?.payment_number || '',
   });
 
   React.useEffect(() => {
@@ -47,6 +53,8 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
         district: business.address?.district || '',
         place: business.address?.place || '',
         logo_url: business.logo_url || '',
+        lipa_namba: business.lipa_namba || '',
+        payment_number: business.payment_number || '',
       });
     }
   }, [business]);
@@ -63,7 +71,9 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
       formData.region !== (business.address?.region || '') ||
       formData.district !== (business.address?.district || '') ||
       formData.place !== (business.address?.place || '') ||
-      formData.logo_url !== (business.logo_url || '')
+      formData.logo_url !== (business.logo_url || '') ||
+      formData.lipa_namba !== (business.lipa_namba || '') ||
+      formData.payment_number !== (business.payment_number || '')
     );
   }, [formData, business]);
 
@@ -78,29 +88,57 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
     e.preventDefault();
     if (!isDirty || !isValid || isLoading) return;
 
-    await onSave({
-      name: formData.name.trim(),
-      tin: formData.tin.trim() || null,
-      tmda_number: formData.tmda_number.trim() || null,
-      contacts: {
-        mobile: formData.mobile.trim(),
-        email: formData.email.trim() || null,
-        whatsapp: formData.whatsapp.trim() || null,
-      },
-      address: {
-        region: formData.region.trim(),
-        district: formData.district.trim(),
-        place: formData.place.trim(),
-      },
-      logo_url: formData.logo_url.trim() || null,
-    });
+    try {
+      const paymentChanged = formData.lipa_namba !== (business?.lipa_namba || '') || formData.payment_number !== (business?.payment_number || '');
+
+      const executeSave = async (grantToken?: string) => {
+        if (paymentChanged) {
+          await auditApi.recordEntry({
+            action: 'business_payment_changed',
+            performed_by_user_id: null,
+            target_entity_type: 'Business',
+            target_entity_id: business?.business_id || 'business',
+            metadata: { lipa_namba: formData.lipa_namba, payment_number: formData.payment_number, step_up_token: grantToken },
+          });
+        }
+
+        await onSave({
+          name: formData.name.trim(),
+          tin: formData.tin.trim() || null,
+          tmda_number: formData.tmda_number.trim() || null,
+          contacts: {
+            mobile: formData.mobile.trim(),
+            email: formData.email.trim() || null,
+            whatsapp: formData.whatsapp.trim() || null,
+          },
+          address: {
+            region: formData.region.trim(),
+            district: formData.district.trim(),
+            place: formData.place.trim(),
+          },
+          logo_url: formData.logo_url.trim() || null,
+          lipa_namba: formData.lipa_namba.trim() || null,
+          payment_number: formData.payment_number.trim() || null,
+        } as any);
+      };
+
+      if (paymentChanged) {
+        await requestStepUp(async (grantToken) => {
+          await executeSave(grantToken);
+        }, 'settings.manage:payment');
+      } else {
+        await executeSave();
+      }
+    } catch (err) {
+      console.error('Business profile update failed:', err);
+    }
   };
 
   return (
     <Panel variant="raised" className="p-6 space-y-6">
       <div className="flex items-center justify-between border-b border-border/40 pb-4">
         <div>
-          <h2 className="text-base font-bold text-text-primary">Business Profile</h2>
+          <h2 className="text-base font-bold text-text-primary">Business Profile & Payments</h2>
         </div>
         <Button
           type="button"
@@ -179,6 +217,26 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
             name="logo_url"
             value={formData.logo_url}
             onChange={handleChange}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Lipa Namba (SUDO Step-up)</FieldLabel>
+          <Input
+            name="lipa_namba"
+            value={formData.lipa_namba}
+            onChange={handleChange}
+            placeholder="e.g. 123456"
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Payment Number (SUDO Step-up)</FieldLabel>
+          <Input
+            name="payment_number"
+            value={formData.payment_number}
+            onChange={handleChange}
+            placeholder="+255..."
           />
         </Field>
 

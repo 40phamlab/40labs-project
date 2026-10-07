@@ -3,8 +3,8 @@ import { Panel, Button, Field, FieldLabel, PasswordInput } from '@40labs/ui-comp
 import { Lock, Key, Smartphone, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useUsers } from '../../../hooks/useUsers';
 import { useDevices } from '../../../hooks/useDevices';
-import { auditApi } from '../../../api';
-import { CURRENT_USER_ID } from '../../../devData/constants';
+import { useStepUp } from '../../auth/stepup/StepUpProvider';
+import { authApi } from '../../../api/authApi';
 
 interface SecurityPanelProps {
   onNavigateToDevices: () => void;
@@ -13,6 +13,7 @@ interface SecurityPanelProps {
 export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevices }) => {
   const { changePin, changePassword, isChangingPin, isChangingPassword } = useUsers();
   const { devices } = useDevices();
+  const { requestStepUp } = useStepUp();
 
   // PIN state
   const [pinForm, setPinForm] = React.useState({
@@ -32,6 +33,15 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
   const [passSuccess, setPassSuccess] = React.useState(false);
   const [passError, setPassError] = React.useState<string | null>(null);
 
+  // Idle lock state
+  const [idleMinutes, setIdleMinutes] = React.useState<number>(5);
+  const [idleSuccess, setIdleSuccess] = React.useState(false);
+
+  // Recovery codes state
+  const [regenPassword, setRegenPassword] = React.useState('');
+  const [newCodes, setNewCodes] = React.useState<Array<string> | null>(null);
+  const [regenError, setRegenError] = React.useState<string | null>(null);
+
   // Device counts
   const activeDeviceCount = devices.filter((d) => d.status === 'active').length;
   const blockedDeviceCount = devices.filter((d) => d.status === 'blocked').length;
@@ -45,8 +55,8 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
       setPinError('Current PIN is required.');
       return;
     }
-    if (pinForm.newPin.length < 4 || pinForm.newPin.length > 6) {
-      setPinError('4-6 digit PIN');
+    if (pinForm.newPin.length !== 6) {
+      setPinError('PIN must be 6 digits.');
       return;
     }
     if (pinForm.newPin !== pinForm.confirmPin) {
@@ -55,20 +65,11 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
     }
 
     try {
-      // Write audit log entry first
-      await auditApi.recordEntry({
-        action: 'pin_change',
-        performed_by_user_id: CURRENT_USER_ID,
-        target_entity_type: 'User',
-        target_entity_id: CURRENT_USER_ID,
-        metadata: { timestamp: new Date().toISOString() },
-      });
-
       await changePin(pinForm.currentPin, pinForm.newPin);
       setPinSuccess(true);
       setPinForm({ currentPin: '', newPin: '', confirmPin: '' });
-    } catch (err) {
-      setPinError(err instanceof Error ? err.message : 'Failed to update PIN.');
+    } catch (err: any) {
+      setPinError(err?.code || 'Failed to update PIN.');
     }
   };
 
@@ -81,8 +82,8 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
       setPassError('Current password is required.');
       return;
     }
-    if (passForm.newPassword.length < 6) {
-      setPassError('min 6 chars');
+    if (passForm.newPassword.length < 8) {
+      setPassError('Password must be at least 8 characters.');
       return;
     }
     if (passForm.newPassword !== passForm.confirmPassword) {
@@ -91,20 +92,41 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
     }
 
     try {
-      // Write audit log entry first
-      await auditApi.recordEntry({
-        action: 'password_change',
-        performed_by_user_id: CURRENT_USER_ID,
-        target_entity_type: 'User',
-        target_entity_id: CURRENT_USER_ID,
-        metadata: { timestamp: new Date().toISOString() },
-      });
-
       await changePassword(passForm.currentPassword, passForm.newPassword);
       setPassSuccess(true);
       setPassForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (err) {
-      setPassError(err instanceof Error ? err.message : 'Failed to update password.');
+    } catch (err: any) {
+      setPassError(err?.code || 'Failed to update password.');
+    }
+  };
+
+  const handleIdleLockSubmit = async () => {
+    setIdleSuccess(false);
+    try {
+      await requestStepUp(async () => {
+        await authApi.businessSetIdleLock(idleMinutes);
+      }, 'settings.manage:idle');
+      setIdleSuccess(true);
+    } catch (err: any) {
+      console.error('Idle lock update failed:', err);
+    }
+  };
+
+  const handleRegenerateCodes = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegenError(null);
+    setNewCodes(null);
+    if (!regenPassword) {
+      setRegenError('Nenosiri linahitajika');
+      return;
+    }
+
+    try {
+      const codes = await authApi.recoveryRegenerate(regenPassword);
+      setNewCodes(codes);
+      setRegenPassword('');
+    } catch (err: any) {
+      setRegenError(err?.code || 'Imeshindwa kutengeneza namba mpya');
     }
   };
 
@@ -118,14 +140,14 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <Lock size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-text-primary">Change Master PIN</h3>
+              <h3 className="text-sm font-bold text-text-primary">Change PIN</h3>
             </div>
           </div>
 
           {pinSuccess && (
             <div className="p-3 bg-success/10 text-success text-xs rounded-card flex items-center gap-2 font-medium">
               <CheckCircle2 size={14} className="shrink-0" />
-              <span>Master PIN successfully updated!</span>
+              <span>PIN successfully updated!</span>
             </div>
           )}
 
@@ -141,18 +163,18 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <PasswordInput
                 maxLength={6}
                 value={pinForm.currentPin}
-                onChange={(e) => setPinForm((p) => ({ ...p, currentPin: e.target.value }))}
+                onChange={(e: any) => setPinForm((p) => ({ ...p, currentPin: e.target.value }))}
                 placeholder="Current PIN"
               />
             </Field>
 
             <Field>
-              <FieldLabel required>New PIN</FieldLabel>
+              <FieldLabel required>New PIN (6 digits)</FieldLabel>
               <PasswordInput
                 maxLength={6}
                 value={pinForm.newPin}
-                onChange={(e) => setPinForm((p) => ({ ...p, newPin: e.target.value }))}
-                placeholder="New PIN"
+                onChange={(e: any) => setPinForm((p) => ({ ...p, newPin: e.target.value }))}
+                placeholder="New 6-digit PIN"
               />
             </Field>
 
@@ -161,7 +183,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <PasswordInput
                 maxLength={6}
                 value={pinForm.confirmPin}
-                onChange={(e) => setPinForm((p) => ({ ...p, confirmPin: e.target.value }))}
+                onChange={(e: any) => setPinForm((p) => ({ ...p, confirmPin: e.target.value }))}
                 placeholder="Confirm PIN"
               />
             </Field>
@@ -171,9 +193,9 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               intent="primary"
               size="sm"
               className="w-full"
-              disabled={isChangingPin || !pinForm.currentPin || !pinForm.newPin}
+              disabled={isChangingPin || !pinForm.currentPin || pinForm.newPin.length !== 6}
             >
-              {isChangingPin ? 'Updating PIN...' : 'Update Master PIN'}
+              {isChangingPin ? 'Updating PIN...' : 'Update PIN'}
             </Button>
           </form>
         </Panel>
@@ -185,7 +207,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <Key size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-text-primary">Change Account Password</h3>
+              <h3 className="text-sm font-bold text-text-primary">Change Password</h3>
             </div>
           </div>
 
@@ -207,7 +229,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <FieldLabel required>Current Password</FieldLabel>
               <PasswordInput
                 value={passForm.currentPassword}
-                onChange={(e) => setPassForm((p) => ({ ...p, currentPassword: e.target.value }))}
+                onChange={(e: any) => setPassForm((p) => ({ ...p, currentPassword: e.target.value }))}
                 placeholder="Current Password"
               />
             </Field>
@@ -216,7 +238,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <FieldLabel required>New Password</FieldLabel>
               <PasswordInput
                 value={passForm.newPassword}
-                onChange={(e) => setPassForm((p) => ({ ...p, newPassword: e.target.value }))}
+                onChange={(e: any) => setPassForm((p) => ({ ...p, newPassword: e.target.value }))}
                 placeholder="New Password"
               />
             </Field>
@@ -225,7 +247,7 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <FieldLabel required>Confirm New Password</FieldLabel>
               <PasswordInput
                 value={passForm.confirmPassword}
-                onChange={(e) => setPassForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                onChange={(e: any) => setPassForm((p) => ({ ...p, confirmPassword: e.target.value }))}
                 placeholder="Confirm Password"
               />
             </Field>
@@ -243,7 +265,59 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
         </Panel>
       </div>
 
-      {/* Card 3: Paired Devices Summary */}
+      {/* Card 3: Idle Lock & Recovery Codes */}
+      <div className="grid grid-cols-2 gap-6">
+        <Panel variant="raised" className="p-6 space-y-4">
+          <h3 className="text-sm font-bold text-text-primary">Idle Lock Duration (SUDO)</h3>
+          {idleSuccess && (
+            <div className="p-2 bg-success/10 text-success text-xs rounded">Muda umehifadhiwa!</div>
+          )}
+          <div className="space-y-3">
+            <select
+              value={idleMinutes}
+              onChange={(e) => setIdleMinutes(Number(e.target.value))}
+              className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2.5 text-text-primary"
+            >
+              {[1, 2, 3, 5, 10, 15, 20, 25, 30].map((m) => (
+                <option key={m} value={m}>{m} dakika</option>
+              ))}
+            </select>
+            <Button intent="neutral" size="sm" className="w-full" onClick={handleIdleLockSubmit}>
+              Badili Muda (SUDO Step-up)
+            </Button>
+          </div>
+        </Panel>
+
+        <Panel variant="raised" className="p-6 space-y-4">
+          <h3 className="text-sm font-bold text-text-primary">Regenerate Recovery Codes (SUDO)</h3>
+          {newCodes ? (
+            <div className="space-y-2">
+              <p className="text-xs text-success font-semibold">Namba mpya za rejesho (zimeonyeshwa mara moja tu):</p>
+              <div className="grid grid-cols-2 gap-1 font-mono text-xs bg-background p-2 rounded border">
+                {newCodes.map((c, i) => <span key={i}>{c}</span>)}
+              </div>
+              <Button intent="neutral" size="sm" onClick={() => setNewCodes(null)}>Ficha</Button>
+            </div>
+          ) : (
+            <form onSubmit={handleRegenerateCodes} className="space-y-3">
+              {regenError && <div className="text-danger text-xs">{regenError}</div>}
+              <Field>
+                <FieldLabel required>Nenosiri la sasa</FieldLabel>
+                <PasswordInput
+                  value={regenPassword}
+                  onChange={(e: any) => setRegenPassword(e.target.value)}
+                  placeholder="Password"
+                />
+              </Field>
+              <Button type="submit" intent="danger" size="sm" className="w-full">
+                Tengeneza Namba Mpya za Rejesho
+              </Button>
+            </form>
+          )}
+        </Panel>
+      </div>
+
+      {/* Card 4: Paired Devices Summary */}
       <Panel variant="raised" className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -251,12 +325,12 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
               <Smartphone size={16} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-text-primary">Paired Devices Summary</h3>
+              <h3 className="text-sm font-bold text-text-primary">Paired Devices Summary (Read-Only)</h3>
             </div>
           </div>
 
           <Button
-            variant="neutral"
+            intent="neutral"
             size="sm"
             rightIcon={<ArrowRight size={14} />}
             onClick={onNavigateToDevices}

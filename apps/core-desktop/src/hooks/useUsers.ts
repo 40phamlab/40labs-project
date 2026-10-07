@@ -1,14 +1,12 @@
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { User, StaffPermissionSet } from '@40labs/types';
-import { usersApi, CreateUserPayload, UpdateUserPayload } from '../api';
-import { usersKeys } from './queryKeys';
-import { CURRENT_USER_ID } from '../devData/constants';
-
-export type { CreateUserPayload, UpdateUserPayload };
+import type { User } from '@40labs/types';
+import { authApi } from '../api/authApi';
+import { useStepUp } from '../features/auth/stepup/StepUpProvider';
 
 export function useUsers() {
   const queryClient = useQueryClient();
+  const { requestStepUp } = useStepUp();
 
   const {
     data: users = [],
@@ -17,65 +15,66 @@ export function useUsers() {
     error: usersError,
     refetch: refetchUsers,
   } = useQuery<User[]>({
-    queryKey: usersKeys.list(),
-    queryFn: async () => usersApi.list(),
+    queryKey: ['users_list'],
+    queryFn: async () => authApi.usersList(),
   });
 
   const createUserMutation = useMutation({
-    mutationFn: async (payload: CreateUserPayload) => {
-      return usersApi.create(payload);
+    mutationFn: async (payload: any) => {
+      return await requestStepUp(async (_grantToken) => {
+        return await authApi.userCreate({ ...payload, step_up_token: _grantToken });
+      }, 'users.manage');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usersKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['users_list'] });
     },
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: UpdateUserPayload }) => {
-      return usersApi.update(id, payload);
+    mutationFn: async ({ userId, payload }: { userId: string; payload: any }) => {
+      return await requestStepUp(async (_grantToken) => {
+        return await authApi.userUpdate(userId, { ...payload, step_up_token: _grantToken });
+      }, 'users.manage');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usersKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['users_list'] });
     },
   });
 
-  const updatePermissionsMutation = useMutation({
-    mutationFn: async ({ id, permissions }: { id: string; permissions: StaffPermissionSet | null }) => {
-      return usersApi.updatePermissions(id, permissions);
+  const setUserActiveMutation = useMutation({
+    mutationFn: async ({ userId, active }: { userId: string; active: boolean }) => {
+      return await requestStepUp(async (_grantToken) => {
+        return await authApi.userSetActive(userId, active);
+      }, 'users.manage');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usersKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['users_list'] });
     },
   });
 
-  const deactivateUserMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return usersApi.deactivate(id);
+  const resetCredentialsMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return await requestStepUp(async (_grantToken) => {
+        return await authApi.userResetCredentials(userId);
+      }, 'users.manage');
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usersKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['users_list'] });
     },
   });
 
   const changePinMutation = useMutation({
     mutationFn: async ({ currentPin, newPin }: { currentPin: string; newPin: string }) => {
-      return usersApi.changePin(CURRENT_USER_ID, currentPin, newPin);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usersKeys.all });
+      return await authApi.changePin(currentPin, newPin);
     },
   });
 
   const changePasswordMutation = useMutation({
     mutationFn: async ({ currentPassword, newPassword }: { currentPassword: string; newPassword: string }) => {
-      return usersApi.changePassword(CURRENT_USER_ID, currentPassword, newPassword);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: usersKeys.all });
+      return await authApi.changePassword(currentPassword, newPassword);
     },
   });
 
-  // UI state for User Modal
   const [isUserModalOpen, setIsUserModalOpen] = React.useState(false);
   const [selectedUserForEdit, setSelectedUserForEdit] = React.useState<User | null>(null);
 
@@ -101,16 +100,13 @@ export function useUsers() {
     usersError,
     refetchUsers,
 
-    createUser: (payload: CreateUserPayload) => createUserMutation.mutateAsync(payload),
-    updateUser: (id: string, payload: UpdateUserPayload) => updateUserMutation.mutateAsync({ id, payload }),
-    updatePermissions: (id: string, permissions: StaffPermissionSet | null) =>
-      updatePermissionsMutation.mutateAsync({ id, permissions }),
-    deactivateUser: (id: string) => deactivateUserMutation.mutateAsync(id),
+    createUser: (payload: any) => createUserMutation.mutateAsync(payload),
+    updateUser: (userId: string, payload: any) => updateUserMutation.mutateAsync({ userId, payload }),
+    setUserActive: (userId: string, active: boolean) => setUserActiveMutation.mutateAsync({ userId, active }),
+    resetCredentials: (userId: string) => resetCredentialsMutation.mutateAsync(userId),
 
-    changePin: (currentPin: string, newPin: string) =>
-      changePinMutation.mutateAsync({ currentPin, newPin }),
-    changePassword: (currentPassword: string, newPassword: string) =>
-      changePasswordMutation.mutateAsync({ currentPassword, newPassword }),
+    changePin: (currentPin: string, newPin: string) => changePinMutation.mutateAsync({ currentPin, newPin }),
+    changePassword: (currentPassword: string, newPassword: string) => changePasswordMutation.mutateAsync({ currentPassword, newPassword }),
 
     isCreatingUser: createUserMutation.isPending,
     isUpdatingUser: updateUserMutation.isPending,
