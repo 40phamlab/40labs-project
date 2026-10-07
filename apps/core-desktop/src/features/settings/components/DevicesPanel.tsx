@@ -16,7 +16,7 @@ import type { PairedDevice, AuditAction } from '@40labs/types';
 import { useDevices } from '../../../hooks/useDevices';
 import { useUsers } from '../../../hooks/useUsers';
 import { auditApi, devicesApi, PairingSessionInfo } from '../../../api';
-import { PinConfirmModal } from './PinConfirmModal';
+import { useStepUp } from '../../../features/auth/stepup/StepUpProvider';
 import { QrCodeSvg } from '../../../components/QrCodeSvg';
 
 const RowActions = ({
@@ -86,12 +86,11 @@ export const DevicesPanel: React.FC = () => {
     unblockDevice,
     removeDevice,
     updatePermissions,
-    isBlocking,
-    isRemoving,
     isUpdatingPermissions,
   } = useDevices();
 
   const { users } = useUsers();
+  const { requestStepUp } = useStepUp();
 
   const [activeTab, setActiveTab] = React.useState<'active' | 'recent' | 'all'>('active');
   const [isQrModalOpen, setIsQrModalOpen] = React.useState(false);
@@ -116,7 +115,7 @@ export const DevicesPanel: React.FC = () => {
       if (activeUser) {
         setSelectedUserId(activeUser.id);
         if (activeUser.permissions) {
-          setPairingPermissions({ ...activeUser.permissions });
+          setPairingPermissions({ ...(activeUser.permissions as Record<string, boolean>) });
         }
       }
     }
@@ -146,18 +145,13 @@ export const DevicesPanel: React.FC = () => {
     setPairingSession(null);
   };
 
-  const [selectedDeviceForPin, setSelectedDeviceForPin] = React.useState<{
-    device: PairedDevice;
-    action: 'block' | 'remove';
-  } | null>(null);
-
   const [selectedDeviceForPerms, setSelectedDeviceForPerms] = React.useState<PairedDevice | null>(null);
   const [editablePermissions, setEditablePermissions] = React.useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
     if (selectedDeviceForPerms) {
       const user = users.find((u) => u.id === selectedDeviceForPerms.user_id);
-      const initialPerms = user?.permissions || {
+      const initialPerms = (user?.permissions as Record<string, boolean>) || {
         can_update_stock: true,
         can_adjust_stock: false,
         can_issue_refund: false,
@@ -180,30 +174,31 @@ export const DevicesPanel: React.FC = () => {
     return devices;
   }, [devices, activeTab]);
 
-  const handlePinConfirm = async (_pin: string) => {
-    if (!selectedDeviceForPin) return;
-    const { device, action } = selectedDeviceForPin;
-    const auditAction: AuditAction = action === 'block' ? 'device_block' : 'device_remove';
+  const handleDeviceAction = async (device: PairedDevice, action: 'block' | 'remove') => {
+    try {
+      await requestStepUp(async (grantToken?: string) => {
+        const auditAction: AuditAction = action === 'block' ? 'device_block' : 'device_remove';
+        await auditApi.recordEntry({
+          action: auditAction,
+          performed_by_user_id: device.user_id,
+          target_entity_type: 'PairedDevice',
+          target_entity_id: device.id,
+          metadata: { device_label: device.device_label, pin_verified: true, step_up_token: grantToken },
+        });
 
-    await auditApi.recordEntry({
-      action: auditAction,
-      performed_by_user_id: device.user_id,
-      target_entity_type: 'PairedDevice',
-      target_entity_id: device.id,
-      metadata: { device_label: device.device_label, pin_verified: true },
-    });
-
-    if (action === 'block') {
-      if (device.status === 'blocked') {
-        await unblockDevice(device.id);
-      } else {
-        await blockDevice(device.id);
-      }
-    } else {
-      await removeDevice(device.id);
+        if (action === 'block') {
+          if (device.status === 'blocked') {
+            await unblockDevice(device.id);
+          } else {
+            await blockDevice(device.id);
+          }
+        } else {
+          await removeDevice(device.id);
+        }
+      }, 'devices.manage');
+    } catch (err) {
+      console.error('Device action failed:', err);
     }
-
-    setSelectedDeviceForPin(null);
   };
 
   const handleSavePermissions = async () => {
@@ -286,8 +281,8 @@ export const DevicesPanel: React.FC = () => {
           </Button>
           <RowActions
             device={device}
-            onRemove={(d) => setSelectedDeviceForPin({ device: d, action: 'remove' })}
-            onBlock={(d) => setSelectedDeviceForPin({ device: d, action: 'block' })}
+            onRemove={(d) => handleDeviceAction(d, 'remove')}
+            onBlock={(d) => handleDeviceAction(d, 'block')}
             onViewPermission={(d) => setSelectedDeviceForPerms(d)}
           />
         </div>
@@ -367,7 +362,7 @@ export const DevicesPanel: React.FC = () => {
                 setSelectedUserId(uid);
                 const u = users.find((usr) => usr.id === uid);
                 if (u && u.permissions) {
-                  setPairingPermissions({ ...u.permissions });
+                  setPairingPermissions({ ...(u.permissions as Record<string, boolean>) });
                 }
               }}
               className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
@@ -548,15 +543,6 @@ export const DevicesPanel: React.FC = () => {
           </div>
         </div>
       </Modal>
-
-      {/* PIN Confirmation Modal for Block/Remove */}
-      <PinConfirmModal
-        isOpen={Boolean(selectedDeviceForPin)}
-        title={selectedDeviceForPin?.action === 'block' ? 'Authorize Device Block' : 'Authorize Device Removal'}
-        onConfirm={handlePinConfirm}
-        onCancel={() => setSelectedDeviceForPin(null)}
-        isLoading={isBlocking || isRemoving}
-      />
     </div>
   );
 };

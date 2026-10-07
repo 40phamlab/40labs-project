@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-interface PinOtpInputProps {
+interface PinFieldProps {
   length?: number;
   value: string;
   onChange: (value: string) => void;
@@ -8,7 +8,7 @@ interface PinOtpInputProps {
   error?: boolean;
 }
 
-export const PinOtpInput: React.FC<PinOtpInputProps> = ({
+export const PinField: React.FC<PinFieldProps> = ({
   length = 6,
   value,
   onChange,
@@ -66,7 +66,7 @@ export const PinOtpInput: React.FC<PinOtpInputProps> = ({
   };
 
   return (
-    <div className="flex gap-2 justify-center items-center" onPaste={handlePaste}>
+    <div className="flex gap-2 justify-center items-center font-mono" onPaste={handlePaste}>
       {digits.map((digit, i) => (
         <input
           key={i}
@@ -81,7 +81,7 @@ export const PinOtpInput: React.FC<PinOtpInputProps> = ({
           value={digit}
           onChange={(e) => handleChange(e, i)}
           onKeyDown={(e) => handleKeyDown(e, i)}
-          className={`w-12 h-14 text-center text-xl font-mono rounded-lg border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary ${
+          className={`w-12 h-14 text-center text-xl rounded-lg border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary ${
             error ? 'border-destructive' : 'border-border'
           }`}
         />

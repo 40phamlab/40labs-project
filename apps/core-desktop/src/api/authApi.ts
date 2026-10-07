@@ -34,7 +34,7 @@ export interface AuthApi {
   userUpdate(userId: string, payload: any): Promise<any>;
   userSetActive(userId: string, active: boolean): Promise<void>;
   userResetCredentials(userId: string): Promise<string>;
-  recoveryRedeem(code: string): Promise<void>;
+  recoveryRedeem(username: string, code: string, newPassword: string): Promise<void>;
   recoveryRegenerate(password: string): Promise<Array<string>>;
   recoveryGenerateInitial(): Promise<Array<string>>;
   registrationCommit(payload: any): Promise<void>;
@@ -48,12 +48,19 @@ export interface AuthApi {
 let mockState: AuthStatusResponse = {
   deviceBound: true,
   business: {
+    id: 'biz-1',
     business_id: 'AFYA-TEST01',
     workspace_id: 'ws-01',
+    branch_id: 'branch-1',
     name: 'Afya Bora Pharmacy',
-    role_scopes: 'pharmacy',
+    tin: null,
+    tmda_number: null,
+    role_scopes: ['pharmacy'],
+    tier: 'class_1',
     business_type: 'Pharmacy',
     scale: 'medium',
+    logo_url: null,
+    appearance_mode: 'light',
     contacts: { mobile: '+255712345678', email: 'info@afyabora.co.tz', whatsapp: null },
     address: { region: 'Dar es Salaam', district: 'Kinondoni', place: 'Mwananyamala' },
     owner_id: 'user-sudo-1',
@@ -97,7 +104,7 @@ export const tauriAuthApi: AuthApi = {
   userUpdate: (userId, payload) => invokeCommand<any>('user_update', { userId, payload }),
   userSetActive: (userId, active) => invokeCommand<void>('user_set_active', { userId, active }),
   userResetCredentials: (userId) => invokeCommand<string>('user_reset_credentials', { userId }),
-  recoveryRedeem: (code) => invokeCommand<void>('recovery_redeem', { code }),
+  recoveryRedeem: (username, code, newPassword) => invokeCommand<void>('recovery_redeem', { username, code, newPassword }),
   recoveryRegenerate: (password) => invokeCommand<Array<string>>('recovery_regenerate', { password }),
   recoveryGenerateInitial: () => invokeCommand<Array<string>>('recovery_generate_initial'),
   registrationCommit: (payload) => invokeCommand<void>('registration_commit', { payload }),
@@ -147,7 +154,7 @@ export const mockAuthApi: AuthApi = {
       mockState.session.pinSet = true;
     }
   },
-  stepUp: async (permission, pin) => {
+  stepUp: async (_permission, pin) => {
     if (!pin || pin.length !== 6) {
       throw { code: 'INVALID_CREDENTIALS' };
     }
@@ -164,18 +171,29 @@ export const mockAuthApi: AuthApi = {
   userUpdate: async (_id, p) => p,
   userSetActive: async () => {},
   userResetCredentials: async () => 'temp-pass-123',
-  recoveryRedeem: async () => {},
+  recoveryRedeem: async (username, code, newPassword) => {
+    if (!username || !code || !newPassword) {
+      throw { code: 'INVALID_CREDENTIALS' };
+    }
+  },
   recoveryRegenerate: async () => ['ABCDE-12345', 'FGHIJ-67890'],
   recoveryGenerateInitial: async () => ['ABCDE-12345', 'FGHIJ-67890'],
   registrationCommit: async (payload) => {
     mockState.deviceBound = true;
     mockState.business = {
+      id: 'biz-' + Math.random().toString(36).substring(2, 8),
       business_id: 'AFYA-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
       workspace_id: 'ws-' + Math.random().toString(36).substring(2, 6),
+      branch_id: 'branch-1',
       name: payload.name || 'New Business',
-      role_scopes: payload.role_scopes || 'pharmacy',
+      tin: null,
+      tmda_number: null,
+      role_scopes: [payload.role_scopes || 'pharmacy'],
+      tier: 'class_1',
       business_type: payload.type || 'Pharmacy',
       scale: payload.scale || 'medium',
+      logo_url: null,
+      appearance_mode: 'light',
       contacts: { mobile: payload.phone || '+255700000000', email: payload.email || null, whatsapp: null },
       address: { region: payload.region || 'Dar es Salaam', district: payload.district || '', place: payload.mtaa || '' },
       owner_id: 'owner-1',
@@ -183,7 +201,7 @@ export const mockAuthApi: AuthApi = {
       idle_lock_minutes: 5,
       terms_version: '1.0',
       terms_locale: 'sw-TZ',
-      terms_text_sha256: 'mocksha',
+      terms_text_sha256: payload.terms_text_sha256 || 'mocksha',
       terms_accepted_at: new Date().toISOString(),
       terms_accepted_by_user_id: 'owner-1',
       created_at: new Date().toISOString(),

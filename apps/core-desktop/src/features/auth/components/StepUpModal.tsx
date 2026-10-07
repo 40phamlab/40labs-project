@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Modal, Button, Select } from '@40labs/ui-components';
+import { Modal, Button } from '@40labs/ui-components';
 import { PinOtpInput } from './PinOtpInput';
 import { authApi } from '../../../api/authApi';
 import { useAuthStore } from '../../../stores/useAuthStore';
@@ -56,11 +56,17 @@ export const StepUpModal: React.FC = () => {
         {stepUpModal.tier === 'sudo' && approvers.length > 0 && (
           <div>
             <label className="text-sm font-medium text-foreground block mb-1">Msimamizi (SUDO)</label>
-            <Select
+            <select
               value={selectedApprover}
-              onChange={(e: any) => setSelectedApprover(e.target.value)}
-              options={approvers.map((a) => ({ label: a.displayName, value: a.userId }))}
-            />
+              onChange={(e) => setSelectedApprover(e.target.value)}
+              className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
+            >
+              {approvers.map((a) => (
+                <option key={a.userId} value={a.userId}>
+                  {a.displayName}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
@@ -79,7 +85,7 @@ export const StepUpModal: React.FC = () => {
         )}
 
         <div className="flex justify-end space-x-2 pt-2">
-          <Button variant="outline" onClick={() => {
+          <Button intent="neutral" onClick={() => {
             if (stepUpModal.onCancel) stepUpModal.onCancel();
             closeStepUp();
           }}>

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Button, Input, PasswordInput, PhoneInput, Select, Checkbox, Card } from '@40labs/ui-components';
+import { Button, Input, PasswordInput, PhoneInput, Checkbox, Card } from '@40labs/ui-components';
 import { authApi } from '../../api/authApi';
 import { TermsModal } from './components/TermsModal';
 import { PinOtpInput } from './components/PinOtpInput';
@@ -120,7 +120,6 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
       }
       setLoading(true);
       try {
-        // Compute terms_text_sha256 using WebCrypto
         const termsString = '40Labs Terms of Service & Privacy Policy v1.0';
         const msgUint8 = new TextEncoder().encode(termsString);
         const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
@@ -202,15 +201,15 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Aina ya Biashara</label>
-              <Select
+              <select
                 value={formData.type}
-                onChange={(e: any) => updateField('type', e.target.value)}
-                options={[
-                  { label: 'Duka la Dawa', value: 'Pharmacy' },
-                  { label: 'Maabara', value: 'Laboratory' },
-                  { label: 'Hospitali / Kituo cha Afya', value: 'Hospital' },
-                ]}
-              />
+                onChange={(e) => updateField('type', e.target.value)}
+                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
+              >
+                <option value="Pharmacy">Duka la Dawa</option>
+                <option value="Laboratory">Maabara</option>
+                <option value="Hospital">Hospitali / Kituo cha Afya</option>
+              </select>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Barua pepe</label>
@@ -225,7 +224,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               <label className="text-sm font-medium text-foreground block mb-1">Namba ya Simu</label>
               <PhoneInput
                 value={formData.phone}
-                onChange={(val: string) => updateField('phone', val)}
+                onChange={(val: any) => updateField('phone', typeof val === 'string' ? val : val?.target?.value || '')}
               />
             </div>
           </div>
@@ -236,27 +235,27 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Mtindo (Role Scopes)</label>
-              <Select
+              <select
                 value={formData.role_scopes}
-                onChange={(e: any) => updateField('role_scopes', e.target.value)}
-                options={[
-                  { label: 'Duka la Dawa (Pharmacy)', value: 'pharmacy' },
-                  { label: 'Maabara (Lab)', value: 'lab' },
-                  { label: 'Vyote (Both)', value: 'both' },
-                ]}
-              />
+                onChange={(e) => updateField('role_scopes', e.target.value)}
+                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
+              >
+                <option value="pharmacy">Duka la Dawa (Pharmacy)</option>
+                <option value="lab">Maabara (Lab)</option>
+                <option value="both">Vyote (Both)</option>
+              </select>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Ukubwa (Scale)</label>
-              <Select
+              <select
                 value={formData.scale}
-                onChange={(e: any) => updateField('scale', e.target.value)}
-                options={[
-                  { label: 'Mdogo (Small)', value: 'small' },
-                  { label: 'Wastani (Medium)', value: 'medium' },
-                  { label: 'Kubwa (Large)', value: 'large' },
-                ]}
-              />
+                onChange={(e) => updateField('scale', e.target.value)}
+                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
+              >
+                <option value="small">Mdogo (Small)</option>
+                <option value="medium">Wastani (Medium)</option>
+                <option value="large">Kubwa (Large)</option>
+              </select>
             </div>
           </div>
         )}
@@ -270,19 +269,27 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Mkoa</label>
-              <Select
+              <select
                 value={formData.region}
-                onChange={(e: any) => updateField('region', e.target.value)}
-                options={TZ_ADMIN_AREAS.map((r) => ({ label: r.name, value: r.name }))}
-              />
+                onChange={(e) => updateField('region', e.target.value)}
+                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
+              >
+                {TZ_ADMIN_AREAS.map((r) => (
+                  <option key={r.name} value={r.name}>{r.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Wilaya</label>
-              <Select
+              <select
                 value={formData.district}
-                onChange={(e: any) => updateField('district', e.target.value)}
-                options={currentRegionObj.districts.map((d) => ({ label: d, value: d }))}
-              />
+                onChange={(e) => updateField('district', e.target.value)}
+                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
+              >
+                {currentRegionObj.districts.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Mtaa</label>
@@ -300,18 +307,22 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 placeholder="Kata"
               />
             </div>
-            <div className="flex items-center space-x-2 pt-2">
-              <Checkbox
-                checked={gpsEnabled}
-                onChange={(e: any) => handleGpsToggle(e.target?.checked ?? !gpsEnabled)}
-                label="Wezesha GPS (Eneo la sasa)"
-              />
+            <div className="pt-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={gpsEnabled}
+                  onChange={(e) => handleGpsToggle(e.target.checked)}
+                  className="w-4 h-4 rounded border-border text-primary accent-primary"
+                />
+                <span className="text-xs text-foreground font-medium">Wezesha GPS (Nasa eneo la sasa)</span>
+              </label>
+              {latLng.lat && latLng.lng && (
+                <p className="text-[10px] font-mono text-muted-foreground mt-1">
+                  Lat: {latLng.lat.toFixed(4)}, Lng: {latLng.lng.toFixed(4)}
+                </p>
+              )}
             </div>
-            {latLng.lat && (
-              <p className="text-xs text-muted-foreground font-mono">
-                Lat: {latLng.lat.toFixed(4)}, Lng: {latLng.lng?.toFixed(4)}
-              </p>
-            )}
           </div>
         )}
 
@@ -323,6 +334,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               <Input
                 value={formData.matawi}
                 onChange={(e: any) => updateField('matawi', e.target.value)}
+                placeholder="1"
               />
             </div>
             <div>
@@ -330,15 +342,15 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               <Input
                 value={formData.lipaNamba}
                 onChange={(e: any) => updateField('lipaNamba', e.target.value)}
-                placeholder="Lipa namba"
+                placeholder="Namba ya biashara"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Namba ya Malipo</label>
+              <label className="text-sm font-medium text-foreground block mb-1">Namba ya Malipo (Simu)</label>
               <Input
                 value={formData.paymentNumber}
                 onChange={(e: any) => updateField('paymentNumber', e.target.value)}
-                placeholder="Namba ya malipo"
+                placeholder="+255..."
               />
             </div>
           </div>
@@ -352,6 +364,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               <Input
                 value={formData.ownerFirstName}
                 onChange={(e: any) => updateField('ownerFirstName', e.target.value)}
+                placeholder="Jina la kwanza"
               />
             </div>
             <div>
@@ -359,13 +372,23 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               <Input
                 value={formData.ownerLastName}
                 onChange={(e: any) => updateField('ownerLastName', e.target.value)}
+                placeholder="Jina la mwisho"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Simu ya Mmiliki (SMS OTP)</label>
+              <label className="text-sm font-medium text-foreground block mb-1">Namba ya Simu ya Mmiliki</label>
               <PhoneInput
                 value={formData.ownerPhone}
-                onChange={(val: string) => updateField('ownerPhone', val)}
+                onChange={(val: any) => updateField('ownerPhone', typeof val === 'string' ? val : val?.target?.value || '')}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1">Barua pepe ya Mmiliki</label>
+              <Input
+                type="email"
+                value={formData.ownerEmail}
+                onChange={(e: any) => updateField('ownerEmail', e.target.value)}
+                placeholder="owner@example.com"
               />
             </div>
             <div>
@@ -381,7 +404,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 {otpCountdown > 0 ? `Subiri sekunde ${otpCountdown} kutuma tena` : 'Tayari kutuma'}
               </span>
               <Button
-                variant="outline"
+                intent="neutral"
                 size="sm"
                 disabled={!canResendOtp}
                 onClick={() => {
@@ -461,7 +484,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               <div className="flex justify-between items-center">
                 <span><strong>Business ID:</strong> {successData.businessId}</span>
                 <Button
-                  variant="outline"
+                  intent="neutral"
                   size="sm"
                   onClick={() => navigator.clipboard.writeText(successData.businessId)}
                 >
@@ -471,7 +494,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               <div className="flex justify-between items-center">
                 <span><strong>Username:</strong> {successData.username}</span>
                 <Button
-                  variant="outline"
+                  intent="neutral"
                   size="sm"
                   onClick={() => navigator.clipboard.writeText(successData.username)}
                 >
@@ -488,7 +511,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               </div>
               <div className="flex space-x-2 pt-2">
                 <Button
-                  variant="outline"
+                  intent="neutral"
                   size="sm"
                   onClick={() => {
                     const blob = new Blob([successData.codes.join('\n')], { type: 'text/plain' });
@@ -501,7 +524,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 >
                   Pakua (.txt)
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => window.print()}>
+                <Button intent="neutral" size="sm" onClick={() => window.print()}>
                   Chapisha
                 </Button>
               </div>
@@ -519,12 +542,12 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
         {/* Navigation Buttons */}
         <div className="flex justify-between pt-4 border-t border-border">
           {step > 1 && step < 8 && (
-            <Button variant="outline" onClick={handleBack}>
+            <Button intent="neutral" onClick={handleBack}>
               Rudi
             </Button>
           )}
           {step === 4 && (
-            <Button variant="outline" onClick={() => setStep(5)}>
+            <Button intent="neutral" onClick={() => setStep(5)}>
               Ruka (Skip)
             </Button>
           )}
@@ -534,7 +557,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 disabled={loading || (step === 7 && !termsAccepted)}
                 onClick={handleNext}
               >
-                {loading ? 'Inapakia...' : step === 7 ? 'Maliza' : 'Endelea'}
+                {loading ? 'Inasubiri...' : step === 5 ? 'Thibitisha OTP' : step === 7 ? 'Maliza' : 'Endelea'}
               </Button>
             ) : (
               <Button

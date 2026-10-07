@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Button, Card } from '@40labs/ui-components';
-import { t } from '@40labs/i18n';
 
 interface LandingScreenProps {
   onGetStarted: () => void;
@@ -31,7 +30,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) =>
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 select-none">
       <div className="absolute top-4 right-4 flex items-center space-x-2">
         <Button
-          variant="outline"
+          intent="neutral"
           size="sm"
           onClick={() => setLang(lang === 'sw-TZ' ? 'en' : 'sw-TZ')}
         >

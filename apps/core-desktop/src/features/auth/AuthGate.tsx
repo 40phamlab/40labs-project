@@ -1,14 +1,16 @@
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authApi, type AuthStatusResponse } from '../../api/authApi';
+import { parseAuthError } from '../../api/authErrors';
 import { LandingScreen } from './landing/LandingScreen';
 import { RegistrationWizard } from './RegistrationWizard';
-import { LoginScreen } from './LoginScreen';
-import { LockScreen } from './LockScreen';
-import { CreatePinScreen } from './CreatePinScreen';
-import { ForcedPasswordChangeScreen } from './ForcedPasswordChangeScreen';
+import { LoginScreen } from './login/LoginScreen';
+import { LockScreen } from './lock/LockScreen';
+import { CreatePinScreen } from './pin/CreatePinScreen';
+import { ForcedPasswordChangeScreen } from './credentials/ForcedPasswordChangeScreen';
+import { RecoveryCodesScreen } from './recovery/RecoveryCodesScreen';
 import { SetupWizardScreen } from './SetupWizardScreen';
-import { StepUpModal } from './components/StepUpModal';
+import { StepUpProvider } from './stepup/StepUpProvider';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { TitleBar } from '../../components/TitleBar';
 
@@ -18,6 +20,7 @@ interface AuthGateProps {
 
 export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [showWizard, setShowWizard] = React.useState(false);
+  const queryClient = useQueryClient();
 
   const { data: status, isLoading, refetch } = useQuery<AuthStatusResponse>({
     queryKey: ['auth_status'],
@@ -27,6 +30,66 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   const isLockedStore = useAuthStore((s) => s.isLocked);
   const setLockedStore = useAuthStore((s) => s.setLocked);
+
+  // Global query cache error listener
+  React.useEffect(() => {
+    const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+      if (event?.type === 'updated' && event.action.type === 'error') {
+        const error = event.action.error;
+        const parsed = parseAuthError(error);
+        if (
+          parsed.code === 'SESSION_LOCKED' ||
+          parsed.code === 'SESSION_REQUIRED' ||
+          parsed.code === 'PIN_SETUP_REQUIRED'
+        ) {
+          if (parsed.code === 'SESSION_LOCKED') {
+            setLockedStore(true);
+          }
+          queryClient.invalidateQueries({ queryKey: ['auth_status'] });
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [queryClient, setLockedStore]);
+
+  // Idle lock timer
+  const idleMinutes = status?.business?.idle_lock_minutes || status?.idleLockMinutes || 5;
+  const lastActivityRef = React.useRef<number>(Date.now());
+
+  React.useEffect(() => {
+    if (!status?.session || status.session.locked || isLockedStore) return;
+
+    const updateActivity = () => {
+      lastActivityRef.current = Date.now();
+    };
+
+    window.addEventListener('mousemove', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('scroll', updateActivity);
+
+    const interval = setInterval(async () => {
+      const idleMs = Date.now() - lastActivityRef.current;
+      const limitMs = idleMinutes * 60 * 1000;
+      if (idleMs > limitMs) {
+        try {
+          await authApi.lock();
+          setLockedStore(true);
+          refetch();
+        } catch {
+          // ignore
+        }
+      }
+    }, 10000);
+
+    return () => {
+      window.removeEventListener('mousemove', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('click', updateActivity);
+      window.removeEventListener('scroll', updateActivity);
+      clearInterval(interval);
+    };
+  }, [status?.session, isLockedStore, idleMinutes, refetch, setLockedStore]);
 
   if (isLoading || !status) {
     return (
@@ -73,7 +136,12 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         {children}
         <LockScreen
           displayName={status.session.displayName}
+          businessName={status.business.name}
           onUnlockSuccess={() => {
+            setLockedStore(false);
+            refetch();
+          }}
+          onSwitchUser={() => {
             setLockedStore(false);
             refetch();
           }}
@@ -96,6 +164,13 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     );
   }
 
+  // 6. SUDO with zero active recovery codes -> RecoveryCodesScreen
+  if (status.session.role === 'sudo' && !status.session.hasRecoveryCodes) {
+    return renderTitleBarWrapper(
+      <RecoveryCodesScreen onComplete={() => refetch()} />
+    );
+  }
+
   // 7. owner_first_login -> SetupWizard
   if (status.business.onboarding_state === 'owner_first_login') {
     return renderTitleBarWrapper(
@@ -103,11 +178,10 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     );
   }
 
-  // 8. Otherwise -> App shell with global StepUpModal
+  // 8. Otherwise -> App shell wrapped in StepUpProvider
   return (
-    <>
+    <StepUpProvider>
       {children}
-      <StepUpModal />
-    </>
+    </StepUpProvider>
   );
 };

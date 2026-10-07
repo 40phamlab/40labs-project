@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, test, expect } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LoginScreen } from '../LoginScreen';
 import { RegistrationWizard } from '../RegistrationWizard';
@@ -26,7 +26,7 @@ describe('Auth Module Tests', () => {
   test('renders RegistrationWizard step 1', async () => {
     renderWithProviders(<RegistrationWizard onComplete={() => {}} />);
 
-    expect(screen.getByText(/Biashara/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Biashara$/i })).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Jina la biashara/i)).toBeInTheDocument();
   });
 

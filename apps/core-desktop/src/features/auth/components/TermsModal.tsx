@@ -53,7 +53,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({ isOpen, onClose, onAccep
         </div>
 
         <div className="flex justify-end space-x-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button intent="neutral" onClick={onClose}>
             Ghairi
           </Button>
           <Button disabled={!scrolledToBottom || !accepted} onClick={onAccept}>
