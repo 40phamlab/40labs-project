@@ -15,6 +15,9 @@
   --shadow-skeu-outer: 0 4px 12px rgba(0, 0, 0, 0.45);
   --shadow-skeu-inset: inset 0 1px 0 rgba(255, 255, 255, 0.12);
   --radius-card-lg: 16px;
+  --radius-card-md: 12px; /* TODO: --radius-card is 8px which contradicts design system card 12px; flag for later cleanup */
+  --shell-inset: 8px;
+  --sidebar-rail-width: 56px;
 
   /* Solid Surfaces */
   --color-surface-primary: #1A221E;

@@ -73,6 +73,7 @@ import {
   EmptyState,
   LoadingState,
   StatusBadge,
+  AppShell,
 } from '@40labs/ui-components';
 import { Numpad } from '../features/sales/components/Numpad';
 import { ReceiptPreview } from '../features/sales/components/ReceiptPreview';
@@ -641,6 +642,40 @@ export function ComponentLab() {
                  </Card>
                </div>
              </DashboardShell>
+          </div>
+        </div>
+      </section>
+
+      {/* 18. FLOATING APP SHELL VARIANT (variant="floating") */}
+      <section className="space-y-6 pb-64">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">18. Floating App Shell Variant (variant="floating")</h2>
+        <div className="space-y-4">
+          <div className="h-[600px] border border-border rounded-xl overflow-hidden shadow-surface-pop relative bg-app-bg">
+            <AppShell
+              variant="floating"
+              topBar={<div className="h-10 px-4 flex items-center text-xs font-bold text-text-primary">Floating Top Bar (Canvas Background, No Border)</div>}
+              sidebar={
+                <AppSidebarNav
+                  variant="floating"
+                  activeRoute={activeRoute}
+                  onNavigate={setActiveRoute}
+                  items={config.navigation}
+                />
+              }
+            >
+              <div className="p-6 space-y-4">
+                <h3 className="text-xl font-heading font-bold text-text-primary">Floating Content Card Stage</h3>
+                <p className="text-text-secondary text-sm">
+                  This content sits inside the rounded card surface (12px radius, surface primary background, shadow-md separation) with an 8px shell inset from the window canvas.
+                </p>
+                <Card>
+                  <CardHeader>Sample Card in Floating Shell</CardHeader>
+                  <CardBody>
+                    <p className="text-text-muted text-sm">Everything inside the content card renders cleanly with zero shell dividing lines.</p>
+                  </CardBody>
+                </Card>
+              </div>
+            </AppShell>
           </div>
         </div>
       </section>

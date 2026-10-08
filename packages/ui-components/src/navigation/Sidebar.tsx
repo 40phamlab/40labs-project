@@ -7,10 +7,11 @@ import { Tooltip } from '../overlays/Tooltip';
 export interface SidebarProps {
   children: React.ReactNode;
   navState?: NavigationState;
+  variant?: 'default' | 'floating';
   className?: string;
 }
 
-export const Sidebar = ({ children, navState, className = '' }: SidebarProps) => {
+export const Sidebar = ({ children, navState, variant = 'default', className = '' }: SidebarProps) => {
   const shell = useAppShell();
   const effectiveNavState: NavigationState = navState ?? shell.navState;
 
@@ -20,15 +21,18 @@ export const Sidebar = ({ children, navState, className = '' }: SidebarProps) =>
     return null;
   }
 
+  const isFloating = variant === 'floating';
+
   return (
     <nav
       aria-label="Sidebar navigation"
-      className={`flex flex-col h-full w-full bg-sidebar border-r border-border transition-[width] duration-200 ease-in-out select-none ${className}`}
+      className={`flex flex-col h-full w-full ${isFloating ? 'bg-app-bg border-r-0' : 'bg-sidebar border-r border-border'} transition-[width] duration-200 ease-in-out select-none ${className}`}
     >
       {Children.map(children, (child) => {
         if (isValidElement(child) && typeof child.type !== 'string') {
           return cloneElement(child as React.ReactElement<any>, {
             navState: effectiveNavState,
+            variant,
           });
         }
         return child;
@@ -41,10 +45,11 @@ export interface SidebarSectionProps {
   title?: string;
   children: React.ReactNode;
   navState?: NavigationState;
+  variant?: 'default' | 'floating';
   className?: string;
 }
 
-export const SidebarSection = ({ title, children, navState, className = '' }: SidebarSectionProps) => {
+export const SidebarSection = ({ title, children, navState, variant = 'default', className = '' }: SidebarSectionProps) => {
   const shell = useAppShell();
   const effectiveNavState: NavigationState = navState ?? shell.navState;
   const isIcon = effectiveNavState === 'icon';
@@ -61,6 +66,7 @@ export const SidebarSection = ({ title, children, navState, className = '' }: Si
           if (isValidElement(child) && typeof child.type !== 'string') {
             return cloneElement(child as React.ReactElement<any>, {
               navState: effectiveNavState,
+              variant,
             });
           }
           return child;
@@ -77,6 +83,7 @@ export interface SidebarItemProps {
   active?: boolean;
   disabled?: boolean;
   navState?: NavigationState;
+  variant?: 'default' | 'floating';
   onClick?: () => void;
   className?: string;
 }
@@ -88,12 +95,14 @@ export const SidebarItem = ({
   active = false,
   disabled = false,
   navState,
+  variant = 'default',
   onClick,
   className = '',
 }: SidebarItemProps) => {
   const shell = useAppShell();
   const effectiveNavState: NavigationState = navState ?? shell.navState;
   const isIcon = effectiveNavState === 'icon';
+  const isFloating = variant === 'floating';
 
   const handleKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (disabled) return;
@@ -118,7 +127,7 @@ export const SidebarItem = ({
       className={`
         w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium
         transition-colors duration-150 outline-none relative group select-none
-        focus-visible:ring-2 focus-visible:ring-[#16A34A] focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar
+        focus-visible:ring-2 focus-visible:ring-[#16A34A] focus-visible:ring-offset-2 ${isFloating ? 'focus-visible:ring-offset-app-bg' : 'focus-visible:ring-offset-sidebar'}
         ${
           active
             ? isIcon
@@ -155,7 +164,7 @@ export const SidebarItem = ({
       )}
       {isIcon && badge !== undefined && (
         <span
-          className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#F97316] ring-2 ring-sidebar"
+          className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#F97316] ring-2 ${isFloating ? 'ring-app-bg' : 'ring-sidebar'}`}
           title={`${label}: ${badge}`}
           aria-label={`${badge} unread`}
         />
@@ -177,10 +186,11 @@ export const SidebarItem = ({
 export interface SidebarGroupProps {
   children: React.ReactNode;
   navState?: NavigationState;
+  variant?: 'default' | 'floating';
   className?: string;
 }
 
-export const SidebarGroup = ({ children, navState, className = '' }: SidebarGroupProps) => {
+export const SidebarGroup = ({ children, navState, variant = 'default', className = '' }: SidebarGroupProps) => {
   const shell = useAppShell();
   const effectiveNavState: NavigationState = navState ?? shell.navState;
 
@@ -190,6 +200,7 @@ export const SidebarGroup = ({ children, navState, className = '' }: SidebarGrou
         if (isValidElement(child) && typeof child.type !== 'string') {
           return cloneElement(child as React.ReactElement<any>, {
             navState: effectiveNavState,
+            variant,
           });
         }
         return child;

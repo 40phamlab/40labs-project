@@ -32,6 +32,7 @@ export interface BrandConfig {
 export interface AppSidebarNavProps<T extends string = string> {
   activeRoute: T;
   navState?: NavigationState | string;
+  variant?: 'default' | 'floating';
   onNavigate: (routeId: T) => void;
   onNavStateChange?: (state: NavigationState) => void;
   items: NavItem<T>[];
@@ -51,6 +52,7 @@ const normalizeState = (state: string | undefined, defaultState: NavigationState
 export function AppSidebarNav<T extends string = string>({
   activeRoute,
   navState: propNavState,
+  variant = 'default',
   onNavigate,
   onNavStateChange: _onNavStateChange,
   items,
@@ -80,7 +82,7 @@ export function AppSidebarNav<T extends string = string>({
   );
 
   return (
-    <Sidebar navState={currentNavState} className="h-full bg-sidebar border-r border-border">
+    <Sidebar navState={currentNavState} variant={variant} className="h-full">
       {/* Primary Navigation Section */}
       <SidebarSection className="flex-1 overflow-y-auto no-scrollbar overscroll-contain py-2">
         {filteredItems.map((item) => {

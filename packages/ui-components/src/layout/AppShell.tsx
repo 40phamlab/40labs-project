@@ -60,6 +60,8 @@ export interface AppShellProps {
   enableHotkey?: boolean;
   /** Show persistent floating reopen button when sidebar is hidden (default false) */
   showReopenControl?: boolean;
+  /** Layout variant ('default' or 'floating') */
+  variant?: 'default' | 'floating';
 }
 
 const normalizeState = (state: string | undefined, defaultState: NavigationState = 'open'): NavigationState => {
@@ -90,6 +92,7 @@ export function AppShell({
   onNavStateChange,
   enableHotkey = true,
   showReopenControl = false,
+  variant = 'default',
 }: AppShellProps) {
   const initialNavState = normalizeState(controlledNavState ?? defaultNavState, 'open');
   const [internalNavState, setInternalNavState] = useState<NavigationState>(initialNavState);
@@ -158,6 +161,8 @@ export function AppShell({
   const minWidthStyle = minWidth !== undefined && minWidth !== 0 ? (typeof minWidth === 'number' ? `${minWidth}px` : minWidth) : undefined;
   const minHeightStyle = minHeight !== undefined && minHeight !== 0 ? (typeof minHeight === 'number' ? `${minHeight}px` : minHeight) : undefined;
 
+  const isFloating = variant === 'floating';
+
   return (
     <AppShellContext.Provider value={contextValue}>
       <div
@@ -170,7 +175,7 @@ export function AppShell({
       >
         {/* Top Chrome Header */}
         {topBar && (
-          <header className="shrink-0 w-full z-30 bg-top-chrome border-b border-border min-h-[40px] drag-region" data-tauri-drag-region>
+          <header className={`shrink-0 w-full z-30 ${isFloating ? 'bg-app-bg border-b-0' : 'bg-top-chrome border-b border-border'} min-h-[40px] drag-region`} data-tauri-drag-region>
             {topBar}
           </header>
         )}
@@ -194,22 +199,31 @@ export function AppShell({
 
           {sidebar && (
             <aside
-              className={`shrink-0 h-full z-20 bg-sidebar border-r border-border transition-[width,opacity] duration-200 ease-in-out flex flex-col absolute md:relative ${
+              className={`shrink-0 h-full z-20 ${isFloating ? 'bg-app-bg border-r-0' : 'bg-sidebar border-r border-border'} transition-[width,opacity] duration-200 ease-in-out flex flex-col absolute md:relative ${
                 navState === 'closed'
                   ? 'w-0 opacity-0 border-r-0 overflow-hidden pointer-events-none'
                   : navState === 'icon'
-                  ? 'w-16 opacity-100 z-30 md:z-20'
+                  ? isFloating ? 'w-[var(--sidebar-rail-width)] opacity-100 z-30 md:z-20' : 'w-16 opacity-100 z-30 md:z-20'
                   : 'w-60 opacity-100 z-40 md:z-20 shadow-2xl md:shadow-none'
               }`}
               aria-hidden={navState === 'closed'}
               data-testid="app-shell-sidebar-container"
             >
-              {sidebar}
+              {React.isValidElement(sidebar) && typeof sidebar.type !== 'string'
+                ? React.cloneElement(sidebar as React.ReactElement<any>, { variant })
+                : sidebar}
             </aside>
           )}
 
-          <main className="flex-1 min-w-0 min-h-0 h-full overflow-hidden relative" data-testid="app-shell-main-workspace">
-            {children}
+          <main className={`flex-1 min-w-0 min-h-0 h-full overflow-hidden relative ${isFloating ? 'p-[var(--shell-inset)] bg-app-bg' : ''}`} data-testid="app-shell-main-workspace">
+            {isFloating ? (
+              <div className="h-full w-full bg-surface-primary rounded-[var(--radius-card-md)] shadow-md overflow-hidden flex flex-col">
+                {/* TODO: [light palette missing, dark palette still open] [Phase: design-tokens] */}
+                {children}
+              </div>
+            ) : (
+              children
+            )}
           </main>
         </div>
       </div>
