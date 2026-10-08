@@ -134,6 +134,12 @@ export const translations = {
     'emptystate.offline.desc': 'Imehifadhiwa ndani. Itasawazisha utakapounganishwa.',
     'emptystate.noAccess.title': 'Huna ruhusa',
     'emptystate.noAccess.desc': 'Huna idhini ya kufikia eneo hili.',
+
+    // Connectivity
+    'connectivity.online': 'Mtandaoni',
+    'connectivity.offline': 'Nje ya mtandao',
+    'connectivity.ariaOnline': 'Mtandao upo: Mtandaoni',
+    'connectivity.ariaOffline': 'Mtandao haupo: Nje ya mtandao',
     // Error messages
     'auth.error.invalidCredentials': 'Jina la mtumiaji au nenosiri si sahihi',
     'auth.error.locked': 'Akaunti imefungwa kwa muda kutokana na majaribio mengi',
@@ -223,6 +229,12 @@ export const translations = {
     'auth.error.notConfigured': 'Not configured',
     'auth.error.networkUnavailable': 'Network unavailable',
     'auth.error.unknown': 'An unknown error occurred',
+
+    // Connectivity
+    'connectivity.online': 'Online',
+    'connectivity.offline': 'Offline',
+    'connectivity.ariaOnline': 'Network interface: Online',
+    'connectivity.ariaOffline': 'Network interface: Offline',
 
     // Auth & Session
     'auth.login.title': 'Welcome',

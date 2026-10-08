@@ -1,7 +1,8 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TitleBar } from '../TitleBar';
+import { AppShell } from '@40labs/ui-components';
 
 describe('TitleBar & Floating App Shell Integration', () => {
   test('renders logo, hamburger menu, branch control, status slot, and window controls', () => {
@@ -14,6 +15,22 @@ describe('TitleBar & Floating App Shell Integration', () => {
     expect(screen.getByRole('button', { name: /minimize window/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /maximize window/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /close window/i })).toBeInTheDocument();
+  });
+
+  test('renders sidebar toggle button at leftmost position with accessible label and working click handler', async () => {
+    const handleToggle = vi.fn();
+    render(
+      <AppShell variant="floating" topBar={<TitleBar onToggleSidebar={handleToggle} />}>
+        <div>Content</div>
+      </AppShell>
+    );
+
+    const toggleBtn = screen.getByRole('button', { name: /sidebar navigation/i });
+    expect(toggleBtn).toBeInTheDocument();
+    expect(toggleBtn).toHaveAttribute('data-tauri-drag-region', 'false');
+
+    await userEvent.click(toggleBtn);
+    expect(handleToggle).toHaveBeenCalledTimes(1);
   });
 
   test('hamburger menu opens and closes, showing items like Workspace Settings and Check for Updates', async () => {

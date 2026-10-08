@@ -1,13 +1,16 @@
 import * as React from 'react';
-import { Minus, Square, X } from 'lucide-react';
+import { PanelLeft, Minus, Square, X } from 'lucide-react';
+import { useAppShell } from '@40labs/ui-components';
 import { HamburgerMenu } from './HamburgerMenu';
 import { BranchControl } from './BranchControl';
+import { ConnectivityIndicator } from './ConnectivityIndicator';
 
 export interface TitleBarProps {
   brandName?: string;
   onHelpClick?: () => void;
   onUpdateClick?: () => void;
   onSettingsClick?: () => void;
+  onToggleSidebar?: () => void;
   hasUpdateAvailable?: boolean;
 }
 
@@ -16,8 +19,20 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onHelpClick,
   onUpdateClick,
   onSettingsClick,
+  onToggleSidebar,
   hasUpdateAvailable = false,
 }) => {
+  const shell = useAppShell();
+  const isNavClosed = shell.navState === 'closed';
+
+  const handleToggle = () => {
+    if (onToggleSidebar) {
+      onToggleSidebar();
+    } else {
+      shell.toggleSidebar();
+    }
+  };
+
   const handleMinimize = async () => {
     try {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
@@ -49,8 +64,20 @@ export const TitleBar: React.FC<TitleBarProps> = ({
     <div
       className="h-10 w-full flex items-center justify-between px-2 bg-app-bg select-none shrink-0 z-[110]"
     >
-      {/* Left side: Logo, Hamburger, Branch */}
+      {/* Left side: Sidebar Toggle, Logo, Hamburger, Branch */}
       <div className="flex items-center gap-1.5 h-full min-w-0 no-drag shrink-0" data-tauri-drag-region="false">
+        {/* Sidebar Toggle Button */}
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="w-8 h-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer no-drag select-none"
+          data-tauri-drag-region="false"
+          title={isNavClosed ? 'Show sidebar navigation (Ctrl+B)' : 'Toggle sidebar navigation (Ctrl+B)'}
+          aria-label={isNavClosed ? 'Show sidebar navigation' : 'Toggle sidebar navigation'}
+        >
+          <PanelLeft size={15} className={isNavClosed ? 'text-action-primary' : 'text-current'} />
+        </button>
+
         {/* Logo */}
         <div className="flex items-center gap-2 px-2 no-drag" data-tauri-drag-region="false">
           <div className="w-4 h-4 bg-accent rounded flex items-center justify-center text-[9px] font-bold text-text-inverse">
@@ -83,7 +110,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       <div className="flex items-center gap-2 no-drag shrink-0 h-full" data-tauri-drag-region="false">
         {/* Status slot for Step 4 */}
         <div data-testid="status-indicator-slot" className="flex items-center px-2">
-          {/* TODO: Online/Offline indicator slot [Step 4] */}
+          <ConnectivityIndicator />
         </div>
 
         {/* Window Controls */}
