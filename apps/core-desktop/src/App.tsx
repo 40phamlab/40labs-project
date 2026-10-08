@@ -13,7 +13,7 @@ import {
   Bell,
   Settings
 } from 'lucide-react';
-import { AppShell, AppSidebarNav, TopMenuBar, type NavItem } from '@40labs/ui-components';
+import { AppShell, AppSidebarNav, type NavItem } from '@40labs/ui-components';
 import { TitleBar } from './components/TitleBar';
 import { TabContainer } from './components/TabContainer';
 import { useNavStore, type ScreenId } from './stores/useNavStore';
@@ -37,7 +37,6 @@ export default function App() {
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
   const sidebarState = useNavStore((s) => s.sidebarState);
   const setSidebarState = useNavStore((s) => s.setSidebarState);
-  const toggleSidebar = useNavStore((s) => s.toggleSidebar);
   const lastNonClosedState = useNavStore((s) => s.lastNonClosedState);
 
   const { notifications } = useNotifications();
@@ -99,24 +98,17 @@ export default function App() {
   };
 
   const topBarElement = (
-    <div className="flex items-center justify-between w-full h-10 bg-top-chrome border-b border-border select-none drag-region" data-tauri-drag-region>
-      <div className="flex-1 min-w-0 h-full">
-        <TopMenuBar
-          brandName="40Labs"
-          onHelpClick={() => console.log('Help clicked')}
-          onUpdateClick={() => console.log('Update clicked')}
-          onSettingsClick={() => setActiveScreen('settings')}
-          onToggleSidebar={toggleSidebar}
-        />
-      </div>
-      <div className="no-drag shrink-0 h-full" data-tauri-drag-region="false">
-        <TitleBar />
-      </div>
-    </div>
+    <TitleBar
+      brandName="40Labs"
+      onHelpClick={() => console.log('Help clicked')}
+      onUpdateClick={() => console.log('Update clicked')}
+      onSettingsClick={() => setActiveScreen('settings')}
+    />
   );
 
   const sidebarElement = (
     <AppSidebarNav<ScreenId>
+      variant="floating"
       activeRoute={activeScreen}
       navState={sidebarState}
       onNavStateChange={setSidebarState}
@@ -132,6 +124,7 @@ export default function App() {
     <ToastProvider>
       <AuthGate>
         <AppShell
+          variant="floating"
           topBar={topBarElement}
           sidebar={sidebarElement}
           navState={sidebarState}
