@@ -28,8 +28,8 @@ export const TabContainer: React.FC<TabContainerProps> = ({
   overlays,
   ...stateProps
 }) => (
-  <PageViewport>
-    <PageContent scrollable={false} variant="panel" padding="normal" {...stateProps}>
+  <PageViewport className="bg-transparent">
+    <PageContent scrollable={false} variant="transparent" padding="normal" {...stateProps}>
       {toolbar}
       <div
         className={`flex-1 min-h-0 min-w-0 flex flex-col ${

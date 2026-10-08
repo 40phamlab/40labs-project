@@ -68,7 +68,7 @@ export const CartSummaryPanel = ({
         ))}
       </div>
 
-      <div className="p-5 bg-field text-text-on-field rounded-card elevation-inset border border-black/5 text-center relative overflow-hidden group">
+      <div className="p-5 bg-surface-secondary text-text-primary rounded-card elevation-inset border border-black/5 text-center relative overflow-hidden group">
         <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
 
         <p className="relative z-10 text-[10px] font-bold uppercase tracking-[0.25em] opacity-60 mb-2">

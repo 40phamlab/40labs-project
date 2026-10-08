@@ -21,19 +21,19 @@ export const ScheduleCategoryStrip: React.FC<ScheduleCategoryStripProps> = ({
   onSelectCategory,
 }) => {
   return (
-    <Panel className="p-2.5 flex items-center gap-2.5 overflow-x-auto whitespace-nowrap custom-scrollbar shrink-0 bg-panel border border-border/50 rounded-card elevation-raised">
+    <Panel className="p-2.5 flex items-center gap-2.5 overflow-x-auto whitespace-nowrap custom-scrollbar shrink-0 bg-surface-primary border border-border/50 rounded-card elevation-raised">
       {/* All Schedules Pill */}
       <button
         type="button"
         onClick={() => onSelectCategory(null)}
         className={`px-3 py-1.5 rounded-input text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
           activeCategory === null
-            ? 'bg-panel-strong border-border elevation-inset text-text font-bold shadow-xs'
-            : 'bg-panel-strong/40 text-text border-border/60 hover:bg-surface-strong'
+            ? 'bg-surface-secondary border-border elevation-inset text-text font-bold shadow-xs'
+            : 'bg-surface-secondary/40 text-text border-border/60 hover:bg-surface-hover'
         }`}
       >
         <span>All Schedules</span>
-        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-panel border border-border/40 text-text-muted">
+        <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-surface-primary border border-border/40 text-text-muted">
           {schedules.length}
         </span>
       </button>
@@ -56,13 +56,13 @@ export const ScheduleCategoryStrip: React.FC<ScheduleCategoryStripProps> = ({
               onClick={() => onSelectCategory(isActive ? null : cat.id)}
               className={`px-3 py-1.5 rounded-input text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
                 isActive
-                  ? 'bg-panel-strong border-border elevation-inset text-text font-bold shadow-xs'
-                  : 'bg-panel-strong/40 text-text border-border/60 hover:bg-surface-strong'
+                  ? 'bg-surface-secondary border-border elevation-inset text-text font-bold shadow-xs'
+                  : 'bg-surface-secondary/40 text-text border-border/60 hover:bg-surface-hover'
               }`}
             >
               <span>{cat.label}</span>
               <span
-                className="w-4.5 h-4.5 rounded-full border border-border/40 flex items-center justify-center font-mono text-[10px] bg-panel text-text-muted"
+                className="w-4.5 h-4.5 rounded-full border border-border/40 flex items-center justify-center font-mono text-[10px] bg-surface-primary text-text-muted"
               >
                 {actvCount}
               </span>

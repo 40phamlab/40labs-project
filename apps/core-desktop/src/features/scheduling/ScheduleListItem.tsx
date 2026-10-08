@@ -35,8 +35,8 @@ export const ScheduleListItem: React.FC<ScheduleListItemProps> = ({
       onClick={onClick}
       className={`cursor-pointer transition-all rounded-xl border p-4 flex flex-col gap-3 shadow-xs ${
         isSelected
-          ? 'bg-panel-strong border-accent text-text'
-          : 'bg-panel border-border/60 hover:bg-surface-strong'
+          ? 'bg-surface-secondary border-accent text-text'
+          : 'bg-surface-primary border-border/60 hover:bg-surface-hover'
       }`}
     >
       <div className="flex items-start justify-between gap-3">
@@ -47,7 +47,7 @@ export const ScheduleListItem: React.FC<ScheduleListItemProps> = ({
       </div>
 
       <div className="flex items-center justify-between text-xs text-text-muted pt-2 border-t border-border/30">
-        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-panel-strong border border-border/40">
+        <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-surface-secondary border border-border/40">
           {schedule.category}
         </span>
         <div className="flex items-center gap-1 font-mono text-[11px] text-text-muted">

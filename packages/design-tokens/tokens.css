@@ -29,12 +29,12 @@
   --color-surface-disabled: #161E1A;
 
   /* Surface Legacy Aliases */
-  --color-surface: #0B0F0D;
-  --color-surface-strong: #121815;
-  --color-panel: #1A221E;
-  --color-panel-strong: #222C27;
-  --color-input: #161E1A;
-  --color-field: #161E1A;
+  --color-surface: var(--color-app-bg);
+  --color-surface-strong: var(--color-top-chrome);
+  --color-panel: var(--color-surface-primary);
+  --color-panel-strong: var(--color-surface-secondary);
+  --color-input: var(--color-surface-disabled);
+  --color-field: var(--color-surface-disabled);
 
   /* Borders & Dividers */
   --color-border-subtle: #243029;

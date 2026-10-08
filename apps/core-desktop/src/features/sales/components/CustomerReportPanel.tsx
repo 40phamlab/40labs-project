@@ -57,7 +57,7 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-2.5 bg-surface-strong border border-border/50 rounded-card p-3 elevation-inset h-full overflow-hidden w-[300px] shrink-0">
+    <div className="flex flex-col gap-2.5 bg-surface-secondary border border-border/50 rounded-card p-3 elevation-inset h-full overflow-hidden w-[300px] shrink-0">
       {/* Header Row with Collapse Toggle */}
       <div className="flex items-center justify-between shrink-0">
         <h2 className="text-xs font-bold text-text uppercase tracking-wider">
@@ -98,7 +98,7 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
       <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-y-auto pr-1 custom-scrollbar">
         {confirmedSale ? (
           <>
-            <Card className="flex flex-col gap-2 p-3 bg-panel/40 border-border/30 elevation-flat shrink-0">
+            <Card className="flex flex-col gap-2 p-3 bg-surface-primary/40 border-border/30 elevation-flat shrink-0">
               <div className="flex items-center gap-1.5 text-primary text-xs font-bold">
                 <CheckCircle2 size={16} />
                 <span>Transaction Confirmed</span>
@@ -164,7 +164,7 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-border/30 rounded-card text-xs text-text-muted italic bg-panel/10">
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-border/30 rounded-card text-xs text-text-muted italic bg-surface-primary/10">
             Confirmed transaction details & receipt options will appear here.
           </div>
         )}

@@ -129,11 +129,11 @@ export const SchedulingScreen: React.FC = () => {
         />
       }
     >
-      <div className="flex flex-row flex-1 min-h-0 w-full overflow-hidden bg-surface">
+      <div className="flex flex-row flex-1 min-h-0 w-full overflow-hidden bg-transparent">
         {/* Responsive Master-Detail */}
         {isNarrow ? (
           mobileDetailActive && selectedSchedule ? (
-            <div className="flex-1 h-full overflow-hidden bg-panel">
+            <div className="flex-1 h-full overflow-hidden bg-surface-primary">
               <ScheduleDetailPanel
                 schedule={selectedSchedule}
                 onEdit={() => setEditingSchedule(selectedSchedule)}
@@ -153,7 +153,7 @@ export const SchedulingScreen: React.FC = () => {
               />
             </div>
           ) : (
-            <div className="flex-1 h-full overflow-hidden bg-panel">
+            <div className="flex-1 h-full overflow-hidden bg-surface-primary">
               <ScheduleListPanel
                 schedules={schedules}
                 selectedId={selectedId}
@@ -167,7 +167,7 @@ export const SchedulingScreen: React.FC = () => {
         ) : (
           <>
             {/* List Column (380–420px) */}
-            <div className="w-[400px] shrink-0 h-full overflow-hidden border-r border-border/50 bg-panel shadow-xs">
+            <div className="w-[400px] shrink-0 h-full overflow-hidden border-r border-border/50 bg-surface-primary elevation-raised">
               <ScheduleListPanel
                 schedules={schedules}
                 selectedId={selectedId}
@@ -176,7 +176,7 @@ export const SchedulingScreen: React.FC = () => {
             </div>
 
             {/* Detail Pane */}
-            <div className="flex-1 h-full overflow-hidden bg-panel shadow-xs">
+            <div className="flex-1 h-full overflow-hidden bg-surface-primary">
               <ScheduleDetailPanel
                 schedule={selectedSchedule}
                 onEdit={() => selectedSchedule && setEditingSchedule(selectedSchedule)}

@@ -7,9 +7,9 @@ export interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function Panel({ variant = 'flat', className = '', children, ...props }: PanelProps) {
   const variantClasses = {
-    flat: 'bg-panel-strong/40',
-    raised: 'bg-panel elevation-raised',
-    inset: 'bg-panel-strong/60 elevation-inset',
+    flat: 'bg-surface-secondary/40',
+    raised: 'bg-surface-primary elevation-raised',
+    inset: 'bg-surface-secondary/60 elevation-inset',
   };
 
   return (

@@ -49,7 +49,7 @@ export const KPICard = ({
 
   return (
     <div
-      className={`relative p-4 bg-panel rounded-card border border-border/50 elevation-raised group ${className}`}
+      className={`relative p-4 bg-surface-primary rounded-card border border-border/50 elevation-raised group ${className}`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{title}</div>
@@ -96,9 +96,9 @@ export interface SummaryPanelProps {
 export const SummaryPanel = ({ title, children, actions, className = '' }: SummaryPanelProps) => {
   return (
     <div
-      className={`flex flex-col bg-surface-strong border border-border rounded-card overflow-hidden ${className}`}
+      className={`flex flex-col bg-surface-primary border border-border/50 rounded-card elevation-raised overflow-hidden ${className}`}
     >
-      <div className="px-4 py-3 bg-panel-strong/20 border-b border-border flex items-center justify-between">
+      <div className="px-4 py-3 bg-surface-secondary/30 border-b border-border/30 flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-wider text-text">{title}</h3>
         {actions}
       </div>
@@ -122,7 +122,7 @@ export const ChartContainer = ({
 }: ChartContainerProps) => {
   return (
     <div
-      className={`w-full bg-panel-strong/10 rounded-input border border-border/30 flex items-center justify-center text-text-muted text-[10px] font-mono italic ${aspectRatio} ${className}`}
+      className={`w-full bg-surface-secondary/25 rounded-input border border-border/30 elevation-inset flex items-center justify-center text-text-muted text-[10px] font-mono italic ${aspectRatio} ${className}`}
     >
       {children}
     </div>
@@ -132,15 +132,15 @@ export const ChartContainer = ({
 export const ChartPanel = ({ title, children, actions, className = '' }: SummaryPanelProps) => {
   return (
     <div
-      className={`flex flex-col bg-surface-strong border border-border rounded-card overflow-hidden ${className}`}
+      className={`flex flex-col bg-surface-primary border border-border/50 rounded-card elevation-raised overflow-hidden ${className}`}
     >
-      <div className="px-4 py-3 bg-panel-strong/20 border-b border-border flex items-center justify-between">
+      <div className="px-4 py-3 bg-surface-secondary/30 border-b border-border/30 flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-wider text-text">{title}</h3>
         {actions}
       </div>
       <div className="flex-1 p-4 overflow-y-auto">
         <div
-          className={`w-full bg-panel-strong/10 rounded-input border border-border/30 flex items-center justify-center text-text-muted text-[10px] font-mono italic aspect-[16/9]`}
+          className={`w-full bg-surface-secondary/25 rounded-input border border-border/30 elevation-inset flex items-center justify-center text-text-muted text-[10px] font-mono italic aspect-[16/9]`}
         >
           {children}
         </div>
@@ -176,7 +176,7 @@ export const QuickActionsGrid = ({ actions, userPermissions = [], className = ''
           key={action.id}
           onClick={action.onClick}
           className={`
-            flex flex-col items-center justify-center gap-3 p-4 rounded-card bg-panel border border-border/50
+            flex flex-col items-center justify-center gap-3 p-4 rounded-card bg-surface-primary border border-border/50
             elevation-raised hover:elevation-hover active:elevation-pressed transition-all group
           `}
         >
@@ -184,7 +184,7 @@ export const QuickActionsGrid = ({ actions, userPermissions = [], className = ''
             w-10 h-10 rounded-full flex items-center justify-center transition-colors
             ${action.variant === 'accent' ? 'bg-accent/10 text-accent group-hover:bg-accent group-hover:text-surface' :
               action.variant === 'primary' ? 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-surface' :
-              'bg-panel-strong text-text-muted group-hover:text-text'}
+              'bg-surface-secondary text-text-muted group-hover:text-text'}
           `}>
             {action.icon}
           </div>

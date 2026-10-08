@@ -71,9 +71,9 @@ export const DashboardCard = ({
   noPadding = false,
 }: DashboardCardProps) => {
   return (
-    <div className={`flex flex-col bg-panel rounded-card border border-border/50 elevation-raised overflow-hidden ${className}`}>
+    <div className={`flex flex-col bg-surface-primary rounded-card border border-border/50 elevation-raised overflow-hidden ${className}`}>
       {(title || actions) && (
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-panel-strong/10">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-surface-secondary/20">
           {title && <h3 className="text-[10px] font-bold uppercase tracking-wider text-text">{title}</h3>}
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
@@ -82,7 +82,7 @@ export const DashboardCard = ({
         {children}
       </div>
       {footer && (
-        <div className="px-4 py-2 border-t border-border/30 bg-panel-strong/5 text-[10px] text-text-muted">
+        <div className="px-4 py-2 border-t border-border/30 bg-surface-secondary/10 text-[10px] text-text-muted">
           {footer}
         </div>
       )}
