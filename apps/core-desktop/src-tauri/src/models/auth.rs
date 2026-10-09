@@ -167,7 +167,7 @@ pub struct UserCredential {
     pub workspace_id: String,
     pub branch_id: String,
     pub password_hash: String,
-    pub pin_hash: String,
+    pub pin_hash: Option<String>,
     pub failed_password_attempts: i64,
     pub failed_pin_attempts: i64,
     pub locked_until: Option<String>,
@@ -288,6 +288,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(cred.password_hash, "argon2_hash");
+        assert_eq!(cred.pin_hash, Some("argon2_pin_hash".to_string()));
 
         // 4. Insert RecoveryCode
         sqlx::query(

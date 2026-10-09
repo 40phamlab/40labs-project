@@ -7,6 +7,8 @@ pub mod system_cmd;
 pub mod notification_cmd;
 pub mod devices_cmd;
 pub mod auth_cmd;
+pub mod user_cmd;
+pub mod registration_cmd;
 
 #[cfg(test)]
 mod tests {
@@ -19,8 +21,25 @@ mod tests {
             "auth_logout",
             "auth_lock",
             "auth_unlock_pin",
+            "auth_set_pin",
             "auth_step_up",
             "auth_list_approvers",
+            "auth_change_password",
+            "auth_change_pin",
+            "auth_reset_own_pin",
+            "user_list",
+            "user_create",
+            "user_update",
+            "user_set_active",
+            "user_reset_credentials",
+            "recovery_redeem",
+            "recovery_regenerate",
+            "recovery_generate_initial",
+            "registration_commit",
+            "otp_request",
+            "otp_verify",
+            "onboarding_advance",
+            "business_set_idle_lock",
             "get_inventory_list",
             "get_inventory_item",
             "create_stock_item",

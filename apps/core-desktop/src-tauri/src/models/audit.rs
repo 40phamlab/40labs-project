@@ -14,6 +14,9 @@ pub enum AuditAction {
     DeviceRemove,
     BusinessPaymentChanged,
     IdleLockChanged,
+    LoginSuccess,
+    LoginFailed,
+    LoginFailedUnknownUser,
     Custom(String),
 }
 
@@ -31,6 +34,9 @@ impl AuditAction {
             AuditAction::DeviceRemove => "device_remove",
             AuditAction::BusinessPaymentChanged => "business_payment_changed",
             AuditAction::IdleLockChanged => "idle_lock_changed",
+            AuditAction::LoginSuccess => "login_success",
+            AuditAction::LoginFailed => "login_failed",
+            AuditAction::LoginFailedUnknownUser => "login_failed_unknown_user",
             AuditAction::Custom(s) => s.as_str(),
         }
     }

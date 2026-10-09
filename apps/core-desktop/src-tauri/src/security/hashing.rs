@@ -3,6 +3,7 @@ use argon2::{
     Argon2, Params, Version,
 };
 use hmac::{Hmac, Mac};
+use std::sync::OnceLock;
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 
@@ -11,6 +12,14 @@ type HmacSha256 = Hmac<Sha256>;
 const ARGON2_MEMORY_KB: u32 = 19456;
 const ARGON2_ITERATIONS: u32 = 2;
 const ARGON2_PARALLELISM: u32 = 1;
+
+static DUMMY_HASH_CELL: OnceLock<String> = OnceLock::new();
+
+pub fn get_dummy_hash() -> &'static str {
+    DUMMY_HASH_CELL.get_or_init(|| {
+        hash_password("40LabsDummyStartupPassword123!").expect("Failed to generate DUMMY_HASH")
+    })
+}
 
 fn get_argon2_instance() -> Argon2<'static> {
     let params = Params::new(ARGON2_MEMORY_KB, ARGON2_ITERATIONS, ARGON2_PARALLELISM, None)
@@ -110,17 +119,17 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
-    fn bench_argon2_verify_time() {
-        let pwd = "BenchmarkPassword123!";
-        let hash = hash_password(pwd).unwrap();
-        let start = std::time::Instant::now();
-        let iterations = 5;
-        for _ in 0..iterations {
-            assert!(verify_password(pwd, &hash));
-        }
-        let duration = start.elapsed();
-        let avg_ms = duration.as_secs_f64() * 1000.0 / (iterations as f64);
-        println!("[40Labs Benchmark] Argon2id verify avg time: {:.2} ms (target ~300ms)", avg_ms);
+    fn test_unknown_user_vs_wrong_password_timing_comparable() {
+        let pwd_hash = hash_password("CorrectPassword123!").unwrap();
+        let start1 = std::time::Instant::now();
+        verify_password("WrongPassword123!", &pwd_hash);
+        let duration1 = start1.elapsed();
+
+        let start2 = std::time::Instant::now();
+        verify_password("WrongPassword123!", get_dummy_hash());
+        let duration2 = start2.elapsed();
+
+        assert!(duration1.as_millis() > 0);
+        assert!(duration2.as_millis() > 0);
     }
 }

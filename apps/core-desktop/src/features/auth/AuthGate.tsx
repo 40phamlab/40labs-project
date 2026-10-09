@@ -25,7 +25,6 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const { data: status, isLoading, refetch } = useQuery<AuthStatusResponse>({
     queryKey: ['auth_status'],
     queryFn: () => authApi.status(),
-    refetchInterval: 5000,
   });
 
   const isLockedStore = useAuthStore((s) => s.isLocked);
@@ -75,7 +74,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         try {
           await authApi.lock();
           setLockedStore(true);
-          refetch();
+          queryClient.invalidateQueries({ queryKey: ['auth_status'] });
         } catch {
           // ignore
         }
@@ -89,7 +88,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       window.removeEventListener('scroll', updateActivity);
       clearInterval(interval);
     };
-  }, [status?.session, isLockedStore, idleMinutes, refetch, setLockedStore]);
+  }, [status?.session, isLockedStore, idleMinutes, queryClient, setLockedStore]);
 
   if (isLoading || !status) {
     return (
@@ -111,70 +110,67 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     </div>
   );
 
-  // 1. No business / device unbound -> LandingScreen -> Registration Wizard
-  if (!status.deviceBound || !status.business) {
-    if (!showWizard) {
-      return renderTitleBarWrapper(<LandingScreen onGetStarted={() => setShowWizard(true)} />);
-    }
-    return renderTitleBarWrapper(<RegistrationWizard onComplete={() => refetch()} />);
-  }
-
-  // 2. No session -> Login
-  if (!status.session) {
-    return renderTitleBarWrapper(
-      <LoginScreen
-        businessName={status.business.name}
-        onLoginSuccess={() => refetch()}
+  // 1. Session locked (backend or store) -> Render ONLY LockScreen, NEVER {children}
+  if (status.session?.locked || isLockedStore) {
+    return (
+      <LockScreen
+        displayName={status.session?.displayName}
+        businessName={status.business?.name}
+        onUnlockSuccess={() => {
+          setLockedStore(false);
+          queryClient.invalidateQueries({ queryKey: ['auth_status'] });
+        }}
+        onSwitchUser={() => {
+          setLockedStore(false);
+          queryClient.invalidateQueries({ queryKey: ['auth_status'] });
+        }}
       />
     );
   }
 
-  // 3. Session locked (backend or store)
-  if (status.session.locked || isLockedStore) {
-    return (
-      <>
-        {children}
-        <LockScreen
-          displayName={status.session.displayName}
-          businessName={status.business.name}
-          onUnlockSuccess={() => {
-            setLockedStore(false);
-            refetch();
-          }}
-          onSwitchUser={() => {
-            setLockedStore(false);
-            refetch();
-          }}
-        />
-      </>
+  // 2. No business / device unbound -> LandingScreen -> Registration Wizard
+  if (!status.deviceBound || !status.business) {
+    if (!showWizard) {
+      return renderTitleBarWrapper(<LandingScreen onGetStarted={() => setShowWizard(true)} />);
+    }
+    return renderTitleBarWrapper(<RegistrationWizard onComplete={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />);
+  }
+
+  // 3. No session -> Login
+  if (!status.session) {
+    return renderTitleBarWrapper(
+      <LoginScreen
+        businessName={status.business.name}
+        onLoginSuccess={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })}
+      />
     );
   }
 
   // 4. must_change_credentials -> ForcedPasswordChange
   if (status.session.mustChangeCredentials) {
     return renderTitleBarWrapper(
-      <ForcedPasswordChangeScreen onPasswordChanged={() => refetch()} />
+      <ForcedPasswordChangeScreen onPasswordChanged={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />
     );
   }
 
   // 5. PIN not set -> CreatePin
   if (!status.session.pinSet) {
     return renderTitleBarWrapper(
-      <CreatePinScreen onPinCreated={() => refetch()} />
+      <CreatePinScreen onPinCreated={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />
     );
   }
 
   // 6. SUDO with zero active recovery codes -> RecoveryCodesScreen
   if (status.session.role === 'sudo' && !status.session.hasRecoveryCodes) {
     return renderTitleBarWrapper(
-      <RecoveryCodesScreen onComplete={() => refetch()} />
+      <RecoveryCodesScreen onComplete={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />
     );
   }
 
   // 7. owner_first_login -> SetupWizard
   if (status.business.onboarding_state === 'owner_first_login') {
     return renderTitleBarWrapper(
-      <SetupWizardScreen onSetupComplete={() => refetch()} />
+      <SetupWizardScreen onSetupComplete={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />
     );
   }
 

@@ -1,11 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
 
-/**
- * Global flag controlling whether feature APIs route requests via Tauri IPC (Rust -> SQLx -> SQLite)
- * or fallback to in-memory devData mock stores.
- */
-let useTauriIpcMode = false;
-
 export function isTauriAvailable(): boolean {
   return (
     typeof window !== 'undefined' &&
@@ -13,12 +7,8 @@ export function isTauriAvailable(): boolean {
   );
 }
 
-export function setUseTauriIpc(enable: boolean): void {
-  useTauriIpcMode = enable;
-}
-
 export function isUsingTauriIpc(): boolean {
-  return useTauriIpcMode && isTauriAvailable();
+  return isTauriAvailable();
 }
 
 /**

@@ -72,7 +72,7 @@ paths:
   /api/v1/activation/register:
     post:
       summary: Register primary device and business activation
-      description: Registers business details, owner account, terms acceptance, and primary device public key. Returns a cryptographically signed ActivationGrant.
+      description: Registers business details, owner account, and terms acceptance. Returns cryptographically signed ActivationGrant, business_id, workspace_id, and branch_id.
       requestBody:
         required: true
         content:
@@ -84,8 +84,10 @@ paths:
                 - business_name
                 - owner_first_name
                 - owner_last_name
-                - device_public_key
                 - terms_accepted
+                - terms_version
+                - terms_locale
+                - terms_text_sha256
               properties:
                 verification_token:
                   type: string
@@ -98,10 +100,14 @@ paths:
                 owner_email:
                   type: string
                   nullable: true
-                device_public_key:
-                  type: string
                 terms_accepted:
                   type: boolean
+                terms_version:
+                  type: string
+                terms_locale:
+                  type: string
+                terms_text_sha256:
+                  type: string
       responses:
         '200':
           description: Device and business activated successfully
@@ -122,4 +128,4 @@ paths:
         '400':
           description: Invalid request or verification token
         '409':
-          description: Business or primary device already registered
+          description: Business or phone already registered

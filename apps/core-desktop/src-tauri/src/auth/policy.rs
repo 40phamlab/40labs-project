@@ -15,8 +15,29 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("auth_logout", CommandPolicy::SessionOnly);
     map.insert("auth_lock", CommandPolicy::SessionOnly);
     map.insert("auth_unlock_pin", CommandPolicy::SessionOnly);
+    map.insert("auth_set_pin", CommandPolicy::SessionOnly);
     map.insert("auth_step_up", CommandPolicy::SessionOnly);
     map.insert("auth_list_approvers", CommandPolicy::SessionOnly);
+    map.insert("auth_change_password", CommandPolicy::SessionOnly);
+    map.insert("auth_change_pin", CommandPolicy::SessionOnly);
+    map.insert("auth_reset_own_pin", CommandPolicy::SessionOnly);
+
+    map.insert("user_list", CommandPolicy::Permission("users.manage"));
+    map.insert("user_create", CommandPolicy::Permission("users.manage"));
+    map.insert("user_update", CommandPolicy::Permission("users.manage"));
+    map.insert("user_set_active", CommandPolicy::Permission("users.manage"));
+    map.insert("user_reset_credentials", CommandPolicy::Permission("users.manage"));
+
+    map.insert("recovery_redeem", CommandPolicy::Public);
+    map.insert("recovery_regenerate", CommandPolicy::Permission("users.manage"));
+    map.insert("recovery_generate_initial", CommandPolicy::Permission("users.manage"));
+
+    map.insert("registration_commit", CommandPolicy::Public);
+    map.insert("otp_request", CommandPolicy::Public);
+    map.insert("otp_verify", CommandPolicy::Public);
+
+    map.insert("onboarding_advance", CommandPolicy::SessionOnly);
+    map.insert("business_set_idle_lock", CommandPolicy::Permission("settings.manage:idle"));
 
     map.insert("get_inventory_list", CommandPolicy::Permission("inventory.view"));
     map.insert("get_inventory_item", CommandPolicy::Permission("inventory.view"));

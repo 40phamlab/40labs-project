@@ -14,7 +14,7 @@ CREATE TABLE user_credential (
   workspace_id TEXT NOT NULL,
   branch_id TEXT NOT NULL,
   password_hash TEXT NOT NULL,
-  pin_hash TEXT NOT NULL,
+  pin_hash TEXT,
   failed_password_attempts INTEGER NOT NULL DEFAULT 0,
   failed_pin_attempts INTEGER NOT NULL DEFAULT 0,
   locked_until TEXT,

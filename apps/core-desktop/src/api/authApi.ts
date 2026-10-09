@@ -1,5 +1,5 @@
 import type { Business } from '@40labs/types';
-import { invokeCommand, isUsingTauriIpc } from './client';
+import { invokeCommand, isTauriAvailable, isUsingTauriIpc } from './client';
 
 export interface AuthStatusResponse {
   deviceBound: boolean;
@@ -44,46 +44,12 @@ export interface AuthApi {
   businessSetIdleLock(minutes: number): Promise<void>;
 }
 
-// Mock state for browser dev preview (!isTauri())
+// Mock state for browser dev preview (!isTauri() && DEV)
 let mockState: AuthStatusResponse = {
-  deviceBound: true,
-  business: {
-    id: 'biz-1',
-    business_id: 'AFYA-TEST01',
-    workspace_id: 'ws-01',
-    branch_id: 'branch-1',
-    name: 'Afya Bora Pharmacy',
-    tin: null,
-    tmda_number: null,
-    role_scopes: ['pharmacy'],
-    tier: 'class_1',
-    business_type: 'Pharmacy',
-    scale: 'medium',
-    logo_url: null,
-    appearance_mode: 'light',
-    contacts: { mobile: '+255712345678', email: 'info@afyabora.co.tz', whatsapp: null },
-    address: { region: 'Dar es Salaam', district: 'Kinondoni', place: 'Mwananyamala' },
-    owner_id: 'user-sudo-1',
-    onboarding_state: 'setup_complete',
-    idle_lock_minutes: 5,
-    terms_version: '1.0',
-    terms_locale: 'sw-TZ',
-    terms_text_sha256: 'abc123sha',
-    terms_accepted_at: '2026-10-01T00:00:00Z',
-    terms_accepted_by_user_id: 'user-sudo-1',
-    created_at: '2026-10-01T00:00:00Z',
-    updated_at: '2026-10-01T00:00:00Z',
-  },
-  session: {
-    userId: 'user-sudo-1',
-    displayName: 'Juma Mwanga',
-    role: 'sudo',
-    locked: false,
-    mustChangeCredentials: false,
-    pinSet: true,
-    hasRecoveryCodes: true,
-  },
-  onboardingState: 'setup_complete',
+  deviceBound: false,
+  business: null,
+  session: null,
+  onboardingState: 'registered',
   idleLockMinutes: 5,
 };
 
@@ -139,7 +105,7 @@ export const mockAuthApi: AuthApi = {
     }
   },
   unlockPin: async (pin) => {
-    if (pin.length !== 6) {
+    if (pin !== '123456') {
       throw { code: 'INVALID_CREDENTIALS' };
     }
     if (mockState.session) {
@@ -155,7 +121,7 @@ export const mockAuthApi: AuthApi = {
     }
   },
   stepUp: async (_permission, pin) => {
-    if (!pin || pin.length !== 6) {
+    if (pin !== '123456') {
       throw { code: 'INVALID_CREDENTIALS' };
     }
     return `grant-${Math.random().toString(36).substring(2, 9)}`;
@@ -181,31 +147,31 @@ export const mockAuthApi: AuthApi = {
   registrationCommit: async (payload) => {
     mockState.deviceBound = true;
     mockState.business = {
-      id: 'biz-' + Math.random().toString(36).substring(2, 8),
-      business_id: 'AFYA-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
-      workspace_id: 'ws-' + Math.random().toString(36).substring(2, 6),
+      id: 'biz-1',
+      business_id: 'AFYA-TEST01',
+      workspace_id: 'ws-01',
       branch_id: 'branch-1',
-      name: payload.name || 'New Business',
+      name: payload.name || 'Afya Bora Pharmacy',
       tin: null,
       tmda_number: null,
-      role_scopes: [payload.role_scopes || 'pharmacy'],
+      role_scopes: ['pharmacy'],
       tier: 'class_1',
-      business_type: payload.type || 'Pharmacy',
-      scale: payload.scale || 'medium',
+      business_type: 'Pharmacy',
+      scale: 'medium',
       logo_url: null,
       appearance_mode: 'light',
-      contacts: { mobile: payload.phone || '+255700000000', email: payload.email || null, whatsapp: null },
-      address: { region: payload.region || 'Dar es Salaam', district: payload.district || '', place: payload.mtaa || '' },
-      owner_id: 'owner-1',
-      onboarding_state: 'owner_first_login',
+      contacts: { mobile: '+255712345678', email: 'info@afyabora.co.tz', whatsapp: null },
+      address: { region: 'Dar es Salaam', district: 'Kinondoni', place: 'Mwananyamala' },
+      owner_id: 'user-sudo-1',
+      onboarding_state: 'setup_complete',
       idle_lock_minutes: 5,
       terms_version: '1.0',
       terms_locale: 'sw-TZ',
-      terms_text_sha256: payload.terms_text_sha256 || 'mocksha',
-      terms_accepted_at: new Date().toISOString(),
-      terms_accepted_by_user_id: 'owner-1',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      terms_text_sha256: 'abc123sha',
+      terms_accepted_at: '2026-10-01T00:00:00Z',
+      terms_accepted_by_user_id: 'user-sudo-1',
+      created_at: '2026-10-01T00:00:00Z',
+      updated_at: '2026-10-01T00:00:00Z',
     };
     mockState.session = null;
   },
@@ -224,12 +190,31 @@ export const mockAuthApi: AuthApi = {
   },
 };
 
+const failUnavailable: AuthApi = new Proxy({} as AuthApi, {
+  get(_target, prop: keyof AuthApi) {
+    return async () => {
+      throw { code: 'RUNTIME_UNAVAILABLE' };
+    };
+  },
+});
+
 export const authApi: AuthApi = new Proxy({} as AuthApi, {
   get(_target, prop: keyof AuthApi) {
-    const api = isUsingTauriIpc() ? tauriAuthApi : mockAuthApi;
-    const fn = api[prop];
+    const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
+    const tauri = isTauriAvailable();
+
+    let activeApi: AuthApi;
+    if (tauri) {
+      activeApi = tauriAuthApi;
+    } else if (isDev) {
+      activeApi = mockAuthApi;
+    } else {
+      activeApi = failUnavailable;
+    }
+
+    const fn = activeApi[prop];
     if (typeof fn === 'function') {
-      return fn.bind(api);
+      return fn.bind(activeApi);
     }
     return fn;
   },

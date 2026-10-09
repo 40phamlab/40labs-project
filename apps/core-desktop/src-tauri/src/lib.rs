@@ -5,6 +5,7 @@ pub mod repositories;
 pub mod services;
 pub mod auth;
 pub mod security;
+pub mod activation;
 
 use db::{init_db_pool, AppState};
 use services::lan::LanServerState;
@@ -14,7 +15,6 @@ use std::sync::Arc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize tokio runtime for async pool setup
     let runtime = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
 
     let pool = runtime.block_on(async {
@@ -25,6 +25,10 @@ pub fn run() {
 
     let keystore = Arc::new(Keystore::init().expect("Failed to initialize security keystore"));
     let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
+
+    let api_base_url = std::env::var("API_BASE_URL").ok();
+    let pubkey_hex = std::env::var("ACTIVATION_PUBKEY").ok();
+    let (otp_client, activation_client) = activation::client::ActivationClientFactory::create_clients(api_base_url, pubkey_hex);
 
     let port = 4040;
     let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
@@ -43,6 +47,8 @@ pub fn run() {
             lan_state: lan_state_clone,
             auth_state,
             keystore,
+            otp_client,
+            activation_client,
         })
         .invoke_handler(tauri::generate_handler![
             commands::system_cmd::system_health_check,
@@ -52,8 +58,27 @@ pub fn run() {
             commands::auth_cmd::auth_logout,
             commands::auth_cmd::auth_lock,
             commands::auth_cmd::auth_unlock_pin,
+            commands::auth_cmd::auth_set_pin,
             commands::auth_cmd::auth_step_up,
             commands::auth_cmd::auth_list_approvers,
+            commands::auth_cmd::auth_change_password,
+            commands::auth_cmd::auth_change_pin,
+            commands::auth_cmd::auth_reset_own_pin,
+            // Users
+            commands::user_cmd::user_list,
+            commands::user_cmd::user_create,
+            commands::user_cmd::user_update,
+            commands::user_cmd::user_set_active,
+            commands::user_cmd::user_reset_credentials,
+            // Recovery & Registration & Onboarding
+            commands::auth_cmd::recovery_regenerate,
+            commands::auth_cmd::recovery_generate_initial,
+            commands::auth_cmd::onboarding_advance,
+            commands::auth_cmd::business_set_idle_lock,
+            commands::registration_cmd::recovery_redeem,
+            commands::registration_cmd::registration_commit,
+            commands::registration_cmd::otp_request,
+            commands::registration_cmd::otp_verify,
             // Inventory
             commands::inventory_cmd::get_inventory_list,
             commands::inventory_cmd::get_inventory_item,

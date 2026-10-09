@@ -38,3 +38,6 @@ getrandom = "0.2"
 thiserror = "1.0"
 hex = "0.4"
 regex = "1.10"
+async-trait = "0.1"
+base64 = "0.22"
+reqwest = { version = "0.12", features = ["json"] }

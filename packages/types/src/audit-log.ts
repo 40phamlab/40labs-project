@@ -10,6 +10,9 @@ export type AuditAction =
   | 'device_remove'
   | 'business_payment_changed'
   | 'idle_lock_changed'
+  | 'login_success'
+  | 'login_failed'
+  | 'login_failed_unknown_user'
   | (string & {});
 
 // Immutable, append-only. NEVER updated or deleted, at the DB layer, not

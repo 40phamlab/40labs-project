@@ -14,6 +14,8 @@ pub struct AppState {
     pub lan_state: Arc<LanServerState>,
     pub auth_state: Arc<AuthState>,
     pub keystore: Arc<Keystore>,
+    pub otp_client: Arc<dyn crate::activation::OtpClient>,
+    pub activation_client: Arc<dyn crate::activation::ActivationClient>,
 }
 
 /// Centralized resolution of database path and connection URL.
