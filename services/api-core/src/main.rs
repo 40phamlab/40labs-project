@@ -21,6 +21,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::from_env();
 
+    if config.sms_mode.to_lowercase() == "live" {
+        if config.nextsms_api_token.is_empty() || config.nextsms_sender_id.is_empty() {
+            panic!("Refusing to start in live mode: NEXTSMS_API_TOKEN and NEXTSMS_SENDER_ID must not be empty.");
+        }
+    }
+
     tracing::info!("Connecting to database...");
     let pool = PgPoolOptions::new()
         .max_connections(5)
@@ -37,12 +43,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sms_sender: Arc<dyn SmsSender> = if config.sms_mode.to_lowercase() == "live" {
         Arc::new(NextSmsSender::new(
             config.nextsms_base_url.clone(),
-            config.nextsms_username.clone(),
-            config.nextsms_password.clone(),
+            config.nextsms_api_token.clone(),
             config.nextsms_sender_id.clone(),
+            false,
         ))
     } else {
-        Arc::new(TestModeSender)
+        let token = if config.nextsms_api_token.is_empty() {
+            "test_token_placeholder".into()
+        } else {
+            config.nextsms_api_token.clone()
+        };
+        Arc::new(TestModeSender::new(
+            config.nextsms_base_url.clone(),
+            token,
+            config.nextsms_sender_id.clone(),
+        ))
     };
 
     let rate_limiter = RateLimiter::new();

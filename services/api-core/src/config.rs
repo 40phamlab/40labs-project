@@ -4,8 +4,7 @@ use std::env;
 pub struct Config {
     pub database_url: String,
     pub nextsms_base_url: String,
-    pub nextsms_username: String,
-    pub nextsms_password: String,
+    pub nextsms_api_token: String,
     pub nextsms_sender_id: String,
     pub sms_mode: String,
     pub otp_enabled: bool,
@@ -20,8 +19,7 @@ impl Config {
         Self {
             database_url: env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/afya_core".into()),
             nextsms_base_url: env::var("NEXTSMS_BASE_URL").unwrap_or_else(|_| "https://messaging-service.co.tz".into()),
-            nextsms_username: env::var("NEXTSMS_USERNAME").unwrap_or_default(),
-            nextsms_password: env::var("NEXTSMS_PASSWORD").unwrap_or_default(),
+            nextsms_api_token: env::var("NEXTSMS_API_TOKEN").unwrap_or_default(),
             nextsms_sender_id: env::var("NEXTSMS_SENDER_ID").unwrap_or_else(|_| "40Labs".into()),
             sms_mode: env::var("SMS_MODE").unwrap_or_else(|_| "test".into()),
             otp_enabled: env::var("OTP_ENABLED").unwrap_or_else(|_| "1".into()) == "1",
