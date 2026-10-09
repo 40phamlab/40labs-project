@@ -1,7 +1,7 @@
 use super::{SmsError, SmsReceipt, SmsSender};
 use async_trait::async_trait;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use tracing::{error, info};
 
 pub struct NextSmsSender {
@@ -17,49 +17,87 @@ struct NextSmsRequest {
     from: String,
     to: String,
     text: String,
+    flash: i32,
     reference: String,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code, non_snake_case)]
 struct NextSmsResponse {
+    #[serde(default)]
     status: Option<NextSmsStatus>,
+    #[serde(default)]
     messages: Option<Vec<NextSmsMessage>>,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code, non_snake_case)]
 struct NextSmsStatus {
+    #[serde(default)]
     id: Option<i32>,
+    #[serde(default)]
     name: Option<String>,
+    #[serde(default)]
+    description: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code, non_snake_case)]
 struct NextSmsMessage {
+    #[serde(default)]
+    to: Option<String>,
+    #[serde(default)]
     status: Option<NextSmsStatus>,
-    messageId: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_send_reference")]
+    sendReference: Option<String>,
+    #[serde(default)]
+    smsCount: Option<i32>,
+    #[serde(default)]
+    sort: Option<i32>,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code, non_snake_case)]
 struct NextSmsErrorResponse {
-    #[serde(rename = "requestError")]
+    #[serde(rename = "requestError", default)]
     request_error: Option<NextSmsRequestError>,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code, non_snake_case)]
 struct NextSmsRequestError {
-    #[serde(rename = "serviceException")]
+    #[serde(rename = "serviceException", default)]
     service_exception: Option<NextSmsServiceException>,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code, non_snake_case)]
 struct NextSmsServiceException {
+    #[serde(default)]
     messageId: Option<String>,
+    #[serde(default)]
     text: Option<String>,
+}
+
+fn deserialize_send_reference<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum NumberOrString {
+        Number(i64),
+        Float(f64),
+        String(String),
+    }
+
+    let opt = Option::<NumberOrString>::deserialize(deserializer)?;
+    Ok(match opt {
+        Some(NumberOrString::Number(n)) => Some(n.to_string()),
+        Some(NumberOrString::Float(f)) => Some(f.to_string()),
+        Some(NumberOrString::String(s)) => Some(s),
+        None => None,
+    })
 }
 
 fn sanitize_phone_number(phone: &str) -> String {
@@ -87,7 +125,7 @@ impl NextSmsSender {
     }
 
     fn map_status_to_result(status_id: i32, status_name: Option<String>, message_id: Option<String>, body_text: &str, msg_ref: &str) -> Result<SmsReceipt, SmsError> {
-        // Never log token or OTP text; log message reference + status.id only.
+        // Never log the token or the OTP text; log message reference + status.id only.
         match status_id {
             50 | 51 | 52 | 73 | 88 | 109 => {
                 info!(msg_ref = %msg_ref, status_id = %status_id, "NextSMS delivery successful");
@@ -144,6 +182,7 @@ impl SmsSender for NextSmsSender {
             from: self.sender_id.clone(),
             to: sanitized_to,
             text: text.to_string(),
+            flash: 0,
             reference: msg_ref.to_string(),
         };
 
@@ -156,6 +195,7 @@ impl SmsSender for NextSmsSender {
                 from: payload.from.clone(),
                 to: payload.to.clone(),
                 text: payload.text.clone(),
+                flash: 0,
                 reference: current_ref.clone(),
             };
 
@@ -174,29 +214,30 @@ impl SmsSender for NextSmsSender {
                     let body_text = resp.text().await.unwrap_or_default();
 
                     let parsed: Result<NextSmsResponse, _> = serde_json::from_str(&body_text);
-                    let mut status_id = status_code.as_u16() as i32;
+                    let mut status_id = -1;
                     let mut status_name = None;
                     let mut message_id = None;
+                    let mut messages_len = 0;
 
                     if let Ok(ref p) = parsed {
-                        if let Some(s) = &p.status {
-                            if let Some(id) = s.id {
-                                status_id = id;
-                            }
-                            status_name = s.name.clone();
-                        }
                         if let Some(msgs) = &p.messages {
-                            if let Some(m) = msgs.first() {
-                                message_id = m.messageId.clone();
-                                if let Some(s) = &m.status {
-                                    if let Some(id) = s.id {
-                                        status_id = id;
-                                    }
-                                    if s.name.is_some() {
+                            messages_len = msgs.len();
+                            if messages_len == 1 {
+                                if let Some(m) = msgs.first() {
+                                    message_id = m.sendReference.clone().or_else(|| m.messageId.clone());
+                                    if let Some(s) = &m.status {
+                                        if let Some(id) = s.id {
+                                            status_id = id;
+                                        }
                                         status_name = s.name.clone();
                                     }
                                 }
                             }
+                        } else if let Some(s) = &p.status {
+                            if let Some(id) = s.id {
+                                status_id = id;
+                            }
+                            status_name = s.name.clone();
                         }
                     } else if let Ok(err_resp) = serde_json::from_str::<NextSmsErrorResponse>(&body_text) {
                         if let Some(err_obj) = err_resp.request_error {
@@ -211,7 +252,7 @@ impl SmsSender for NextSmsSender {
                         }
                     }
 
-                    // Handle status 64 (retry <= 2 with backoff) and status 65 (regenerate ref + retry once)
+                    // Handle status 64 (retry <= 2 with backoff)
                     if status_id == 64 {
                         if attempts < max_retries {
                             attempts += 1;
@@ -222,6 +263,7 @@ impl SmsSender for NextSmsSender {
                         }
                     }
 
+                    // Handle status 65 (regenerate ref + retry once)
                     if status_id == 65 {
                         if attempts < 1 {
                             attempts += 1;
@@ -230,6 +272,22 @@ impl SmsSender for NextSmsSender {
                         } else {
                             return Err(SmsError::Retryable("Status 65: retry exhausted after regenerating reference".into()));
                         }
+                    }
+
+                    // Success = HTTP 2xx AND messages.len() == 1 AND status.id in {50, 51, 52, 88, 73, 109}
+                    let is_success_status = matches!(status_id, 50 | 51 | 52 | 73 | 88 | 109);
+                    if status_code.is_success() && messages_len == 1 && is_success_status {
+                        info!(msg_ref = %current_ref, status_id = %status_id, "NextSMS delivery successful");
+                        return Ok(SmsReceipt {
+                            message_id,
+                            status_id,
+                            status_name,
+                        });
+                    }
+
+                    // Otherwise map error per table
+                    if status_id == -1 {
+                        status_id = status_code.as_u16() as i32;
                     }
 
                     return Self::map_status_to_result(status_id, status_name, message_id, &body_text, &current_ref);

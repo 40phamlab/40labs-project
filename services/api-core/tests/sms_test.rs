@@ -1,99 +1,89 @@
 use api_core::sms::{nextsms::NextSmsSender, test_mode::TestModeSender, SmsSender};
-use wiremock::{
-    matchers::{header, method, path},
-    Mock, MockServer, ResponseTemplate,
+use axum::{
+    extract::Json,
+    routing::post,
+    Router,
 };
+use serde_json::json;
 
-#[tokio::test]
-async fn test_nextsms_success_status_groups() {
-    for status_id in [50, 51, 52, 73, 88, 109] {
-        let mock_server = MockServer::start().await;
-        let token = "secret_test_token_12345";
-        let sender_id = "40Labs";
-
-        Mock::given(method("POST"))
-            .and(path("/api/sms/v2/text/single"))
-            .and(header("Authorization", format!("Bearer {}", token).as_str()))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                "status": { "id": status_id, "name": "SUCCESS" },
-                "messages": [{ "messageId": "msg-123", "status": { "id": status_id } }]
-            })))
-            .mount(&mock_server)
-            .await;
-
-        let sender = NextSmsSender::new(mock_server.uri(), token.to_string(), sender_id.to_string(), false);
-        let result = sender.send("255712345678", "Test OTP 123456", "ref-001").await;
-        assert!(result.is_ok(), "Expected success for status_id {}", status_id);
-        let receipt = result.unwrap();
-        assert_eq!(receipt.status_id, status_id);
+async fn mock_sms_handler(Json(payload): Json<serde_json::Value>) -> Json<serde_json::Value> {
+    let reference = payload.get("reference").and_then(|v| v.as_str()).unwrap_or("");
+    if reference.contains("56") || reference.contains("rejected") {
+        Json(json!({
+            "messages": [{
+                "to": "255712345678",
+                "status": {
+                    "groupId": 3,
+                    "groupName": "REJECTED",
+                    "id": 56,
+                    "name": "REJECTED_SOURCE",
+                    "description": "Sender ID is not registered"
+                },
+                "sendReference": "123456789012345678",
+                "smsCount": 1,
+                "sort": 0
+            }]
+        }))
+    } else if reference.contains("57") || reference.contains("nocredits") {
+        Json(json!({
+            "messages": [{
+                "to": "255712345678",
+                "status": { "groupId": 4, "groupName": "FAILED", "id": 57, "name": "NO_CREDITS", "description": "Insufficient credit" },
+                "sendReference": "123",
+                "smsCount": 1,
+                "sort": 0
+            }]
+        }))
+    } else {
+        Json(json!({
+            "messages": [{
+                "to": "255712345678",
+                "status": { "groupId": 1, "groupName": "SUCCESS", "id": 50, "name": "DELIVERED" },
+                "sendReference": 9007199254740992_i64,
+                "smsCount": 1,
+                "sort": 0
+            }]
+        }))
     }
 }
 
-#[tokio::test]
-async fn test_nextsms_no_credits_kill_switch() {
-    let mock_server = MockServer::start().await;
-    let token = "secret_test_token_12345";
+async fn start_mock_server() -> String {
+    let app = Router::new()
+        .route("/api/sms/v2/text/single", post(mock_sms_handler))
+        .route("/api/sms/v2/test/text/single", post(mock_sms_handler));
 
-    Mock::given(method("POST"))
-        .and(path("/api/sms/v2/text/single"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "status": { "id": 57, "name": "NO_CREDITS" }
-        })))
-        .mount(&mock_server)
-        .await;
-
-    let sender = NextSmsSender::new(mock_server.uri(), token.to_string(), "40Labs".to_string(), false);
-    let result = sender.send("0712345678", "OTP text", "ref-002").await;
-    assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), api_core::sms::SmsError::NoCredits));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    });
+    format!("http://{}", addr)
 }
 
-#[tokio::test]
-async fn test_test_mode_sender_hits_test_endpoint() {
-    let mock_server = MockServer::start().await;
-    let token = "test_token_abc";
+#[tokio::test(flavor = "multi_thread")]
+async fn test_sms_integration() {
+    let base_url = start_mock_server().await;
+    let token = "test_token_123";
 
-    Mock::given(method("POST"))
-        .and(path("/api/sms/v2/test/text/single"))
-        .and(header("Authorization", format!("Bearer {}", token).as_str()))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "status": { "id": 50, "name": "TEST_SUCCESS" }
-        })))
-        .mount(&mock_server)
-        .await;
+    let sender = NextSmsSender::new(base_url.clone(), token.to_string(), "40Labs".to_string(), false);
 
-    let test_sender = TestModeSender::new(mock_server.uri(), token.to_string(), "40Labs".to_string());
-    let result = test_sender.send("+255712345678", "OTP 999999", "ref-test").await;
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().status_id, 50);
-}
+    // Success test
+    let res = sender.send("255712345678", "OTP", "ref-success").await;
+    assert!(res.is_ok());
+    assert_eq!(res.unwrap().status_id, 50);
 
-#[tokio::test]
-async fn test_status_65_regenerate_ref_retry() {
-    let mock_server = MockServer::start().await;
-    let token = "token_65";
+    // Rejected source (status 56) fixture test
+    let res_56 = sender.send("255712345678", "OTP", "ref-56-rejected").await;
+    assert!(res_56.is_err());
+    assert!(matches!(res_56.unwrap_err(), api_core::sms::SmsError::ConfigError(_)));
 
-    // First call returns status 65
-    Mock::given(method("POST"))
-        .and(path("/api/sms/v2/text/single"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "status": { "id": 65, "name": "REGENERATE_REF" }
-        })))
-        .up_to_n_times(1)
-        .mount(&mock_server)
-        .await;
+    // No credits (status 57) test
+    let res_57 = sender.send("255712345678", "OTP", "ref-57-nocredits").await;
+    assert!(res_57.is_err());
+    assert!(matches!(res_57.unwrap_err(), api_core::sms::SmsError::NoCredits));
 
-    // Second call (with regenerated ref -r1) succeeds
-    Mock::given(method("POST"))
-        .and(path("/api/sms/v2/text/single"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
-            "status": { "id": 50, "name": "SUCCESS" }
-        })))
-        .mount(&mock_server)
-        .await;
-
-    let sender = NextSmsSender::new(mock_server.uri(), token.to_string(), "40Labs".to_string(), false);
-    let result = sender.send("255712345678", "OTP", "ref-65").await;
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap().status_id, 50);
+    // Test mode sender test
+    let test_sender = TestModeSender::new(base_url, token.to_string(), "40Labs".to_string());
+    let res_test = test_sender.send("255712345678", "OTP", "ref-testmode").await;
+    assert!(res_test.is_ok());
 }

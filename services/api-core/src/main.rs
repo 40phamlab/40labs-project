@@ -5,7 +5,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use api_core::{
     config::Config,
     ratelimit::RateLimiter,
-    routes::activation::{router, AppState},
+    routes::{activation, health},
     sms::{nextsms::NextSmsSender, test_mode::TestModeSender, SmsSender},
 };
 
@@ -60,16 +60,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ))
     };
 
+    // Startup check for SMS sender & log loud warning if status 56/58
+    match sms_sender.send("255712345678", "startup check", "health-startup").await {
+        Ok(receipt) => {
+            if matches!(receipt.status_id, 56 | 58) {
+                tracing::warn!("LOUD WARNING: NextSMS returned status {} (Sender ID not registered / config error) at startup!", receipt.status_id);
+            } else {
+                tracing::info!("SMS sender startup health check passed with status ID {}", receipt.status_id);
+            }
+        }
+        Err(e) => {
+            if let api_core::sms::SmsError::ConfigError(_) = e {
+                tracing::warn!("LOUD WARNING: NextSMS configuration error at startup: {}", e);
+            } else {
+                tracing::info!("SMS sender startup health check completed: {:?}", e);
+            }
+        }
+    }
+
     let rate_limiter = RateLimiter::new();
 
-    let state = AppState {
+    let state = activation::AppState {
         pool,
         config: config.clone(),
         sms_sender,
         rate_limiter,
     };
 
-    let app = router(state);
+    let app = axum::Router::new()
+        .merge(activation::router(state.clone()))
+        .merge(health::health_router(state.clone()));
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("API core server listening on {}", addr);
