@@ -1,5 +1,5 @@
 import type { Business } from '@40labs/types';
-import { invokeCommand, isTauriAvailable, isUsingTauriIpc } from './client';
+import { invokeCommand, isTauriAvailable } from './client';
 
 export interface AuthStatusResponse {
   deviceBound: boolean;
@@ -191,7 +191,7 @@ export const mockAuthApi: AuthApi = {
 };
 
 const failUnavailable: AuthApi = new Proxy({} as AuthApi, {
-  get(_target, prop: keyof AuthApi) {
+  get(_target, _prop: keyof AuthApi) {
     return async () => {
       throw { code: 'RUNTIME_UNAVAILABLE' };
     };

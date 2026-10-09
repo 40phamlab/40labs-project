@@ -12,7 +12,7 @@ import { RecoveryCodesScreen } from './recovery/RecoveryCodesScreen';
 import { SetupWizardScreen } from './SetupWizardScreen';
 import { StepUpProvider } from './stepup/StepUpProvider';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { TitleBar } from '../../components/TitleBar';
+import { PublicTitleBar } from '../../components/PublicTitleBar';
 
 interface AuthGateProps {
   children: React.ReactNode;
@@ -22,7 +22,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [showWizard, setShowWizard] = React.useState(false);
   const queryClient = useQueryClient();
 
-  const { data: status, isLoading, refetch } = useQuery<AuthStatusResponse>({
+  const { data: status, isLoading, error, refetch } = useQuery<AuthStatusResponse>({
     queryKey: ['auth_status'],
     queryFn: () => authApi.status(),
   });
@@ -90,22 +90,43 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     };
   }, [status?.session, isLockedStore, idleMinutes, queryClient, setLockedStore]);
 
-  if (isLoading || !status) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-background text-foreground font-sora">
-        <span>Inapakia...</span>
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+        <PublicTitleBar />
+        <div className="flex-1 flex items-center justify-center bg-background text-foreground font-sora">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-text-muted">Inapakia...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !status) {
+    return (
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+        <PublicTitleBar />
+        <div className="flex-1 flex items-center justify-center bg-background text-foreground font-sora p-6">
+          <div className="max-w-md w-full bg-surface border border-border rounded-lg p-6 text-center shadow-lg">
+            <h2 className="text-lg font-heading font-semibold text-text-primary mb-2">Hitilafu ya Mfumo</h2>
+            <p className="text-sm text-text-muted mb-4">Imeshindwa kuunganisha na seva ya uthibitisho au kupata hali ya mfumo.</p>
+            <button
+              onClick={() => refetch()}
+              className="px-4 py-2 bg-action-primary text-text-inverse rounded-md hover:bg-action-primary-hover transition-colors"
+            >
+              Jaribu Tena
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   const renderTitleBarWrapper = (content: React.ReactNode) => (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
-      <div className="flex items-center justify-between w-full h-10 bg-top-chrome border-b border-border select-none drag-region" data-tauri-drag-region>
-        <div className="flex-1 min-w-0 h-full" />
-        <div className="no-drag shrink-0 h-full" data-tauri-drag-region="false">
-          <TitleBar />
-        </div>
-      </div>
+      <PublicTitleBar />
       <div className="flex-1 overflow-y-auto">{content}</div>
     </div>
   );
@@ -113,18 +134,23 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   // 1. Session locked (backend or store) -> Render ONLY LockScreen, NEVER {children}
   if (status.session?.locked || isLockedStore) {
     return (
-      <LockScreen
-        displayName={status.session?.displayName}
-        businessName={status.business?.name}
-        onUnlockSuccess={() => {
-          setLockedStore(false);
-          queryClient.invalidateQueries({ queryKey: ['auth_status'] });
-        }}
-        onSwitchUser={() => {
-          setLockedStore(false);
-          queryClient.invalidateQueries({ queryKey: ['auth_status'] });
-        }}
-      />
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
+        <PublicTitleBar />
+        <div className="flex-1 overflow-y-auto">
+          <LockScreen
+            displayName={status.session?.displayName}
+            businessName={status.business?.name}
+            onUnlockSuccess={() => {
+              setLockedStore(false);
+              queryClient.invalidateQueries({ queryKey: ['auth_status'] });
+            }}
+            onSwitchUser={() => {
+              setLockedStore(false);
+              queryClient.invalidateQueries({ queryKey: ['auth_status'] });
+            }}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -174,7 +200,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     );
   }
 
-  // 8. Otherwise -> App shell wrapped in StepUpProvider
+  // 8. Otherwise -> Fully authenticated & setup complete: App shell wrapped in StepUpProvider
   return (
     <StepUpProvider>
       {children}
