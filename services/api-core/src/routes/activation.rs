@@ -14,14 +14,14 @@ use crate::{
     grant::{generate_business_id, sign_grant, ActivationGrantPayload},
     otp::{generate_otp, hash_otp, hash_string, verify_otp_hash},
     ratelimit::RateLimiter,
-    sms::SmsSender,
+    sms::{normalize_tz_phone, mask_phone, OtpProvider},
 };
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: sqlx::PgPool,
     pub config: Config,
-    pub sms_sender: Arc<dyn SmsSender>,
+    pub sms_sender: Arc<dyn OtpProvider>,
     pub rate_limiter: RateLimiter,
 }
 
@@ -53,7 +53,15 @@ pub async fn request_otp(
         return Err(ApiError::BadRequest("OTP service is currently disabled".into()));
     }
 
-    let phone_hash = hash_string(&payload.phone);
+    let normalized_phone = match normalize_tz_phone(&payload.phone) {
+        Ok(p) => p,
+        Err(_) => {
+            tracing::warn!(phone_masked = %mask_phone(&payload.phone), "invalid_phone_rejected");
+            return Err(ApiError::InvalidPhone("Invalid Tanzanian mobile phone number".into()));
+        }
+    };
+
+    let phone_hash = hash_string(&normalized_phone);
     let ip_str = addr.ip().to_string();
 
     if let Err(ra) = state.rate_limiter.check_rate_limit(&phone_hash, 3, std::time::Duration::from_secs(3600)) {
@@ -103,9 +111,16 @@ pub async fn request_otp(
     let msg_id = uuid::Uuid::new_v4().to_string();
     let text = format!("Your 40Labs activation code is: {}. Valid for 5 minutes.", code);
 
-    state.sms_sender.send(&payload.phone, &text, &msg_id).await.map_err(|e| {
-        ApiError::Sms(e.to_string())
-    })?;
+    if let Err(sms_err) = state.sms_sender.send(&normalized_phone, &text, &msg_id).await {
+        let _ = sqlx::query("DELETE FROM otp_challenge WHERE phone_hash = $1 AND created_at = $2")
+            .bind(&phone_hash)
+            .bind(&created_at)
+            .execute(&state.pool)
+            .await;
+
+        tracing::warn!(phone_masked = %mask_phone(&normalized_phone), error = ?sms_err, "otp_send_failed");
+        return Err(ApiError::Sms(sms_err));
+    }
 
     Ok(Json(OtpResponse {
         status: "otp_sent".into(),
@@ -128,7 +143,11 @@ pub async fn verify_otp(
     State(state): State<AppState>,
     Json(payload): Json<OtpVerifyPayload>,
 ) -> Result<Json<OtpVerifyResponse>, ApiError> {
-    let phone_hash = hash_string(&payload.phone);
+    let normalized_phone = match normalize_tz_phone(&payload.phone) {
+        Ok(p) => p,
+        Err(_) => return Err(ApiError::InvalidPhone("Invalid Tanzanian mobile phone number".into())),
+    };
+    let phone_hash = hash_string(&normalized_phone);
 
     let row = sqlx::query_as::<_, (String, String, i32, i32)>(
         "SELECT code_hash, expires_at, attempts, consumed FROM otp_challenge WHERE phone_hash = $1"

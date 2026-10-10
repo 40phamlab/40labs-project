@@ -3,12 +3,24 @@ import type { Notification, NotificationMessage } from '@40labs/types';
 import { notificationsApi, CreateNotificationPayload, SendMessagePayload, SaveAttachmentPayload } from '../api';
 import { notificationKeys } from './queryKeys';
 import { useNotificationsStore } from '../stores/useNotificationsStore';
+import { authApi, AuthStatusResponse } from '../api/authApi';
+import { parseAuthError } from '../api/authErrors';
 
 export type { CreateNotificationPayload, SendMessagePayload, SaveAttachmentPayload };
 
 export function useNotifications() {
   const queryClient = useQueryClient();
   const { selectedNotificationId, setSelectedNotificationId, activeCategory, setActiveCategory } = useNotificationsStore();
+
+  const { data: authStatus } = useQuery<AuthStatusResponse>({
+    queryKey: ['auth_status'],
+    queryFn: () => authApi.status(),
+    staleTime: 10000,
+  });
+
+  const isAuthenticated = Boolean(authStatus?.session);
+  const isLocked = Boolean(authStatus?.session?.locked);
+  const isEnabled = isAuthenticated && !isLocked;
 
   const {
     data: notifications = [],
@@ -19,6 +31,16 @@ export function useNotifications() {
   } = useQuery<Notification[]>({
     queryKey: notificationKeys.list(),
     queryFn: async () => notificationsApi.list(),
+    enabled: isEnabled,
+    refetchInterval: isEnabled ? 3000 : false,
+    retry: (failureCount, error: any) => {
+      const parsed = parseAuthError(error);
+      if (parsed.code === 'SESSION_REQUIRED' || parsed.code === 'SESSION_LOCKED') {
+        return false;
+      }
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   const createNotificationMutation = useMutation({

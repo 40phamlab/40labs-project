@@ -9,6 +9,8 @@ pub struct Config {
     pub nextsms_password: String,
     pub nextsms_sender_id: String,
     pub sms_mode: String,
+    pub otp_provider: String,
+    pub app_env: String,
     pub otp_enabled: bool,
     pub otp_daily_max: i32,
     pub activation_signing_key: String,
@@ -34,14 +36,29 @@ fn get_env_or_file(var_name: &str, default: &str) -> String {
 impl Config {
     pub fn from_env() -> Self {
         dotenvy::dotenv().ok();
+        let app_env = get_env_or_file("APP_ENV", "development");
+        let sms_mode = get_env_or_file("SMS_MODE", "test");
+        let default_provider = if sms_mode.to_lowercase() == "live" { "nextsms" } else { "console" };
+        let otp_provider = get_env_or_file("OTP_PROVIDER", default_provider);
+        let raw_token = get_env_or_file("NEXTSMS_API_TOKEN", "");
+        let nextsms_api_token = crate::sms::sanitize_token(&raw_token);
+
+        if !nextsms_api_token.is_empty() {
+            tracing::info!("nextsms token loaded len={}", nextsms_api_token.len());
+        } else if otp_provider.to_lowercase() == "nextsms" || sms_mode.to_lowercase() == "live" {
+            tracing::error!("NEXTSMS_API_TOKEN is empty");
+        }
+
         Self {
             database_url: get_env_or_file("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/afya_core"),
             nextsms_base_url: get_env_or_file("NEXTSMS_BASE_URL", "https://messaging-service.co.tz"),
-            nextsms_api_token: get_env_or_file("NEXTSMS_API_TOKEN", ""),
+            nextsms_api_token,
             nextsms_username: get_env_or_file("NEXTSMS_USERNAME", ""),
             nextsms_password: get_env_or_file("NEXTSMS_PASSWORD", ""),
             nextsms_sender_id: get_env_or_file("NEXTSMS_SENDER_ID", "40Labs"),
-            sms_mode: get_env_or_file("SMS_MODE", "test"),
+            sms_mode,
+            otp_provider,
+            app_env,
             otp_enabled: get_env_or_file("OTP_ENABLED", "1") == "1",
             otp_daily_max: get_env_or_file("OTP_DAILY_MAX", "200").parse().unwrap_or(200),
             activation_signing_key: get_env_or_file("ACTIVATION_SIGNING_KEY", ""),

@@ -1,21 +1,23 @@
-use super::{nextsms::NextSmsSender, SmsError, SmsReceipt, SmsSender};
+use super::{nextsms::NextSmsProvider, SendOutcome, SmsError, OtpProvider};
 use async_trait::async_trait;
 
-pub struct TestModeSender {
-    inner: NextSmsSender,
+pub struct TestModeProvider {
+    inner: NextSmsProvider,
 }
 
-impl TestModeSender {
+pub type TestModeSender = TestModeProvider;
+
+impl TestModeProvider {
     pub fn new(base_url: String, api_token: String, sender_id: String) -> Self {
         Self {
-            inner: NextSmsSender::new(base_url, api_token, sender_id, true),
+            inner: NextSmsProvider::new(base_url, api_token, sender_id, true),
         }
     }
 }
 
 #[async_trait]
-impl SmsSender for TestModeSender {
-    async fn send(&self, to: &str, text: &str, msg_ref: &str) -> Result<SmsReceipt, SmsError> {
+impl OtpProvider for TestModeProvider {
+    async fn send(&self, to: &str, text: &str, msg_ref: &str) -> Result<SendOutcome, SmsError> {
         self.inner.send(to, text, msg_ref).await
     }
 }

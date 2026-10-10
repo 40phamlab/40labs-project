@@ -2,6 +2,10 @@ import { isTauriAvailable } from '../api/client';
 
 export function logAuthDebug(method: string, durationMs: number, success: boolean, errorCode?: string) {
   if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
+    if (errorCode === 'SESSION_REQUIRED') {
+      console.debug(`[40Labs AUTH] ${method} -> SESSION_REQUIRED (${durationMs}ms) [DEBUG]`);
+      return;
+    }
     const status = success ? 'ok' : (errorCode || 'error');
     console.log(`[40Labs AUTH] ${method} -> ${status} (${durationMs}ms)`);
   }

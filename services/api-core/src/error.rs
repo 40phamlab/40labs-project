@@ -12,6 +12,8 @@ pub enum ApiError {
     Database(#[from] sqlx::Error),
     #[error("Bad request: {0}")]
     BadRequest(String),
+    #[error("Invalid phone number: {0}")]
+    InvalidPhone(String),
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
     #[error("Conflict: {0}")]
@@ -19,7 +21,7 @@ pub enum ApiError {
     #[error("Rate limit exceeded")]
     RateLimitExceeded { retry_after: u64 },
     #[error("SMS error: {0}")]
-    Sms(String),
+    Sms(#[from] crate::sms::SmsError),
     #[error("Internal error: {0}")]
     Internal(String),
 }
@@ -37,6 +39,7 @@ impl IntoResponse for ApiError {
         let (status, err_code, msg, retry) = match self {
             ApiError::Database(e) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", e.to_string(), None),
             ApiError::BadRequest(m) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", m, None),
+            ApiError::InvalidPhone(m) => (StatusCode::BAD_REQUEST, "INVALID_PHONE", m, None),
             ApiError::Unauthorized(m) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", m, None),
             ApiError::Conflict(m) => (StatusCode::CONFLICT, "CONFLICT", m, None),
             ApiError::RateLimitExceeded { retry_after } => (
@@ -45,7 +48,27 @@ impl IntoResponse for ApiError {
                 format!("Rate limit exceeded. Try again in {} seconds.", retry_after),
                 Some(retry_after),
             ),
-            ApiError::Sms(m) => (StatusCode::BAD_GATEWAY, "SMS_ERROR", m, None),
+            ApiError::Sms(ref sms_err) => {
+                match sms_err {
+                    crate::sms::SmsError::ProviderUnavailable | crate::sms::SmsError::ProviderRateLimited => {
+                        let retry_secs = 10;
+                        (
+                            StatusCode::SERVICE_UNAVAILABLE,
+                            "SMS_PROVIDER_UNAVAILABLE",
+                            "SMS provider temporarily unavailable. Please retry.".to_string(),
+                            Some(retry_secs),
+                        )
+                    }
+                    _ => {
+                        (
+                            StatusCode::BAD_GATEWAY,
+                            "SMS_PROVIDER_ERROR",
+                            "SMS provider error".to_string(),
+                            None,
+                        )
+                    }
+                }
+            }
             ApiError::Internal(m) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", m, None),
         };
 

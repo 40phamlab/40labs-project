@@ -1,89 +1,160 @@
-use api_core::sms::{nextsms::NextSmsSender, test_mode::TestModeSender, SmsSender};
-use axum::{
-    extract::Json,
-    routing::post,
-    Router,
+use api_core::sms::{
+    console::ConsoleOtpProvider,
+    nextsms::NextSmsProvider,
+    OtpProvider, SmsError,
 };
-use serde_json::json;
+use wiremock::{
+    matchers::{method, path},
+    Mock, MockServer, ResponseTemplate,
+};
 
-async fn mock_sms_handler(Json(payload): Json<serde_json::Value>) -> Json<serde_json::Value> {
-    let reference = payload.get("reference").and_then(|v| v.as_str()).unwrap_or("");
-    if reference.contains("56") || reference.contains("rejected") {
-        Json(json!({
-            "messages": [{
-                "to": "255712345678",
-                "status": {
-                    "groupId": 3,
-                    "groupName": "REJECTED",
-                    "id": 56,
-                    "name": "REJECTED_SOURCE",
-                    "description": "Sender ID is not registered"
-                },
-                "sendReference": "123456789012345678",
-                "smsCount": 1,
-                "sort": 0
-            }]
-        }))
-    } else if reference.contains("57") || reference.contains("nocredits") {
-        Json(json!({
-            "messages": [{
-                "to": "255712345678",
-                "status": { "groupId": 4, "groupName": "FAILED", "id": 57, "name": "NO_CREDITS", "description": "Insufficient credit" },
-                "sendReference": "123",
-                "smsCount": 1,
-                "sort": 0
-            }]
-        }))
-    } else {
-        Json(json!({
-            "messages": [{
-                "to": "255712345678",
-                "status": { "groupId": 1, "groupName": "SUCCESS", "id": 50, "name": "DELIVERED" },
-                "sendReference": 9007199254740992_i64,
-                "smsCount": 1,
-                "sort": 0
-            }]
-        }))
-    }
+fn init_tracing() {
+    let _ = tracing_subscriber::fmt()
+        .with_test_writer()
+        .try_init();
 }
 
-async fn start_mock_server() -> String {
-    let app = Router::new()
-        .route("/api/sms/v2/text/single", post(mock_sms_handler))
-        .route("/api/sms/v2/test/text/single", post(mock_sms_handler));
+#[tokio::test]
+async fn test_nextsms_401() {
+    init_tracing();
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/sms/v2/text/single"))
+        .respond_with(ResponseTemplate::new(401).set_body_string("Unauthorized"))
+        .mount(&mock_server)
+        .await;
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    tokio::spawn(async move {
-        axum::serve(listener, app).await.unwrap();
+    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let res = provider.send("255712345678", "OTP 123456", "ref-401").await;
+    assert!(res.is_err());
+    assert!(matches!(res.unwrap_err(), SmsError::ProviderAuth));
+}
+
+#[tokio::test]
+async fn test_nextsms_429() {
+    init_tracing();
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/sms/v2/text/single"))
+        .respond_with(ResponseTemplate::new(429).set_body_string("Rate Limited"))
+        .mount(&mock_server)
+        .await;
+
+    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let res = provider.send("255712345678", "OTP 123456", "ref-429").await;
+    assert!(res.is_err());
+    assert!(matches!(res.unwrap_err(), SmsError::ProviderRateLimited));
+}
+
+#[tokio::test]
+async fn test_nextsms_500() {
+    init_tracing();
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/sms/v2/text/single"))
+        .respond_with(ResponseTemplate::new(500).set_body_string("Internal Error"))
+        .mount(&mock_server)
+        .await;
+
+    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let res = provider.send("255712345678", "OTP 123456", "ref-500").await;
+    assert!(res.is_err());
+    assert!(matches!(res.unwrap_err(), SmsError::ProviderUnavailable));
+}
+
+#[tokio::test]
+async fn test_nextsms_timeout() {
+    init_tracing();
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/sms/v2/text/single"))
+        .respond_with(ResponseTemplate::new(200).set_delay(std::time::Duration::from_secs(12)))
+        .mount(&mock_server)
+        .await;
+
+    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let res = provider.send("255712345678", "OTP 123456", "ref-timeout").await;
+    assert!(res.is_err());
+    assert!(matches!(res.unwrap_err(), SmsError::ProviderUnavailable));
+}
+
+#[tokio::test]
+async fn test_nextsms_200_status_56() {
+    init_tracing();
+    let mock_server = MockServer::start().await;
+    let body = serde_json::json!({
+        "messages": [{
+            "to": "255712345678",
+            "status": {
+                "id": 56,
+                "name": "REJECTED_SOURCE"
+            },
+            "sendReference": "123456789012345678"
+        }]
     });
-    format!("http://{}", addr)
+    Mock::given(method("POST"))
+        .and(path("/api/sms/v2/text/single"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .mount(&mock_server)
+        .await;
+
+    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let res = provider.send("255712345678", "OTP 123456", "ref-56").await;
+    assert!(res.is_err());
+    assert!(matches!(res.unwrap_err(), SmsError::SenderNotApproved(_)));
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn test_sms_integration() {
-    let base_url = start_mock_server().await;
-    let token = "test_token_123";
+#[tokio::test]
+async fn test_nextsms_200_status_50_large_ref() {
+    init_tracing();
+    let mock_server = MockServer::start().await;
+    let body = serde_json::json!({
+        "messages": [{
+            "to": "255712345678",
+            "status": {
+                "id": 50,
+                "name": "DELIVERED"
+            },
+            "sendReference": 9007199254740993_i64
+        }]
+    });
+    Mock::given(method("POST"))
+        .and(path("/api/sms/v2/text/single"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(body))
+        .mount(&mock_server)
+        .await;
 
-    let sender = NextSmsSender::new(base_url.clone(), token.to_string(), "40Labs".to_string(), false);
-
-    // Success test
-    let res = sender.send("255712345678", "OTP", "ref-success").await;
+    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let res = provider.send("255712345678", "OTP 123456", "ref-large-ref").await;
     assert!(res.is_ok());
-    assert_eq!(res.unwrap().status_id, 50);
+    let outcome = res.unwrap();
+    assert_eq!(outcome.status_id, 50);
+    assert_eq!(outcome.message_id.as_deref(), Some("9007199254740993"));
+}
 
-    // Rejected source (status 56) fixture test
-    let res_56 = sender.send("255712345678", "OTP", "ref-56-rejected").await;
-    assert!(res_56.is_err());
-    assert!(matches!(res_56.unwrap_err(), api_core::sms::SmsError::ConfigError(_)));
+#[tokio::test]
+async fn test_nextsms_non_json_body() {
+    init_tracing();
+    let mock_server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/api/sms/v2/text/single"))
+        .respond_with(ResponseTemplate::new(200).set_body_string("Not JSON at all 255712345678"))
+        .mount(&mock_server)
+        .await;
 
-    // No credits (status 57) test
-    let res_57 = sender.send("255712345678", "OTP", "ref-57-nocredits").await;
-    assert!(res_57.is_err());
-    assert!(matches!(res_57.unwrap_err(), api_core::sms::SmsError::NoCredits));
+    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let res = provider.send("255712345678", "OTP 123456", "ref-non-json").await;
+    assert!(res.is_err());
+    assert!(matches!(res.unwrap_err(), SmsError::ProviderRejected(_)));
+}
 
-    // Test mode sender test
-    let test_sender = TestModeSender::new(base_url, token.to_string(), "40Labs".to_string());
-    let res_test = test_sender.send("255712345678", "OTP", "ref-testmode").await;
-    assert!(res_test.is_ok());
+#[tokio::test]
+async fn test_console_provider() {
+    init_tracing();
+    let provider = ConsoleOtpProvider::new();
+    let res = provider.send("255712345678", "Your 40Labs activation code is: 123456. Valid for 5 minutes.", "ref-console").await;
+    assert!(res.is_ok());
+    let outcome = res.unwrap();
+    assert_eq!(outcome.status_id, 50);
+    assert!(outcome.message_id.is_some());
 }

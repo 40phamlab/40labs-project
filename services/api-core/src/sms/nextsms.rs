@@ -1,10 +1,11 @@
-use super::{SmsError, SmsReceipt, SmsSender};
+use super::{SendOutcome, SmsError, OtpProvider};
 use async_trait::async_trait;
 use reqwest::Client;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::Deserialize;
+use std::time::Duration;
 use tracing::{error, info};
 
-pub struct NextSmsSender {
+pub struct NextSmsProvider {
     client: Client,
     base_url: String,
     api_token: String,
@@ -12,7 +13,9 @@ pub struct NextSmsSender {
     is_test_mode: bool,
 }
 
-#[derive(Serialize)]
+pub type NextSmsSender = NextSmsProvider;
+
+#[derive(serde::Serialize)]
 struct NextSmsRequest {
     from: String,
     to: String,
@@ -56,32 +59,9 @@ struct NextSmsMessage {
     sort: Option<i32>,
 }
 
-#[derive(Deserialize, Debug)]
-#[allow(dead_code, non_snake_case)]
-struct NextSmsErrorResponse {
-    #[serde(rename = "requestError", default)]
-    request_error: Option<NextSmsRequestError>,
-}
-
-#[derive(Deserialize, Debug)]
-#[allow(dead_code, non_snake_case)]
-struct NextSmsRequestError {
-    #[serde(rename = "serviceException", default)]
-    service_exception: Option<NextSmsServiceException>,
-}
-
-#[derive(Deserialize, Debug)]
-#[allow(dead_code, non_snake_case)]
-struct NextSmsServiceException {
-    #[serde(default)]
-    messageId: Option<String>,
-    #[serde(default)]
-    text: Option<String>,
-}
-
 fn deserialize_send_reference<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
 where
-    D: Deserializer<'de>,
+    D: serde::Deserializer<'de>,
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
@@ -113,194 +93,135 @@ fn sanitize_phone_number(phone: &str) -> String {
     }
 }
 
-impl NextSmsSender {
+impl NextSmsProvider {
     pub fn new(base_url: String, api_token: String, sender_id: String, is_test_mode: bool) -> Self {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .unwrap_or_else(|_| Client::new());
         Self {
-            client: Client::new(),
+            client,
             base_url,
-            api_token,
+            api_token: super::sanitize_token(&api_token),
             sender_id,
             is_test_mode,
-        }
-    }
-
-    fn map_status_to_result(status_id: i32, status_name: Option<String>, message_id: Option<String>, body_text: &str, msg_ref: &str) -> Result<SmsReceipt, SmsError> {
-        // Never log the token or the OTP text; log message reference + status.id only.
-        match status_id {
-            50 | 51 | 52 | 73 | 88 | 109 => {
-                info!(msg_ref = %msg_ref, status_id = %status_id, "NextSMS delivery successful");
-                Ok(SmsReceipt {
-                    message_id,
-                    status_id,
-                    status_name,
-                })
-            }
-            57 => {
-                error!(msg_ref = %msg_ref, status_id = %status_id, "CRITICAL: No credits on NextSMS (status 57). Trip kill switch!");
-                Err(SmsError::NoCredits)
-            }
-            56 | 58 | 61 | 62 | 53 => {
-                error!(msg_ref = %msg_ref, status_id = %status_id, "NextSMS configuration error");
-                Err(SmsError::ConfigError(format!("Status ID {}: {}", status_id, body_text)))
-            }
-            54 | 68 | 69 => {
-                error!(msg_ref = %msg_ref, status_id = %status_id, "NextSMS invalid phone number");
-                Err(SmsError::InvalidPhone(format!("Status ID {}: {}", status_id, body_text)))
-            }
-            55 | 59 => {
-                error!(msg_ref = %msg_ref, status_id = %status_id, "NextSMS recipient unreachable or DND");
-                Err(SmsError::Unreachable(format!("Status ID {}: {}", status_id, body_text)))
-            }
-            63 | 110 => {
-                error!(msg_ref = %msg_ref, status_id = %status_id, "NextSMS flooding detected");
-                Err(SmsError::Flooding(format!("Status ID {}: {}", status_id, body_text)))
-            }
-            74 | 76 | 79 | 80 => {
-                error!(msg_ref = %msg_ref, status_id = %status_id, "NextSMS delivery failed");
-                Err(SmsError::DeliveryFailed(format!("Status ID {}: {}", status_id, body_text)))
-            }
-            other => {
-                error!(msg_ref = %msg_ref, status_id = %other, "ALERT: Unknown NextSMS status id received");
-                Err(SmsError::Unknown(other))
-            }
         }
     }
 }
 
 #[async_trait]
-impl SmsSender for NextSmsSender {
-    async fn send(&self, to: &str, text: &str, msg_ref: &str) -> Result<SmsReceipt, SmsError> {
+impl OtpProvider for NextSmsProvider {
+    async fn send(&self, to_e164: &str, text: &str, reference: &str) -> Result<SendOutcome, SmsError> {
         let endpoint_path = if self.is_test_mode {
             "/api/sms/v2/test/text/single"
         } else {
             "/api/sms/v2/text/single"
         };
         let url = format!("{}{}", self.base_url, endpoint_path);
-        let sanitized_to = sanitize_phone_number(to);
+        let sanitized_to = sanitize_phone_number(to_e164);
 
         let payload = NextSmsRequest {
             from: self.sender_id.clone(),
             to: sanitized_to,
             text: text.to_string(),
             flash: 0,
-            reference: msg_ref.to_string(),
+            reference: reference.to_string(),
         };
 
-        let mut attempts = 0;
-        let max_retries = 2;
-        let mut current_ref = msg_ref.to_string();
+        let res = self.client
+            .post(&url)
+            .bearer_auth(&self.api_token)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .json(&payload)
+            .send()
+            .await;
 
-        loop {
-            let current_payload = NextSmsRequest {
-                from: payload.from.clone(),
-                to: payload.to.clone(),
-                text: payload.text.clone(),
-                flash: 0,
-                reference: current_ref.clone(),
-            };
+        let resp = match res {
+            Ok(r) => r,
+            Err(e) => {
+                error!(msg_ref = %reference, error = %e, "NextSMS transport/timeout error");
+                return Err(SmsError::ProviderUnavailable);
+            }
+        };
 
-            let res = self.client
-                .post(&url)
-                .bearer_auth(&self.api_token)
-                .header("Content-Type", "application/json")
-                .header("Accept", "application/json")
-                .json(&current_payload)
-                .send()
-                .await;
+        let status_code = resp.status();
+        let status_u16 = status_code.as_u16();
+        let body_text = resp.text().await.unwrap_or_default();
 
-            match res {
-                Ok(resp) => {
-                    let status_code = resp.status();
-                    let body_text = resp.text().await.unwrap_or_default();
+        // 1. CLASSIFY HTTP STATUS FIRST
+        if status_u16 == 401 || status_u16 == 403 {
+            error!(msg_ref = %reference, http_status = %status_u16, "NextSMS auth failure");
+            return Err(SmsError::ProviderAuth);
+        }
+        if status_u16 == 400 || status_u16 == 422 {
+            let snippet = super::scrub_phones(&body_text);
+            error!(msg_ref = %reference, http_status = %status_u16, "NextSMS rejected request");
+            return Err(SmsError::ProviderRejected(snippet));
+        }
+        if status_u16 == 429 {
+            error!(msg_ref = %reference, "NextSMS rate limited");
+            return Err(SmsError::ProviderRateLimited);
+        }
+        if status_code.is_server_error() || status_u16 >= 500 {
+            error!(msg_ref = %reference, http_status = %status_u16, "NextSMS server error");
+            return Err(SmsError::ProviderUnavailable);
+        }
 
-                    let parsed: Result<NextSmsResponse, _> = serde_json::from_str(&body_text);
-                    let mut status_id = -1;
-                    let mut status_name = None;
-                    let mut message_id = None;
-                    let mut messages_len = 0;
+        // 2. Parse 200 (or other non-error HTTP statuses if any)
+        let parsed: Result<NextSmsResponse, _> = serde_json::from_str(&body_text);
+        let mut status_id = -1;
+        let mut status_name = None;
+        let mut message_id = None;
 
-                    if let Ok(ref p) = parsed {
-                        if let Some(msgs) = &p.messages {
-                            messages_len = msgs.len();
-                            if messages_len == 1 {
-                                if let Some(m) = msgs.first() {
-                                    message_id = m.sendReference.clone();
-                                    if let Some(s) = &m.status {
-                                        if let Some(id) = s.id {
-                                            status_id = id;
-                                        }
-                                        status_name = s.name.clone();
-                                    }
-                                }
-                            }
-                        } else if let Some(s) = &p.status {
-                            if let Some(id) = s.id {
-                                status_id = id;
-                            }
-                            status_name = s.name.clone();
+        if let Ok(ref p) = parsed {
+            if let Some(msgs) = &p.messages {
+                if let Some(m) = msgs.first() {
+                    message_id = m.sendReference.clone();
+                    if let Some(s) = &m.status {
+                        if let Some(id) = s.id {
+                            status_id = id;
                         }
-                    } else if let Ok(err_resp) = serde_json::from_str::<NextSmsErrorResponse>(&body_text) {
-                        if let Some(err_obj) = err_resp.request_error {
-                            if let Some(exc) = err_obj.service_exception {
-                                error!(msg_ref = %current_ref, "NextSMS Service Exception");
-                                return Err(SmsError::Permanent(format!(
-                                    "NextSMS Service Exception [{}]: {}",
-                                    exc.messageId.unwrap_or_default(),
-                                    exc.text.unwrap_or_else(|| body_text.clone())
-                                )));
-                            }
-                        }
+                        status_name = s.name.clone();
                     }
-
-                    // Handle status 64 (retry <= 2 with backoff)
-                    if status_id == 64 {
-                        if attempts < max_retries {
-                            attempts += 1;
-                            tokio::time::sleep(tokio::time::Duration::from_millis(500 * attempts as u64)).await;
-                            continue;
-                        } else {
-                            return Err(SmsError::Retryable("Max retries exceeded for status 64".into()));
-                        }
-                    }
-
-                    // Handle status 65 (regenerate ref + retry once)
-                    if status_id == 65 {
-                        if attempts < 1 {
-                            attempts += 1;
-                            current_ref = format!("{}-r1", msg_ref);
-                            continue;
-                        } else {
-                            return Err(SmsError::Retryable("Status 65: retry exhausted after regenerating reference".into()));
-                        }
-                    }
-
-                    // Success = HTTP 2xx AND messages.len() == 1 AND status.id in {50, 51, 52, 88, 73, 109}
-                    let is_success_status = matches!(status_id, 50 | 51 | 52 | 73 | 88 | 109);
-                    if status_code.is_success() && messages_len == 1 && is_success_status {
-                        info!(msg_ref = %current_ref, status_id = %status_id, "NextSMS delivery successful");
-                        return Ok(SmsReceipt {
-                            message_id,
-                            status_id,
-                            status_name,
-                        });
-                    }
-
-                    // Otherwise map error per table
-                    if status_id == -1 {
-                        status_id = status_code.as_u16() as i32;
-                    }
-
-                    return Self::map_status_to_result(status_id, status_name, message_id, &body_text, &current_ref);
                 }
-                Err(e) => {
-                    error!("NextSMS HTTP transport error");
-                    if attempts < max_retries {
-                        attempts += 1;
-                        tokio::time::sleep(tokio::time::Duration::from_millis(500 * attempts as u64)).await;
-                        continue;
-                    }
-                    return Err(SmsError::Retryable(e.to_string()));
+            } else if let Some(s) = &p.status {
+                if let Some(id) = s.id {
+                    status_id = id;
                 }
+                status_name = s.name.clone();
+            }
+        } else {
+            // Non-JSON body tolerated
+            let snippet = super::scrub_phones(&body_text);
+            error!(msg_ref = %reference, "NextSMS non-JSON body received");
+            return Err(SmsError::ProviderRejected(snippet));
+        }
+
+        match status_id {
+            50 | 51 | 52 | 88 | 73 | 109 => {
+                info!(msg_ref = %reference, status_id = %status_id, "NextSMS delivery successful");
+                Ok(SendOutcome {
+                    message_id,
+                    status_id,
+                    status_name,
+                })
+            }
+            57 => {
+                error!(msg_ref = %reference, status_id = %status_id, "NextSMS no credits");
+                Err(SmsError::NoCredits)
+            }
+            56 | 58 => {
+                error!(msg_ref = %reference, status_id = %status_id, "NextSMS sender not approved");
+                Err(SmsError::SenderNotApproved(format!("Status ID {}: {}", status_id, body_text)))
+            }
+            61 => {
+                error!(msg_ref = %reference, status_id = %status_id, "NextSMS test mode recipient");
+                Err(SmsError::TestModeRecipient(format!("Status ID {}: {}", status_id, body_text)))
+            }
+            other => {
+                error!(msg_ref = %reference, status_id = %other, "NextSMS unknown status id");
+                Err(SmsError::Unknown(other))
             }
         }
     }

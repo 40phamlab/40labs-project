@@ -6,7 +6,7 @@ use api_core::{
     config::Config,
     ratelimit::RateLimiter,
     routes::{activation, health},
-    sms::{nextsms::NextSmsSender, test_mode::TestModeSender, SmsSender},
+    sms::{console::ConsoleOtpProvider, nextsms::NextSmsProvider, OtpProvider},
 };
 
 #[tokio::main]
@@ -40,9 +40,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::from_env();
 
-    if config.sms_mode.to_lowercase() == "live" {
+    if config.app_env.to_lowercase() == "production" && config.otp_provider.to_lowercase() == "console" {
+        tracing::error!("Refusing to start: Cannot use console OTP provider in production environment.");
+        panic!("Refusing to start: Console OTP provider not allowed in production.");
+    }
+
+    if config.sms_mode.to_lowercase() == "live" || config.otp_provider.to_lowercase() == "nextsms" {
         if config.nextsms_api_token.is_empty() || config.nextsms_sender_id.is_empty() {
-            panic!("Refusing to start in live mode: NEXTSMS_API_TOKEN and NEXTSMS_SENDER_ID must not be empty.");
+            if config.app_env.to_lowercase() == "production" {
+                panic!("Refusing to start in production mode: NEXTSMS_API_TOKEN and NEXTSMS_SENDER_ID must not be empty.");
+            }
         }
     }
 
@@ -59,24 +66,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
         .expect("Failed to run migrations");
 
-    let sms_sender: Arc<dyn SmsSender> = if config.sms_mode.to_lowercase() == "live" {
-        Arc::new(NextSmsSender::new(
-            config.nextsms_base_url.clone(),
-            config.nextsms_api_token.clone(),
-            config.nextsms_sender_id.clone(),
-            false,
-        ))
-    } else {
-        let token = if config.nextsms_api_token.is_empty() {
-            "test_token_placeholder".into()
-        } else {
-            config.nextsms_api_token.clone()
-        };
-        Arc::new(TestModeSender::new(
-            config.nextsms_base_url.clone(),
-            token,
-            config.nextsms_sender_id.clone(),
-        ))
+    let sms_sender: Arc<dyn OtpProvider> = match config.otp_provider.to_lowercase().as_str() {
+        "console" => {
+            tracing::info!("Using ConsoleOtpProvider for OTP delivery");
+            Arc::new(ConsoleOtpProvider::new())
+        }
+        _ => {
+            Arc::new(NextSmsProvider::new(
+                config.nextsms_base_url.clone(),
+                config.nextsms_api_token.clone(),
+                config.nextsms_sender_id.clone(),
+                config.sms_mode.to_lowercase() != "live",
+            ))
+        }
     };
 
     // Startup check for SMS sender & log loud warning if status 56/58
@@ -89,7 +91,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         Err(e) => {
-            if let api_core::sms::SmsError::ConfigError(_) = e {
+            if let api_core::sms::SmsError::ConfigError(_) | api_core::sms::SmsError::SenderNotApproved(_) = e {
                 tracing::warn!("LOUD WARNING: NextSMS configuration error at startup: {}", e);
             } else {
                 tracing::info!("SMS sender startup health check completed: {:?}", e);
