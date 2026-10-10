@@ -1,8 +1,68 @@
 openapi: 3.0.3
 info:
-  title: 40Labs Healthcare Platform API - Device Activation V2
+  title: 40Labs Healthcare Platform API - Device Activation & Health V2
   version: 2.0.0
 paths:
+  /healthz:
+    get:
+      summary: Liveness check
+      description: Returns 200 OK if the service is running.
+      responses:
+        '200':
+          description: Service is live
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /readyz:
+    get:
+      summary: Readiness check
+      description: Tests database connectivity with SELECT 1 and returns 200 OK if ready.
+      responses:
+        '200':
+          description: Service is ready and connected to database
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ready"
+        '503':
+          description: Service is not ready (database unreachable)
+
+  /healthz/sms:
+    get:
+      summary: SMS Gateway health check
+      description: Sends a test ping via SMS gateway and returns status. Requires Authorization Bearer token.
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+          example: "Bearer <ACTIVATION_SIGNING_KEY>"
+      responses:
+        '200':
+          description: SMS health check completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sender_ok:
+                    type: boolean
+                  status_id:
+                    type: integer
+        '401':
+          description: Unauthorized (missing or invalid Authorization header)
+
   /api/v1/activation/otp/request:
     post:
       summary: Request OTP for device activation

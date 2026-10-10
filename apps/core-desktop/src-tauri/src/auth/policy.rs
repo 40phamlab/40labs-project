@@ -10,6 +10,7 @@ pub enum CommandPolicy {
 pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     let mut map = HashMap::new();
     map.insert("system_health_check", CommandPolicy::Public);
+    map.insert("frontend_log", CommandPolicy::Public);
     map.insert("auth_status", CommandPolicy::Public);
     map.insert("auth_login", CommandPolicy::Public);
     map.insert("auth_logout", CommandPolicy::SessionOnly);

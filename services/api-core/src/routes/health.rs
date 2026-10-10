@@ -9,8 +9,41 @@ use crate::routes::activation::AppState;
 
 pub fn health_router(state: AppState) -> Router {
     Router::new()
+        .route("/healthz", get(liveness_check))
+        .route("/readyz", get(readiness_check))
         .route("/healthz/sms", get(sms_health_check))
         .with_state(state)
+}
+
+#[derive(Serialize)]
+pub struct HealthResponse {
+    pub status: String,
+}
+
+pub async fn liveness_check() -> (StatusCode, Json<HealthResponse>) {
+    (
+        StatusCode::OK,
+        Json(HealthResponse {
+            status: "ok".into(),
+        }),
+    )
+}
+
+pub async fn readiness_check(
+    State(state): State<AppState>,
+) -> Result<(StatusCode, Json<HealthResponse>), StatusCode> {
+    match sqlx::query("SELECT 1").execute(&state.pool).await {
+        Ok(_) => Ok((
+            StatusCode::OK,
+            Json(HealthResponse {
+                status: "ready".into(),
+            }),
+        )),
+        Err(e) => {
+            tracing::error!("Database readiness check failed: {}", e);
+            Err(StatusCode::SERVICE_UNAVAILABLE)
+        }
+    }
 }
 
 #[derive(Serialize)]

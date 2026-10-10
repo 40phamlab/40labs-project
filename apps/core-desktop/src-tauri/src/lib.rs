@@ -6,6 +6,7 @@ pub mod services;
 pub mod auth;
 pub mod security;
 pub mod activation;
+pub mod debug;
 
 use db::{init_db_pool, AppState};
 use services::lan::LanServerState;
@@ -15,13 +16,23 @@ use std::sync::Arc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    debug::init();
+
     let runtime = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
 
-    let pool = runtime.block_on(async {
-        init_db_pool()
-            .await
-            .expect("Failed to initialize SQLite database pool")
-    });
+    let pool = match runtime.block_on(async { init_db_pool().await }) {
+        Ok(p) => p,
+        Err(err) => {
+            tracing::error!("[40Labs Startup Error] Failed to initialize SQLite database pool: {}. Falling back to in-memory pool to prevent process abort.", err);
+            runtime.block_on(async {
+                sqlx::sqlite::SqlitePoolOptions::new()
+                    .max_connections(1)
+                    .connect("sqlite::memory:")
+                    .await
+                    .expect("Fatal fallback database failure")
+            })
+        }
+    };
 
     let keystore = Arc::new(Keystore::init().expect("Failed to initialize security keystore"));
     let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
@@ -52,6 +63,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::system_cmd::system_health_check,
+            commands::system_cmd::frontend_log,
             // Auth
             commands::auth_cmd::auth_status,
             commands::auth_cmd::auth_login,

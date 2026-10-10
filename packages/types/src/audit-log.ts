@@ -13,6 +13,9 @@ export type AuditAction =
   | 'login_success'
   | 'login_failed'
   | 'login_failed_unknown_user'
+  | 'pin_unlock_success'
+  | 'pin_unlock_failed'
+  | 'session_destroyed_pin_lockout'
   | (string & {});
 
 // Immutable, append-only. NEVER updated or deleted, at the DB layer, not

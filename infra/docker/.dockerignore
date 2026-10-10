@@ -1,0 +1,12 @@
+target/
+node_modules/
+.git/
+.github/
+.env
+*.log
+.DS_Store
+dist/
+build/
+.turbo/
+.idea/
+.vs/

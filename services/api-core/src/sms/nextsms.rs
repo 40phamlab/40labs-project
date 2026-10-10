@@ -224,7 +224,7 @@ impl SmsSender for NextSmsSender {
                             messages_len = msgs.len();
                             if messages_len == 1 {
                                 if let Some(m) = msgs.first() {
-                                    message_id = m.sendReference.clone().or_else(|| m.messageId.clone());
+                                    message_id = m.sendReference.clone();
                                     if let Some(s) = &m.status {
                                         if let Some(id) = s.id {
                                             status_id = id;

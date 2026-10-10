@@ -12,6 +12,7 @@ pub enum AuthErrorCode {
     PinSetupRequired,
     PolicyViolation,
     NotConfigured,
+    NetworkRequired,
     DatabaseError,
     NotFound,
     InternalError,
@@ -44,6 +45,8 @@ pub enum AuthError {
     PolicyViolation(String),
     #[error("Not configured")]
     NotConfigured,
+    #[error("Network required")]
+    NetworkRequired,
     #[error("Database error: {0}")]
     DatabaseError(String),
     #[error("Not found: {0}")]
@@ -89,6 +92,10 @@ impl AuthError {
             },
             AuthError::NotConfigured => AuthErrorResponse {
                 code: AuthErrorCode::NotConfigured,
+                retry_after_secs: None,
+            },
+            AuthError::NetworkRequired => AuthErrorResponse {
+                code: AuthErrorCode::NetworkRequired,
                 retry_after_secs: None,
             },
             AuthError::DatabaseError(_) => AuthErrorResponse {

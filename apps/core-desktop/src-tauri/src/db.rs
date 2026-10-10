@@ -19,45 +19,29 @@ pub struct AppState {
 }
 
 /// Centralized resolution of database path and connection URL.
-///
-/// Strategy:
-/// 1. If `DATABASE_URL` is set in the environment, use it directly.
-/// 2. In Development (`cfg!(debug_assertions)`):
-///    Locates the project repository root and places the database in `<repo_root>/dev-data/40labs-dev.db`.
-///    This guarantees the SQLite file, WAL, and SHM files live outside any directories watched
-///    by Tauri's development file watcher (e.g. `src-tauri/`), preventing infinite rebuild loops.
-/// 3. In Production (`!cfg!(debug_assertions)`):
-///    Places the database inside the system's standard user data directory for `com.40labs.core-desktop`.
-pub fn resolve_db_url() -> String {
+pub fn resolve_db_url() -> Result<String, Box<dyn std::error::Error>> {
     if let Ok(url) = env::var("DATABASE_URL") {
         if !url.trim().is_empty() {
             println!("[40Labs DB] Using DATABASE_URL environment override: {}", url);
-            return url;
+            return Ok(url);
         }
     }
 
-    let db_path = resolve_db_file_path();
+    let db_path = resolve_db_file_path()?;
 
-    // Ensure containing directory exists
     if let Some(parent) = db_path.parent() {
         if !parent.exists() {
-            if let Err(err) = fs::create_dir_all(parent) {
-                eprintln!(
-                    "[40Labs DB] Warning: Failed to create database directory {:?}: {}",
-                    parent, err
-                );
-            }
+            fs::create_dir_all(parent)?;
         }
     }
 
     let db_path_str = db_path.to_string_lossy();
     println!("[40Labs DB] Resolved database path: {}", db_path_str);
 
-    format!("sqlite:{}?mode=rwc", db_path_str)
+    Ok(format!("sqlite:{}?mode=rwc", db_path_str))
 }
 
-/// Resolves absolute PathBuf for the SQLite database file.
-pub fn resolve_db_file_path() -> PathBuf {
+pub fn resolve_db_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     if cfg!(debug_assertions) {
         resolve_dev_database_path()
     } else {
@@ -65,7 +49,7 @@ pub fn resolve_db_file_path() -> PathBuf {
     }
 }
 
-fn resolve_dev_database_path() -> PathBuf {
+fn resolve_dev_database_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let start_dir = env::var("CARGO_MANIFEST_DIR")
         .map(PathBuf::from)
         .unwrap_or_else(|_| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
@@ -76,23 +60,21 @@ fn resolve_dev_database_path() -> PathBuf {
             || current.join("turbo.json").exists()
             || current.join(".git").exists()
         {
-            return current.join("dev-data").join("40labs-dev.db");
+            return Ok(current.join("dev-data").join("40labs-dev.db"));
         }
         current = parent;
     }
 
-    // Fallback: 2 levels up from CARGO_MANIFEST_DIR (apps/core-desktop/src-tauri -> repo root)
-    start_dir
+    Ok(start_dir
         .parent()
         .and_then(|p| p.parent())
         .and_then(|p| p.parent())
         .unwrap_or(&start_dir)
         .join("dev-data")
-        .join("40labs-dev.db")
+        .join("40labs-dev.db"))
 }
 
-fn resolve_prod_database_path() -> PathBuf {
-    // OS Application Data Directory
+fn resolve_prod_database_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
     let base_dir = std::env::var_os("APPDATA")
         .map(PathBuf::from)
         .or_else(|| {
@@ -104,11 +86,11 @@ fn resolve_prod_database_path() -> PathBuf {
         })
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
-    base_dir.join("com.40labs.core-desktop").join("40labs.db")
+    Ok(base_dir.join("com.40labs.core-desktop").join("40labs.db"))
 }
 
 pub async fn init_db_pool() -> Result<SqlitePool, Box<dyn std::error::Error>> {
-    let db_url = resolve_db_url();
+    let db_url = resolve_db_url()?;
     init_db_pool_with_url(&db_url).await
 }
 
@@ -125,10 +107,22 @@ pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn s
         .connect_with(connect_options)
         .await?;
 
-    // TODO: [reason: at-rest encryption deferred] [phase 2] swap here (SQLCipher)
-    sqlx::migrate!("../../../infra/db/sqlite-schema/migrations")
+    let migrate_res = sqlx::migrate!("../../../infra/db/sqlite-schema/migrations")
         .run(&pool)
-        .await?;
+        .await;
+
+    if let Err(err) = migrate_res {
+        let err_str = err.to_string();
+        if err_str.contains("mismatch") || err_str.contains("migration") || err_str.contains("VersionMismatch") {
+            eprintln!("[40Labs DB ERROR] Migration checksum or version mismatch detected: {}", err_str);
+            if cfg!(debug_assertions) {
+                eprintln!("[40Labs DB] [DEBUG] Please run `pnpm db:reset` to clear the dev database and re-run migrations.");
+            } else {
+                eprintln!("[40Labs DB] [RELEASE] Migration mismatch in production. Refusing to start and never auto-deleting data.");
+            }
+        }
+        return Err(Box::new(err));
+    }
 
     Ok(pool)
 }
@@ -139,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_resolve_dev_db_path() {
-        let path = resolve_db_file_path();
+        let path = resolve_db_file_path().unwrap();
         let path_str = path.to_string_lossy();
         assert!(
             path_str.contains("dev-data"),
@@ -158,6 +152,45 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_migrations_unique_and_gapless() {
+        let migration_dir = resolve_dev_database_path()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("infra")
+            .join("db")
+            .join("sqlite-schema")
+            .join("migrations");
+
+        let entries = fs::read_dir(&migration_dir).expect("Failed to read migrations directory");
+        let mut versions = Vec::new();
+        for entry in entries {
+            if let Ok(e) = entry {
+                let name = e.file_name().to_string_lossy().to_string();
+                if name.ends_with(".sql") {
+                    let parts: Vec<&str> = name.split('_').collect();
+                    if let Ok(v) = parts[0].parse::<u32>() {
+                        versions.push(v);
+                    }
+                }
+            }
+        }
+        versions.sort();
+        assert!(!versions.is_empty(), "Migrations list cannot be empty");
+        for (i, &v) in versions.iter().enumerate() {
+            assert_eq!(
+                v,
+                (i + 1) as u32,
+                "Migrations must be unique and gapless starting at 1. Found version {} at index {}",
+                v,
+                i
+            );
+        }
+    }
+
     #[tokio::test]
     async fn test_init_db_pool_migrations_and_foreign_keys() {
         let pool = init_db_pool_with_url("sqlite::memory:")
@@ -170,7 +203,6 @@ mod tests {
             .expect("Failed query");
         assert_eq!(row.0, 1);
 
-        // Verify foreign key integrity
         let fk_violations: Vec<(String, Option<i64>, String, i64)> =
             sqlx::query_as("PRAGMA foreign_key_check")
                 .fetch_all(&pool)
@@ -189,7 +221,6 @@ mod tests {
             .await
             .expect("Failed to initialize pool");
 
-        // Insert required parent user first
         sqlx::query(
             r#"
             INSERT OR IGNORE INTO app_user (id, workspace_id, branch_id, username, first_name, last_name, full_name, role, role_preset, active, created_at, updated_at)
@@ -202,7 +233,6 @@ mod tests {
 
         let audit_id = format!("audit_test_{}", uuid::Uuid::new_v4());
 
-        // Insert audit log row
         sqlx::query(
             r#"
             INSERT INTO audit_log (id, workspace_id, branch_id, action, performed_by_user_id, target_entity_type, target_entity_id, metadata)
@@ -214,7 +244,6 @@ mod tests {
         .await
         .expect("Failed inserting audit log row");
 
-        // Verify UPDATE is rejected by trigger
         let update_res = sqlx::query("UPDATE audit_log SET metadata = '{\"tampered\": true}' WHERE id = ?")
             .bind(&audit_id)
             .execute(&pool)
@@ -227,7 +256,6 @@ mod tests {
             err_msg
         );
 
-        // Verify DELETE is rejected by trigger
         let delete_res = sqlx::query("DELETE FROM audit_log WHERE id = ?")
             .bind(&audit_id)
             .execute(&pool)

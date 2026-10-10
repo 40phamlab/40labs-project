@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: 40labs-postgres-prod
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB: afya_core
+    secrets:
+      - postgres_user
+      - postgres_password
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$(cat /run/secrets/postgres_user)\" -d afya_core"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api-core:
+    build:
+      context: ../..
+      dockerfile: infra/docker/api-core.Dockerfile
+    container_name: 40labs-api-core-prod
+    environment:
+      DATABASE_URL_FILE: /run/secrets/database_url
+      NEXTSMS_API_TOKEN_FILE: /run/secrets/nextsms_api_token
+      ACTIVATION_SIGNING_KEY_FILE: /run/secrets/activation_signing_key
+      SMS_MODE: live
+      PORT: 3000
+    secrets:
+      - database_url
+      - nextsms_api_token
+      - activation_signing_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    user: "65532:65532"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: always
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data_prod:
+
+secrets:
+  postgres_user:
+    file: ./secrets/postgres_user.txt
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  database_url:
+    file: ./secrets/database_url.txt
+  nextsms_api_token:
+    file: ./secrets/nextsms_api_token.txt
+  activation_signing_key:
+    file: ./secrets/activation_signing_key.txt

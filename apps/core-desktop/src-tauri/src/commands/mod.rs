@@ -16,6 +16,7 @@ mod tests {
     fn test_command_policy_completeness() {
         let registered_commands = vec![
             "system_health_check",
+            "frontend_log",
             "auth_status",
             "auth_login",
             "auth_logout",

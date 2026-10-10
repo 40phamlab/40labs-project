@@ -17,6 +17,9 @@ pub enum AuditAction {
     LoginSuccess,
     LoginFailed,
     LoginFailedUnknownUser,
+    PinUnlockSuccess,
+    PinUnlockFailed,
+    SessionDestroyedPinLockout,
     Custom(String),
 }
 
@@ -37,6 +40,9 @@ impl AuditAction {
             AuditAction::LoginSuccess => "login_success",
             AuditAction::LoginFailed => "login_failed",
             AuditAction::LoginFailedUnknownUser => "login_failed_unknown_user",
+            AuditAction::PinUnlockSuccess => "pin_unlock_success",
+            AuditAction::PinUnlockFailed => "pin_unlock_failed",
+            AuditAction::SessionDestroyedPinLockout => "session_destroyed_pin_lockout",
             AuditAction::Custom(s) => s.as_str(),
         }
     }

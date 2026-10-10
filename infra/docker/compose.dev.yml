@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: 40labs-postgres-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: afya_core
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d afya_core"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api-core:
+    build:
+      context: ../..
+      dockerfile: infra/docker/api-core.Dockerfile
+    container_name: 40labs-api-core-dev
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@postgres:5432/afya_core}
+      SMS_MODE: ${SMS_MODE:-test}
+      NEXTSMS_API_TOKEN: ${NEXTSMS_API_TOKEN:-test_token}
+      NEXTSMS_SENDER_ID: ${NEXTSMS_SENDER_ID:-40Labs}
+      PORT: 3000
+      ACTIVATION_SIGNING_KEY: ${ACTIVATION_SIGNING_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

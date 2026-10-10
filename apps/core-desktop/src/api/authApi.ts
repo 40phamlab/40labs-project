@@ -1,5 +1,6 @@
 import type { Business } from '@40labs/types';
 import { invokeCommand, isTauriAvailable } from './client';
+import { logAuthDebug } from '../lib/debugLog';
 
 export interface AuthStatusResponse {
   deviceBound: boolean;
@@ -44,7 +45,7 @@ export interface AuthApi {
   businessSetIdleLock(minutes: number): Promise<void>;
 }
 
-// Mock state for browser dev preview (!isTauri() && DEV)
+// Mock initial state: session: null, deviceBound: false, business: null, no seeded users
 let mockState: AuthStatusResponse = {
   deviceBound: false,
   business: null,
@@ -52,6 +53,9 @@ let mockState: AuthStatusResponse = {
   onboardingState: 'registered',
   idleLockMinutes: 5,
 };
+
+let mockPinFailures = 0;
+let mockLockoutUntil = 0;
 
 export const tauriAuthApi: AuthApi = {
   status: () => invokeCommand<AuthStatusResponse>('auth_status'),
@@ -105,9 +109,24 @@ export const mockAuthApi: AuthApi = {
     }
   },
   unlockPin: async (pin) => {
-    if (pin !== '123456') {
-      throw { code: 'INVALID_CREDENTIALS' };
+    if (Date.now() < mockLockoutUntil) {
+      throw { code: 'LOCKED', retryAfterSecs: Math.ceil((mockLockoutUntil - Date.now()) / 1000) };
     }
+    if (pin !== '123456') {
+      mockPinFailures++;
+      if (mockPinFailures >= 5) {
+        mockState.session = null;
+        mockPinFailures = 0;
+        throw { code: 'INVALID_CREDENTIALS' };
+      }
+      if (mockPinFailures >= 3) {
+        mockLockoutUntil = Date.now() + 5000;
+        throw { code: 'INVALID_CREDENTIALS', retryAfterSecs: 5 };
+      }
+      throw { code: 'INVALID_CREDENTIALS', retryAfterSecs: 0 };
+    }
+    mockPinFailures = 0;
+    mockLockoutUntil = 0;
     if (mockState.session) {
       mockState.session.locked = false;
     }
@@ -214,7 +233,20 @@ export const authApi: AuthApi = new Proxy({} as AuthApi, {
 
     const fn = activeApi[prop];
     if (typeof fn === 'function') {
-      return fn.bind(activeApi);
+      return async (...args: any[]) => {
+        const start = performance.now();
+        try {
+          const res = await (fn as any)(...args);
+          const duration = Math.round(performance.now() - start);
+          logAuthDebug(String(prop), duration, true);
+          return res;
+        } catch (err: any) {
+          const duration = Math.round(performance.now() - start);
+          const code = err?.code || 'ERROR';
+          logAuthDebug(String(prop), duration, false, code);
+          throw err;
+        }
+      };
     }
     return fn;
   },

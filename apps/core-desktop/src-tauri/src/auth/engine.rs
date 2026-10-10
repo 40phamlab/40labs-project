@@ -367,7 +367,7 @@ impl AuthEngine {
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?
             .ok_or(AuthError::SessionRequired)?;
 
-        if cred.pin_hash.is_none() || cred.pin_hash.as_ref().unwrap().is_empty() {
+        if cred.pin_hash.is_none() {
             return Err(AuthError::PinSetupRequired);
         }
 
@@ -375,30 +375,34 @@ impl AuthEngine {
         let now_iso = self.state.clock.now_iso();
         let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
+        let user = UserRepository::get_by_id(&self.pool, &user_id).await.ok().flatten();
+        let ws_id = user.as_ref().map(|u| u.workspace_id.clone()).unwrap_or_else(|| "ws_default".to_string());
+        let branch_id = user.as_ref().map(|u| u.branch_id.clone()).unwrap_or_else(|| "br_default".to_string());
+
         let valid = hashing::verify_pin(&user_id, pin, self.keystore.pin_pepper(), pin_hash);
         if !valid {
             let new_fails = cred.failed_pin_attempts + 1;
+            CredentialRepository::increment_pin_failures(&mut tx, &user_id, new_fails, &now_iso)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
             if new_fails >= 5 {
                 let mut session_guard = self.state.session.write().await;
                 *session_guard = None;
 
-                let user = UserRepository::get_by_id(&self.pool, &user_id).await.ok().flatten();
-                let ws_id = user.as_ref().map(|u| u.workspace_id.clone()).unwrap_or_else(|| "ws_default".to_string());
-                let branch_id = user.as_ref().map(|u| u.branch_id.clone()).unwrap_or_else(|| "br_default".to_string());
-
                 let audit = AuditLogEntry {
                     id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
-                    workspace_id: ws_id,
-                    branch_id,
-                    action: "session_destroyed".to_string(),
+                    workspace_id: ws_id.clone(),
+                    branch_id: branch_id.clone(),
+                    action: AuditAction::SessionDestroyedPinLockout.as_str().to_string(),
                     performed_by_user_id: Some(user_id.clone()),
                     target_entity_type: "Session".to_string(),
                     target_entity_id: user_id.clone(),
-                    metadata: Some(serde_json::json!({ "reason": "max_pin_failures" }).to_string()),
+                    metadata: Some(serde_json::json!({ "reason": "max_pin_failures", "failed_attempts": new_fails }).to_string()),
                     created_at: now_iso.clone(),
                 };
-                audit::append(&mut tx, &audit).await.ok();
-                tx.commit().await.ok();
+                audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
                 return Err(AuthError::InvalidCredentials { retry_after_secs: None });
             }
 
@@ -408,19 +412,11 @@ impl AuthEngine {
                 _ => 30,
             };
 
-            CredentialRepository::increment_pin_failures(&mut tx, &user_id, new_fails, &now_iso)
-                .await
-                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-
-            let user = UserRepository::get_by_id(&self.pool, &user_id).await.ok().flatten();
-            let ws_id = user.as_ref().map(|u| u.workspace_id.clone()).unwrap_or_else(|| "ws_default".to_string());
-            let branch_id = user.as_ref().map(|u| u.branch_id.clone()).unwrap_or_else(|| "br_default".to_string());
-
             let audit = AuditLogEntry {
                 id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
-                workspace_id: ws_id,
-                branch_id,
-                action: "pin_unlock_failed".to_string(),
+                workspace_id: ws_id.clone(),
+                branch_id: branch_id.clone(),
+                action: AuditAction::PinUnlockFailed.as_str().to_string(),
                 performed_by_user_id: Some(user_id.clone()),
                 target_entity_type: "UserCredential".to_string(),
                 target_entity_id: user_id.clone(),
@@ -436,6 +432,19 @@ impl AuthEngine {
         CredentialRepository::reset_pin_failures(&mut tx, &user_id, &now_iso)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        let audit = AuditLogEntry {
+            id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+            workspace_id: ws_id.clone(),
+            branch_id: branch_id.clone(),
+            action: AuditAction::PinUnlockSuccess.as_str().to_string(),
+            performed_by_user_id: Some(user_id.clone()),
+            target_entity_type: "UserCredential".to_string(),
+            target_entity_id: user_id.clone(),
+            metadata: Some(serde_json::json!({ "success": true }).to_string()),
+            created_at: now_iso.clone(),
+        };
+        audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let mut session_guard = self.state.session.write().await;
