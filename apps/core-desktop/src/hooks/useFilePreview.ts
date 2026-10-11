@@ -40,6 +40,12 @@ export function useFilePreview() {
             category: 'attachments',
           });
           toast.success(`Saved to ${res.path}`);
+          try {
+            const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
+            await revealItemInDir(res.path);
+          } catch (e) {
+            console.error('Failed to reveal item in dir:', e);
+          }
         } else {
           toast.success(`Downloaded ${att.file_name}`);
         }
@@ -55,6 +61,12 @@ export function useFilePreview() {
               destPath,
             });
             toast.success(`Saved to ${savedPath}`);
+            try {
+              const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
+              await revealItemInDir(savedPath);
+            } catch (e) {
+              console.error('Failed to reveal item in dir:', e);
+            }
           }
         } else {
           toast.success(`Saved ${att.file_name}`);
