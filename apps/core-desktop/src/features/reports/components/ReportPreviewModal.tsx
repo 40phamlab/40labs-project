@@ -10,6 +10,7 @@ import { downloadReportDocx, createReportDocxBlob } from '../utils/exportReportD
 import { downloadReportXlsx, createReportXlsxBlob } from '../utils/exportReportXlsx';
 import { downloadReportCsv, createReportCsvBlob } from '../utils/exportReportCsv';
 import { useFilePreviewContext } from '../../../providers/FilePreviewProvider';
+import { LoaderAnimation } from '../../../components/brand';
 
 export interface ReportPreviewModalProps {
   isOpen: boolean;
@@ -152,7 +153,12 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
         </div>
 
         {/* Document Preview Canvas */}
-        <div className="max-h-[520px] overflow-y-auto p-6 bg-surface-muted rounded-card border border-border flex justify-center">
+        {isExporting ? (
+          <div className="min-h-[300px] flex items-center justify-center p-8 bg-surface-muted rounded-card border border-border">
+            <LoaderAnimation variant="long" size={64} label="Inasindika ripoti..." />
+          </div>
+        ) : (
+          <div className="max-h-[520px] overflow-y-auto p-6 bg-surface-muted rounded-card border border-border flex justify-center">
           <div
             className="bg-panel shadow-lg rounded-card border border-border p-8 flex flex-col gap-6 transition-all"
             style={{ width: `${Math.round(720 * (zoomLevel / 100))}px`, minHeight: '900px' }}
@@ -249,6 +255,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
             </div>
           </div>
         </div>
+        )}
 
         {/* Modal Actions */}
         <div className="flex items-center justify-between pt-3 border-t border-border">

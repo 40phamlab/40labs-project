@@ -3,6 +3,7 @@ import { Panel, Toggle, Button, StatusBadge } from '@40labs/ui-components';
 import { Mail, MessageSquare, Globe, Smartphone, Plus, Trash2 } from 'lucide-react';
 import { useIntegrations } from '../../../hooks/useIntegrations';
 import { useUsers } from '../../../hooks/useUsers';
+import { LoaderAnimation } from '../../../components/brand';
 import type { CollaboratorRef } from '@40labs/types';
 
 export const IntegrationsPanel: React.FC = () => {
@@ -22,8 +23,8 @@ export const IntegrationsPanel: React.FC = () => {
 
   if (isLoadingIntegrations || !integrationsConfig) {
     return (
-      <div className="flex items-center justify-center py-12 text-xs text-text-muted">
-        Loading integrations configuration...
+      <div className="flex items-center justify-center py-12">
+        <LoaderAnimation variant="instant" size={64} label="Inapakia..." />
       </div>
     );
   }

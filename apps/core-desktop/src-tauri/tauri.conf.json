@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "core-desktop",
+  "productName": "40LabsCore",
   "version": "0.1.0",
   "identifier": "com.40labs.core-desktop",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "core-desktop",
+        "title": "40LabsCore",
         "width": 1200,
         "height": 800,
         "minWidth": 1000,

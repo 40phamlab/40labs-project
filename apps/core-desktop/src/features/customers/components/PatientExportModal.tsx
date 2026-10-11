@@ -4,6 +4,7 @@ import { Modal, Button, Field, FieldLabel, Select } from '@40labs/ui-components'
 import type { Customer } from '@40labs/types';
 import { requirePin } from './CustomerList';
 import { Download, Share2, Printer, CheckCircle2, AlertCircle } from 'lucide-react';
+import { LoaderAnimation } from '../../../components/brand';
 
 interface PatientExportModalProps {
   isOpen: boolean;
@@ -167,6 +168,12 @@ export const PatientExportModal: React.FC<PatientExportModalProps> = ({
       }
     >
       <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+        {isProcessing && (
+          <div className="p-4 bg-panel-subtle border border-accent/30 rounded-card flex items-center justify-center">
+            <LoaderAnimation variant="long" size={48} label="Inasindika ripoti..." />
+          </div>
+        )}
+
         {statusMessage && (
           <div className="p-3 bg-success/10 border border-success/30 rounded-card text-xs text-success flex items-center gap-2">
             <CheckCircle2 size={16} />

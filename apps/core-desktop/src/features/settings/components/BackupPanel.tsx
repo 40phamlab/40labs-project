@@ -11,6 +11,7 @@ import {
 import { Database, Download, Play, Wifi, WifiOff } from 'lucide-react';
 import type { BackupRecord, ScheduleChannel } from '@40labs/types';
 import { useBackup } from '../../../hooks/useBackup';
+import { LoaderAnimation } from '../../../components/brand';
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null || bytes === undefined) return '—';
@@ -180,6 +181,12 @@ export const BackupPanel: React.FC = () => {
         </div>
 
         {/* Action Button Row */}
+        {isRunningBackup && (
+          <div className="p-4 bg-panel-subtle rounded-card border border-primary/30 flex items-center justify-center my-2">
+            <LoaderAnimation variant="long" size={48} label="Inahifadhi data ya nakala..." />
+          </div>
+        )}
+
         <div className="flex items-center justify-between pt-2">
           <div className="text-xs text-text-muted">
             Last successful run:{' '}

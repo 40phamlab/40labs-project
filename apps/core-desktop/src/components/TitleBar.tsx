@@ -4,6 +4,7 @@ import { useAppShell } from '@40labs/ui-components';
 import { HamburgerMenu } from './HamburgerMenu';
 import { BranchControl } from './BranchControl';
 import { ConnectivityIndicator } from './ConnectivityIndicator';
+import { ThemeLogo } from './brand';
 
 export interface TitleBarProps {
   brandName?: string;
@@ -80,9 +81,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
         {/* Logo */}
         <div className="flex items-center gap-2 px-2 no-drag" data-tauri-drag-region="false">
-          <div className="w-4 h-4 bg-accent rounded flex items-center justify-center text-[9px] font-bold text-text-inverse">
-            40
-          </div>
+          <ThemeLogo variant="mark" height={16} />
           <span className="font-heading font-bold text-xs tracking-tight text-text-primary">
             {brandName}
           </span>

@@ -16,6 +16,7 @@ import { CompactProductRow } from '../features/purchases/components/CompactProdu
 import { ProductActionCard } from '../features/purchases/components/ProductActionCard';
 import { useFilePreviewContext } from '../providers/FilePreviewProvider';
 import { createReportPdfBlob } from '../features/reports/utils/exportReportPdf';
+import { ThemeLogo, LoaderAnimation } from '../components/brand';
 
 export default function ComponentLabV2() {
   const [activePoFilter, setActivePoFilter] = useState('all');
@@ -210,6 +211,39 @@ export default function ComponentLabV2() {
             <Button type="button" intent="secondary" onClick={handlePreviewDocxBlob}>
               Preview Word (.docx)
             </Button>
+          </div>
+        </div>
+
+        {/* Brand & Media Foundation Section */}
+        <div className="w-full max-w-xl space-y-8">
+          <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest text-center">
+            Brand & Media Foundation (Phase 9A)
+          </h3>
+          <div className="bg-panel p-8 rounded-card elevation-raised flex flex-col items-center gap-6">
+            <div className="flex items-center gap-8">
+              <div className="text-center space-y-2">
+                <span className="text-xs text-text-muted block">ThemeLogo (Full)</span>
+                <div>
+                  <ThemeLogo variant="full" height={40} />
+                </div>
+              </div>
+              <div className="text-center space-y-2">
+                <span className="text-xs text-text-muted block">ThemeLogo (Mark)</span>
+                <div>
+                  <ThemeLogo variant="mark" height={40} />
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-8 pt-4 border-t border-border w-full justify-around">
+              <div className="text-center space-y-2">
+                <span className="text-xs text-text-muted block">Loader (&lt;2s Instant)</span>
+                <LoaderAnimation variant="instant" size={32} label="Loading data..." />
+              </div>
+              <div className="text-center space-y-2">
+                <span className="text-xs text-text-muted block">Loader (&gt;=2s Long)</span>
+                <LoaderAnimation variant="long" size={32} label="Syncing database..." />
+              </div>
+            </div>
           </div>
         </div>
 

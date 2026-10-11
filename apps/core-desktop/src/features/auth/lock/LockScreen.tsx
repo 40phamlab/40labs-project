@@ -3,6 +3,7 @@ import { Button, Card } from '@40labs/ui-components';
 import { Lock } from 'lucide-react';
 import { PinField } from '../pin/PinField';
 import { authApi } from '../../../api/authApi';
+import { ThemeLogo } from '../../../components/brand';
 
 interface LockScreenProps {
   displayName?: string;
@@ -46,6 +47,7 @@ export const LockScreen: React.FC<LockScreenProps> = ({ displayName, businessNam
     <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-center p-6 select-none">
       <Card className="w-full max-w-md p-8 space-y-6 shadow-2xl border border-border rounded-xl text-center">
         <div className="flex flex-col items-center space-y-3">
+          <ThemeLogo variant="mark" height={40} />
           <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
             <Lock size={32} />
           </div>

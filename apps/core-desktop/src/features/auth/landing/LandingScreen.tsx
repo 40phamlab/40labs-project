@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { Button, Card } from '@40labs/ui-components';
+import { ThemeLogo } from '../../../components/brand';
 
 interface LandingScreenProps {
   onGetStarted: () => void;
@@ -17,13 +18,6 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) =>
     { title: 'Wasiliana na Ushirikiane', titleEn: 'Reach Out & Collaborate', desc: 'Fanya kazi pamoja na wafanyakazi na wataalamu', descEn: 'Collaborate with staff and specialists' },
   ];
 
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setCarouselIndex((prev) => (prev + 1) % features.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [features.length]);
-
   const currentFeature = features[carouselIndex];
 
   return (
@@ -39,8 +33,9 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) =>
       </div>
 
       <Card className="w-full max-w-lg p-8 space-y-8 shadow-xl border border-border rounded-xl text-center">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold font-sora text-primary">40Labs</h1>
+        <div className="space-y-2 flex flex-col items-center">
+          <h1 className="sr-only">40Labs</h1>
+          <ThemeLogo variant="full" height={56} />
           <p className="text-sm text-muted-foreground">
             {lang === 'sw-TZ' ? 'Mfumo wa Kisasa wa Biashara na Afya' : 'Modern Business & Health Platform'}
           </p>
@@ -55,12 +50,15 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) =>
           </p>
         </div>
 
-        <div className="flex justify-center space-x-1">
+        <div className="flex justify-center items-center gap-1.5">
           {features.map((_, idx) => (
-            <span
+            <button
+              type="button"
               key={idx}
-              className={`h-1.5 rounded-full transition-all ${
-                idx === carouselIndex ? 'w-6 bg-primary' : 'w-1.5 bg-border'
+              onClick={() => setCarouselIndex(idx)}
+              aria-label={`Go to slide ${idx + 1}`}
+              className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                idx === carouselIndex ? 'w-6 bg-primary' : 'w-1.5 bg-border hover:bg-text-muted'
               }`}
             />
           ))}

@@ -13,6 +13,7 @@ import { SetupWizardScreen } from './SetupWizardScreen';
 import { StepUpProvider } from './stepup/StepUpProvider';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PublicTitleBar } from '../../components/PublicTitleBar';
+import { LoaderAnimation } from '../../components/brand';
 
 interface AuthGateProps {
   children: React.ReactNode;
@@ -101,10 +102,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
         <PublicTitleBar />
         <div className="flex-1 flex items-center justify-center bg-background text-foreground font-sora">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-text-muted">Inapakia...</span>
-          </div>
+          <LoaderAnimation variant="instant" size={72} label="Inapakia..." />
         </div>
       </div>
     );
