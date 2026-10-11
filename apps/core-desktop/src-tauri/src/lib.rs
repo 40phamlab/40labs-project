@@ -53,6 +53,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            if let Err(e) = services::documents::ensure_layout(app.handle()) {
+                tracing::warn!("Failed to initialize Documents layout on startup: {}. Will lazy-create on first write.", e);
+            }
+            Ok(())
+        })
         .manage(AppState {
             pool,
             lan_state: lan_state_clone,
@@ -122,6 +128,9 @@ pub fn run() {
             commands::notification_cmd::archive_notification,
             commands::notification_cmd::save_attachment,
             commands::notification_cmd::export_attachment,
+            commands::notification_cmd::resolve_attachment_path,
+            commands::notification_cmd::save_bytes_to_documents,
+            commands::notification_cmd::export_attachment_to_path,
             // Devices & Pairing
             commands::devices_cmd::get_paired_devices,
             commands::devices_cmd::initiate_pairing_session,

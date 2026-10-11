@@ -70,6 +70,9 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("archive_notification", CommandPolicy::SessionOnly);
     map.insert("save_attachment", CommandPolicy::SessionOnly);
     map.insert("export_attachment", CommandPolicy::SessionOnly);
+    map.insert("resolve_attachment_path", CommandPolicy::SessionOnly);
+    map.insert("save_bytes_to_documents", CommandPolicy::SessionOnly);
+    map.insert("export_attachment_to_path", CommandPolicy::SessionOnly);
 
     map.insert("get_paired_devices", CommandPolicy::Permission("devices.manage"));
     map.insert("initiate_pairing_session", CommandPolicy::Permission("devices.manage"));

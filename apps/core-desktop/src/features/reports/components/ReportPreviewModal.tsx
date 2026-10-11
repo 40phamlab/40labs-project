@@ -3,12 +3,13 @@ import {
   Modal,
   Button,
 } from '@40labs/ui-components';
-import { Download, ZoomIn, ZoomOut, Check } from 'lucide-react';
+import { Download, ZoomIn, ZoomOut, Check, Eye } from 'lucide-react';
 import { CanonicalReport, ExportFormat } from '../types/reportModel';
-import { downloadReportPdf } from '../utils/exportReportPdf';
-import { downloadReportDocx } from '../utils/exportReportDocx';
-import { downloadReportXlsx } from '../utils/exportReportXlsx';
-import { downloadReportCsv } from '../utils/exportReportCsv';
+import { downloadReportPdf, createReportPdfBlob } from '../utils/exportReportPdf';
+import { downloadReportDocx, createReportDocxBlob } from '../utils/exportReportDocx';
+import { downloadReportXlsx, createReportXlsxBlob } from '../utils/exportReportXlsx';
+import { downloadReportCsv, createReportCsvBlob } from '../utils/exportReportCsv';
+import { useFilePreviewContext } from '../../../providers/FilePreviewProvider';
 
 export interface ReportPreviewModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
   const [zoomLevel, setZoomLevel] = React.useState<number>(100);
   const [isExporting, setIsExporting] = React.useState<boolean>(false);
   const [exportSuccess, setExportSuccess] = React.useState<boolean>(false);
+  const { openBlob } = useFilePreviewContext();
 
   React.useEffect(() => {
     if (isOpen) {
@@ -64,6 +66,29 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
     } catch (err) {
       console.error('Export failed:', err);
       setIsExporting(false);
+    }
+  };
+
+  const handlePreviewBlob = () => {
+    try {
+      let blob: Blob;
+      let filename = `${report.metadata.title}_Report_${new Date().toISOString().split('T')[0]}`;
+      if (selectedFormat === 'pdf') {
+        blob = createReportPdfBlob(report);
+        filename += '.pdf';
+      } else if (selectedFormat === 'docx') {
+        blob = createReportDocxBlob(report);
+        filename += '.docx';
+      } else if (selectedFormat === 'xlsx') {
+        blob = createReportXlsxBlob(report);
+        filename += '.xlsx';
+      } else {
+        blob = createReportCsvBlob(report);
+        filename += '.csv';
+      }
+      openBlob({ fileName: filename, mimeType: blob.type, blob });
+    } catch (err) {
+      console.error('Failed to preview blob:', err);
     }
   };
 
@@ -232,6 +257,15 @@ export const ReportPreviewModal: React.FC<ReportPreviewModalProps> = ({
           </Button>
 
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              intent="secondary"
+              size="sm"
+              leftIcon={<Eye size={14} />}
+              onClick={handlePreviewBlob}
+            >
+              Preview File
+            </Button>
             <Button
               type="button"
               intent="primary"

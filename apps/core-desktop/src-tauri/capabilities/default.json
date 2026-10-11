@@ -6,6 +6,20 @@
   "permissions": [
     "core:default",
     "opener:default",
+    {
+      "identifier": "opener:allow-open-path",
+      "allow": [
+        { "path": "$DOCUMENT/40Labs/**" },
+        { "path": "$APPDATA/attachments/**" }
+      ]
+    },
+    {
+      "identifier": "opener:allow-reveal-item-in-dir",
+      "allow": [
+        { "path": "$DOCUMENT/40Labs/**" },
+        { "path": "$APPDATA/attachments/**" }
+      ]
+    },
     "dialog:allow-open",
     "dialog:allow-save",
     "core:window:allow-toggle-maximize",

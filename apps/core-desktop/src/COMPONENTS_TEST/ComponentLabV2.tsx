@@ -5,6 +5,7 @@ import {
   EntityProfileHeader,
   MoneyDisplay,
   QuantityStepper,
+  Button,
 } from '@40labs/ui-components';
 import { CustomerPicker } from '../features/customers/components/CustomerPicker';
 import { MedicinePicker } from '../features/sales/components/MedicinePicker';
@@ -13,6 +14,8 @@ import { ConfigToggleRow } from '../features/sales/components/ConfigToggleRow';
 import { CategorySquare } from '../features/inventory/components/CategorySquare';
 import { CompactProductRow } from '../features/purchases/components/CompactProductRow';
 import { ProductActionCard } from '../features/purchases/components/ProductActionCard';
+import { useFilePreviewContext } from '../providers/FilePreviewProvider';
+import { createReportPdfBlob } from '../features/reports/utils/exportReportPdf';
 
 export default function ComponentLabV2() {
   const [activePoFilter, setActivePoFilter] = useState('all');
@@ -27,6 +30,8 @@ export default function ComponentLabV2() {
 
   // QuantityStepper Demo States
   const [standardQty, setStandardQty] = useState(2);
+
+  const { openBlob, openAttachment } = useFilePreviewContext();
 
   const mockMedicines: MedicineWithInventory[] = [
     {
@@ -132,6 +137,48 @@ export default function ComponentLabV2() {
     },
   ];
 
+  const handlePreviewAudio = () => {
+    openAttachment({
+      id: 'att_audio_sample',
+      workspace_id: 'ws_demo',
+      branch_id: 'br_demo',
+      message_id: 'msg_demo',
+      kind: 'audio',
+      file_name: 'notification.mp3',
+      mime_type: 'audio/mpeg',
+      size_bytes: 47800,
+      storage_path: '',
+      sha256: '',
+      duration_ms: 3000,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      url: '/media/audio/notification.mp3',
+    } as any);
+  };
+
+  const handlePreviewPdfBlob = () => {
+    const blob = createReportPdfBlob({
+      title: 'Sample Lab & Inventory Report',
+      categoryLabel: 'Laboratory',
+      periodLabel: 'October 2026',
+      generatedAt: new Date().toLocaleString(),
+      kpis: [{ label: 'Total Samples', value: '1,420' }, { label: 'Compliance', value: '99.4%' }],
+      columns: [{ key: 'test', header: 'Test Name' }, { key: 'status', header: 'Status' }],
+      rows: [{ test: 'Complete Blood Count', status: 'Passed' }, { test: 'Malaria Microscopy', status: 'Completed' }],
+    });
+    openBlob({ fileName: 'Sample_Report.pdf', mimeType: 'application/pdf', blob });
+  };
+
+  const handlePreviewCsvBlob = () => {
+    const blob = new Blob(['Item,Stock,Price\nAmoxicillin,120,12500\nParacetamol,340,1500'], { type: 'text/csv' });
+    openBlob({ fileName: 'inventory_export.csv', mimeType: 'text/csv', blob });
+  };
+
+  const handlePreviewDocxBlob = () => {
+    const blob = new Blob(['Sample Word Document Content rendered via Mammoth in FilePreview.'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    openBlob({ fileName: 'Release_Notes.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', blob });
+  };
+
   return (
     <div className="h-screen w-full bg-surface text-text overflow-y-auto scrollbar-thin">
       <div className="flex flex-col items-center p-12 gap-16 pb-40 max-w-7xl mx-auto">
@@ -142,6 +189,27 @@ export default function ComponentLabV2() {
           <div className="bg-panel p-8 rounded-card elevation-raised space-y-6">
             <MoneyDisplay amount={10000} />
             <QuantityStepper value={standardQty} onChange={setStandardQty} min={1} max={8} />
+          </div>
+        </div>
+
+        {/* FilePreview Section */}
+        <div className="w-full max-w-xl space-y-8">
+          <h3 className="text-sm font-bold text-text-muted uppercase tracking-widest text-center">
+            FilePreview Reusable Viewers & Icons
+          </h3>
+          <div className="bg-panel p-8 rounded-card elevation-raised flex flex-wrap gap-4 justify-center">
+            <Button type="button" intent="secondary" onClick={handlePreviewAudio}>
+              Preview Audio (.mp3)
+            </Button>
+            <Button type="button" intent="secondary" onClick={handlePreviewPdfBlob}>
+              Preview PDF Blob
+            </Button>
+            <Button type="button" intent="secondary" onClick={handlePreviewCsvBlob}>
+              Preview CSV Data
+            </Button>
+            <Button type="button" intent="secondary" onClick={handlePreviewDocxBlob}>
+              Preview Word (.docx)
+            </Button>
           </div>
         </div>
 

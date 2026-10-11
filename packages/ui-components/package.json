@@ -13,6 +13,8 @@
     "@40labs/i18n": "workspace:*",
     "@40labs/types": "workspace:*",
     "lucide-react": "^0.475.0",
+    "mammoth": "^1.9.0",
+    "read-excel-file": "^6.0.0",
     "recharts": "^3.10.1"
   },
   "devDependencies": {

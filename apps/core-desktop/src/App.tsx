@@ -30,6 +30,7 @@ import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ToastProvider } from './hooks/useToast';
 import { useNotifications } from './hooks/useNotifications';
 import { AuthGate } from './features/auth/AuthGate';
+import { FilePreviewProvider } from './providers/FilePreviewProvider';
 import './App.css';
 
 export default function App() {
@@ -43,6 +44,20 @@ export default function App() {
   const unreadCount = React.useMemo(() => {
     return notifications.filter((n) => n.status === 'unread').length;
   }, [notifications]);
+
+  const prevUnreadRef = React.useRef(unreadCount);
+  React.useEffect(() => {
+    if (unreadCount > prevUnreadRef.current) {
+      try {
+        // Flag: No user mute setting exists in store yet; playing notification sound on new unread notifications.
+        const audio = new Audio('/media/audio/notification.mp3');
+        audio.play().catch(() => {});
+      } catch (_err) {
+        // ignore autoplay policy errors
+      }
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount]);
 
   const NAV_ITEMS: Array<NavItem<ScreenId>> = [
     { id: 'dashboard', labelKey: 'nav.home', route: 'dashboard', icon: <Home size={18} /> },
@@ -122,18 +137,20 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <AuthGate>
-        <AppShell
-          variant="floating"
-          topBar={topBarElement}
-          sidebar={sidebarElement}
-          navState={sidebarState}
-          lastNonClosedState={lastNonClosedState}
-          onNavStateChange={setSidebarState}
-        >
-          {renderContent()}
-        </AppShell>
-      </AuthGate>
+      <FilePreviewProvider>
+        <AuthGate>
+          <AppShell
+            variant="floating"
+            topBar={topBarElement}
+            sidebar={sidebarElement}
+            navState={sidebarState}
+            lastNonClosedState={lastNonClosedState}
+            onNavStateChange={setSidebarState}
+          >
+            {renderContent()}
+          </AppShell>
+        </AuthGate>
+      </FilePreviewProvider>
     </ToastProvider>
   );
 }

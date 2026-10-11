@@ -29,6 +29,11 @@ export interface SaveAttachmentPayload {
   sourcePath?: string;
 }
 
+export interface ExportResult {
+  path: string;
+  folder: string;
+}
+
 let notificationsStore: Notification[] = [...initialNotifications];
 let messagesStore: NotificationMessage[] = [...initialMessages];
 let attachmentsStore: MessageAttachment[] = [...initialAttachments];
@@ -211,14 +216,27 @@ export const notificationsApi = {
     return att;
   },
 
-  exportAttachment: async (attachmentId: string, destPath?: string): Promise<string> => {
+  exportAttachment: async (attachmentId: string, category: 'attachments' | 'exports' | 'reports' | 'lab_results' = 'attachments'): Promise<ExportResult> => {
     if (isUsingTauriIpc()) {
-      return invokeCommand<string>('export_attachment', {
+      return invokeCommand<ExportResult>('export_attachment', {
         attachmentId,
-        destPath: destPath || null,
+        category,
       });
     }
-    return destPath || `/mock/exported/${attachmentId}`;
+    return {
+      path: `/mock/Documents/40Labs/${category}/${attachmentId}`,
+      folder: category,
+    };
+  },
+
+  exportAttachmentToPath: async (attachmentId: string, destPath: string): Promise<string> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<string>('export_attachment_to_path', {
+        attachmentId,
+        destPath,
+      });
+    }
+    return destPath;
   },
 
   // Aliases

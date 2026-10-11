@@ -7,10 +7,17 @@ use crate::models::notification::{
 };
 use crate::repositories::notification_repo::NotificationRepository;
 use crate::auth::{AuthEngine, AuthErrorResponse};
+use crate::services::documents::{ExportCategory, ensure_layout, sanitize_file_name, unique_path};
 
 const MAX_IMAGE_SIZE: i64 = 16 * 1024 * 1024; // 16 MB
 const MAX_AUDIO_SIZE: i64 = 16 * 1024 * 1024; // 16 MB
 const MAX_FILE_SIZE: i64 = 100 * 1024 * 1024; // 100 MB
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct ExportResult {
+    pub path: String,
+    pub folder: String,
+}
 
 #[tauri::command]
 pub async fn get_notifications(
@@ -202,11 +209,10 @@ pub async fn save_attachment(
 }
 
 #[tauri::command]
-pub async fn export_attachment(
+pub async fn resolve_attachment_path(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
     attachment_id: String,
-    dest_path: Option<String>,
 ) -> Result<String, AuthErrorResponse> {
     let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
     let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
@@ -220,23 +226,158 @@ pub async fn export_attachment(
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
     let source_path = app_data_dir.join(&att.storage_path);
 
-    if !source_path.exists() {
-        return Err(crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response());
+    let canonical_app_data = app_data_dir.canonicalize()
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+    let canonical_source = source_path.canonicalize()
+        .map_err(|_e| crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response())?;
+
+    let expected_prefix = canonical_app_data.join("attachments").join(&ctx.workspace_id);
+    if !canonical_source.starts_with(&expected_prefix) {
+        return Err(crate::auth::AuthError::PolicyViolation("Access denied: path traversal attempt".to_string()).to_response());
     }
 
-    let target_path = if let Some(path) = dest_path {
-        std::path::PathBuf::from(path)
-    } else {
-        return Err(crate::auth::AuthError::PolicyViolation("Destination path required".to_string()).to_response());
-    };
+    Ok(canonical_source.to_string_lossy().to_string())
+}
 
-    if let Some(parent) = target_path.parent() {
-        std::fs::create_dir_all(parent)
+#[tauri::command]
+pub async fn export_attachment(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    attachment_id: String,
+    category: ExportCategory,
+) -> Result<ExportResult, AuthErrorResponse> {
+    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
+    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+
+    let att = NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, &attachment_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
+        .ok_or_else(|| crate::auth::AuthError::NotFound("Attachment not found".to_string()).to_response())?;
+
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+    let source_path = app_data_dir.join(&att.storage_path);
+
+    let canonical_app_data = app_data_dir.canonicalize()
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+    let canonical_source = source_path.canonicalize()
+        .map_err(|_e| crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response())?;
+
+    let expected_prefix = canonical_app_data.join("attachments").join(&ctx.workspace_id);
+    if !canonical_source.starts_with(&expected_prefix) {
+        return Err(crate::auth::AuthError::PolicyViolation("Access denied".to_string()).to_response());
+    }
+
+    let root = ensure_layout(&app)
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
+    let target_dir = root.join(category.folder_name());
+    std::fs::create_dir_all(&target_dir)
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+
+    let sanitized = sanitize_file_name(&att.file_name);
+    let target_path = unique_path(&target_dir, &sanitized);
+
+    std::fs::copy(&canonical_source, &target_path)
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+
+    Ok(ExportResult {
+        path: target_path.to_string_lossy().to_string(),
+        folder: category.folder_name().to_string(),
+    })
+}
+
+#[tauri::command]
+pub async fn save_bytes_to_documents(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    category: ExportCategory,
+    file_name: String,
+    bytes: Vec<u8>,
+) -> Result<ExportResult, AuthErrorResponse> {
+    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
+    let _ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+
+    if bytes.len() as i64 > MAX_FILE_SIZE {
+        return Err(crate::auth::AuthError::PolicyViolation("File exceeds 100MB limit".to_string()).to_response());
+    }
+
+    let root = ensure_layout(&app)
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
+    let target_dir = root.join(category.folder_name());
+    std::fs::create_dir_all(&target_dir)
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+
+    let sanitized = sanitize_file_name(&file_name);
+    let target_path = unique_path(&target_dir, &sanitized);
+
+    std::fs::write(&target_path, &bytes)
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+
+    Ok(ExportResult {
+        path: target_path.to_string_lossy().to_string(),
+        folder: category.folder_name().to_string(),
+    })
+}
+
+#[tauri::command]
+pub async fn export_attachment_to_path(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    attachment_id: String,
+    dest_path: String,
+) -> Result<String, AuthErrorResponse> {
+    // "Save as…" frontend-driven dialog export:
+    // Requires an absolute path, rejects UNC/device paths (\\?\, \\.\), and sanitizes only the final component.
+    // Why: When user chooses a specific destination via dialog, we respect their directory choice
+    // but sanitize the filename component to prevent path injection/traversal while preserving target folder.
+    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
+    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+
+    let att = NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, &attachment_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
+        .ok_or_else(|| crate::auth::AuthError::NotFound("Attachment not found".to_string()).to_response())?;
+
+    let dest = std::path::PathBuf::from(&dest_path);
+    if !dest.is_absolute() {
+        return Err(crate::auth::AuthError::PolicyViolation("Destination path must be absolute".to_string()).to_response());
+    }
+
+    let path_str = dest.to_string_lossy();
+    if path_str.starts_with(r"\\?\") || path_str.starts_with(r"\\.\") || path_str.starts_with(r"//?/") || path_str.starts_with(r"//./") {
+        return Err(crate::auth::AuthError::PolicyViolation("UNC and device paths are prohibited".to_string()).to_response());
+    }
+
+    let file_name_comp = dest.file_name()
+        .ok_or_else(|| crate::auth::AuthError::PolicyViolation("Invalid destination file name".to_string()).to_response())?
+        .to_string_lossy();
+    let sanitized_file_name = sanitize_file_name(&file_name_comp);
+
+    let parent = dest.parent()
+        .ok_or_else(|| crate::auth::AuthError::PolicyViolation("Invalid destination directory".to_string()).to_response())?;
+    let final_dest = parent.join(sanitized_file_name);
+
+    if let Some(p) = final_dest.parent() {
+        std::fs::create_dir_all(p)
             .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
     }
 
-    std::fs::copy(&source_path, &target_path)
+    let app_data_dir = app.path().app_data_dir()
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+    let source_path = app_data_dir.join(&att.storage_path);
+
+    let canonical_app_data = app_data_dir.canonicalize()
+        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+    let canonical_source = source_path.canonicalize()
+        .map_err(|_e| crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response())?;
+
+    let expected_prefix = canonical_app_data.join("attachments").join(&ctx.workspace_id);
+    if !canonical_source.starts_with(&expected_prefix) {
+        return Err(crate::auth::AuthError::PolicyViolation("Access denied".to_string()).to_response());
+    }
+
+    std::fs::copy(&canonical_source, &final_dest)
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
 
-    Ok(target_path.to_string_lossy().to_string())
+    Ok(final_dest.to_string_lossy().to_string())
 }

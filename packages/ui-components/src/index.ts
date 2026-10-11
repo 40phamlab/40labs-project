@@ -81,3 +81,4 @@ export * from './data-display/List';
 export * from './data-display/DashboardComposites';
 export * from './data-display/EntityProfileHeader';
 export * from './data-display/Chart';
+export * from './data-display/FilePreview';

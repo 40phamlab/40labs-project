@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { FileText, Download, CheckCircle, AlertCircle } from 'lucide-react';
-import { IconButton } from '@40labs/ui-components';
-import { isTauriAvailable } from '../../../../api/client';
+import { Download, CheckCircle, AlertCircle } from 'lucide-react';
+import { IconButton, FileTypeIcon } from '@40labs/ui-components';
 import { notificationsApi } from '../../../../api/notificationsApi';
 import { useToast } from '../../../../hooks/useToast';
+import { useFilePreviewContext } from '../../../../providers/FilePreviewProvider';
 
 export interface FileMessageProps {
   attachmentId?: string;
@@ -17,29 +17,45 @@ export const FileMessage: React.FC<FileMessageProps> = ({
   attachmentId,
   name,
   size = '450 KB',
-  url: _url,
+  url,
   className = '',
 }) => {
   const { toast } = useToast();
+  const { openAttachment } = useFilePreviewContext();
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saved' | 'failed'>('idle');
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (attachmentId) {
+      openAttachment({
+        id: attachmentId,
+        workspace_id: 'ws_demo',
+        branch_id: 'br_demo',
+        message_id: 'msg_demo',
+        kind: 'file',
+        file_name: name,
+        mime_type: 'application/pdf',
+        size_bytes: 450000,
+        storage_path: '',
+        sha256: '',
+        duration_ms: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        url,
+      } as any);
+    }
+  };
 
   const handleSave = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      if (isTauriAvailable()) {
-        const { save } = await import('@tauri-apps/plugin-dialog');
-        const destPath = await save({ defaultPath: name });
-        if (destPath && attachmentId) {
-          await notificationsApi.exportAttachment(attachmentId, destPath);
-          setSaveStatus('saved');
-          toast.success(`Saved file to ${destPath}`);
-        }
-      } else {
-        if (attachmentId) {
-          await notificationsApi.exportAttachment(attachmentId);
-        }
+      if (attachmentId) {
+        const res = await notificationsApi.exportAttachment(attachmentId, 'attachments');
         setSaveStatus('saved');
-        toast.success(`Exported file: ${name}`);
+        toast.success(`Saved file to ${res.path}`);
+      } else {
+        setSaveStatus('saved');
+        toast.success(`Saved file: ${name}`);
       }
     } catch (err) {
       console.error('Save file error:', err);
@@ -50,12 +66,12 @@ export const FileMessage: React.FC<FileMessageProps> = ({
 
   return (
     <div
-      onClick={handleSave}
+      onClick={handleClick}
       className={`group flex items-center justify-between gap-3 p-3 bg-panel-strong/40 border border-border/30 rounded-card hover:bg-panel-strong/75 transition-colors cursor-pointer max-w-sm shadow-2xs ${className}`}
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-9 h-9 rounded bg-primary/15 text-primary flex items-center justify-center shrink-0">
-          <FileText size={18} />
+          <FileTypeIcon fileName={name} size={18} />
         </div>
         <div className="flex flex-col min-w-0">
           <span className="text-xs font-bold text-text truncate group-hover:text-primary transition-colors">
