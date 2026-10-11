@@ -3,7 +3,7 @@ import * as React from 'react';
 export type TabVariant = 'line' | 'pills';
 export type TabSize = 'sm' | 'md' | 'lg';
 
-export interface TabProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'label'> {
+export interface TabProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'label' | 'value'> {
   label: React.ReactNode;
   active?: boolean;
   disabled?: boolean;
@@ -11,6 +11,8 @@ export interface TabProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElem
   badge?: React.ReactNode;
   variant?: TabVariant;
   size?: TabSize;
+  value?: string | number;
+  'aria-controls'?: string;
 }
 
 const lineSizeClasses: Record<TabSize, string> = {
@@ -38,6 +40,9 @@ export const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
       onClick,
       className = '',
       type = 'button',
+      value,
+      'aria-controls': ariaControls,
+      id,
       ...rest
     },
     ref,
@@ -67,8 +72,10 @@ export const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
         ref={ref}
         type={type}
         role="tab"
+        id={id}
         aria-selected={active}
         aria-disabled={disabled}
+        aria-controls={ariaControls}
         disabled={disabled}
         onClick={!disabled ? onClick : undefined}
         className={[...baseClasses, stateClasses, sizeClass, className].filter(Boolean).join(' ')}
@@ -84,11 +91,17 @@ export const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
 
 Tab.displayName = 'Tab';
 
-export interface TabsProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TabsProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
   children: React.ReactNode;
   variant?: TabVariant;
   size?: TabSize;
   className?: string;
+  value?: string | number;
+  defaultValue?: string | number;
+  onChange?: (value: string | number) => void;
+  orientation?: 'horizontal' | 'vertical';
+  activation?: 'auto' | 'manual';
+  dir?: 'ltr' | 'rtl';
 }
 
 export const Tabs = ({
@@ -96,55 +109,124 @@ export const Tabs = ({
   variant = 'line',
   size = 'md',
   className = '',
+  value: controlledValue,
+  defaultValue,
+  onChange,
+  orientation = 'horizontal',
+  activation = 'auto',
+  dir = 'ltr',
   ...rest
 }: TabsProps) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const [internalValue, setInternalValue] = React.useState<string | number | undefined>(
+    defaultValue !== undefined ? defaultValue : undefined
+  );
+
+  const isControlled = controlledValue !== undefined;
+  const activeValue = isControlled ? controlledValue : internalValue;
+
+  const handleTabClick = (tabValue: string | number | undefined, originalOnClick?: React.MouseEventHandler<HTMLButtonElement>) => (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (tabValue !== undefined) {
+      if (!isControlled) {
+        setInternalValue(tabValue);
+      }
+      onChange?.(tabValue);
+    }
+    originalOnClick?.(e);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-
     const container = containerRef.current;
     if (!container) return;
 
     const tabs = Array.from(
-      container.querySelectorAll<HTMLButtonElement>('[role="tab"]:not([disabled])'),
+      container.querySelectorAll<HTMLButtonElement>('[role="tab"]:not([disabled]):not([aria-disabled="true"])')
     );
     if (tabs.length === 0) return;
 
     const currentIndex = tabs.findIndex((tab) => tab === document.activeElement);
     if (currentIndex === -1) return;
 
-    e.preventDefault();
+    const isRtl = dir === 'rtl' || container.getAttribute('dir') === 'rtl';
+    const isVertical = orientation === 'vertical';
+
     let nextIndex = currentIndex;
-    if (e.key === 'ArrowRight') {
-      nextIndex = (currentIndex + 1) % tabs.length;
-    } else if (e.key === 'ArrowLeft') {
-      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    let handled = false;
+
+    if (isVertical) {
+      if (e.key === 'ArrowDown') {
+        nextIndex = (currentIndex + 1) % tabs.length;
+        handled = true;
+      } else if (e.key === 'ArrowUp') {
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        handled = true;
+      }
+    } else {
+      const forwardKey = isRtl ? 'ArrowLeft' : 'ArrowRight';
+      const backwardKey = isRtl ? 'ArrowRight' : 'ArrowLeft';
+
+      if (e.key === forwardKey) {
+        nextIndex = (currentIndex + 1) % tabs.length;
+        handled = true;
+      } else if (e.key === backwardKey) {
+        nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        handled = true;
+      }
     }
 
-    tabs[nextIndex]?.focus();
-    tabs[nextIndex]?.click();
+    if (e.key === 'Home') {
+      nextIndex = 0;
+      handled = true;
+    } else if (e.key === 'End') {
+      nextIndex = tabs.length - 1;
+      handled = true;
+    }
+
+    if (handled) {
+      e.preventDefault();
+      const targetTab = tabs[nextIndex];
+      targetTab?.focus();
+      if (activation === 'auto') {
+        targetTab?.click();
+      }
+    } else if (activation === 'manual' && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      (document.activeElement as HTMLElement)?.click();
+    }
   };
 
   const isLine = variant === 'line';
 
   const containerStyle = isLine
-    ? 'flex items-center gap-1 border-b border-border-subtle overflow-x-auto custom-scrollbar'
-    : 'flex items-center gap-1.5 p-1 bg-surface-secondary border border-border-subtle rounded-input overflow-x-auto custom-scrollbar';
+    ? orientation === 'vertical'
+      ? 'flex flex-col items-stretch border-r border-border-subtle overflow-y-auto custom-scrollbar'
+      : 'flex items-center gap-1 border-b border-border-subtle overflow-x-auto custom-scrollbar'
+    : orientation === 'vertical'
+      ? 'flex flex-col items-stretch gap-1.5 p-1 bg-surface-secondary border border-border-subtle rounded-input overflow-y-auto custom-scrollbar'
+      : 'flex items-center gap-1.5 p-1 bg-surface-secondary border border-border-subtle rounded-input overflow-x-auto custom-scrollbar';
 
   return (
     <div
       ref={containerRef}
       role="tablist"
+      aria-orientation={orientation}
       onKeyDown={handleKeyDown}
+      dir={dir}
       className={[containerStyle, className].filter(Boolean).join(' ')}
       {...rest}
     >
-      {React.Children.map(children, (child) => {
+      {React.Children.map(children, (child, index) => {
         if (React.isValidElement<TabProps>(child)) {
+          const tabValue = child.props.value !== undefined ? child.props.value : index;
+          const isActive = isControlled || internalValue !== undefined
+            ? activeValue === tabValue
+            : child.props.active;
+
           return React.cloneElement(child, {
             variant: child.props.variant || variant,
             size: child.props.size || size,
+            active: isActive,
+            onClick: handleTabClick(tabValue, child.props.onClick),
           });
         }
         return child;
@@ -152,3 +234,4 @@ export const Tabs = ({
     </div>
   );
 };
+
