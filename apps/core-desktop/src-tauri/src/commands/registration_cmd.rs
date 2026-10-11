@@ -118,7 +118,10 @@ pub async fn registration_commit(state: State<'_, AppState>, payload: serde_json
     let reg_resp = state.activation_client
         .register(reg_req)
         .await
-        .map_err(|e| AuthError::InternalError(e).to_response())?;
+        .map_err(|e| {
+            tracing::error!(error = %e, "Activation service registration failed");
+            AuthError::InternalError(e).to_response()
+        })?;
 
     let now = chrono::Utc::now().to_rfc3339();
     let mut tx = state.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;

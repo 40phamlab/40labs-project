@@ -80,7 +80,7 @@ export const tauriAuthApi: AuthApi = {
   registrationCommit: (payload) => invokeCommand<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>('registration_commit', { payload }),
   otpRequest: (phone) => invokeCommand<void>('otp_request', { phone }),
   otpVerify: (phone, code) => invokeCommand<string>('otp_verify', { phone, code }),
-  onboardingAdvance: (state) => invokeCommand<void>('onboarding_advance', { state }),
+  onboardingAdvance: (state) => invokeCommand<void>('onboarding_advance', { stateName: state }),
   businessSetIdleLock: (minutes) => invokeCommand<void>('business_set_idle_lock', { minutes }),
 };
 

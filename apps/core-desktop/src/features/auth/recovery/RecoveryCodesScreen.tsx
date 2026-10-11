@@ -13,19 +13,32 @@ export const RecoveryCodesScreen: React.FC<RecoveryCodesScreenProps> = ({ onComp
   const [error, setError] = React.useState<string | null>(null);
   const [copied, setCopied] = React.useState(false);
   const [savedChecked, setSavedChecked] = React.useState(false);
+  const requestStarted = React.useRef(false);
+
+  const generateCodes = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const generated = await authApi.recoveryGenerateInitial();
+      setCodes(generated);
+    } catch (err: any) {
+      setError(err?.code || 'Imeshindwa kutengeneza namba za rejesho');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   React.useEffect(() => {
-    authApi.recoveryGenerateInitial()
-      .then((generated) => {
-        setCodes(generated);
-      })
-      .catch((err) => {
-        setError(err?.code || 'Imeshindwa kutengeneza namba za rejesho');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
+    // Avoid duplicate one-time code generation when React replays mount effects in development.
+    if (requestStarted.current) return;
+    requestStarted.current = true;
+    void generateCodes();
+  }, [generateCodes]);
+
+  const handleRetry = () => {
+    requestStarted.current = false;
+    void generateCodes();
+  };
 
   const handleCopy = () => {
     const text = codes.join('\n');
@@ -86,6 +99,9 @@ export const RecoveryCodesScreen: React.FC<RecoveryCodesScreenProps> = ({ onComp
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-lg text-center">
             {error}
+            <Button intent="neutral" size="sm" className="mt-3" onClick={handleRetry}>
+              Jaribu tena
+            </Button>
           </div>
         )}
 
@@ -114,6 +130,7 @@ export const RecoveryCodesScreen: React.FC<RecoveryCodesScreenProps> = ({ onComp
             <input
               type="checkbox"
               checked={savedChecked}
+              disabled={codes.length === 0}
               onChange={(e) => setSavedChecked(e.target.checked)}
               className="w-4 h-4 rounded border-border text-primary accent-primary"
             />
@@ -124,7 +141,7 @@ export const RecoveryCodesScreen: React.FC<RecoveryCodesScreenProps> = ({ onComp
 
           <Button
             className="w-full"
-            disabled={!savedChecked}
+            disabled={!savedChecked || codes.length === 0}
             onClick={onComplete}
           >
             Anza Kutumia Mfumo

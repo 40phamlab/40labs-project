@@ -22,18 +22,24 @@ pub async fn auth_status(state: State<'_, AppState>) -> Result<serde_json::Value
         .await
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
 
-    let pin_set = if let Some(ref s) = *session_guard {
+    let (pin_set, has_recovery_codes) = if let Some(ref s) = *session_guard {
         let cred = crate::repositories::credential_repo::CredentialRepository::get_by_user_id(&state.pool, &s.user_id)
             .await
             .ok()
             .flatten();
-        cred.and_then(|c| c.pin_hash).map(|h| !h.is_empty()).unwrap_or(false)
+        let pin_set = cred.and_then(|c| c.pin_hash).map(|h| !h.is_empty()).unwrap_or(false);
+        let has_recovery_codes = crate::repositories::recovery_repo::RecoveryRepository::get_active_by_user(&state.pool, &s.user_id)
+            .await
+            .map(|codes| !codes.is_empty())
+            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+        (pin_set, has_recovery_codes)
     } else {
-        false
+        (false, false)
     };
 
     let session_with_pin = session_info.map(|mut val| {
         val["pinSet"] = serde_json::json!(pin_set);
+        val["hasRecoveryCodes"] = serde_json::json!(has_recovery_codes);
         val
     });
 

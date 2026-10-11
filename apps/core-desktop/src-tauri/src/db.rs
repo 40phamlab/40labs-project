@@ -5,9 +5,91 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use std::sync::Arc;
-use crate::services::lan::LanServerState;
+use sqlx::migrate::Migrator;
 use crate::auth::AuthState;
 use crate::security::keystore::Keystore;
+use crate::services::lan::LanServerState;
+
+static SQLITE_MIGRATOR: Migrator = sqlx::migrate!("../../../infra/db/sqlite-schema/migrations");
+
+/// Some existing dev databases received the registration columns before the
+/// corresponding SQLx migration was recorded. Record that migration only when
+/// every column it adds is already present, avoiding a destructive reset.
+async fn reconcile_registration_migration(pool: &SqlitePool) -> Result<bool, sqlx::Error> {
+    let migration_table_exists: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '_sqlx_migrations'",
+    )
+    .fetch_one(pool)
+    .await?;
+    if migration_table_exists.0 == 0 {
+        return Ok(false);
+    }
+
+    let migration_exists: Option<(i64,)> =
+        sqlx::query_as("SELECT version FROM _sqlx_migrations WHERE version = 10")
+            .fetch_optional(pool)
+            .await?;
+    if migration_exists.is_some() {
+        return Ok(false);
+    }
+
+    let prior_migration_exists: Option<(i64,)> =
+        sqlx::query_as("SELECT version FROM _sqlx_migrations WHERE version = 9 AND success = 1")
+            .fetch_optional(pool)
+            .await?;
+    if prior_migration_exists.is_none() {
+        return Ok(false);
+    }
+
+    let columns: Vec<(String,)> = sqlx::query_as("SELECT name FROM pragma_table_info('business')")
+        .fetch_all(pool)
+        .await?;
+    let columns: std::collections::HashSet<String> =
+        columns.into_iter().map(|(name,)| name).collect();
+    let required_columns = [
+        "owner_id",
+        "onboarding_state",
+        "business_type",
+        "country",
+        "address_ward",
+        "address_street",
+        "address_area",
+        "latitude",
+        "longitude",
+        "lipa_namba",
+        "payment_number",
+        "declared_branch_count",
+        "terms_version",
+        "terms_locale",
+        "terms_text_sha256",
+        "terms_accepted_at",
+        "terms_accepted_by_user_id",
+        "scale",
+        "idle_lock_minutes",
+    ];
+    if !required_columns
+        .iter()
+        .all(|column| columns.contains(*column))
+    {
+        return Ok(false);
+    }
+
+    let migration = SQLITE_MIGRATOR
+        .iter()
+        .find(|migration| migration.version == 10)
+        .expect("registration fields migration 0010 must exist");
+    sqlx::query(
+        "INSERT INTO _sqlx_migrations (version, description, success, checksum, execution_time) VALUES (?, ?, 1, ?, 0)",
+    )
+    .bind(migration.version)
+    .bind(migration.description.as_ref())
+    .bind(migration.checksum.as_ref())
+    .execute(pool)
+    .await?;
+
+    tracing::warn!("Recorded migration 0010 because all registration fields already exist in the local database");
+    Ok(true)
+}
 
 pub struct AppState {
     pub pool: SqlitePool,
@@ -107,9 +189,12 @@ pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn s
         .connect_with(connect_options)
         .await?;
 
-    let migrate_res = sqlx::migrate!("../../../infra/db/sqlite-schema/migrations")
-        .run(&pool)
-        .await;
+    let migrate_res: Result<(), Box<dyn std::error::Error>> = async {
+        reconcile_registration_migration(&pool).await?;
+        SQLITE_MIGRATOR.run(&pool).await?;
+        Ok(())
+    }
+    .await;
 
     if let Err(err) = migrate_res {
         let err_str = err.to_string();
@@ -121,7 +206,7 @@ pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn s
                 eprintln!("[40Labs DB] [RELEASE] Migration mismatch in production. Refusing to start and never auto-deleting data.");
             }
         }
-        return Err(Box::new(err));
+        return Err(err);
     }
 
     Ok(pool)
@@ -130,6 +215,61 @@ pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn s
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn reconciles_registration_migration_when_columns_are_already_present() {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        sqlx::query("CREATE TABLE _sqlx_migrations (version BIGINT PRIMARY KEY, description TEXT NOT NULL, installed_on TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, success BOOLEAN NOT NULL, checksum BLOB NOT NULL, execution_time BIGINT NOT NULL)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO _sqlx_migrations (version, description, success, checksum, execution_time) VALUES (9, 'auth pin nullable', 1, X'01', 0)")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let column_sql = [
+            "owner_id TEXT",
+            "onboarding_state TEXT",
+            "business_type TEXT",
+            "country TEXT",
+            "address_ward TEXT",
+            "address_street TEXT",
+            "address_area TEXT",
+            "latitude REAL",
+            "longitude REAL",
+            "lipa_namba TEXT",
+            "payment_number TEXT",
+            "declared_branch_count INTEGER",
+            "terms_version TEXT",
+            "terms_locale TEXT",
+            "terms_text_sha256 TEXT",
+            "terms_accepted_at TEXT",
+            "terms_accepted_by_user_id TEXT",
+            "scale TEXT",
+            "idle_lock_minutes INTEGER",
+        ];
+        sqlx::query(&format!(
+            "CREATE TABLE business ({})",
+            column_sql.join(", ")
+        ))
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert!(reconcile_registration_migration(&pool).await.unwrap());
+        let recorded: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM _sqlx_migrations WHERE version = 10 AND success = 1",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(recorded.0, 1);
+    }
 
     #[test]
     fn test_resolve_dev_db_path() {

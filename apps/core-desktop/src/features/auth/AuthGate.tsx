@@ -90,6 +90,12 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     };
   }, [status?.session, isLockedStore, idleMinutes, queryClient, setLockedStore]);
 
+  const statusError = error instanceof Error
+    ? error.message
+    : typeof error === 'string'
+      ? error
+      : '';
+
   if (isLoading) {
     return (
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
@@ -111,7 +117,8 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         <div className="flex-1 flex items-center justify-center bg-background text-foreground font-sora p-6">
           <div className="max-w-md w-full bg-surface border border-border rounded-lg p-6 text-center shadow-lg">
             <h2 className="text-lg font-heading font-semibold text-text-primary mb-2">Hitilafu ya Mfumo</h2>
-            <p className="text-sm text-text-muted mb-4">Imeshindwa kuunganisha na seva ya uthibitisho au kupata hali ya mfumo.</p>
+            <p className="text-sm text-text-muted mb-4">Imeshindwa kusoma hali ya uthibitishaji kwenye kifaa hiki.</p>
+            {statusError && <p role="alert" className="text-xs text-destructive mb-4 break-words">{statusError}</p>}
             <button
               onClick={() => refetch()}
               className="px-4 py-2 bg-action-primary text-text-inverse rounded-md hover:bg-action-primary-hover transition-colors"
@@ -196,7 +203,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   // 7. owner_first_login -> SetupWizard
   if (status.business.onboarding_state === 'owner_first_login') {
     return renderTitleBarWrapper(
-      <SetupWizardScreen onSetupComplete={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />
+      <StepUpProvider>
+        <SetupWizardScreen onSetupComplete={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />
+      </StepUpProvider>
     );
   }
 

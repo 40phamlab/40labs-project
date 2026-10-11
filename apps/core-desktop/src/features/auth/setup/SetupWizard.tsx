@@ -53,7 +53,6 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onSetupComplete }) => 
       onSetupComplete();
     } catch (err: any) {
       setError(err?.code || 'Imeshindwa kukamilisha usanidi');
-      onSetupComplete();
     } finally {
       setLoading(false);
     }

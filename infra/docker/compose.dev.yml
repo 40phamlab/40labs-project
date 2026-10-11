@@ -30,7 +30,7 @@ services:
       PORT: 3000
       ACTIVATION_SIGNING_KEY: ${ACTIVATION_SIGNING_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${API_HOST_PORT:-3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy

@@ -5,7 +5,7 @@ pub struct ActivationClientFactory;
 
 impl ActivationClientFactory {
     pub fn create_clients(base_url: Option<String>, pubkey_hex: Option<String>) -> (Arc<dyn OtpClient>, Arc<dyn ActivationClient>) {
-        let url = base_url.unwrap_or_else(|| "http://localhost:3000".into());
+        let url = base_url.unwrap_or_else(|| "http://127.0.0.1:3000".into());
 
         #[cfg(debug_assertions)]
         {

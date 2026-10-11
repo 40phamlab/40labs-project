@@ -28,6 +28,8 @@ Starts PostgreSQL 16 and `api-core` in test mode with automated database migrati
 - API Core: `http://127.0.0.1:3000`
 - PostgreSQL: `127.0.0.1:5432`
 
+If port 3000 is already in use, set `API_HOST_PORT` in `infra/docker/.env` to another free host port. The API is then available at `http://127.0.0.1:<API_HOST_PORT>`; configure the desktop app's `API_BASE_URL` to that URL if you use a port other than 3000. The container continues listening on port 3000 internally.
+
 If port 5432 is already in use, set `POSTGRES_HOST_PORT` to another free host port when starting Compose. The API continues to connect to PostgreSQL through the Compose network.
 
 ## Production Stack (`compose.prod.yml`)

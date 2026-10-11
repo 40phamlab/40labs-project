@@ -5,11 +5,12 @@ use zeroize::Zeroizing;
 use crate::auth::error::AuthError;
 use crate::auth::session::{ApproverInfo, AuthState, Session, StepUpGrant};
 use crate::models::audit::{AuditAction, AuditLogEntry};
-use crate::models::auth::AppUser;
+use crate::models::auth::{AppUser, RecoveryCode};
 use crate::models::business::OnboardingState;
 use crate::repositories::audit_repo::audit;
 use crate::repositories::business_repo::BusinessRepository;
 use crate::repositories::credential_repo::CredentialRepository;
+use crate::repositories::recovery_repo::RecoveryRepository;
 use crate::repositories::user_repo::UserRepository;
 use crate::security::hashing;
 use crate::security::keystore::Keystore;
@@ -639,7 +640,50 @@ impl AuthEngine {
     }
 
     pub async fn recovery_generate_initial(&self) -> Result<Vec<String>, AuthError> {
-        Ok(vec!["ABCDE-12345".to_string(), "FGHIJ-67890".to_string()])
+        use rand::distributions::Alphanumeric;
+        use rand::{thread_rng, Rng};
+
+        let ctx = self.require_session().await?;
+        let active_codes = RecoveryRepository::get_active_by_user(&self.pool, &ctx.user_id)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        if !active_codes.is_empty() {
+            return Err(AuthError::PolicyViolation(
+                "Active recovery codes already exist; they cannot be displayed again".into(),
+            ));
+        }
+
+        let now = self.state.clock.now_iso();
+        let batch_id = format!("batch_{}", uuid::Uuid::new_v4().simple());
+        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut codes = Vec::with_capacity(8);
+        for _ in 0..8 {
+            let raw: String = thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(10)
+                .map(char::from)
+                .map(|c| c.to_ascii_uppercase())
+                .collect();
+            let code = format!("{}-{}", &raw[..5], &raw[5..]);
+            let code_hash = hashing::hash_recovery_code(&code)
+                .map_err(|e| AuthError::InternalError(e.to_string()))?;
+            RecoveryRepository::create(&mut tx, &RecoveryCode {
+                id: format!("rec_{}", uuid::Uuid::new_v4().simple()),
+                workspace_id: ctx.workspace_id.clone(),
+                branch_id: ctx.branch_id.clone(),
+                user_id: ctx.user_id.clone(),
+                batch_id: batch_id.clone(),
+                code_hash,
+                used_at: None,
+                invalidated_at: None,
+                created_at: now.clone(),
+            })
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            codes.push(code);
+        }
+        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        Ok(codes)
     }
 
     pub async fn onboarding_advance(&self, state: &str) -> Result<(), AuthError> {

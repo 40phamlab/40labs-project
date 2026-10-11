@@ -316,16 +316,12 @@ pub async fn register_business(
 
     let mut tx = state.pool.begin().await?;
 
-    let existing: Option<(String,)> = sqlx::query_as(
-        "SELECT business_id FROM business_registry WHERE phone_hash = $1"
+    let existing: Option<(String, String, String)> = sqlx::query_as(
+        "SELECT business_id, workspace_id, branch_id FROM business_registry WHERE phone_hash = $1"
     )
     .bind(&phone_hash)
     .fetch_optional(&mut *tx)
     .await?;
-
-    if existing.is_some() {
-        return Err(ApiError::Conflict("Business or phone already registered".into()));
-    }
 
     let consumed = sqlx::query("UPDATE verification_token SET used = 1 WHERE token_hash = $1 AND used = 0")
         .bind(&token_hash)
@@ -335,40 +331,47 @@ pub async fn register_business(
         return Err(ApiError::Conflict("Verification token already used".into()));
     }
 
-    let workspace_id = format!("ws_{}", uuid::Uuid::new_v4().simple());
-    let branch_id = format!("branch_{}", uuid::Uuid::new_v4().simple());
-
-    let mut business_id = generate_business_id();
-    for _ in 0..5 {
-        let check: Option<(String,)> = sqlx::query_as("SELECT business_id FROM business_registry WHERE business_id = $1")
-            .bind(&business_id)
-            .fetch_optional(&mut *tx)
-            .await?;
-        if check.is_none() {
-            break;
-        }
-        business_id = generate_business_id();
-    }
-
     let now_str = Utc::now().to_rfc3339();
+    // If the API committed a registration but the desktop failed to persist
+    // its local state (for example, grant verification failed), let a newly
+    // phone-verified retry resume that registration instead of stranding the
+    // number behind a permanent duplicate-phone conflict.
+    let (business_id, workspace_id, branch_id) = if let Some(existing) = existing {
+        existing
+    } else {
+        let mut business_id = generate_business_id();
+        for _ in 0..5 {
+            let check: Option<(String,)> = sqlx::query_as("SELECT business_id FROM business_registry WHERE business_id = $1")
+                .bind(&business_id)
+                .fetch_optional(&mut *tx)
+                .await?;
+            if check.is_none() {
+                break;
+            }
+            business_id = generate_business_id();
+        }
 
-    sqlx::query(
-        r#"
-        INSERT INTO business_registry (business_id, workspace_id, branch_id, phone_hash, terms_version, terms_locale, terms_text_sha256, terms_accepted_at, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        "#,
-    )
-    .bind(&business_id)
-    .bind(&workspace_id)
-    .bind(&branch_id)
-    .bind(&phone_hash)
-    .bind(&payload.terms_version)
-    .bind(&payload.terms_locale)
-    .bind(&payload.terms_text_sha256)
-    .bind(&now_str)
-    .bind(&now_str)
+        let workspace_id = format!("ws_{}", uuid::Uuid::new_v4().simple());
+        let branch_id = format!("branch_{}", uuid::Uuid::new_v4().simple());
+        sqlx::query(
+            r#"
+            INSERT INTO business_registry (business_id, workspace_id, branch_id, phone_hash, terms_version, terms_locale, terms_text_sha256, terms_accepted_at, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            "#,
+        )
+        .bind(&business_id)
+        .bind(&workspace_id)
+        .bind(&branch_id)
+        .bind(&phone_hash)
+        .bind(&payload.terms_version)
+        .bind(&payload.terms_locale)
+        .bind(&payload.terms_text_sha256)
+        .bind(&now_str)
+        .bind(&now_str)
         .execute(&mut *tx)
-    .await?;
+        .await?;
+        (business_id, workspace_id, branch_id)
+    };
 
     let grant_payload = ActivationGrantPayload {
         business_id: business_id.clone(),

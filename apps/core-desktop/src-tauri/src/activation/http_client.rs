@@ -10,11 +10,17 @@ pub struct HttpActivationClient {
     public_key: VerifyingKey,
 }
 
-const DEFAULT_ED25519_PUBKEY_HEX: &str = "0000000000000000000000000000000000000000000000000000000000000000";
+// Public key derived from the development API's all-zero 32-byte signing seed.
+// Production builds should provide ACTIVATION_PUBKEY explicitly.
+const DEFAULT_ED25519_PUBKEY_HEX: &str = "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29";
 
 impl HttpActivationClient {
     pub fn new(base_url: String, pubkey_hex: Option<&str>) -> Result<Self, String> {
-        let hex_str = pubkey_hex.unwrap_or(DEFAULT_ED25519_PUBKEY_HEX);
+        let hex_str = match pubkey_hex {
+            Some(key) => key,
+            None if cfg!(debug_assertions) => DEFAULT_ED25519_PUBKEY_HEX,
+            None => return Err("ACTIVATION_PUBKEY must be configured outside development builds".into()),
+        };
         let bytes = hex::decode(hex_str).map_err(|e| e.to_string())?;
         if bytes.len() != 32 {
             return Err("Invalid public key length".into());
@@ -163,5 +169,20 @@ mod tests {
 
         let tampered_grant = format!("{}X.{}", payload_b64, hex::encode(sig.to_bytes()));
         assert!(client.verify_grant(&tampered_grant).is_err());
+    }
+
+    #[test]
+    fn default_dev_key_verifies_grants_signed_by_dev_api() {
+        let signing_key = SigningKey::from_bytes(&[0u8; 32]);
+        let verifying_key = ed25519_dalek::VerifyingKey::from(&signing_key);
+        assert_eq!(hex::encode(verifying_key.to_bytes()), DEFAULT_ED25519_PUBKEY_HEX);
+
+        let client = HttpActivationClient::new("http://127.0.0.1:3000".into(), None).unwrap();
+        let payload_json = r#"{"business_id":"AFYA-123456","workspace_id":"ws_dev","branch_id":"branch_dev","phone_hash":"phone-hash","issued_at":"2026-10-11T00:00:00Z"}"#;
+        let signature = signing_key.sign(payload_json.as_bytes());
+        let payload_b64 = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
+        let grant = format!("{}.{}", payload_b64, hex::encode(signature.to_bytes()));
+
+        assert!(client.verify_grant(&grant).is_ok());
     }
 }
