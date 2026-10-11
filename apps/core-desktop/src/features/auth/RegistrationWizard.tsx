@@ -115,7 +115,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
         setError('Weka namba sahihi ya simu ya Tanzania (mfano 0712 345 678).');
         return;
       }
-      if (formData.ownerEmail.trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formData.ownerEmail.trim())) {
+      if (formData.ownerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ownerEmail.trim())) {
         setError('Weka barua pepe sahihi.');
         return;
       }
@@ -148,7 +148,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
         setError('Weka namba sahihi ya simu ya Tanzania.');
         return;
       }
-      if (!/^\\d{6}$/.test(formData.otpCode)) {
+      if (!/^\d{6}$/.test(formData.otpCode)) {
         setError('Weka msimbo sahihi wa OTP wenye tarakimu 6.');
         return;
       }

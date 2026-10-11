@@ -9,7 +9,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
   ({ value, onChange, ...props }, ref) => {
     const displayValue = (raw: string) => {
       if (!raw || typeof raw !== 'string') return '';
-      const digits = raw.replace(/\\D/g, '');
+      const digits = raw.replace(/\D/g, '');
       // The +255 prefix is rendered separately. Keep only the national
       // subscriber number in the editable field for typing and paste alike.
       const national = digits.startsWith('255') ? digits.slice(3) : digits;
@@ -20,7 +20,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
     const nationalValue = typeof value === 'string' ? displayValue(value) : '';
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const digits = e.currentTarget.value.replace(/\\D/g, '');
+      const digits = e.currentTarget.value.replace(/\D/g, '');
       const national = digits.startsWith('255') ? digits.slice(3) : digits;
       const withoutTrunkZero = national.startsWith('0') ? national.slice(1) : national;
       // Preserve the native React change event contract used by existing
