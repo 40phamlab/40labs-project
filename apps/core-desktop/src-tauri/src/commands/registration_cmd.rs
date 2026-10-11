@@ -63,6 +63,40 @@ pub async fn registration_commit(state: State<'_, AppState>, payload: serde_json
     let terms_locale = payload.get("terms_locale").and_then(|v| v.as_str()).unwrap_or("en");
     let terms_text_sha256 = payload.get("terms_text_sha256").and_then(|v| v.as_str()).unwrap_or("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     let owner_phone = normalize_tz_phone(payload.get("owner_phone").and_then(|v| v.as_str()).unwrap_or(""))?;
+    let business_phone = match payload.get("business_phone").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()) {
+        Some(phone) => normalize_tz_phone(phone)?,
+        None => owner_phone.clone(),
+    };
+    let business_email = payload.get("business_email").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(String::from);
+    let business_type = payload.get("business_type").and_then(|v| v.as_str()).unwrap_or("Pharmacy");
+    let role_scopes: Vec<&str> = match payload.get("role_scopes").and_then(|v| v.as_str()).unwrap_or("pharmacy") {
+        "lab" => vec!["lab"],
+        "both" => vec!["pharmacy", "lab"],
+        _ => vec!["pharmacy"],
+    };
+    let role_scopes_json = serde_json::to_string(&role_scopes)
+        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+    let scale = payload.get("scale").and_then(|v| v.as_str()).unwrap_or("medium");
+    let region = payload.get("region").and_then(|v| v.as_str()).unwrap_or("");
+    let district = payload.get("district").and_then(|v| v.as_str()).unwrap_or("");
+    let mtaa = payload.get("mtaa").and_then(|v| v.as_str()).unwrap_or("");
+    let kata = payload.get("kata").and_then(|v| v.as_str()).unwrap_or("");
+    let latitude = payload.get("latitude").and_then(|v| v.as_f64());
+    let longitude = payload.get("longitude").and_then(|v| v.as_f64());
+    let lipa_namba = payload.get("lipa_namba").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty());
+    let payment_number = payload.get("payment_number").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty());
+    let logo_data_url = payload.get("logo_data_url").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+    let declared_branch_count = match payload.get("declared_branch_count") {
+        Some(value) if !value.is_null() => {
+            let count = value.as_i64().or_else(|| value.as_str().and_then(|s| s.parse::<i64>().ok()))
+                .ok_or_else(|| AuthError::PolicyViolation("Invalid branch count".into()).to_response())?;
+            if count < 1 {
+                return Err(AuthError::PolicyViolation("Branch count must be at least 1".into()).to_response());
+            }
+            Some(count)
+        }
+        _ => Some(1),
+    };
     let username = payload.get("username").and_then(|v| v.as_str()).filter(|s| regex::Regex::new(r"^[a-z0-9._-]{3,32}$").unwrap().is_match(s)).ok_or_else(|| AuthError::PolicyViolation("Invalid username".into()).to_response())?;
     let password = payload.get("password").and_then(|v| v.as_str()).filter(|s| s.len() >= 12 && s.len() <= 128).ok_or_else(|| AuthError::PolicyViolation("Password must be between 12 and 128 bytes".into()).to_response())?;
     if !terms_accepted {
@@ -89,37 +123,35 @@ pub async fn registration_commit(state: State<'_, AppState>, payload: serde_json
     let now = chrono::Utc::now().to_rfc3339();
     let mut tx = state.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
+    let owner_id = format!("owner_{}", uuid::Uuid::new_v4().simple());
+    let user_id = format!("user_sudo_{}", uuid::Uuid::new_v4().simple());
+    let pwd_hash = crate::security::hashing::hash_password(password).map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+    let full_name = format!("{} {}", owner_first_name, owner_last_name);
+
     sqlx::query(
         r#"
-        INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile, onboarding_state, terms_accepted_at, terms_version, terms_locale, terms_text_sha256, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'owner_first_login', ?, ?, ?, ?, ?, ?)
+        INSERT INTO owner (id, workspace_id, branch_id, first_name, last_name, phone, phone_verified_at, email, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
     )
-    .bind(format!("biz_{}", uuid::Uuid::new_v4().simple()))
+    .bind(&owner_id)
     .bind(&reg_resp.workspace_id)
     .bind(&reg_resp.branch_id)
-    .bind(&reg_resp.business_id)
-    .bind(business_name)
+    .bind(owner_first_name)
+    .bind(owner_last_name)
     .bind(&owner_phone)
     .bind(&now)
-    .bind(terms_version)
-    .bind(terms_locale)
-    .bind(terms_text_sha256)
+    .bind(payload.get("owner_email").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()))
     .bind(&now)
     .bind(&now)
     .execute(&mut *tx)
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
-    let user_id = format!("user_sudo_{}", uuid::Uuid::new_v4().simple());
-    let pwd_hash = crate::security::hashing::hash_password(password).map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
-
-    let full_name = format!("{} {}", owner_first_name, owner_last_name);
-
     sqlx::query(
         r#"
-        INSERT INTO app_user (id, workspace_id, branch_id, username, first_name, last_name, full_name, role, role_preset, active, must_change_credentials, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 'sudo', 'sudo', 1, 0, ?, ?)
+        INSERT INTO app_user (id, workspace_id, branch_id, username, first_name, last_name, full_name, phone, role, role_preset, active, owner_id, must_change_credentials, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'sudo', 'sudo', 1, ?, 0, ?, ?)
         "#,
     )
     .bind(&user_id)
@@ -128,7 +160,55 @@ pub async fn registration_commit(state: State<'_, AppState>, payload: serde_json
     .bind(username)
     .bind(owner_first_name)
     .bind(owner_last_name)
-    .bind(full_name)
+    .bind(&full_name)
+    .bind(&owner_phone)
+    .bind(&owner_id)
+    .bind(&now)
+    .bind(&now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO business (
+            id, workspace_id, branch_id, business_id, name, role_scopes, tier,
+            contact_mobile, contact_email, address_region, address_district, address_place,
+            logo_url, owner_id, onboarding_state, business_type, country, address_ward,
+            address_street, address_area, latitude, longitude, lipa_namba, payment_number,
+            declared_branch_count, terms_version, terms_locale, terms_text_sha256,
+            terms_accepted_at, terms_accepted_by_user_id, scale, idle_lock_minutes, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'free', ?, ?, ?, ?, ?, ?, ?, 'owner_first_login', ?, 'TZ', ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 5, ?, ?)
+        "#,
+    )
+    .bind(format!("biz_{}", uuid::Uuid::new_v4().simple()))
+    .bind(&reg_resp.workspace_id)
+    .bind(&reg_resp.branch_id)
+    .bind(&reg_resp.business_id)
+    .bind(business_name)
+    .bind(&role_scopes_json)
+    .bind(&business_phone)
+    .bind(business_email.as_deref().or_else(|| payload.get("owner_email").and_then(|v| v.as_str())))
+    .bind(if region.is_empty() { None } else { Some(region) })
+    .bind(if district.is_empty() { None } else { Some(district) })
+    .bind(if !mtaa.is_empty() { Some(mtaa) } else if !kata.is_empty() { Some(kata) } else { None })
+    .bind(logo_data_url)
+    .bind(&owner_id)
+    .bind(business_type)
+    .bind(if kata.is_empty() { None } else { Some(kata) })
+    .bind(if mtaa.is_empty() { None } else { Some(mtaa) })
+    .bind(latitude)
+    .bind(longitude)
+    .bind(lipa_namba)
+    .bind(payment_number)
+    .bind(declared_branch_count)
+    .bind(terms_version)
+    .bind(terms_locale)
+    .bind(terms_text_sha256)
+    .bind(&now)
+    .bind(&user_id)
+    .bind(scale)
     .bind(&now)
     .bind(&now)
     .execute(&mut *tx)

@@ -54,6 +54,11 @@ impl BusinessRepository {
             let payment_number: Option<String> = r.get("payment_number");
             let declared_branch_count: Option<i64> = r.get("declared_branch_count");
             let scale: Option<String> = r.get("scale");
+            let terms_version: Option<String> = r.get("terms_version");
+            let terms_locale: Option<String> = r.get("terms_locale");
+            let terms_text_sha256: Option<String> = r.get("terms_text_sha256");
+            let terms_accepted_at: Option<String> = r.get("terms_accepted_at");
+            let terms_accepted_by_user_id: Option<String> = r.get("terms_accepted_by_user_id");
             let idle_lock_minutes: i64 = r.get("idle_lock_minutes");
             let id: String = r.get("id");
             let workspace_id: String = r.get("workspace_id");
@@ -113,11 +118,11 @@ impl BusinessRepository {
                 lipa_namba,
                 payment_number,
                 declared_branch_count: declared_branch_count.map(|c| c as i32),
-                terms_version: None,
-                terms_locale: None,
-                terms_text_sha256: None,
-                terms_accepted_at: None,
-                terms_accepted_by_user_id: None,
+                terms_version,
+                terms_locale,
+                terms_text_sha256,
+                terms_accepted_at,
+                terms_accepted_by_user_id,
                 scale,
                 idle_lock_minutes: idle_lock_minutes as i32,
                 created_at,
