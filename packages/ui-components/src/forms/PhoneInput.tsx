@@ -9,19 +9,23 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
   ({ value, onChange, ...props }, ref) => {
     const displayValue = (raw: string) => {
       if (!raw || typeof raw !== 'string') return '';
-      const digits = raw.replace(/\D/g, '');
-      // The fixed +255 prefix is already displayed; show a national number
-      // without its trunk zero, or strip a pasted country code when present.
-      if (digits.startsWith('255') && digits.length > 9) return digits.slice(3, 12);
-      if (digits.startsWith('0') && digits.length > 9) return digits.slice(1, 10);
-      return digits.slice(0, 9);
+      const digits = raw.replace(/\\D/g, '');
+      // The +255 prefix is rendered separately. Keep only the national
+      // subscriber number in the editable field for typing and paste alike.
+      const national = digits.startsWith('255') ? digits.slice(3) : digits;
+      const withoutTrunkZero = national.startsWith('0') ? national.slice(1) : national;
+      return withoutTrunkZero.slice(0, 9);
     };
 
     const nationalValue = typeof value === 'string' ? displayValue(value) : '';
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      // Do not synthesize a React event or prepend a country code per keypress:
-      // both interfere with controlled input updates and cursor behavior.
+      const digits = e.currentTarget.value.replace(/\\D/g, '');
+      const national = digits.startsWith('255') ? digits.slice(3) : digits;
+      const withoutTrunkZero = national.startsWith('0') ? national.slice(1) : national;
+      // Preserve the native React change event contract used by existing
+      // consumers, but ensure they receive the same normalized value we render.
+      e.currentTarget.value = withoutTrunkZero.slice(0, 9);
       onChange?.(e);
     };
 
@@ -32,7 +36,7 @@ export const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
         type="tel"
         inputMode="numeric"
         autoComplete="tel-national"
-        maxLength={12}
+        maxLength={16}
         pattern="[0-9]*"
         monospace
         value={nationalValue}

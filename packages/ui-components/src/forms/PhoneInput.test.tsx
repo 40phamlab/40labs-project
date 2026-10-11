@@ -24,29 +24,27 @@ describe('PhoneInput', () => {
     expect(onChange).toHaveBeenLastCalledWith('712345678');
   });
 
-  test('accepts a pasted local number and strips the local trunk zero', () => {
+  test.each([
+    ['0712 345 678', '712345678'],
+    ['+255 712 345 678', '712345678'],
+    ['255712345678', '712345678'],
+  ])('normalizes pasted phone number %s to national digits', (pasted, expected) => {
+    function ControlledPhone() {
+      const [value, setValue] = React.useState('');
+      return <PhoneInput aria-label="Phone number" value={value} onChange={(event) => setValue(event.currentTarget.value)} />;
+    }
+    render(<ControlledPhone />);
+    const input = screen.getByRole('textbox', { name: 'Phone number' });
+    fireEvent.change(input, { target: { value: pasted } });
+    expect(input).toHaveValue(expected);
+  });
+
+  test('removes non-digit characters and limits the national number to nine digits', () => {
     const onChange = vi.fn();
     render(<PhoneInput aria-label="Phone number" value="" onChange={onChange} />);
     const input = screen.getByRole('textbox', { name: 'Phone number' });
-    fireEvent.change(input, { target: { value: '0712 345 678' } });
-
-    expect(onChange).toHaveBeenCalledWith(expect.any(Object));
-    expect(input).toHaveValue(''); // Controlled value stays owned by its parent.
-  });
-
-  test('keeps the real change event and allows local 0-prefixed entry', async () => {
-    const user = userEvent.setup();
-    function ControlledPhone() {
-      const [value, setValue] = React.useState('');
-      return <PhoneInput aria-label="Phone number" value={value} onChange={(event) => {
-        setValue(event.target.value);
-      }} />;
-    }
-
-    render(<ControlledPhone />);
-    const input = screen.getByRole('textbox', { name: 'Phone number' });
-    await user.type(input, '0712345678');
-
-    expect(input).toHaveValue('712345678');
+    fireEvent.change(input, { target: { value: 'abc712-345-67899' } });
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ currentTarget: input }));
+    expect(input).toHaveValue('');
   });
 });
