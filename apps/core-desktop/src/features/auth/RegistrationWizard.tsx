@@ -39,20 +39,19 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
   const [gpsEnabled, setGpsEnabled] = React.useState(false);
   const [latLng, setLatLng] = React.useState<{ lat?: number; lng?: number }>({});
-  const [otpCountdown, setOtpCountdown] = React.useState(60);
-  const [canResendOtp, setCanResendOtp] = React.useState(false);
+  const [otpCountdown, setOtpCountdown] = React.useState(0);
+  const [canResendOtp, setCanResendOtp] = React.useState(true);
   const [verificationToken, setVerificationToken] = React.useState<string | null>(null);
 
   const [termsOpen, setTermsOpen] = React.useState(false);
   const [termsAccepted, setTermsAccepted] = React.useState(false);
-  const [successData, setSuccessData] = React.useState<{ businessId: string; username: string; codes: string[] } | null>(null);
-  const [codesSaved, setCodesSaved] = React.useState(false);
+  const [successData, setSuccessData] = React.useState<{ businessId: string; username: string } | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   // OTP Countdown timer
   React.useEffect(() => {
-    if (step === 5 && otpCountdown > 0) {
+    if (step === 8 && otpCountdown > 0) {
       const timer = setInterval(() => setOtpCountdown((c) => c - 1), 1000);
       return () => clearInterval(timer);
     } else if (otpCountdown === 0) {
@@ -106,30 +105,21 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
       setError('Weka jina la biashara.');
       return;
     }
-    if (step === 5 && (!formData.ownerFirstName.trim() || !formData.ownerLastName.trim())) {
-      setError('Weka majina ya kwanza na ya mwisho ya mmiliki.');
-      return;
-    }
     if (step === 5) {
+      if (!formData.ownerFirstName.trim() || !formData.ownerLastName.trim()) {
+        setError('Weka majina ya kwanza na ya mwisho ya mmiliki.');
+        return;
+      }
       const phone = normalizePhoneTZ(formData.ownerPhone);
       if (!phone) {
         setError('Weka namba sahihi ya simu ya Tanzania (mfano 0712 345 678).');
         return;
       }
-      if (!/^\d{6}$/.test(formData.otpCode)) {
-        setError('Weka msimbo sahihi wa OTP wenye tarakimu 6.');
+      if (formData.ownerEmail.trim() && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formData.ownerEmail.trim())) {
+        setError('Weka barua pepe sahihi.');
         return;
       }
-      setLoading(true);
-      try {
-        const token = await authApi.otpVerify(phone, formData.otpCode);
-        setVerificationToken(token);
-        setStep(6);
-      } catch (err: any) {
-        setError(err?.code || err?.message || 'INVALID_CREDENTIALS');
-      } finally {
-        setLoading(false);
-      }
+      setStep(6);
       return;
     }
 
@@ -150,32 +140,36 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
         setTermsOpen(true);
         return;
       }
+    }
+
+    if (step === 8) {
+      const phone = normalizePhoneTZ(formData.ownerPhone);
+      if (!phone) {
+        setError('Weka namba sahihi ya simu ya Tanzania.');
+        return;
+      }
+      if (!/^\\d{6}$/.test(formData.otpCode)) {
+        setError('Weka msimbo sahihi wa OTP wenye tarakimu 6.');
+        return;
+      }
       setLoading(true);
       try {
+        const token = await authApi.otpVerify(phone, formData.otpCode);
+        setVerificationToken(token);
+
         const termsString = '40Labs Terms of Service & Privacy Policy v1.0';
         const msgUint8 = new TextEncoder().encode(termsString);
         const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const terms_text_sha256 = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
-        if (!verificationToken) {
-          throw new Error('Namba ya simu haijathibitishwa. Rudi hatua ya OTP uthibitishe tena.');
-        }
-        const ownerPhone = normalizePhoneTZ(formData.ownerPhone);
-        if (!ownerPhone) throw new Error('Weka namba sahihi ya simu ya Tanzania.');
-        if (!formData.ownerFirstName.trim() || !formData.ownerLastName.trim()) {
-          throw new Error('Weka majina ya kwanza na ya mwisho ya mmiliki.');
-        }
-        if (formData.ownerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ownerEmail.trim())) {
-          throw new Error('Weka barua pepe sahihi.');
-        }
         const registered = await authApi.registrationCommit({
-          verification_token: verificationToken,
+          verification_token: token,
           business_name: formData.name.trim(),
           owner_first_name: formData.ownerFirstName.trim(),
           owner_last_name: formData.ownerLastName.trim(),
           owner_email: formData.ownerEmail.trim() || null,
-          owner_phone: ownerPhone,
+          owner_phone: phone,
           username: formData.username,
           password: formData.password,
           terms_accepted: true,
@@ -183,28 +177,27 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
           terms_locale: 'sw-TZ',
           terms_text_sha256,
         });
-        const mockRes = {
-          businessId: registered?.businessId || registered?.business_id || 'AFYA-LOCAL',
-          username: formData.username,
-          codes: ['ABCDE-12345', 'FGHIJ-67890', 'KLMNO-11111', 'PQRST-22222', 'UVWXY-33333', 'ZABCD-44444', 'EFGHI-55555', 'JKLMN-66666'],
-        };
-        setSuccessData(mockRes);
-        setStep(8);
+        const businessId = registered?.businessId || registered?.business_id;
+        if (!businessId) {
+          throw new Error('Usajili haukurejesha Business ID. Tafadhali wasiliana na msaada kabla ya kujaribu tena.');
+        }
+        setSuccessData({ businessId, username: formData.username });
+        setStep(9);
       } catch (err: any) {
-        setError(err?.code || err?.message || 'POLICY_VIOLATION');
+        setError(err?.code || err?.message || 'Imeshindikana kuthibitisha OTP na kukamilisha usajili.');
       } finally {
         setLoading(false);
       }
       return;
     }
 
-    if (step < 8) {
+    if (step < 9) {
       setStep((s) => s + 1);
     }
   };
 
   const handleBack = () => {
-    if (step > 1 && step < 8) {
+    if (step > 1 && step < 9) {
       setStep((s) => s - 1);
     }
   };
@@ -220,12 +213,13 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
             {step === 2 && 'Aina na Ukubwa'}
             {step === 3 && 'Eneo'}
             {step === 4 && 'Malipo'}
-            {step === 5 && 'Mmiliki na SMS OTP'}
+            {step === 5 && 'Mmiliki'}
             {step === 6 && 'Akaunti'}
             {step === 7 && 'Masharti'}
-            {step === 8 && 'Mafanikio'}
+            {step === 8 && 'Thibitisha Simu (OTP)'}
+            {step === 9 && 'Mafanikio'}
           </h1>
-          <p className="text-xs text-muted-foreground font-mono">Hatua {step} ya 8</p>
+          <p className="text-xs text-muted-foreground font-mono">{step < 9 ? `Hatua ${step} ya 8` : 'Usajili umekamilika'}</p>
         </div>
 
         {error && (
@@ -412,7 +406,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
           </div>
         )}
 
-        {/* Step 5: Owner & SMS OTP */}
+        {/* Step 5: Owner details */}
         {step === 5 && (
           <div className="space-y-4">
             <div>
@@ -447,44 +441,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 placeholder="owner@example.com"
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Weka SMS OTP</label>
-              <PinOtpInput
-                length={6}
-                value={formData.otpCode}
-                onChange={(val) => updateField('otpCode', val)}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground font-mono">
-                {otpCountdown > 0 ? `Subiri sekunde ${otpCountdown} kutuma tena` : 'Tayari kutuma'}
-              </span>
-              <Button
-                intent="neutral"
-                size="sm"
-                disabled={!canResendOtp}
-                onClick={async () => {
-                  setError(null);
-                  const phone = normalizePhoneTZ(formData.ownerPhone);
-                  if (!phone) {
-                    setError('Weka namba sahihi ya simu ya Tanzania (mfano 0712 345 678).');
-                    return;
-                  }
-                  setLoading(true);
-                  try {
-                    await authApi.otpRequest(phone);
-                    setOtpCountdown(60);
-                    setCanResendOtp(false);
-                  } catch (err: any) {
-                    setError(err?.code || err?.message || 'Imeshindikana kutuma OTP.');
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
-                Tuma msimbo
-              </Button>
-            </div>
+
           </div>
         )}
 
@@ -543,8 +500,56 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
           </div>
         )}
 
+        {/* Step 8: Final phone verification */}
+        {step === 8 && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Tuma msimbo kwa namba ya mmiliki kisha uweke tarakimu 6 ili kuthibitisha na kukamilisha usajili.
+            </p>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1">Namba ya Simu ya Mmiliki</label>
+              <Input value={normalizePhoneTZ(formData.ownerPhone) || formData.ownerPhone} readOnly />
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs text-muted-foreground font-mono">
+                {otpCountdown > 0 ? `Subiri sekunde ${otpCountdown} kutuma tena` : 'Tayari kutuma msimbo'}
+              </span>
+              <Button
+                intent="neutral"
+                size="sm"
+                disabled={loading || !canResendOtp}
+                onClick={async () => {
+                  setError(null);
+                  const phone = normalizePhoneTZ(formData.ownerPhone);
+                  if (!phone) {
+                    setError('Weka namba sahihi ya simu ya Tanzania (mfano 0712 345 678).');
+                    return;
+                  }
+                  setLoading(true);
+                  try {
+                    await authApi.otpRequest(phone);
+                    setOtpCountdown(60);
+                    setCanResendOtp(false);
+                    updateField('otpCode', '');
+                  } catch (err: any) {
+                    setError(err?.code || err?.message || 'Imeshindikana kutuma OTP.');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                {otpCountdown > 0 ? 'Tuma tena baadaye' : 'Tuma msimbo'}
+              </Button>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground block mb-1">Msimbo wa SMS (OTP)</label>
+              <PinOtpInput length={6} value={formData.otpCode} onChange={(val) => updateField('otpCode', val)} />
+            </div>
+          </div>
+        )}
+
         {/* Step 8: Success */}
-        {step === 8 && successData && (
+        {step === 9 && successData && (
           <div className="space-y-4 text-center">
             <p className="text-sm font-semibold text-foreground">
               Hongera {formData.ownerFirstName}! Biashara yako imesajiliwa kikamilifu.
@@ -571,61 +576,28 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 </Button>
               </div>
             </div>
-            <div className="text-left space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground">Namba za Urejeshaji (Recovery Codes):</p>
-              <div className="grid grid-cols-2 gap-2 font-mono text-xs p-3 bg-background border border-border rounded">
-                {successData.codes.map((c, idx) => (
-                  <span key={idx}>{c}</span>
-                ))}
-              </div>
-              <div className="flex space-x-2 pt-2">
-                <Button
-                  intent="neutral"
-                  size="sm"
-                  onClick={() => {
-                    const blob = new Blob([successData.codes.join('\n')], { type: 'text/plain' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = '40labs-recovery-codes.txt';
-                    a.click();
-                  }}
-                >
-                  Pakua (.txt)
-                </Button>
-                <Button intent="neutral" size="sm" onClick={() => window.print()}>
-                  Chapisha
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-center justify-center pt-2">
-              <Checkbox
-                checked={codesSaved}
-                onChange={(e: any) => setCodesSaved(e.target?.checked ?? !codesSaved)}
-                label="Nimehifadhi namba zangu za urejeshaji"
-              />
-            </div>
+
           </div>
         )}
 
         {/* Navigation Buttons */}
         <div className="flex justify-between pt-4 border-t border-border">
-          {step > 1 && step < 8 && (
+          {step > 1 && step < 9 && (
             <Button intent="neutral" onClick={handleBack}>
               Rudi
             </Button>
           )}
           <div className="ml-auto">
-            {step < 8 ? (
+            {step < 9 ? (
               <Button
-                disabled={loading || (step === 7 && !termsAccepted) || (step === 5 && !verificationToken && !formData.otpCode)}
+                disabled={loading || (step === 7 && !termsAccepted) || (step === 8 && !formData.otpCode)}
                 onClick={handleNext}
               >
-                {loading ? 'Inasubiri...' : step === 5 ? 'Thibitisha OTP' : step === 7 ? 'Maliza' : 'Endelea'}
+                {loading ? 'Inasubiri...' : step === 8 ? 'Thibitisha na Sajili' : step === 7 ? 'Endelea' : 'Endelea'}
               </Button>
             ) : (
               <Button
-                disabled={!codesSaved}
+                disabled={!successData}
                 onClick={onComplete}
               >
                 Anza
