@@ -206,7 +206,7 @@ export const notificationsApi = {
       kind: payload.kind,
       file_name: payload.fileName,
       mime_type: payload.mimeType,
-      size_bytes: payload.bytes?.length || 1024,
+      size_bytes: payload.bytes?.length || (payload.sourcePath ? 2048 : 1024),
       storage_path: `attachments/${WORKSPACE_ID}/att_${Date.now()}`,
       sha256: 'mock_sha256_hash',
       created_at: now,

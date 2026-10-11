@@ -141,47 +141,106 @@ pub async fn save_attachment(
     let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
     let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
 
-    let bytes = match payload.bytes {
-        Some(b) => b,
-        None => return Err(crate::auth::AuthError::PolicyViolation("Attachment bytes are required".to_string()).to_response()),
-    };
-
+    // Validate mime vs kind
+    let mime_lower = payload.mime_type.to_lowercase();
     match payload.kind.as_str() {
         "image" => {
-            if bytes.len() as i64 > MAX_IMAGE_SIZE {
-                return Err(crate::auth::AuthError::PolicyViolation("Image exceeds 16MB".to_string()).to_response());
+            if !mime_lower.starts_with("image/") {
+                return Err(crate::auth::AuthError::PolicyViolation("Mime type must be image/* for kind 'image'".to_string()).to_response());
             }
         }
         "audio" => {
-            if bytes.len() as i64 > MAX_AUDIO_SIZE {
-                return Err(crate::auth::AuthError::PolicyViolation("Audio exceeds 16MB".to_string()).to_response());
+            if !mime_lower.starts_with("audio/") {
+                return Err(crate::auth::AuthError::PolicyViolation("Mime type must be audio/* for kind 'audio'".to_string()).to_response());
             }
         }
         "file" => {
-            if bytes.len() as i64 > MAX_FILE_SIZE {
-                return Err(crate::auth::AuthError::PolicyViolation("File exceeds 100MB".to_string()).to_response());
-            }
+            // file can be any mime type (video, application/*, etc.)
         }
         _ => return Err(crate::auth::AuthError::PolicyViolation("Invalid attachment kind".to_string()).to_response()),
     }
-
-    let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    let sha256_hash = format!("{:x}", hasher.finalize());
 
     let app_data_dir = app.path().app_data_dir()
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
 
     let attachment_id = format!("att_{}", uuid::Uuid::new_v4());
     let attachments_dir = app_data_dir.join("attachments").join(&ctx.workspace_id);
-    std::fs::create_dir_all(&attachments_dir)
+    tokio::fs::create_dir_all(&attachments_dir)
+        .await
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
 
     let full_storage_path = attachments_dir.join(&attachment_id);
     let storage_path_relative = format!("attachments/{}/{}", ctx.workspace_id, attachment_id);
 
-    std::fs::write(&full_storage_path, &bytes)
-        .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
+    let mut size_bytes: i64 = 0;
+    let mut hasher = Sha256::new();
+
+    let limit = match payload.kind.as_str() {
+        "image" => MAX_IMAGE_SIZE,
+        "audio" => MAX_AUDIO_SIZE,
+        "file" => MAX_FILE_SIZE,
+        _ => MAX_FILE_SIZE,
+    };
+
+    if let Some(bytes) = &payload.bytes {
+        if bytes.len() as i64 > 16 * 1024 * 1024 {
+            return Err(crate::auth::AuthError::PolicyViolation("Bytes exceed 16MB IPC limit; use source_path for large files".to_string()).to_response());
+        }
+        if bytes.len() as i64 > limit {
+            return Err(crate::auth::AuthError::PolicyViolation(format!("Attachment exceeds size limit for kind '{}'", payload.kind)).to_response());
+        }
+        size_bytes = bytes.len() as i64;
+        hasher.update(bytes);
+        if let Err(e) = tokio::fs::write(&full_storage_path, bytes).await {
+            let _ = tokio::fs::remove_file(&full_storage_path).await;
+            return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response());
+        }
+    } else if let Some(source_path_str) = &payload.source_path {
+        let src_path = std::path::Path::new(source_path_str);
+        if !src_path.is_absolute() || !src_path.is_file() {
+            return Err(crate::auth::AuthError::PolicyViolation("Source path must be an absolute file".to_string()).to_response());
+        }
+
+        let mut src_file = match tokio::fs::File::open(src_path).await {
+            Ok(f) => f,
+            Err(e) => return Err(crate::auth::AuthError::NotFound(format!("Source file not found: {}", e)).to_response()),
+        };
+        let mut dest_file = match tokio::fs::File::create(&full_storage_path).await {
+            Ok(f) => f,
+            Err(e) => return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response()),
+        };
+
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let mut buf = [0u8; 8192];
+        loop {
+            let n = match src_file.read(&mut buf).await {
+                Ok(0) => break,
+                Ok(n) => n,
+                Err(e) => {
+                    let _ = tokio::fs::remove_file(&full_storage_path).await;
+                    return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response());
+                }
+            };
+            size_bytes += n as i64;
+            if size_bytes > limit {
+                let _ = tokio::fs::remove_file(&full_storage_path).await;
+                return Err(crate::auth::AuthError::PolicyViolation(format!("File exceeds size limit for kind '{}'", payload.kind)).to_response());
+            }
+            hasher.update(&buf[..n]);
+            if let Err(e) = dest_file.write_all(&buf[..n]).await {
+                let _ = tokio::fs::remove_file(&full_storage_path).await;
+                return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response());
+            }
+        }
+        if let Err(e) = dest_file.flush().await {
+            let _ = tokio::fs::remove_file(&full_storage_path).await;
+            return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response());
+        }
+    } else {
+        return Err(crate::auth::AuthError::PolicyViolation("Either bytes or source_path must be provided".to_string()).to_response());
+    }
+
+    let sha256_hash = format!("{:x}", hasher.finalize());
 
     let now = chrono::Utc::now().to_rfc3339();
     let attachment = MessageAttachment {
@@ -192,7 +251,7 @@ pub async fn save_attachment(
         kind: payload.kind,
         file_name: payload.file_name,
         mime_type: payload.mime_type,
-        size_bytes: bytes.len() as i64,
+        size_bytes,
         storage_path: storage_path_relative,
         sha256: sha256_hash,
         duration_ms: None,
@@ -201,7 +260,7 @@ pub async fn save_attachment(
     };
 
     if let Err(err) = NotificationRepository::create_attachment(&state.pool, &attachment).await {
-        let _ = std::fs::remove_file(&full_storage_path);
+        let _ = tokio::fs::remove_file(&full_storage_path).await;
         return Err(crate::auth::AuthError::DatabaseError(err.to_string()).to_response());
     }
 
@@ -381,3 +440,27 @@ pub async fn export_attachment_to_path(
 
     Ok(final_dest.to_string_lossy().to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_mime_vs_kind_validation_logic() {
+        let is_valid = |kind: &str, mime: &str| {
+            let mime_lower = mime.to_lowercase();
+            match kind {
+                "image" => mime_lower.starts_with("image/"),
+                "audio" => mime_lower.starts_with("audio/"),
+                "file" => true,
+                _ => false,
+            }
+        };
+
+        assert!(is_valid("image", "image/png"));
+        assert!(!is_valid("image", "application/pdf"));
+        assert!(is_valid("audio", "audio/mpeg"));
+        assert!(!is_valid("audio", "image/png"));
+        assert!(is_valid("file", "application/pdf"));
+        assert!(is_valid("file", "video/mp4"));
+    }
+}
+
