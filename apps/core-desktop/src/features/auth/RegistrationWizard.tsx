@@ -41,7 +41,6 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
   const [latLng, setLatLng] = React.useState<{ lat?: number; lng?: number }>({});
   const [otpCountdown, setOtpCountdown] = React.useState(0);
   const [canResendOtp, setCanResendOtp] = React.useState(true);
-  const [verificationToken, setVerificationToken] = React.useState<string | null>(null);
 
   const [termsOpen, setTermsOpen] = React.useState(false);
   const [termsAccepted, setTermsAccepted] = React.useState(false);
@@ -155,7 +154,6 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
       setLoading(true);
       try {
         const token = await authApi.otpVerify(phone, formData.otpCode);
-        setVerificationToken(token);
 
         const termsString = '40Labs Terms of Service & Privacy Policy v1.0';
         const msgUint8 = new TextEncoder().encode(termsString);
