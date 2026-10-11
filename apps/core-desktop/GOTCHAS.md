@@ -1,64 +1,16 @@
 # 40LabsCore — Gotchas & Traps
 
-Things that look obviously right but aren't. Add to this file whenever
-you or the coding agent almost makes one of these mistakes.
+Things that look obviously right but aren't. Add to this file whenever you encounter traps during development.
 
-1. **Don't build Dashboard first.** It's the visual entry point but it's a
-   pure read-aggregate of Inventory/Sales/Purchases/Lab. Building it first
-   means faking data shapes you'll have to redo.
-
-2. **CustomerSearch is ONE component, used by both Sales/POS and Lab.**
-   If you find yourself writing a second "search for a customer" component,
-   stop — you're duplicating the shared-record principle the whole platform
-   depends on.
-
-3. **Sync status is a dot, never a blocking modal or banner.** This is a
-   trust-critical UX rule, not a style preference — Maisha Meds and others
-   fail here on connectivity-heavy days; our whole pitch is that offline
-   never blocks work.
-
-4. **PIN gates are server-enforced, always** — even on desktop, even though
-   there's no "untrusted device" concern like Orbit Worker has. The rule
-   is uniform across surfaces on purpose, so nobody has to remember which
-   surface is the exception.
-
-5. **AppearancePanel is dark/light toggle ONLY.** The original design draft
-   shows custom primary/secondary/font theming sliders — that contradicts
-   the locked "simplified to dark/light only" decision. If you see those
-   sliders in a future design pass, that's the design drifting from the
-   locked decision, not a new requirement — flag it, don't just build it.
-
-6. **e-pharmacy is not a storefront in MVP.** Any live order count, revenue
-   figure, or working "Online Store" toggle on that screen is out of scope
-   — see SPEC/deferred-e-pharmacy.md.
-
-7. **workspace_id + branch_id on every new table, no exceptions**, even
-   for something that feels obviously single-branch right now (e.g.
-   Notification, Schedule — new entities not yet in 03-DATA-MODEL.md).
-
-
-   8. **Claymorphism is depth, not decoration.** The visual direction is soft
-   shadows + pressed/inset states (see 02-DESIGN-TOKENS.md → Elevation) —
-   NOT screws, panel texture, or hardware metaphors, even though the
-   original reference (Misso/SysMonitor console) uses those. If you catch
-   yourself adding a decorative icon that mimics a physical fastener or
-   material texture, stop and check with Sairiamu first — that's a scope
-   decision, not a styling default. Max 2 shadow layers per element;
-   heavier stacking looks muddy and costs render performance for no gain.
-
-   9. **stock_adjustment.audit_log_id has no DB-level foreign key.** Insert
-   order requires writing audit_log first, then stock_adjustment
-   referencing it, inside one transaction — enforce this at the
-   application layer, not the schema. Forgetting this breaks the
-   "every PIN-gated action writes exactly one audit_log entry" rule
-   silently.
-
-   10. **Tailwind v4 does not scan node_modules by default — including
-    workspace-symlinked packages.** Any package under packages/* that
-    contains className strings (ui-components, and eventually anything
-    else with JSX) needs an explicit @source directive added to
-    apps/core-desktop/src/App.css, or its Tailwind classes will be
-    silently dropped from the build with no error, no warning — they
-    just won't exist in the output CSS.
-
-   11. **0001 is frozen after Phase 1A; never edit shipped migrations.** Any future schema change must be a new sequential migration file in `infra/db/sqlite-schema/migrations/`.
+1. **Don't build Dashboard first.** It's a pure read-aggregate of Inventory/Sales/Purchases/Lab.
+2. **CustomerSearch is ONE component**, used by both Sales/POS and Lab.
+3. **Sync status is a dot, never a blocking modal or banner.**
+4. **PIN gates are server-enforced, always.**
+5. **AppearancePanel is dark/light toggle ONLY.** No custom color theming sliders.
+6. **e-pharmacy is not a storefront in MVP.**
+7. **workspace_id + branch_id on every new table, no exceptions.**
+8. **Claymorphism is depth, not decoration.** Max 2 shadow layers per element.
+9. **stock_adjustment.audit_log_id has no DB-level foreign key.** Enforce at application layer inside a transaction.
+10. **Tailwind v4 `@source` directive**: Any package under `packages/*` containing `className` strings needs an explicit `@source` directive in `apps/core-desktop/src/App.css` so Tailwind compiles the classes correctly.
+11. **Theme Initialization**: Theme is initialized immediately at boot in `main.tsx` from `localStorage` (`40labs_theme`) to prevent any visible flash of incorrect theme.
+12. **Flex Shrink / Min-width Constraints**: Always ensure flex container children include `min-w-0` and `min-h-0` to prevent table and panel blowouts in responsive viewports.

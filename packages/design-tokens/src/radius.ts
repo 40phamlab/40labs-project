@@ -7,7 +7,7 @@ export const radius = {
   sm: '4px',
   md: '6px',
   lg: '8px',
-  card: '8px',
+  card: '12px',
   input: '6px',
   full: '9999px',
   pill: '9999px',

@@ -3,23 +3,28 @@ import { Panel, Toggle } from '@40labs/ui-components';
 import type { Business } from '@40labs/types';
 import type { UpdateBusinessPayload } from '../../../hooks/useBusiness';
 import { Moon, Sun } from 'lucide-react';
+import { useThemeStore } from '../../../stores/useThemeStore';
 
 interface AppearancePanelProps {
   business?: Business | null;
-  onToggle: (payload: UpdateBusinessPayload) => Promise<void> | void;
+  onToggle?: (payload: UpdateBusinessPayload) => Promise<void> | void;
   isLoading?: boolean;
 }
 
 export const AppearancePanel: React.FC<AppearancePanelProps> = ({
-  business,
+  business: _business,
   onToggle,
   isLoading = false,
 }) => {
-  const isDarkMode = business?.appearance_mode === 'dark';
+  const { theme, setTheme } = useThemeStore();
+  const isDarkMode = theme === 'dark';
 
   const handleToggle = async (checked: boolean) => {
     const nextMode = checked ? 'dark' : 'light';
-    await onToggle({ appearance_mode: nextMode });
+    setTheme(nextMode);
+    if (onToggle) {
+      await onToggle({ appearance_mode: nextMode });
+    }
   };
 
   return (

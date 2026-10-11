@@ -127,7 +127,7 @@ export const SidebarItem = ({
       className={`
         w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium
         transition-colors duration-150 outline-none relative group select-none
-        focus-visible:ring-2 focus-visible:ring-[#16A34A] focus-visible:ring-offset-2 ${isFloating ? 'focus-visible:ring-offset-app-bg' : 'focus-visible:ring-offset-sidebar'}
+        focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${isFloating ? 'focus-visible:ring-offset-app-bg' : 'focus-visible:ring-offset-sidebar'}
         ${
           active
             ? isIcon
@@ -156,7 +156,7 @@ export const SidebarItem = ({
         <span
           className={`
             inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none
-            bg-[#F97316] text-white
+            bg-accent text-white
           `}
         >
           {badge}
@@ -164,7 +164,7 @@ export const SidebarItem = ({
       )}
       {isIcon && badge !== undefined && (
         <span
-          className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-[#F97316] ring-2 ${isFloating ? 'ring-app-bg' : 'ring-sidebar'}`}
+          className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-accent ring-2 ${isFloating ? 'ring-app-bg' : 'ring-sidebar'}`}
           title={`${label}: ${badge}`}
           aria-label={`${badge} unread`}
         />

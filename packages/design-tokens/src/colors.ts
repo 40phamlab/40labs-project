@@ -23,6 +23,7 @@ export const colors = {
   surfaceActive: '#2E3C35',
   surfaceSelected: '#1E382B',
   surfaceDisabled: '#161E1A',
+  panelSubtle: '#222C27',
 
   // Borders & Dividers
   borderSubtle: '#243029',
@@ -95,6 +96,7 @@ export const lightColors = {
   surfaceActive: '#E2E7EC',
   surfaceSelected: '#D8E2E9',
   surfaceDisabled: '#E8ECEF',
+  panelSubtle: '#F7F9FA',
 
   borderSubtle: '#C5CED4',
   borderDefault: '#B6C2CC',
@@ -158,7 +160,3 @@ export const statusColors = {
 } as const;
 
 export type StatusToken = keyof typeof statusColors;
-
-
-
-

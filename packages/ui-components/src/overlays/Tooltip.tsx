@@ -109,7 +109,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
               zIndex,
             }}
             className={`
-              px-3 py-1.5 bg-[#F8FAFB] dark:bg-[#1E293B] border border-border rounded-[8px]
+              px-3 py-1.5 bg-surface-elevated border border-border rounded-[8px]
               text-[13px] font-normal text-text-primary shadow-md whitespace-nowrap
               pointer-events-none transition-opacity duration-150 animate-in fade-in
               ${className}

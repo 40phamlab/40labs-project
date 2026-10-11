@@ -21,6 +21,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
   const initial = getInitialTheme();
   if (typeof window !== 'undefined') {
     document.documentElement.setAttribute('data-theme', initial);
+    document.documentElement.style.colorScheme = initial;
   }
 
   return {
@@ -30,6 +31,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_KEY_THEME, theme);
         document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.style.colorScheme = theme;
       }
     },
     toggleTheme: () => {

@@ -14,11 +14,11 @@ export function ChartTooltip({ active, payload, label, formatter }: ChartTooltip
 
   return (
     <div
-      className="bg-[#1A221E] border border-[#28362E] rounded-md p-3 shadow-xl text-[#F8FAFB] text-xs font-ui"
+      className="bg-surface-primary border border-border-default rounded-md p-3 shadow-xl text-text-primary text-xs font-ui"
       style={{ minWidth: 130 }}
     >
       {label !== undefined && label !== null && (
-        <div className="font-bold text-[#CBD5E1] mb-1.5 pb-1 border-b border-[#243029]">
+        <div className="font-bold text-text-secondary mb-1.5 pb-1 border-b border-divider">
           {String(label)}
         </div>
       )}
@@ -37,9 +37,9 @@ export function ChartTooltip({ active, payload, label, formatter }: ChartTooltip
                   className="w-2.5 h-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: color }}
                 />
-                <span className="text-[#94A3B8] capitalize">{String(formatted[1])}</span>
+                <span className="text-text-muted capitalize">{String(formatted[1])}</span>
               </div>
-              <span className="font-mono font-semibold text-[#F8FAFB]">{String(formatted[0])}</span>
+              <span className="font-mono font-semibold text-text-primary">{String(formatted[0])}</span>
             </div>
           );
         })}
