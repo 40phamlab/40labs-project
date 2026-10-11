@@ -4,6 +4,7 @@ import { authApi } from '../../api/authApi';
 import { TermsModal } from './components/TermsModal';
 import { PinOtpInput } from './components/PinOtpInput';
 import { TZ_ADMIN_AREAS } from '../../lib/tzAdminAreas';
+import { normalizePhoneTZ } from '@40labs/i18n';
 
 interface RegistrationWizardProps {
   onComplete: () => void;
@@ -40,6 +41,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
   const [latLng, setLatLng] = React.useState<{ lat?: number; lng?: number }>({});
   const [otpCountdown, setOtpCountdown] = React.useState(60);
   const [canResendOtp, setCanResendOtp] = React.useState(false);
+  const [verificationToken, setVerificationToken] = React.useState<string | null>(null);
 
   const [termsOpen, setTermsOpen] = React.useState(false);
   const [termsAccepted, setTermsAccepted] = React.useState(false);
@@ -100,19 +102,49 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
 
   const handleNext = async () => {
     setError(null);
+    if (step === 1 && !formData.name.trim()) {
+      setError('Weka jina la biashara.');
+      return;
+    }
+    if (step === 5 && (!formData.ownerFirstName.trim() || !formData.ownerLastName.trim())) {
+      setError('Weka majina ya kwanza na ya mwisho ya mmiliki.');
+      return;
+    }
     if (step === 5) {
+      const phone = normalizePhoneTZ(formData.ownerPhone);
+      if (!phone) {
+        setError('Weka namba sahihi ya simu ya Tanzania (mfano 0712 345 678).');
+        return;
+      }
+      if (!/^\d{6}$/.test(formData.otpCode)) {
+        setError('Weka msimbo sahihi wa OTP wenye tarakimu 6.');
+        return;
+      }
       setLoading(true);
       try {
-        await authApi.otpVerify(formData.ownerPhone, formData.otpCode);
+        const token = await authApi.otpVerify(phone, formData.otpCode);
+        setVerificationToken(token);
         setStep(6);
       } catch (err: any) {
-        setError(err?.code || 'INVALID_CREDENTIALS');
+        setError(err?.code || err?.message || 'INVALID_CREDENTIALS');
       } finally {
         setLoading(false);
       }
       return;
     }
 
+    if (step === 6) {
+      if (!/^[a-z0-9._-]{3,32}$/.test(formData.username)) {
+        setError('Jina la mtumiaji liwe na herufi ndogo, namba, . _ au -, na urefu wa herufi 3 hadi 32.');
+        return;
+      }
+      if (formData.password.length < 12 || formData.password !== formData.confirmPassword) {
+        setError(formData.password !== formData.confirmPassword
+          ? 'Nenosiri hazilingani.'
+          : 'Nenosiri liwe na angalau herufi 12.');
+        return;
+      }
+    }
     if (step === 7) {
       if (!termsAccepted) {
         setTermsOpen(true);
@@ -126,16 +158,40 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const terms_text_sha256 = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 
-        await authApi.registrationCommit({ ...formData, terms_text_sha256, locale: 'sw-TZ' });
+        if (!verificationToken) {
+          throw new Error('Namba ya simu haijathibitishwa. Rudi hatua ya OTP uthibitishe tena.');
+        }
+        const ownerPhone = normalizePhoneTZ(formData.ownerPhone);
+        if (!ownerPhone) throw new Error('Weka namba sahihi ya simu ya Tanzania.');
+        if (!formData.ownerFirstName.trim() || !formData.ownerLastName.trim()) {
+          throw new Error('Weka majina ya kwanza na ya mwisho ya mmiliki.');
+        }
+        if (formData.ownerEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.ownerEmail.trim())) {
+          throw new Error('Weka barua pepe sahihi.');
+        }
+        const registered = await authApi.registrationCommit({
+          verification_token: verificationToken,
+          business_name: formData.name.trim(),
+          owner_first_name: formData.ownerFirstName.trim(),
+          owner_last_name: formData.ownerLastName.trim(),
+          owner_email: formData.ownerEmail.trim() || null,
+          owner_phone: ownerPhone,
+          username: formData.username,
+          password: formData.password,
+          terms_accepted: true,
+          terms_version: 'v1.0',
+          terms_locale: 'sw-TZ',
+          terms_text_sha256,
+        });
         const mockRes = {
-          businessId: 'AFYA-' + Math.random().toString(36).substring(2, 8).toUpperCase(),
+          businessId: registered?.businessId || registered?.business_id || 'AFYA-LOCAL',
           username: formData.username,
           codes: ['ABCDE-12345', 'FGHIJ-67890', 'KLMNO-11111', 'PQRST-22222', 'UVWXY-33333', 'ZABCD-44444', 'EFGHI-55555', 'JKLMN-66666'],
         };
         setSuccessData(mockRes);
         setStep(8);
       } catch (err: any) {
-        setError(err?.code || 'POLICY_VIOLATION');
+        setError(err?.code || err?.message || 'POLICY_VIOLATION');
       } finally {
         setLoading(false);
       }
@@ -407,10 +463,23 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 intent="neutral"
                 size="sm"
                 disabled={!canResendOtp}
-                onClick={() => {
-                  authApi.otpRequest(formData.ownerPhone);
-                  setOtpCountdown(60);
-                  setCanResendOtp(false);
+                onClick={async () => {
+                  setError(null);
+                  const phone = normalizePhoneTZ(formData.ownerPhone);
+                  if (!phone) {
+                    setError('Weka namba sahihi ya simu ya Tanzania (mfano 0712 345 678).');
+                    return;
+                  }
+                  setLoading(true);
+                  try {
+                    await authApi.otpRequest(phone);
+                    setOtpCountdown(60);
+                    setCanResendOtp(false);
+                  } catch (err: any) {
+                    setError(err?.code || err?.message || 'Imeshindikana kutuma OTP.');
+                  } finally {
+                    setLoading(false);
+                  }
                 }}
               >
                 Tuma msimbo
@@ -546,15 +615,10 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               Rudi
             </Button>
           )}
-          {step === 4 && (
-            <Button intent="neutral" onClick={() => setStep(5)}>
-              Ruka (Skip)
-            </Button>
-          )}
           <div className="ml-auto">
             {step < 8 ? (
               <Button
-                disabled={loading || (step === 7 && !termsAccepted)}
+                disabled={loading || (step === 7 && !termsAccepted) || (step === 5 && !verificationToken && !formData.otpCode)}
                 onClick={handleNext}
               >
                 {loading ? 'Inasubiri...' : step === 5 ? 'Thibitisha OTP' : step === 7 ? 'Maliza' : 'Endelea'}

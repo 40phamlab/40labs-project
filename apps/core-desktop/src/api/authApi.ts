@@ -38,7 +38,7 @@ export interface AuthApi {
   recoveryRedeem(username: string, code: string, newPassword: string): Promise<void>;
   recoveryRegenerate(password: string): Promise<Array<string>>;
   recoveryGenerateInitial(): Promise<Array<string>>;
-  registrationCommit(payload: any): Promise<void>;
+  registrationCommit(payload: any): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>;
   otpRequest(phone: string): Promise<void>;
   otpVerify(phone: string, code: string): Promise<string>;
   onboardingAdvance(state: string): Promise<void>;
@@ -77,7 +77,7 @@ export const tauriAuthApi: AuthApi = {
   recoveryRedeem: (username, code, newPassword) => invokeCommand<void>('recovery_redeem', { username, code, newPassword }),
   recoveryRegenerate: (password) => invokeCommand<Array<string>>('recovery_regenerate', { password }),
   recoveryGenerateInitial: () => invokeCommand<Array<string>>('recovery_generate_initial'),
-  registrationCommit: (payload) => invokeCommand<void>('registration_commit', { payload }),
+  registrationCommit: (payload) => invokeCommand<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>('registration_commit', { payload }),
   otpRequest: (phone) => invokeCommand<void>('otp_request', { phone }),
   otpVerify: (phone, code) => invokeCommand<string>('otp_verify', { phone, code }),
   onboardingAdvance: (state) => invokeCommand<void>('onboarding_advance', { state }),
@@ -193,6 +193,7 @@ export const mockAuthApi: AuthApi = {
       updated_at: '2026-10-01T00:00:00Z',
     };
     mockState.session = null;
+    return { business_id: mockState.business.business_id, workspace_id: mockState.business.workspace_id, branch_id: mockState.business.branch_id };
   },
   otpRequest: async () => {},
   otpVerify: async () => 'mock-verification-token',

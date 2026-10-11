@@ -18,7 +18,10 @@ impl OtpClient for DevActivationClient {
         Ok(300)
     }
 
-    async fn verify_otp(&self, _phone: &str, _code: &str) -> Result<String, String> {
+    async fn verify_otp(&self, _phone: &str, code: &str) -> Result<String, String> {
+        if code != "123456" {
+            return Err("Invalid OTP code".into());
+        }
         Ok("dev_verification_token".to_string())
     }
 }

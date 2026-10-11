@@ -226,6 +226,41 @@ pub struct RegisterPayload {
     pub terms_text_sha256: String,
 }
 
+fn valid_registration_text(value: &str, max_len: usize) -> bool {
+    let trimmed = value.trim();
+    !trimmed.is_empty()
+        && trimmed.chars().count() <= max_len
+        && !trimmed.chars().any(char::is_control)
+}
+
+fn valid_email(value: &str) -> bool {
+    let mut parts = value.split('@');
+    matches!((parts.next(), parts.next(), parts.next()), (Some(local), Some(domain), None)
+        if !local.is_empty() && domain.contains('.') && !domain.starts_with('.') && !domain.ends_with('.')
+            && value.len() <= 254 && !value.chars().any(char::is_whitespace))
+}
+
+#[cfg(test)]
+mod registration_validation_tests {
+    use super::{valid_email, valid_registration_text};
+
+    #[test]
+    fn registration_text_rejects_empty_oversized_and_control_values() {
+        assert!(valid_registration_text(" Afya Bora ", 20));
+        assert!(!valid_registration_text("  ", 20));
+        assert!(!valid_registration_text("Afya\nBora", 20));
+        assert!(!valid_registration_text("12345", 4));
+    }
+
+    #[test]
+    fn registration_email_validation_rejects_malformed_addresses() {
+        assert!(valid_email("owner@example.co.tz"));
+        assert!(!valid_email("not-an-email"));
+        assert!(!valid_email("owner@.example"));
+        assert!(!valid_email("owner@example.com\n"));
+    }
+}
+
 #[derive(Serialize)]
 pub struct RegisterResponse {
     pub business_id: String,
@@ -240,6 +275,17 @@ pub async fn register_business(
 ) -> Result<Json<RegisterResponse>, ApiError> {
     if !payload.terms_accepted {
         return Err(ApiError::BadRequest("Terms must be accepted".into()));
+    }
+    if !valid_registration_text(&payload.business_name, 160)
+        || !valid_registration_text(&payload.owner_first_name, 80)
+        || !valid_registration_text(&payload.owner_last_name, 80)
+        || payload.owner_email.as_deref().is_some_and(|email| !valid_email(email))
+        || !valid_registration_text(&payload.terms_version, 40)
+        || !valid_registration_text(&payload.terms_locale, 20)
+        || payload.terms_text_sha256.len() != 64
+        || !payload.terms_text_sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        return Err(ApiError::BadRequest("Invalid registration details".into()));
     }
 
     let token_hash = hash_string(&payload.verification_token);
@@ -268,21 +314,26 @@ pub async fn register_business(
         return Err(ApiError::BadRequest("Verification token expired".into()));
     }
 
+    let mut tx = state.pool.begin().await?;
+
     let existing: Option<(String,)> = sqlx::query_as(
         "SELECT business_id FROM business_registry WHERE phone_hash = $1"
     )
     .bind(&phone_hash)
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut *tx)
     .await?;
 
     if existing.is_some() {
         return Err(ApiError::Conflict("Business or phone already registered".into()));
     }
 
-    sqlx::query("UPDATE verification_token SET used = 1 WHERE token_hash = $1")
+    let consumed = sqlx::query("UPDATE verification_token SET used = 1 WHERE token_hash = $1 AND used = 0")
         .bind(&token_hash)
-        .execute(&state.pool)
+        .execute(&mut *tx)
         .await?;
+    if consumed.rows_affected() != 1 {
+        return Err(ApiError::Conflict("Verification token already used".into()));
+    }
 
     let workspace_id = format!("ws_{}", uuid::Uuid::new_v4().simple());
     let branch_id = format!("branch_{}", uuid::Uuid::new_v4().simple());
@@ -291,7 +342,7 @@ pub async fn register_business(
     for _ in 0..5 {
         let check: Option<(String,)> = sqlx::query_as("SELECT business_id FROM business_registry WHERE business_id = $1")
             .bind(&business_id)
-            .fetch_optional(&state.pool)
+            .fetch_optional(&mut *tx)
             .await?;
         if check.is_none() {
             break;
@@ -316,7 +367,7 @@ pub async fn register_business(
     .bind(&payload.terms_text_sha256)
     .bind(&now_str)
     .bind(&now_str)
-    .execute(&state.pool)
+        .execute(&mut *tx)
     .await?;
 
     let grant_payload = ActivationGrantPayload {
@@ -329,6 +380,8 @@ pub async fn register_business(
 
     let activation_grant = sign_grant(&grant_payload, &state.config.activation_signing_key)
         .map_err(|e| ApiError::Internal(e))?;
+
+    tx.commit().await?;
 
     Ok(Json(RegisterResponse {
         business_id,

@@ -83,8 +83,9 @@ impl OtpClient for HttpActivationClient {
             .map_err(|e| e.to_string())?;
 
         if !res.status().is_success() {
+            let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!("OTP request failed: {}", body));
+            return Err(format!("OTP request failed ({}): {}", status, body.chars().take(300).collect::<String>()));
         }
 
         let data: OtpReqResp = res.json().await.map_err(|e| e.to_string())?;
@@ -101,8 +102,9 @@ impl OtpClient for HttpActivationClient {
             .map_err(|e| e.to_string())?;
 
         if !res.status().is_success() {
+            let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!("OTP verification failed: {}", body));
+            return Err(format!("OTP verification failed ({}): {}", status, body.chars().take(300).collect::<String>()));
         }
 
         let data: OtpVerifyResp = res.json().await.map_err(|e| e.to_string())?;
@@ -122,8 +124,9 @@ impl ActivationClient for HttpActivationClient {
             .map_err(|e| e.to_string())?;
 
         if !res.status().is_success() {
+            let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!("Registration failed: {}", body));
+            return Err(format!("Registration failed ({}): {}", status, body.chars().take(300).collect::<String>()));
         }
 
         let data: RegisterResponse = res.json().await.map_err(|e| e.to_string())?;
