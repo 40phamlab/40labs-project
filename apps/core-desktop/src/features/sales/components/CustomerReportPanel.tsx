@@ -3,7 +3,7 @@ import { Card, Button, Checkbox, IconButton, MoneyDisplay } from '@40labs/ui-com
 import { CustomerPicker } from '../../customers/components/CustomerPicker';
 import { Customer } from '@40labs/types';
 import { ChevronDown, Printer, Send, CheckCircle2 } from 'lucide-react';
-import { pharmaciesApi } from '../../../api';
+import { pharmaciesApi, notificationsApi } from '../../../api';
 import { useToast } from '../../../hooks/useToast';
 
 export interface ConfirmedSaleData {
@@ -47,13 +47,22 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
   const { toast } = useToast();
   const [sending, setSending] = React.useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
+    if (!confirmedSale) return;
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
-      toast.success(`Report sent to ${confirmedSale?.customerLabel || 'customer'}`);
+    try {
+      await notificationsApi.create({
+        category: 'customers',
+        sender_name: confirmedSale.customerLabel || 'Pharmacy POS',
+        body: `Receipt & Transaction Summary for Sale #${confirmedSale.saleId.substring(0, 8)}: Total TZS ${confirmedSale.cost.toLocaleString()}. Items: ${confirmedSale.description}`,
+      });
+      toast.success(`Customer report logged and dispatched for ${confirmedSale.customerLabel || 'customer'}`);
       onSendReport();
-    }, 800);
+    } catch {
+      toast.error('Failed to dispatch customer report notification.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

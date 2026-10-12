@@ -136,7 +136,9 @@ export const SalesScreen: React.FC = () => {
       return;
     }
 
-    const saleDate = new Date(completed.created_at).toLocaleString();
+    const grandTotal = completed.grand_total ?? (completed as unknown as { grandTotal?: number }).grandTotal ?? 0;
+    const createdAtStr = completed.created_at ?? (completed as unknown as { createdAt?: string }).createdAt;
+    const saleDate = createdAtStr ? new Date(createdAtStr).toLocaleString() : new Date().toLocaleString();
 
     setConfirmedSale({
       saleId: completed.id,
@@ -144,7 +146,7 @@ export const SalesScreen: React.FC = () => {
       phone: customerPhone,
       email: selectedCustomer?.email || '',
       service: dispensedUser.full_name,
-      cost: completed.grand_total,
+      cost: grandTotal,
       description: itemSummary,
       date: saleDate,
     });
@@ -156,10 +158,11 @@ export const SalesScreen: React.FC = () => {
       items: receiptItems,
       subtotal,
       tax: 0,
-      total: completed.grand_total,
+      total: grandTotal,
     });
+    setReceiptModalOpen(true);
 
-    toast.success(`Sale #${completed.id.substring(0, 8)} confirmed! Total: TZS ${completed.grand_total.toLocaleString()}`);
+    toast.success(`Sale #${completed.id.substring(0, 8)} confirmed! Total: TZS ${grandTotal.toLocaleString()}`);
     setManualEntry({ full_name: '', phone: '' });
   };
 

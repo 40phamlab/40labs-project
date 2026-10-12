@@ -65,14 +65,14 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
           <span className="w-16 text-right">PRICE</span>
         </div>
         <div className="flex flex-col gap-1.5 text-black">
-          {items.map((item, idx) => (
+          {(items || []).map((item, idx) => (
             <div key={idx} className="flex justify-between items-start text-[11px]">
-              <span className="w-8 font-bold">{item.qty}</span>
+              <span className="w-8 font-bold">{item.qty ?? 1}</span>
               <div className="flex-1 text-left px-1">
-                <span className="block font-medium leading-tight">{item.name}</span>
-                <span className="text-[9px] text-black/70">@{item.price.toLocaleString()}</span>
+                <span className="block font-medium leading-tight">{item.name || 'Item'}</span>
+                <span className="text-[9px] text-black/70">@{(item.price ?? 0).toLocaleString()}</span>
               </div>
-              <span className="w-16 text-right font-mono font-semibold">{item.total.toLocaleString()}</span>
+              <span className="w-16 text-right font-mono font-semibold">{(item.total ?? 0).toLocaleString()}</span>
             </div>
           ))}
         </div>
@@ -81,15 +81,15 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
       <div className="border-t border-dashed border-black/40 pt-3 mb-4 space-y-1 text-black text-[11px]">
         <div className="flex justify-between">
           <span>SUBTOTAL:</span>
-          <span className="font-mono">{subtotal.toLocaleString()}</span>
+          <span className="font-mono">{(subtotal ?? 0).toLocaleString()}</span>
         </div>
         <div className="flex justify-between">
           <span>TAX (VAT):</span>
-          <span className="font-mono">{tax.toLocaleString()}</span>
+          <span className="font-mono">{(tax ?? 0).toLocaleString()}</span>
         </div>
         <div className="flex justify-between font-bold text-xs border-t border-black pt-1 mt-1">
           <span>GRAND TOTAL:</span>
-          <span className="font-mono">TZS {total.toLocaleString()}</span>
+          <span className="font-mono">TZS {(total ?? 0).toLocaleString()}</span>
         </div>
       </div>
 
