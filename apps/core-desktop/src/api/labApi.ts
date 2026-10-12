@@ -14,6 +14,7 @@ import {
   WORKSPACE_ID,
   BRANCH_ID,
 } from '../devData';
+import { isUsingTauriIpc, invokeCommand } from './client';
 
 export interface CreateLabOrderPayload {
   customerId: string;
@@ -27,8 +28,13 @@ let catalogStore: TestCatalogEntry[] = [...initialTestCatalog];
 
 export const labApi = {
   // Orders
-  list: (): LabOrder[] => [...ordersStore],
-  listOrders: (): LabOrder[] => [...ordersStore],
+  list: async (): Promise<LabOrder[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabOrder[]>('get_lab_orders');
+    }
+    return [...ordersStore];
+  },
+  listOrders: (): Promise<LabOrder[]> => labApi.list(),
 
   get: (id: string): LabOrder | null => {
     return ordersStore.find((o) => o.id === id) || null;
@@ -79,7 +85,12 @@ export const labApi = {
   },
 
   // Samples
-  listSamples: (): LabSample[] => [...samplesStore],
+  listSamples: async (): Promise<LabSample[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabSample[]>('get_lab_samples');
+    }
+    return [...samplesStore];
+  },
 
   getSample: (id: string): LabSample | null => {
     return samplesStore.find((s) => s.id === id) || null;
@@ -168,8 +179,8 @@ export const labApi = {
   },
 
   // Backwards compatibility aliases
-  getOrders: (): LabOrder[] => labApi.listOrders(),
-  getSamples: (): LabSample[] => labApi.listSamples(),
+  getOrders: (): Promise<LabOrder[]> => labApi.listOrders(),
+  getSamples: (): Promise<LabSample[]> => labApi.listSamples(),
   getResults: (): LabResult[] => labApi.listResults(),
   getCatalog: (): TestCatalogEntry[] => labApi.listCatalog(),
 };

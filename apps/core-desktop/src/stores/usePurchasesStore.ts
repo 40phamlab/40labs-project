@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { PurchaseOrder, Supplier } from '@40labs/types';
+import { initialPurchaseOrders, initialSuppliers } from '../devData';
 import { purchases } from '../api';
 
 interface PurchasesState {
@@ -16,8 +17,8 @@ interface PurchasesState {
 }
 
 export const usePurchasesStore = create<PurchasesState>((set) => ({
-  purchaseOrders: purchases.list(),
-  suppliers: purchases.listSuppliers(),
+  purchaseOrders: [...initialPurchaseOrders],
+  suppliers: [...initialSuppliers],
   selectedPOId: null,
 
   setSelectedPOId: (selectedPOId) => set({ selectedPOId }),

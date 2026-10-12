@@ -1,5 +1,6 @@
 import type { PurchaseOrder, Supplier } from '@40labs/types';
 import { initialPurchaseOrders, initialSuppliers, WORKSPACE_ID, BRANCH_ID } from '../devData';
+import { isUsingTauriIpc, invokeCommand } from './client';
 
 export interface CreatePurchaseOrderLine {
   medicine_id: string;
@@ -16,8 +17,13 @@ let purchaseOrdersStore: PurchaseOrder[] = [...initialPurchaseOrders];
 let suppliersStore: Supplier[] = [...initialSuppliers];
 
 export const purchasesApi = {
-  list: (): PurchaseOrder[] => [...purchaseOrdersStore],
-  listPurchaseOrders: (): PurchaseOrder[] => [...purchaseOrdersStore],
+  list: async (): Promise<PurchaseOrder[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<PurchaseOrder[]>('get_purchase_orders');
+    }
+    return [...purchaseOrdersStore];
+  },
+  listPurchaseOrders: (): Promise<PurchaseOrder[]> => purchasesApi.list(),
 
   get: (id: string): PurchaseOrder | null => {
     return purchaseOrdersStore.find((po) => po.id === id) || null;
@@ -82,15 +88,20 @@ export const purchasesApi = {
     return purchaseOrdersStore.length < initialLen;
   },
 
-  listSuppliers: (): Supplier[] => [...suppliersStore],
+  listSuppliers: async (): Promise<Supplier[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Supplier[]>('get_suppliers');
+    }
+    return [...suppliersStore];
+  },
 
   getSupplier: (id: string): Supplier | null => {
     return suppliersStore.find((s) => s.id === id) || null;
   },
 
   // Backwards compatibility aliases
-  getPurchaseOrders: (): PurchaseOrder[] => purchasesApi.list(),
-  getSuppliers: (): Supplier[] => purchasesApi.listSuppliers(),
+  getPurchaseOrders: (): Promise<PurchaseOrder[]> => purchasesApi.list(),
+  getSuppliers: (): Promise<Supplier[]> => purchasesApi.listSuppliers(),
   createPurchaseOrder: (supplierId: string, lines: CreatePurchaseOrderLine[]): PurchaseOrder =>
     purchasesApi.create(supplierId, lines),
   approvePurchaseOrder: (poId: string): PurchaseOrder | null => purchasesApi.approve(poId),

@@ -408,4 +408,10 @@ mod tests {
             delete_err_msg
         );
     }
+
+    #[tokio::test]
+    async fn test_invalid_db_url_fails_explicitly() {
+        let invalid_res = init_db_pool_with_url("sqlite:///non_existent_dir_xyz/invalid.db?mode=ro").await;
+        assert!(invalid_res.is_err(), "Expected initialization with invalid database URL to return an error explicitly");
+    }
 }

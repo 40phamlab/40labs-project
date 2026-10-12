@@ -54,6 +54,9 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("create_sale", CommandPolicy::Permission("sales.create"));
     map.insert("get_fiscal_receipts", CommandPolicy::SessionOnly);
 
+    map.insert("get_purchase_orders", CommandPolicy::SessionOnly);
+    map.insert("get_suppliers", CommandPolicy::SessionOnly);
+
     map.insert("get_lab_orders", CommandPolicy::SessionOnly);
     map.insert("create_lab_order", CommandPolicy::Permission("lab.order"));
     map.insert("update_lab_order_status", CommandPolicy::Permission("lab.order"));

@@ -3,6 +3,7 @@ pub mod customer_cmd;
 pub mod inventory_cmd;
 pub mod lab_cmd;
 pub mod sales_cmd;
+pub mod purchases_cmd;
 pub mod system_cmd;
 pub mod notification_cmd;
 pub mod devices_cmd;
@@ -52,6 +53,8 @@ mod tests {
             "get_sales_list",
             "create_sale",
             "get_fiscal_receipts",
+            "get_purchase_orders",
+            "get_suppliers",
             "get_lab_orders",
             "create_lab_order",
             "update_lab_order_status",

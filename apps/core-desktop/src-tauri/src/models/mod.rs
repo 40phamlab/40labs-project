@@ -5,6 +5,7 @@ pub mod customers;
 pub mod inventory;
 pub mod lab;
 pub mod sales;
+pub mod purchases;
 pub mod notification;
 pub mod staff_notification;
 pub mod device;

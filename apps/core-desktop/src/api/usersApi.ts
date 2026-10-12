@@ -1,6 +1,7 @@
 import type { User, PairedDevice, UserRole, StaffPermissionSet } from '@40labs/types';
 import { initialUsers, initialPairedDevices } from '../devData';
 import { WORKSPACE_ID, BRANCH_ID } from '../devData/constants';
+import { isUsingTauriIpc, invokeCommand } from './client';
 
 export interface CreateUserPayload {
   full_name: string;
@@ -26,7 +27,12 @@ let usersStore: User[] = [...initialUsers];
 let devicesStore: PairedDevice[] = [...initialPairedDevices];
 
 export const usersApi = {
-  list: async (): Promise<User[]> => [...usersStore],
+  list: async (): Promise<User[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<User[]>('user_list');
+    }
+    return [...usersStore];
+  },
 
   get: async (id: string): Promise<User | null> => {
     return usersStore.find((u) => u.id === id) || null;

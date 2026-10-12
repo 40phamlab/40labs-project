@@ -245,6 +245,7 @@ export function useSales() {
       lines,
       paymentMethod,
       discountAmount,
+      idempotencyKey: `idem_sale_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     };
 
     const newSale = await createSaleMutation.mutateAsync(payload);

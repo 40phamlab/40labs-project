@@ -37,7 +37,9 @@ pub async fn create_sale(
         None
     };
 
-    SalesService::create_sale(&state.pool, &ctx, payload, discount_approver, None)
+    let idempotency_key = payload.idempotency_key.clone();
+
+    SalesService::create_sale(&state.pool, &ctx, payload, discount_approver, idempotency_key)
         .await
         .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
 }
@@ -47,6 +49,8 @@ pub async fn get_fiscal_receipts(
     state: State<'_, AppState>,
 ) -> Result<Vec<FiscalReceipt>, AuthErrorResponse> {
     let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let _ctx = engine.require_session().await.map_err(|e| e.to_response())?;
-    Ok(Vec::new())
+    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    SalesRepository::list_fiscal_receipts(&state.pool, &ctx.workspace_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
 }

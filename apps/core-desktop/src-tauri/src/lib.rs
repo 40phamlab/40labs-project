@@ -20,19 +20,10 @@ pub fn run() {
 
     let runtime = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
 
-    let pool = match runtime.block_on(async { init_db_pool().await }) {
-        Ok(p) => p,
-        Err(err) => {
-            tracing::error!("[40Labs Startup Error] Failed to initialize SQLite database pool: {}. Falling back to in-memory pool to prevent process abort.", err);
-            runtime.block_on(async {
-                sqlx::sqlite::SqlitePoolOptions::new()
-                    .max_connections(1)
-                    .connect("sqlite::memory:")
-                    .await
-                    .expect("Fatal fallback database failure")
-            })
-        }
-    };
+    let pool = runtime.block_on(async { init_db_pool().await }).unwrap_or_else(|err| {
+        tracing::error!("[40Labs Startup Error] Failed to initialize persistent SQLite database pool: {}.", err);
+        panic!("Fatal database initialization failure: {}. Application cannot start without a valid persistent database pool.", err);
+    });
 
     let keystore = Arc::new(Keystore::init().expect("Failed to initialize security keystore"));
     let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
@@ -111,6 +102,9 @@ pub fn run() {
             commands::sales_cmd::get_sales_list,
             commands::sales_cmd::create_sale,
             commands::sales_cmd::get_fiscal_receipts,
+            // Purchases
+            commands::purchases_cmd::get_purchase_orders,
+            commands::purchases_cmd::get_suppliers,
             // Lab
             commands::lab_cmd::get_lab_orders,
             commands::lab_cmd::create_lab_order,

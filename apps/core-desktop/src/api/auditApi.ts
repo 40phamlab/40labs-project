@@ -1,10 +1,16 @@
 import type { AuditLogEntry } from '@40labs/types';
 import { initialAuditLog, WORKSPACE_ID, BRANCH_ID } from '../devData';
+import { isUsingTauriIpc, invokeCommand } from './client';
 
 let auditLogStore: AuditLogEntry[] = [...initialAuditLog];
 
 export const auditApi = {
-  list: (): AuditLogEntry[] => [...auditLogStore],
+  list: async (): Promise<AuditLogEntry[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<AuditLogEntry[]>('get_audit_logs');
+    }
+    return [...auditLogStore];
+  },
 
   get: (id: string): AuditLogEntry | null => {
     return auditLogStore.find((a) => a.id === id) || null;
@@ -25,7 +31,7 @@ export const auditApi = {
   },
 
   // Backwards compatibility aliases
-  getAuditLog: (): AuditLogEntry[] => auditApi.list(),
+  getAuditLog: (): Promise<AuditLogEntry[]> => auditApi.list(),
 };
 
 export const audit = auditApi;

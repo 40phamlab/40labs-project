@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { LabOrder, LabSample, LabResult, TestCatalogEntry } from '@40labs/types';
+import { initialLabOrders, initialLabSamples } from '../devData';
 import { lab } from '../api';
 
 interface LabState {
@@ -19,8 +20,8 @@ interface LabState {
 }
 
 export const useLabStore = create<LabState>((set) => ({
-  orders: lab.listOrders(),
-  samples: lab.listSamples(),
+  orders: [...initialLabOrders],
+  samples: [...initialLabSamples],
   results: lab.listResults(),
   catalog: lab.listCatalog(),
   selectedOrderId: null,
@@ -45,7 +46,9 @@ export const useLabStore = create<LabState>((set) => ({
 
     set((state) => ({
       samples: [newSample, ...state.samples],
-      orders: lab.listOrders(),
+      orders: state.orders.map((o) =>
+        o.id === orderId ? { ...o, status: 'sample_collected' } : o
+      ),
     }));
 
     return newSample;
@@ -56,7 +59,9 @@ export const useLabStore = create<LabState>((set) => ({
 
     set((state) => ({
       results: [newResult, ...state.results],
-      orders: lab.listOrders(),
+      orders: state.orders.map((o) =>
+        o.id === orderId ? { ...o, status: 'report_ready' } : o
+      ),
     }));
 
     return newResult;

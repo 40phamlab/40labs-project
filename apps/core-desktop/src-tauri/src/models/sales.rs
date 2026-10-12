@@ -36,6 +36,7 @@ pub struct Sale {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateSaleItemInput {
+    #[serde(alias = "inventory_item_id")]
     pub inventory_item_id: String,
     pub quantity: i64,
 }
@@ -44,19 +45,30 @@ pub struct CreateSaleItemInput {
 #[serde(rename_all = "camelCase")]
 pub struct CreateSaleRequest {
     pub customer_id: Option<String>,
+    #[serde(alias = "lines")]
     pub items: Vec<CreateSaleItemInput>,
     pub payment_method: String,
     pub discount_amount: Option<i64>,
     pub step_up_token: Option<String>,
+    #[serde(alias = "idempotencyKey")]
+    pub idempotency_key: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct FiscalReceipt {
     pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
     pub sale_id: String,
-    pub receipt_number: String,
-    pub qr_code_url: Option<String>,
-    pub verification_status: String,
+    pub fiscal_device_id: Option<String>,
+    pub status: String,
+    pub local_signature: String,
+    pub tra_receipt_number: Option<String>,
+    pub queued_at: String,
+    pub submitted_at: Option<String>,
+    pub retry_count: i64,
+    pub buffering_window_hours: Option<i64>,
     pub created_at: String,
+    pub updated_at: String,
 }

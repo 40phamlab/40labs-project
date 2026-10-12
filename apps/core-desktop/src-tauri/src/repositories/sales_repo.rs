@@ -1,5 +1,5 @@
 use sqlx::{SqlitePool, SqliteConnection};
-use crate::models::sales::{Sale, SaleLine};
+use crate::models::sales::{Sale, SaleLine, FiscalReceipt};
 
 #[derive(Debug, sqlx::FromRow)]
 struct SaleRow {
@@ -151,5 +151,44 @@ impl SalesRepository {
         }
 
         Ok(())
+    }
+
+    pub async fn create_fiscal_receipt(executor: &mut SqliteConnection, receipt: &FiscalReceipt) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO fiscal_receipt (
+                id, workspace_id, branch_id, sale_id, fiscal_device_id, status,
+                local_signature, tra_receipt_number, queued_at, submitted_at,
+                retry_count, buffering_window_hours, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#
+        )
+        .bind(&receipt.id)
+        .bind(&receipt.workspace_id)
+        .bind(&receipt.branch_id)
+        .bind(&receipt.sale_id)
+        .bind(&receipt.fiscal_device_id)
+        .bind(&receipt.status)
+        .bind(&receipt.local_signature)
+        .bind(&receipt.tra_receipt_number)
+        .bind(&receipt.queued_at)
+        .bind(&receipt.submitted_at)
+        .bind(receipt.retry_count)
+        .bind(receipt.buffering_window_hours)
+        .bind(&receipt.created_at)
+        .bind(&receipt.updated_at)
+        .execute(&mut *executor)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn list_fiscal_receipts(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<FiscalReceipt>, sqlx::Error> {
+        sqlx::query_as::<_, FiscalReceipt>(
+            "SELECT * FROM fiscal_receipt WHERE workspace_id = ? ORDER BY created_at DESC"
+        )
+        .bind(workspace_id)
+        .fetch_all(pool)
+        .await
     }
 }

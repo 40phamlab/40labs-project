@@ -7,6 +7,7 @@ export interface CreateSalePayload {
   lines: Omit<SaleLine, 'id'>[];
   paymentMethod: 'cash' | 'mobile_money' | 'card' | 'credit';
   discountAmount: number;
+  idempotencyKey?: string;
 }
 
 export interface UpdateSalePayload {
@@ -31,8 +32,21 @@ export const salesApi = {
   },
 
   create: async (payload: CreateSalePayload): Promise<Sale> => {
+    const key = payload.idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     if (isUsingTauriIpc()) {
-      return invokeCommand<Sale>('create_sale', { payload });
+      const items = payload.lines.map((line) => ({
+        inventoryItemId: line.inventory_item_id,
+        quantity: line.quantity,
+      }));
+      return invokeCommand<Sale>('create_sale', {
+        payload: {
+          customerId: payload.customerId,
+          items,
+          paymentMethod: payload.paymentMethod,
+          discountAmount: payload.discountAmount,
+          idempotencyKey: key,
+        },
+      });
     }
 
     const now = new Date().toISOString();
