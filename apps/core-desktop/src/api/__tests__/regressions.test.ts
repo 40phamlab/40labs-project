@@ -7,6 +7,7 @@ import { purchasesApi } from '../purchasesApi';
 import { dashboardApi } from '../dashboardApi';
 import { branchesApi } from '../branchesApi';
 import { backupApi } from '../backupApi';
+import { customersApi } from '../customersApi';
 import { getInitialDashboardSummary } from '../../devData/dashboard/summary';
 import { salesApi } from '../salesApi';
 import { inventoryApi } from '../inventoryApi';
@@ -261,5 +262,104 @@ describe('REG-01 through REG-09 — System Regression Test Suite', () => {
 
     const history = await backupApi.listHistory();
     expect(history.length).toBeGreaterThan(0);
+  });
+
+  it('REG-10: Customer Persistence, Production Fail-Closed, & IPC Error Transparency', async () => {
+    // 1. Returns exact records from IPC / SQLite
+    vi.mocked(client.isUsingTauriIpc).mockReturnValue(true);
+    vi.mocked(client.invokeCommand).mockResolvedValue([
+      {
+        id: 'cust_db_100',
+        workspace_id: 'ws_prod',
+        branch_id: 'br_prod',
+        full_name: 'Persisted SQLite Customer',
+        phone: '+255711223344',
+        outstanding_balance: 0,
+        created_at: '2026-03-31T00:00:00Z',
+        updated_at: '2026-03-31T00:00:00Z',
+      },
+    ]);
+
+    const customers = await customersApi.list();
+    expect(client.invokeCommand).toHaveBeenCalledWith('get_customers_list');
+    expect(customers.length).toBe(1);
+    expect(customers[0].full_name).toBe('Persisted SQLite Customer');
+
+    // 2. Database/IPC failure transparently raises error
+    vi.mocked(client.invokeCommand).mockRejectedValue(new Error('SQLite DB Connection Timeout'));
+    await expect(customersApi.list()).rejects.toThrow('SQLite DB Connection Timeout');
+
+    // 3. Fails closed when IPC is unavailable in non-dev/production environments
+    vi.mocked(client.isUsingTauriIpc).mockReturnValue(false);
+    const origDev = import.meta.env.DEV;
+    try {
+      (import.meta.env as any).DEV = false;
+      await expect(customersApi.list()).rejects.toThrow('Native database path is unavailable');
+    } finally {
+      (import.meta.env as any).DEV = origDev;
+    }
+  });
+
+  it('REG-11: Customer CRUD, Phone Normalization, Duplicate Protection, Optional Field Clearing & Archive Integrity', async () => {
+    vi.mocked(client.isUsingTauriIpc).mockReturnValue(true);
+
+    // 1. Creation with normalization and duplicate check error propagation
+    vi.mocked(client.invokeCommand).mockImplementation(async (cmd, args) => {
+      if (cmd === 'create_customer') {
+        const payload = (args as any).payload;
+        if (payload.phone === '+255712345678') {
+          throw new Error('DUPLICATE_PHONE:cust_exist_01');
+        }
+        return {
+          id: 'cust_reg_11',
+          full_name: payload.fullName,
+          phone: payload.phone,
+          email: payload.email || null,
+          created_at: '2026-04-01T00:00:00Z',
+          updated_at: '2026-04-01T00:00:00Z',
+        };
+      }
+      if (cmd === 'update_customer') {
+        const { id, payload } = args as any;
+        return {
+          id,
+          full_name: payload.fullName || 'Reg Customer',
+          phone: payload.phone || '+255700000000',
+          email: payload.email !== undefined ? payload.email : 'existing@example.com',
+          notes: payload.notes !== undefined ? payload.notes : 'existing note',
+          archived_at: payload.archivedAt !== undefined ? payload.archivedAt : null,
+          created_at: '2026-04-01T00:00:00Z',
+          updated_at: '2026-04-01T00:00:00Z',
+        };
+      }
+      return null;
+    });
+
+    // Duplicate create throws structured duplicate error
+    await expect(
+      customersApi.create({ fullName: 'Duplicate Juma', phone: '+255712345678' })
+    ).rejects.toThrow('DUPLICATE_PHONE:cust_exist_01');
+
+    // Valid create returns new customer
+    const created = await customersApi.create({
+      fullName: 'Valid Customer',
+      phone: '0711998877',
+      email: 'valid@example.com',
+    });
+    expect(created.id).toBe('cust_reg_11');
+
+    // 2. Explicit field clearing vs value preservation
+    const cleared = await customersApi.update('cust_reg_11', { email: null, notes: null });
+    expect(client.invokeCommand).toHaveBeenCalledWith('update_customer', {
+      id: 'cust_reg_11',
+      payload: { email: null, notes: null },
+    });
+    expect(cleared?.email).toBeNull();
+    expect(cleared?.notes).toBeNull();
+
+    // 3. Archive update sets timestamp
+    const archiveTs = new Date().toISOString();
+    const archived = await customersApi.update('cust_reg_11', { archivedAt: archiveTs });
+    expect(archived?.archived_at).toBe(archiveTs);
   });
 });

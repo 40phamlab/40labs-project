@@ -97,7 +97,7 @@ export const PatientRecordScreen: React.FC<PatientRecordScreenProps> = ({ custom
   ];
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-surface overflow-y-auto px-6 py-4 custom-scrollbar">
+    <div className="flex flex-col flex-1 h-full w-full min-h-0 bg-surface overflow-y-auto custom-scrollbar px-6 py-4">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-text-muted mb-4 max-w-[1200px] mx-auto w-full">
         <button

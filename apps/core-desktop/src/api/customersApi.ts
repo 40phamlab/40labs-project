@@ -1,4 +1,5 @@
 import type { Customer, AllergyItem, EmergencyContact } from '@40labs/types';
+import { normalizePhoneTZ } from '@40labs/i18n';
 import { initialCustomers, WORKSPACE_ID, BRANCH_ID } from '../devData';
 import { isUsingTauriIpc, invokeCommand } from './client';
 
@@ -38,11 +39,22 @@ export interface UpdateCustomerPayload {
 
 let customersStore: Customer[] = [...initialCustomers];
 
+function isDevMode(): boolean {
+  return typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV);
+}
+
+function ensureNativeIpcOrDevStore(): void {
+  if (!isUsingTauriIpc() && !isDevMode()) {
+    throw new Error('Native database path is unavailable. Production mode requires a valid Tauri runtime.');
+  }
+}
+
 export const customersApi = {
   list: async (): Promise<Customer[]> => {
     if (isUsingTauriIpc()) {
       return invokeCommand<Customer[]>('get_customers_list');
     }
+    ensureNativeIpcOrDevStore();
     return [...customersStore];
   },
 
@@ -50,12 +62,33 @@ export const customersApi = {
     if (isUsingTauriIpc()) {
       return invokeCommand<Customer | null>('get_customer', { id });
     }
+    ensureNativeIpcOrDevStore();
     return customersStore.find((c) => c.id === id) || null;
   },
 
   create: async (payload: AddCustomerPayload): Promise<Customer> => {
     if (isUsingTauriIpc()) {
       return invokeCommand<Customer>('create_customer', { payload });
+    }
+    ensureNativeIpcOrDevStore();
+
+    const fullName = payload.fullName.trim();
+    if (!fullName) {
+      throw new Error('INVALID_FULL_NAME: Full name is required');
+    }
+
+    const normDigits = normalizePhoneTZ(payload.phone);
+    if (!normDigits) {
+      throw new Error('INVALID_PHONE: Invalid Tanzanian phone number format');
+    }
+    const normPhone = `+${normDigits}`;
+
+    const existing = customersStore.find((c) => {
+      const cNorm = normalizePhoneTZ(c.phone);
+      return cNorm === normDigits || c.phone === normPhone;
+    });
+    if (existing) {
+      throw new Error(`DUPLICATE_PHONE:${existing.id}`);
     }
 
     const now = new Date().toISOString();
@@ -65,9 +98,9 @@ export const customersApi = {
       branch_id: BRANCH_ID,
       created_at: now,
       updated_at: now,
-      full_name: payload.fullName,
-      phone: payload.phone,
-      email: payload.email || null,
+      full_name: fullName,
+      phone: normPhone,
+      email: payload.email?.trim() || null,
       outstanding_balance: 0,
       notes: payload.notes || null,
       dob: payload.dob || null,
@@ -91,16 +124,35 @@ export const customersApi = {
     if (isUsingTauriIpc()) {
       return invokeCommand<Customer>('update_customer', { id, payload: updates });
     }
+    ensureNativeIpcOrDevStore();
 
     const index = customersStore.findIndex((c) => c.id === id);
     if (index === -1) return null;
 
     const existing = customersStore[index];
+
+    let normPhone = existing.phone;
+    if (updates.phone !== undefined) {
+      const normDigits = normalizePhoneTZ(updates.phone);
+      if (!normDigits) {
+        throw new Error('INVALID_PHONE: Invalid Tanzanian phone number format');
+      }
+      normPhone = `+${normDigits}`;
+      const duplicate = customersStore.find((c) => {
+        if (c.id === id) return false;
+        const cNorm = normalizePhoneTZ(c.phone);
+        return cNorm === normDigits || c.phone === normPhone;
+      });
+      if (duplicate) {
+        throw new Error(`DUPLICATE_PHONE:${duplicate.id}`);
+      }
+    }
+
     const updated: Customer = {
       ...existing,
-      full_name: updates.fullName ?? existing.full_name,
-      phone: updates.phone ?? existing.phone,
-      email: updates.email !== undefined ? updates.email : existing.email,
+      full_name: updates.fullName !== undefined ? updates.fullName.trim() : existing.full_name,
+      phone: normPhone,
+      email: updates.email !== undefined ? (updates.email ? updates.email.trim() : null) : existing.email,
       notes: updates.notes !== undefined ? updates.notes : existing.notes,
       outstanding_balance: updates.outstandingBalance ?? existing.outstanding_balance,
       dob: updates.dob !== undefined ? updates.dob : existing.dob,
@@ -125,6 +177,10 @@ export const customersApi = {
   },
 
   delete: async (id: string): Promise<boolean> => {
+    if (isUsingTauriIpc()) {
+      return customersApi.archive(id);
+    }
+    ensureNativeIpcOrDevStore();
     const initialLen = customersStore.length;
     customersStore = customersStore.filter((c) => c.id !== id);
     return customersStore.length < initialLen;

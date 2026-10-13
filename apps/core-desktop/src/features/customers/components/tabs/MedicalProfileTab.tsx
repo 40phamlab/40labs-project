@@ -1,4 +1,3 @@
-// [PHASE: MVP]
 import * as React from 'react';
 import type { Customer, AllergyItem } from '@40labs/types';
 import { Panel } from '@40labs/ui-components';
@@ -66,7 +65,7 @@ export const MedicalProfileTab: React.FC<MedicalProfileTabProps> = ({ customer }
               <div key={idx} className="flex items-center justify-between p-3 rounded-card bg-panel-strong/30 border border-border/50 text-xs">
                 <span className="font-bold text-text">{alg.substance}</span>
                 <span className="text-text-muted">Reaction: {alg.reaction || 'None specified'}</span>
-                <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] ${alg.severity === 'severe' ? 'bg-[#EF4444]/20 text-[#EF4444]' : 'bg-warning/20 text-warning'}`}>
+                <span className={`px-2 py-0.5 rounded font-bold uppercase text-[10px] ${alg.severity === 'severe' ? 'bg-danger/20 text-danger' : 'bg-warning/20 text-warning'}`}>
                   {alg.severity}
                 </span>
               </div>
@@ -110,7 +109,7 @@ export const MedicalProfileTab: React.FC<MedicalProfileTabProps> = ({ customer }
         </Panel>
       </div>
 
-      {/* Emergency Contact & Notes */}
+      {/* Emergency Contact & Location */}
       <div className="grid grid-cols-2 gap-6">
         <Panel className="p-6 space-y-4 bg-panel rounded-card border border-border">
           <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Emergency Contact & Location</h3>

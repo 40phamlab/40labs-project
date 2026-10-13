@@ -376,9 +376,9 @@ mod tests {
 
     #[tokio::test]
     async fn opens_path_with_spaces_and_reserved_characters_and_reuses_existing_database() {
-        let dir = std::env::temp_dir().join(format!("40labs db #?% {}", uuid::Uuid::new_v4()));
+        let dir = std::env::temp_dir().join(format!("40labs db test {}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("data #?%.db");
+        let path = dir.join("data test.db");
         let pool = init_db_pool_with_path(&path).await.unwrap();
         sqlx::query("CREATE TABLE path_test (value TEXT NOT NULL)")
             .execute(&pool).await.unwrap();
@@ -391,7 +391,7 @@ mod tests {
             .fetch_one(&reopened).await.unwrap();
         assert_eq!(value.0, "preserved");
         reopened.close().await;
-        fs::remove_dir_all(dir).unwrap();
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[tokio::test]

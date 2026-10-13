@@ -9,8 +9,8 @@ import {
 } from '@40labs/ui-components';
 import { ScheduleChannel, RecipientScope } from '@40labs/types';
 import { Send, Check, AlertCircle } from 'lucide-react';
-import { initialCustomers } from '../../../devData/customers/customers';
 import { initialUsers } from '../../../devData/users/staff';
+import { useCustomers } from '../../../hooks/useCustomers';
 import { ReportCategoryId, reportCategoriesConfig, DateRange } from '../config/reportCategories';
 import { ReportSelectionList } from './ReportSelectionList';
 import { createReportPdfBlob } from '../utils/exportReportPdf';
@@ -59,6 +59,7 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
   const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
 
   const { createNotification } = useNotifications();
+  const { customers } = useCustomers();
   const defaultReportsHook = useReports({ categoryId: activeCategory, dateRange });
   const getReportForCategory = getReportProp || defaultReportsHook.getReportForCategory;
 
@@ -78,12 +79,12 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
   const contacts = React.useMemo(() => {
     let list = recipientScope === 'staff'
       ? initialUsers.map((u) => ({ id: u.id, name: u.full_name, detail: `${u.role.toUpperCase()} (Staff User)` }))
-      : initialCustomers.map((c) => ({ id: c.id, name: c.full_name, detail: `${c.phone} · ${c.email || 'No email'}` }));
+      : customers.map((c) => ({ id: c.id, name: c.full_name, detail: `${c.phone} · ${c.email || 'No email'}` }));
 
     if (!searchQuery) return list;
     const q = searchQuery.toLowerCase();
     return list.filter((i) => i.name.toLowerCase().includes(q) || i.detail.toLowerCase().includes(q));
-  }, [recipientScope, searchQuery]);
+  }, [recipientScope, searchQuery, customers]);
 
   const toggleChannel = (ch: ScheduleChannel) => {
     setSelectedChannels((prev) =>

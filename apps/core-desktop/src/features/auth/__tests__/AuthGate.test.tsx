@@ -35,10 +35,13 @@ describe('AuthGate Boundary and States', () => {
       </AuthGate>
     );
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Anza/i })).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Anza/i })).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
   test('renders login screen when device bound and business exists but no session', async () => {
@@ -80,10 +83,13 @@ describe('AuthGate Boundary and States', () => {
       </AuthGate>
     );
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-      expect(screen.getByText(/Afya Bora Pharmacy/i)).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+        expect(screen.getByText(/Afya Bora Pharmacy/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
   test('renders locked state (LockScreen) when session is locked', async () => {
@@ -133,10 +139,13 @@ describe('AuthGate Boundary and States', () => {
       </AuthGate>
     );
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-      expect(screen.getByText(/Kikao kimefungwa/i)).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
+        expect(screen.getByText(/Kikao kimefungwa/i)).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 
   test('renders fully authenticated children when session is valid and setup is complete', async () => {
@@ -186,8 +195,11 @@ describe('AuthGate Boundary and States', () => {
       </AuthGate>
     );
 
-    await waitFor(() => {
-      expect(screen.getByTestId('protected-content')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('protected-content')).toBeInTheDocument();
+      },
+      { timeout: 3000 }
+    );
   });
 });

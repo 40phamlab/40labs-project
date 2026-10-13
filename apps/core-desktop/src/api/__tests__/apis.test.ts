@@ -4,6 +4,7 @@ import { integrationsApi } from '../integrationsApi';
 import { notificationsApi } from '../notificationsApi';
 import { labApi } from '../labApi';
 import { purchasesApi } from '../purchasesApi';
+import { customersApi } from '../customersApi';
 import * as client from '../client';
 
 vi.mock('../client', () => ({
@@ -214,6 +215,47 @@ describe('Frontend APIs Persistence and IPC Alignment', () => {
       const approvedPO = await purchasesApi.approve('po_1');
       expect(client.invokeCommand).toHaveBeenCalledWith('approve_purchase_order', { id: 'po_1' });
       expect(approvedPO?.status).toBe('completed');
+    });
+  });
+
+  describe('customersApi', () => {
+    it('routes list, get, create, update, and delete through Tauri IPC when available', async () => {
+      vi.mocked(client.isUsingTauriIpc).mockReturnValue(true);
+      vi.mocked(client.invokeCommand).mockImplementation(async (cmd, args) => {
+        if (cmd === 'get_customers_list') return [{ id: 'cust_ipc_1', full_name: 'IPC Customer' }];
+        if (cmd === 'get_customer') return { id: (args as any).id, full_name: 'IPC Customer' };
+        if (cmd === 'create_customer') return { id: 'cust_new', full_name: (args as any).payload.fullName };
+        if (cmd === 'update_customer') return { id: (args as any).id, full_name: (args as any).payload.fullName || 'IPC Customer Updated' };
+        return null;
+      });
+
+      const list = await customersApi.list();
+      expect(client.invokeCommand).toHaveBeenCalledWith('get_customers_list');
+      expect(list.length).toBe(1);
+      expect(list[0].full_name).toBe('IPC Customer');
+
+      const item = await customersApi.get('cust_ipc_1');
+      expect(client.invokeCommand).toHaveBeenCalledWith('get_customer', { id: 'cust_ipc_1' });
+      expect(item?.id).toBe('cust_ipc_1');
+
+      const created = await customersApi.create({ fullName: 'New Customer', phone: '+255700000000' });
+      expect(client.invokeCommand).toHaveBeenCalledWith('create_customer', {
+        payload: { fullName: 'New Customer', phone: '+255700000000' },
+      });
+      expect(created.full_name).toBe('New Customer');
+
+      const updated = await customersApi.update('cust_ipc_1', { fullName: 'IPC Customer Renamed' });
+      expect(client.invokeCommand).toHaveBeenCalledWith('update_customer', {
+        id: 'cust_ipc_1',
+        payload: { fullName: 'IPC Customer Renamed' },
+      });
+      expect(updated?.full_name).toBe('IPC Customer Renamed');
+
+      await customersApi.delete('cust_ipc_1');
+      expect(client.invokeCommand).toHaveBeenCalledWith('update_customer', {
+        id: 'cust_ipc_1',
+        payload: { archivedAt: expect.any(String) },
+      });
     });
   });
 });

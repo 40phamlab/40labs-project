@@ -7,8 +7,8 @@ import {
   Checkbox,
 } from '@40labs/ui-components';
 import { ScheduleChannel, RecipientScope } from '@40labs/types';
-import { initialCustomers } from '../../devData/customers/customers';
 import { initialUsers } from '../../devData/users/staff';
+import { useCustomers } from '../../hooks/useCustomers';
 
 interface ChannelRecipientModalProps {
   isOpen: boolean;
@@ -57,6 +57,8 @@ export const ChannelRecipientModal: React.FC<ChannelRecipientModalProps> = ({
     }
   }, [isOpen, currentScope, currentRecipientIds]);
 
+  const { customers } = useCustomers();
+
   const contacts = React.useMemo(() => {
     let list: Array<{ id: string; name: string; detail: string }> = [];
     if (scope === 'staff') {
@@ -66,7 +68,7 @@ export const ChannelRecipientModal: React.FC<ChannelRecipientModalProps> = ({
         detail: `${s.role} (${s.email || s.phone || 'Staff'})`,
       }));
     } else {
-      list = initialCustomers.map((c: any) => ({
+      list = customers.map((c: any) => ({
         id: c.id,
         name: c.full_name,
         detail: `${c.phone} · ${c.email || 'No email'}`,

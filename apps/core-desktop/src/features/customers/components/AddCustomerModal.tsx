@@ -8,6 +8,7 @@ import {
   PhoneInput,
   Textarea,
 } from '@40labs/ui-components';
+import { normalizePhoneTZ } from '@40labs/i18n';
 
 export interface AddCustomerPayload {
   fullName: string;
@@ -36,34 +37,74 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     notes: '',
   });
 
+  const [phoneError, setPhoneError] = React.useState<string | null>(null);
+  const [generalError, setGeneralError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        fullName: '',
+        phone: '',
+        email: '',
+        notes: '',
+      });
+      setPhoneError(null);
+      setGeneralError(null);
+    }
+  }, [isOpen]);
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    setPhoneError(null);
+    setGeneralError(null);
   };
 
   const isFormValid =
-    formData.fullName.trim() !== '' && formData.phone.trim() !== '';
+    formData.fullName.trim() !== '' && formData.phone.trim() !== '' && !phoneError;
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid || isLoading) return;
 
-    await onAdd({
-      fullName: formData.fullName.trim(),
-      phone: formData.phone.trim(),
-      email: formData.email.trim() || undefined,
-      notes: formData.notes.trim() || undefined,
-    });
+    setGeneralError(null);
+    setPhoneError(null);
 
-    setFormData({
-      fullName: '',
-      phone: '',
-      email: '',
-      notes: '',
-    });
-    onClose();
+    const normPhone = normalizePhoneTZ(formData.phone);
+    if (!normPhone) {
+      setPhoneError('Invalid phone format. Must be 0XXXXXXXXX, 255XXXXXXXXX, or +255XXXXXXXXX');
+      return;
+    }
+
+    try {
+      await onAdd({
+        fullName: formData.fullName.trim(),
+        phone: normPhone,
+        email: formData.email.trim() || undefined,
+        notes: formData.notes.trim() || undefined,
+      });
+
+      setFormData({
+        fullName: '',
+        phone: '',
+        email: '',
+        notes: '',
+      });
+      onClose();
+    } catch (err: any) {
+      const msg = typeof err === 'string' ? err : err?.message || String(err);
+      if (msg.includes('DUPLICATE_PHONE')) {
+        setGeneralError('This phone number is already registered for another customer.');
+      } else if (msg.includes('INVALID_PHONE')) {
+        setPhoneError('Invalid phone number format.');
+      } else if (msg.includes('INVALID_FULL_NAME')) {
+        setGeneralError('Full name is required.');
+      } else {
+        setGeneralError(msg || 'An error occurred while saving customer profile.');
+      }
+    }
   };
 
   return (
@@ -94,6 +135,12 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       }
     >
       <form onSubmit={handleAdd} className="space-y-4">
+        {generalError && (
+          <div className="p-3 bg-danger/10 border border-danger/30 rounded-card text-xs text-danger">
+            {generalError}
+          </div>
+        )}
+
         <Field>
           <FieldLabel required>Full Name</FieldLabel>
           <Input
@@ -114,6 +161,7 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
             countryCode="+255"
             placeholder="0XXXXXXXXX"
           />
+          {phoneError && <p className="mt-1 text-xs text-danger">{phoneError}</p>}
         </Field>
 
         <Field>

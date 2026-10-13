@@ -17,17 +17,17 @@ import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 export interface CustomerFormPayload {
   fullName: string;
   phone: string;
-  email?: string;
-  notes?: string;
-  dob?: string;
-  sex?: 'male' | 'female' | 'other';
-  bloodGroup?: string;
-  allergies?: AllergyItem[];
-  chronicConditions?: string[];
-  currentMedications?: string[];
-  emergencyContact?: EmergencyContact;
-  wardDistrict?: string;
-  pharmacyNotes?: string;
+  email?: string | null;
+  notes?: string | null;
+  dob?: string | null;
+  sex?: 'male' | 'female' | 'other' | null;
+  bloodGroup?: string | null;
+  allergies?: AllergyItem[] | null;
+  chronicConditions?: string[] | null;
+  currentMedications?: string[] | null;
+  emergencyContact?: EmergencyContact | null;
+  wardDistrict?: string | null;
+  pharmacyNotes?: string | null;
 }
 
 interface CustomerFormModalProps {
@@ -77,6 +77,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
 
   const [duplicateError, setDuplicateError] = React.useState<{ name: string; id: string } | null>(null);
   const [phoneError, setPhoneError] = React.useState<string | null>(null);
+  const [generalError, setGeneralError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (editCustomer) {
@@ -160,6 +161,7 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
     }
     setDuplicateError(null);
     setPhoneError(null);
+    setGeneralError(null);
   }, [editCustomer, isOpen]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,36 +192,54 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
     e.preventDefault();
     if (!isFormValid || isLoading) return;
 
+    setGeneralError(null);
+    setDuplicateError(null);
+    setPhoneError(null);
+
     const normPhone = normalizePhoneTZ(phone);
     if (!normPhone) {
-      setPhoneError('Invalid phone format');
+      setPhoneError('Invalid phone format. Must be 0XXXXXXXXX, 255XXXXXXXXX, or +255XXXXXXXXX');
       return;
     }
+
+    const isEditing = Boolean(editCustomer);
 
     try {
       await onSave({
         fullName: fullName.trim(),
         phone: normPhone,
-        email: email.trim() || undefined,
-        notes: notes.trim() || undefined,
-        dob: dob.trim() || undefined,
-        sex: sex || undefined,
-        bloodGroup: bloodGroup.trim() || undefined,
-        allergies: allergies.length > 0 ? allergies : undefined,
-        chronicConditions: chronicConditions.length > 0 ? chronicConditions : undefined,
-        currentMedications: currentMedications.length > 0 ? currentMedications : undefined,
-        emergencyContact: emergencyName.trim() || emergencyPhone.trim() ? { name: emergencyName.trim(), phone: emergencyPhone.trim() } : undefined,
-        wardDistrict: wardDistrict.trim() || undefined,
-        pharmacyNotes: pharmacyNotes.trim() || undefined,
+        email: email.trim() ? email.trim() : (isEditing ? null : undefined),
+        notes: notes.trim() ? notes.trim() : (isEditing ? null : undefined),
+        dob: dob.trim() ? dob.trim() : (isEditing ? null : undefined),
+        sex: sex ? (sex as any) : (isEditing ? null : undefined),
+        bloodGroup: bloodGroup.trim() ? bloodGroup.trim() : (isEditing ? null : undefined),
+        allergies: allergies.length > 0 ? allergies : (isEditing ? null : undefined),
+        chronicConditions: chronicConditions.length > 0 ? chronicConditions : (isEditing ? null : undefined),
+        currentMedications: currentMedications.length > 0 ? currentMedications : (isEditing ? null : undefined),
+        emergencyContact: (emergencyName.trim() || emergencyPhone.trim())
+          ? { name: emergencyName.trim(), phone: emergencyPhone.trim() }
+          : (isEditing ? null : undefined),
+        wardDistrict: wardDistrict.trim() ? wardDistrict.trim() : (isEditing ? null : undefined),
+        pharmacyNotes: pharmacyNotes.trim() ? pharmacyNotes.trim() : (isEditing ? null : undefined),
       });
       onClose();
     } catch (err: any) {
-      const msg = err?.message || String(err);
+      const msg = typeof err === 'string' ? err : err?.message || String(err);
       if (msg.includes('DUPLICATE_PHONE')) {
-        const parts = msg.split(':');
-        const custId = parts[1];
+        const parts = msg.split('DUPLICATE_PHONE:');
+        const custId = parts[1]?.split(/[\s"}]/)[0]?.trim() || '';
         const match = allCustomers.find((c) => c.id === custId);
-        setDuplicateError({ name: match?.full_name || 'Customer', id: custId });
+        setDuplicateError({ name: match?.full_name || 'Existing Customer', id: custId });
+      } else if (msg.includes('INVALID_PHONE')) {
+        setPhoneError(msg.replace('INVALID_PHONE:', '').trim() || 'Invalid phone format');
+      } else if (msg.includes('INVALID_FULL_NAME')) {
+        setGeneralError(msg.replace('INVALID_FULL_NAME:', '').trim() || 'Invalid full name');
+      } else if (msg.includes('INVALID_EMAIL')) {
+        setGeneralError(msg.replace('INVALID_EMAIL:', '').trim() || 'Invalid email format');
+      } else if (msg.includes('INVALID_SEX')) {
+        setGeneralError(msg.replace('INVALID_SEX:', '').trim() || 'Invalid sex value');
+      } else {
+        setGeneralError(msg || 'An error occurred while saving customer profile.');
       }
     }
   };
@@ -252,10 +272,16 @@ export const CustomerFormModal: React.FC<CustomerFormModalProps> = ({
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
+        {generalError && (
+          <div className="p-3 bg-danger/10 border border-danger/30 rounded-card text-xs text-danger">
+            {generalError}
+          </div>
+        )}
+
         {duplicateError && (
           <div className="p-3 bg-warning/10 border border-warning/30 rounded-card text-xs text-warning flex items-center justify-between">
             <span>Already registered as <strong>{duplicateError.name}</strong> — open profile</span>
-            {onOpenCustomerProfile && (
+            {onOpenCustomerProfile && duplicateError.id && (
               <Button
                 type="button"
                 intent="neutral"

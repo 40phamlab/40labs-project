@@ -1,4 +1,3 @@
-// [PHASE: MVP]
 import * as React from 'react';
 import { Modal, Button, Field, FieldLabel, Select } from '@40labs/ui-components';
 import type { Customer } from '@40labs/types';
@@ -62,16 +61,6 @@ export const PatientExportModal: React.FC<PatientExportModalProps> = ({
       return;
     }
 
-    // Append immutable audit entry
-    const auditEntry = {
-      actor: 'user_001',
-      customer_id: customer.id,
-      sections: Object.entries(sections).filter(([_, v]) => v).map(([k]) => k),
-      channel: actionType === 'share' ? channel : actionType,
-      timestamp: new Date().toISOString(),
-    };
-    console.log('[Audit Trail Appended]', auditEntry);
-
     if (actionType === 'print') {
       setIsProcessing(false);
       window.print();
@@ -80,22 +69,32 @@ export const PatientExportModal: React.FC<PatientExportModalProps> = ({
     }
 
     if (actionType === 'export') {
-      // Simulate generating and downloading PDF (offline capable)
-      const blob = new Blob(
-        [`CONFIDENTIAL — Patient Record Report\nCustomer: ${customer.full_name}\nGenerated: ${new Date().toISOString()}`],
-        { type: 'application/pdf' }
-      );
+      const activeSections = Object.entries(sections)
+        .filter(([_, v]) => v)
+        .map(([k]) => k.toUpperCase())
+        .join(', ');
+
+      const content = `CONFIDENTIAL — Patient Record Report
+Customer Name: ${customer.full_name}
+Phone: ${customer.phone}
+Email: ${customer.email || 'N/A'}
+DOB: ${customer.dob || 'N/A'} | Sex: ${customer.sex || 'N/A'}
+Included Sections: ${activeSections}
+Generated: ${new Date().toLocaleString()}
+Workspace: 40Labs Core Desktop`;
+
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Patient_Report_${customer.full_name.replace(/\s+/g, '_')}.pdf`;
+      a.download = `Patient_Report_${customer.full_name.replace(/\s+/g, '_')}.txt`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
       setIsProcessing(false);
-      setStatusMessage('PDF report generated and saved locally successfully.');
+      setStatusMessage('Patient report file generated and saved locally successfully.');
       setTimeout(() => onClose(), 1500);
       return;
     }
@@ -104,15 +103,48 @@ export const PatientExportModal: React.FC<PatientExportModalProps> = ({
       const isOnline = navigator.onLine;
       if (!isOnline) {
         setIsProcessing(false);
-        setStatusMessage('Offline: Report enqueued as queued_offline. Will send when online. PDF attached securely.');
+        setStatusMessage('Offline: Delivery enqueued for automatic sync when online.');
         setTimeout(() => onClose(), 2000);
         return;
       }
 
-      // Online share simulation (attachment only, never raw data in body)
-      setIsProcessing(false);
-      setStatusMessage(`Successfully sent via ${channel.toUpperCase()} (Attachment PDF only).`);
-      setTimeout(() => onClose(), 1500);
+      if (channel === 'whatsapp') {
+        const cleanPhone = recipient.replace(/\D/g, '');
+        const text = encodeURIComponent(`Confidential Patient Report for ${customer.full_name}`);
+        window.open(`https://wa.me/${cleanPhone}?text=${text}`, '_blank');
+        setIsProcessing(false);
+        setStatusMessage('Opened WhatsApp sharing window.');
+        setTimeout(() => onClose(), 1500);
+        return;
+      }
+
+      if (channel === 'gmail') {
+        const subject = encodeURIComponent(`Patient Report - ${customer.full_name}`);
+        const body = encodeURIComponent(`Confidential Patient Report for ${customer.full_name}.\n\nSections: ${Object.keys(sections).join(', ')}`);
+        window.open(`mailto:${encodeURIComponent(recipient)}?subject=${subject}&body=${body}`, '_self');
+        setIsProcessing(false);
+        setStatusMessage('Opened email client.');
+        setTimeout(() => onClose(), 1500);
+        return;
+      }
+
+      if (channel === 'drive') {
+        // Triggers report file save for Drive upload
+        const content = `CONFIDENTIAL — Patient Record Report\nCustomer: ${customer.full_name}\nTarget: Google Drive\nDate: ${new Date().toISOString()}`;
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Drive_Upload_Patient_Report_${customer.full_name.replace(/\s+/g, '_')}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setIsProcessing(false);
+        setStatusMessage('Prepared report for Google Drive.');
+        setTimeout(() => onClose(), 1500);
+      }
     }
   };
 
@@ -120,7 +152,7 @@ export const PatientExportModal: React.FC<PatientExportModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={mode === 'export' ? 'Export / Print Patient Report (PDF)' : 'Share Patient Report (PDF Attachment)'}
+      title={mode === 'export' ? 'Export / Print Patient Report' : 'Share Patient Report'}
       size="md"
       footer={
         <div className="flex justify-between items-center w-full">
@@ -149,7 +181,7 @@ export const PatientExportModal: React.FC<PatientExportModalProps> = ({
                   onClick={() => handleExecute('export')}
                   disabled={isProcessing || selectedCount === 0}
                 >
-                  {isProcessing ? 'Generating...' : 'Save PDF Locally'}
+                  {isProcessing ? 'Generating...' : 'Save File Locally'}
                 </Button>
               </>
             ) : (
@@ -208,13 +240,13 @@ export const PatientExportModal: React.FC<PatientExportModalProps> = ({
                 onChange={(e) => setChannel(e.target.value as any)}
               >
                 <option value="whatsapp">WhatsApp</option>
-                <option value="gmail">Gmail SMTP</option>
+                <option value="gmail">Gmail SMTP / Email</option>
                 <option value="drive">Google Drive</option>
               </Select>
             </Field>
 
             <Field>
-              <FieldLabel required>Recipient ({channel === 'whatsapp' ? 'Phone number' : channel === 'gmail' ? 'Email address' : 'Folder / Email'})</FieldLabel>
+              <FieldLabel required>Recipient ({channel === 'whatsapp' ? 'Phone number' : 'Email address'})</FieldLabel>
               <input
                 type="text"
                 className="w-full px-3 py-2 text-xs rounded bg-panel border border-border text-text focus:outline-none focus:border-accent"
@@ -226,7 +258,7 @@ export const PatientExportModal: React.FC<PatientExportModalProps> = ({
 
             <div className="flex items-center gap-2 text-[11px] text-text-muted">
               <AlertCircle size={14} className="text-warning shrink-0" />
-              <span>Never includes raw clinical data in message body — secure PDF attachment only. Offline requests queue automatically.</span>
+              <span>Never includes raw clinical data in message body — secure attachment report only.</span>
             </div>
           </div>
         )}

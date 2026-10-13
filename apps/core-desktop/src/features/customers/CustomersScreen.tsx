@@ -45,27 +45,37 @@ export const CustomersScreen: React.FC = () => {
   }, [customers]);
 
   const filteredCustomers = React.useMemo(() => {
-    return activeCustomers.filter((c) => {
+    const baseList = timeRange === 'archived'
+      ? customers.filter((c) => Boolean(c.archived_at))
+      : activeCustomers;
+
+    return baseList.filter((c) => {
       const q = searchTerm.toLowerCase().trim();
+      const qDigits = q.replace(/\D/g, '');
+      const phoneDigits = c.phone.replace(/\D/g, '');
+
       const matchesSearch =
         !q ||
         c.full_name.toLowerCase().includes(q) ||
         c.phone.includes(q) ||
+        (qDigits.length >= 3 && phoneDigits.includes(qDigits)) ||
         (c.email && c.email.toLowerCase().includes(q));
 
       let matchesTime = true;
-      const createdAt = new Date(c.created_at);
-      const now = new Date();
+      if (timeRange !== 'archived') {
+        const createdAt = new Date(c.created_at);
+        const now = new Date();
 
-      if (timeRange === 'today') {
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        matchesTime = createdAt >= startOfToday;
-      } else if (timeRange === 'week') {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        matchesTime = createdAt >= weekAgo;
-      } else if (timeRange === 'month') {
-        const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        matchesTime = createdAt >= monthAgo;
+        if (timeRange === 'today') {
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          matchesTime = createdAt >= startOfToday;
+        } else if (timeRange === 'week') {
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          matchesTime = createdAt >= weekAgo;
+        } else if (timeRange === 'month') {
+          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          matchesTime = createdAt >= monthAgo;
+        }
       }
 
       let matchesBalance = true;
@@ -77,7 +87,7 @@ export const CustomersScreen: React.FC = () => {
 
       return matchesSearch && matchesTime && matchesBalance;
     });
-  }, [activeCustomers, searchTerm, timeRange, balanceFilter]);
+  }, [customers, activeCustomers, searchTerm, timeRange, balanceFilter]);
 
   const handleClearAll = React.useCallback(() => {
     setTimeRange('all');
@@ -88,23 +98,6 @@ export const CustomersScreen: React.FC = () => {
   const handleSaveCustomer = async (payload: CustomerFormPayload) => {
     if (editingCustomer) {
       await updateCustomer(editingCustomer.id, {
-        fullName: payload.fullName,
-        phone: payload.phone,
-        email: payload.email || null,
-        notes: payload.notes || null,
-        dob: payload.dob || null,
-        sex: payload.sex || null,
-        bloodGroup: payload.bloodGroup || null,
-        allergies: payload.allergies ? (payload.allergies as any) : null,
-        chronicConditions: payload.chronicConditions || null,
-        currentMedications: payload.currentMedications || null,
-        emergencyContact: payload.emergencyContact ? (payload.emergencyContact as any) : null,
-        wardDistrict: payload.wardDistrict || null,
-        pharmacyNotes: payload.pharmacyNotes || null,
-      });
-      setEditingCustomer(null);
-    } else {
-      await addCustomer({
         fullName: payload.fullName,
         phone: payload.phone,
         email: payload.email,
@@ -118,6 +111,23 @@ export const CustomersScreen: React.FC = () => {
         emergencyContact: payload.emergencyContact as any,
         wardDistrict: payload.wardDistrict,
         pharmacyNotes: payload.pharmacyNotes,
+      });
+      setEditingCustomer(null);
+    } else {
+      await addCustomer({
+        fullName: payload.fullName,
+        phone: payload.phone,
+        email: payload.email || undefined,
+        notes: payload.notes || undefined,
+        dob: payload.dob || undefined,
+        sex: payload.sex || undefined,
+        bloodGroup: payload.bloodGroup || undefined,
+        allergies: payload.allergies as any,
+        chronicConditions: payload.chronicConditions,
+        currentMedications: payload.currentMedications,
+        emergencyContact: payload.emergencyContact as any,
+        wardDistrict: payload.wardDistrict || undefined,
+        pharmacyNotes: payload.pharmacyNotes || undefined,
       });
     }
   };
@@ -134,6 +144,7 @@ export const CustomersScreen: React.FC = () => {
 
   return (
     <TabContainer
+      scroll
       toolbar={
         <PageToolbar
           left={
@@ -143,6 +154,7 @@ export const CustomersScreen: React.FC = () => {
               balanceFilter={balanceFilter}
               onBalanceFilterChange={setBalanceFilter}
               onClearAll={handleClearAll}
+              hasActiveFilters={Boolean(searchTerm)}
             />
           }
           right={
@@ -192,12 +204,12 @@ export const CustomersScreen: React.FC = () => {
         />
       }
     >
-      <div className="flex flex-col gap-3 flex-1 min-h-0 w-full overflow-hidden">
+      <div className="flex flex-col gap-3 flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar">
         {/* KPI Stats Bar */}
         <CustomerStatsBar customers={activeCustomers} />
 
         {/* Table Region */}
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 min-h-0">
           <CustomerList
             customers={filteredCustomers}
             onViewDetails={(id) => setPatientDetailId(id)}

@@ -9,6 +9,7 @@ export interface CustomerFilterBarProps {
   balanceFilter: string;
   onBalanceFilterChange: (value: string) => void;
   onClearAll: () => void;
+  hasActiveFilters?: boolean;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ const TIME_OPTIONS = [
   { value: 'today', label: 'Today' },
   { value: 'week', label: 'This Week' },
   { value: 'month', label: 'This Month' },
+  { value: 'archived', label: 'Archived' },
 ];
 
 const BALANCE_OPTIONS = [
@@ -31,8 +33,11 @@ export const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
   balanceFilter,
   onBalanceFilterChange,
   onClearAll,
+  hasActiveFilters = false,
   className = '',
 }) => {
+  const showReset = timeRange !== 'all' || balanceFilter !== 'all' || hasActiveFilters;
+
   return (
     <div className={`flex items-center gap-4 ${className}`}>
       <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest">
@@ -53,7 +58,7 @@ export const CustomerFilterBar: React.FC<CustomerFilterBarProps> = ({
           onSelect={onBalanceFilterChange}
         />
 
-        {(timeRange !== 'all' || balanceFilter !== 'all') && (
+        {showReset && (
           <IconButton
             intent="ghost"
             size="sm"

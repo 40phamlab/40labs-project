@@ -7,7 +7,7 @@ describe('Customers Store', () => {
 
     const newCust = await store.addCustomer({
       fullName: 'Juma Hassan',
-      phone: '+255712345678',
+      phone: '+255799112233',
       email: 'juma@example.com',
       notes: 'Prefers SMS reminders',
     });

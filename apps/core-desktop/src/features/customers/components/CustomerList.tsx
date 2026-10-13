@@ -8,7 +8,7 @@ import {
   type ColumnDefinition,
 } from '@40labs/ui-components';
 import type { Customer } from '@40labs/types';
-import { formatDate, formatPhoneTZ } from '@40labs/i18n';
+import { formatDate, formatPhoneTZ, formatNumberOrUnknown } from '@40labs/i18n';
 import { MoreVertical, Eye, Edit, Archive } from 'lucide-react';
 
 export async function requirePin(action: string): Promise<boolean> {
@@ -64,7 +64,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       align: 'right',
       render: (item) => (
         <span className={`text-xs font-mono font-bold ${item.outstanding_balance > 0 ? 'text-warning' : 'text-text'}`}>
-          {item.outstanding_balance} TZS
+          {formatNumberOrUnknown(item.outstanding_balance)} TZS
         </span>
       ),
     },

@@ -1,15 +1,19 @@
-// [PHASE: MVP]
 import * as React from 'react';
 import type { Customer, AllergyItem } from '@40labs/types';
 import { Panel } from '@40labs/ui-components';
-import { formatDate } from '@40labs/i18n';
+import { formatDate, formatNumberOrUnknown } from '@40labs/i18n';
 import { AlertTriangle, Clock, FlaskConical, DollarSign } from 'lucide-react';
+import { useLab } from '../../../../hooks/useLab';
+import { useSales } from '../../../../hooks/useSales';
 
 interface OverviewTabProps {
   customer: Customer;
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({ customer }) => {
+  const { orders = [] } = useLab();
+  const { completedSales = [] } = useSales();
+
   let allergies: AllergyItem[] = [];
   try {
     allergies = typeof customer.allergies === 'string' ? JSON.parse(customer.allergies) : customer.allergies || [];
@@ -17,18 +21,35 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ customer }) => {
     allergies = [];
   }
 
+  const customerSales = React.useMemo(() => {
+    return completedSales
+      .filter((s) => s.customer_id === customer.id)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [completedSales, customer.id]);
+
+  const activeLabOrders = React.useMemo(() => {
+    return orders.filter(
+      (o) =>
+        o.customer_id === customer.id &&
+        o.status !== 'completed' &&
+        o.status !== 'cancelled'
+    );
+  }, [orders, customer.id]);
+
+  const lastVisitDate = customerSales.length > 0 ? customerSales[0].created_at : customer.updated_at;
+
   return (
     <div className="space-y-6 max-w-[1200px] mx-auto pb-12">
-      {/* Allergy Banner */}
+      {/* Allergy Alert Banner */}
       {allergies.length > 0 && (
-        <div className="p-4 rounded-card bg-[#EF4444]/10 border border-[#EF4444]/30 flex items-start gap-3">
-          <AlertTriangle size={20} className="text-[#EF4444] shrink-0 mt-0.5" />
+        <div className="p-4 rounded-card bg-danger/10 border border-danger/30 flex items-start gap-3">
+          <AlertTriangle size={20} className="text-danger shrink-0 mt-0.5" />
           <div className="flex flex-col">
-            <span className="text-xs font-bold text-[#EF4444] uppercase tracking-wider">Allergy Alert</span>
+            <span className="text-xs font-bold text-danger uppercase tracking-wider">Allergy Alert</span>
             <div className="flex flex-wrap gap-2 mt-1">
               {allergies.map((alg, idx) => (
-                <span key={idx} className="text-xs px-2 py-0.5 rounded bg-panel border border-[#EF4444]/40 text-text">
-                  <strong>{alg.substance}</strong> ({alg.reaction} — {alg.severity})
+                <span key={idx} className="text-xs px-2 py-0.5 rounded bg-panel border border-danger/40 text-text">
+                  <strong>{alg.substance}</strong> {alg.reaction ? `(${alg.reaction} — ${alg.severity})` : `(${alg.severity})`}
                 </span>
               ))}
             </div>
@@ -40,10 +61,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ customer }) => {
       <div className="grid grid-cols-3 gap-6">
         <Panel className="p-5 flex flex-col gap-2 bg-panel rounded-card border border-border">
           <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1.5">
-            <Clock size={14} className="text-accent" /> Last Visit
+            <Clock size={14} className="text-accent" /> Last Activity / Visit
           </span>
           <span className="text-sm font-mono text-text font-semibold">
-            {formatDate(customer.updated_at)}
+            {formatDate(lastVisitDate)}
           </span>
         </Panel>
 
@@ -52,7 +73,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ customer }) => {
             <FlaskConical size={14} className="text-accent" /> Open Lab Orders
           </span>
           <span className="text-sm font-mono text-text font-semibold">
-            0 active orders
+            {activeLabOrders.length} active {activeLabOrders.length === 1 ? 'order' : 'orders'}
           </span>
         </Panel>
 
@@ -61,7 +82,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ customer }) => {
             <DollarSign size={14} className="text-accent" /> Outstanding Balance
           </span>
           <span className="text-sm font-mono font-bold text-text">
-            {customer.outstanding_balance} TZS
+            {formatNumberOrUnknown(customer.outstanding_balance)} TZS
           </span>
         </Panel>
       </div>
@@ -99,7 +120,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ customer }) => {
             } catch {
               ec = null;
             }
-            return ec ? (
+            return ec && (ec.name || ec.phone) ? (
               <div className="space-y-2 text-xs text-text">
                 <div className="flex justify-between py-1 border-b border-border/30">
                   <span className="text-text-muted">Name:</span>
