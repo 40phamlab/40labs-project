@@ -3,8 +3,8 @@ use argon2::{
     Argon2, Params, Version,
 };
 use hmac::{Hmac, Mac};
-use std::sync::OnceLock;
 use sha2::Sha256;
+use std::sync::OnceLock;
 use subtle::ConstantTimeEq;
 
 type HmacSha256 = Hmac<Sha256>;
@@ -22,8 +22,13 @@ pub fn get_dummy_hash() -> &'static str {
 }
 
 fn get_argon2_instance() -> Argon2<'static> {
-    let params = Params::new(ARGON2_MEMORY_KB, ARGON2_ITERATIONS, ARGON2_PARALLELISM, None)
-        .expect("Failed to create Argon2 params");
+    let params = Params::new(
+        ARGON2_MEMORY_KB,
+        ARGON2_ITERATIONS,
+        ARGON2_PARALLELISM,
+        None,
+    )
+    .expect("Failed to create Argon2 params");
     Argon2::new(argon2::Algorithm::Argon2id, Version::V0x13, params)
 }
 
@@ -40,10 +45,16 @@ pub fn verify_password(password: &str, phc_string: &str) -> bool {
         Err(_) => return false,
     };
     let argon2 = get_argon2_instance();
-    argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok()
+    argon2
+        .verify_password(password.as_bytes(), &parsed_hash)
+        .is_ok()
 }
 
-pub fn hash_pin(user_id: &str, pin: &str, pepper: &[u8; 32]) -> Result<String, argon2::password_hash::Error> {
+pub fn hash_pin(
+    user_id: &str,
+    pin: &str,
+    pepper: &[u8; 32],
+) -> Result<String, argon2::password_hash::Error> {
     let prep = prepare_pin_input(user_id, pin, pepper);
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = get_argon2_instance();
@@ -81,7 +92,9 @@ pub fn verify_recovery_code(code: &str, phc_string: &str) -> bool {
         Err(_) => return false,
     };
     let argon2 = get_argon2_instance();
-    argon2.verify_password(code.as_bytes(), &parsed_hash).is_ok()
+    argon2
+        .verify_password(code.as_bytes(), &parsed_hash)
+        .is_ok()
 }
 
 pub fn needs_rehash(_phc_string: &str) -> bool {

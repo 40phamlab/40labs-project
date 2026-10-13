@@ -1,7 +1,7 @@
-pub mod http_client;
+pub mod client;
 #[cfg(debug_assertions)]
 pub mod dev_client;
-pub mod client;
+pub mod http_client;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

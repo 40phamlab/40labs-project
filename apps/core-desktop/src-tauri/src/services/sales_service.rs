@@ -27,7 +27,9 @@ impl SalesService {
         }
 
         if let Some(ref key) = idempotency_key {
-            if let Ok(Some(existing)) = SalesRepository::get_by_idempotency_key(pool, &ctx.workspace_id, key).await {
+            if let Ok(Some(existing)) =
+                SalesRepository::get_by_idempotency_key(pool, &ctx.workspace_id, key).await
+            {
                 return Ok(existing);
             }
         }
@@ -73,7 +75,10 @@ impl SalesService {
             let medicine_name: String = inv_row.get("medicine_name");
 
             if is_deactivated {
-                return Err(format!("Inventory item '{}' ({}) is deactivated and cannot be sold", medicine_name, item_input.inventory_item_id));
+                return Err(format!(
+                    "Inventory item '{}' ({}) is deactivated and cannot be sold",
+                    medicine_name, item_input.inventory_item_id
+                ));
             }
 
             if stock_qty < item_input.quantity {
@@ -155,7 +160,9 @@ impl SalesService {
             performed_by_user_id: Some(ctx.user_id.clone()),
             target_entity_type: "Sale".to_string(),
             target_entity_id: sale_id,
-            metadata: Some(serde_json::json!({ "grand_total": grand_total, "discount": discount }).to_string()),
+            metadata: Some(
+                serde_json::json!({ "grand_total": grand_total, "discount": discount }).to_string(),
+            ),
             created_at: now.clone(),
         };
         audit::append(&mut *tx, &audit_entry)
@@ -253,10 +260,11 @@ mod tests {
         assert_eq!(sale.lines.len(), 1);
 
         // Verify stock deducted from 100 to 98
-        let updated_qty: (i64,) = sqlx::query_as("SELECT quantity FROM inventory_item WHERE id = 'inv_01'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let updated_qty: (i64,) =
+            sqlx::query_as("SELECT quantity FROM inventory_item WHERE id = 'inv_01'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(updated_qty.0, 98);
 
         // Verify sale appears in list_sales
@@ -322,7 +330,10 @@ mod tests {
         };
 
         let result = SalesService::create_sale(&pool, &ctx, req, None, None).await;
-        assert!(result.is_err(), "Expected create_sale to fail due to insufficient stock");
+        assert!(
+            result.is_err(),
+            "Expected create_sale to fail due to insufficient stock"
+        );
         let err_msg = result.unwrap_err();
         assert!(err_msg.contains("Insufficient stock"));
 
@@ -334,7 +345,9 @@ mod tests {
         assert_eq!(qty.0, 5);
 
         // Verify no sales were inserted
-        let sales = SalesRepository::list_sales(&pool, "ws_test_01").await.unwrap();
+        let sales = SalesRepository::list_sales(&pool, "ws_test_01")
+            .await
+            .unwrap();
         assert_eq!(sales.len(), 0);
     }
 
@@ -384,14 +397,26 @@ mod tests {
         };
 
         // First attempt
-        let sale1 = SalesService::create_sale(&pool, &ctx, req.clone(), None, Some("idem_key_999".to_string()))
-            .await
-            .unwrap();
+        let sale1 = SalesService::create_sale(
+            &pool,
+            &ctx,
+            req.clone(),
+            None,
+            Some("idem_key_999".to_string()),
+        )
+        .await
+        .unwrap();
 
         // Second attempt with same idempotency key
-        let sale2 = SalesService::create_sale(&pool, &ctx, req.clone(), None, Some("idem_key_999".to_string()))
-            .await
-            .unwrap();
+        let sale2 = SalesService::create_sale(
+            &pool,
+            &ctx,
+            req.clone(),
+            None,
+            Some("idem_key_999".to_string()),
+        )
+        .await
+        .unwrap();
 
         // Must return identical sale record
         assert_eq!(sale1.id, sale2.id);
@@ -404,7 +429,9 @@ mod tests {
         assert_eq!(qty.0, 48);
 
         // Verify only 1 sale exists in database
-        let sales = SalesRepository::list_sales(&pool, "ws_test_01").await.unwrap();
+        let sales = SalesRepository::list_sales(&pool, "ws_test_01")
+            .await
+            .unwrap();
         assert_eq!(sales.len(), 1);
     }
 }

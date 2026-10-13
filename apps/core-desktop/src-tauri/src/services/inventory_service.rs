@@ -5,8 +5,8 @@ use uuid::Uuid;
 use crate::auth::{AuthContext, AuthEngine};
 use crate::models::audit::AuditLogEntry;
 use crate::models::inventory::{
-    AddStockRequest, InventoryItem, Medicine, MedicineWithInventory,
-    RecordStockActionRequest, RecordStockActionResult, StockAdjustment,
+    AddStockRequest, InventoryItem, Medicine, MedicineWithInventory, RecordStockActionRequest,
+    RecordStockActionResult, StockAdjustment,
 };
 use crate::repositories::audit_repo::audit;
 use crate::repositories::inventory_repo::InventoryRepository;
@@ -100,18 +100,31 @@ impl InventoryService {
         ctx: &AuthContext,
         req: RecordStockActionRequest,
     ) -> Result<RecordStockActionResult, String> {
-        let existing = InventoryRepository::get_inventory_item_by_id(pool, &ctx.workspace_id, &req.inventory_item_id)
-            .await
-            .map_err(|e| format!("Failed to fetch inventory item: {}", e))?
-            .ok_or_else(|| "Inventory item not found".to_string())?;
+        let existing = InventoryRepository::get_inventory_item_by_id(
+            pool,
+            &ctx.workspace_id,
+            &req.inventory_item_id,
+        )
+        .await
+        .map_err(|e| format!("Failed to fetch inventory item: {}", e))?
+        .ok_or_else(|| "Inventory item not found".to_string())?;
 
         let is_adjustment = matches!(
             req.action.as_str(),
-            "damaged" | "expired" | "transferred" | "disposed" | "deactivated" | "adjustment" | "write_off"
+            "damaged"
+                | "expired"
+                | "transferred"
+                | "disposed"
+                | "deactivated"
+                | "adjustment"
+                | "write_off"
         );
 
         let adjusted_by = if is_adjustment {
-            let token = req.step_up_token.as_deref().ok_or_else(|| "Step-up token required".to_string())?;
+            let token = req
+                .step_up_token
+                .as_deref()
+                .ok_or_else(|| "Step-up token required".to_string())?;
             engine
                 .consume_step_up(
                     &ctx.user_id,

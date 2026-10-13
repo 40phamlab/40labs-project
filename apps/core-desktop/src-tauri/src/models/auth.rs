@@ -277,16 +277,17 @@ mod tests {
             r#"
             INSERT INTO user_credential (user_id, workspace_id, branch_id, password_hash, pin_hash)
             VALUES ('user_1', 'ws_1', 'br_1', 'argon2_hash', 'argon2_pin_hash')
-            "#
+            "#,
         )
         .execute(&pool)
         .await
         .unwrap();
 
-        let cred: UserCredential = sqlx::query_as("SELECT * FROM user_credential WHERE user_id = 'user_1'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let cred: UserCredential =
+            sqlx::query_as("SELECT * FROM user_credential WHERE user_id = 'user_1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(cred.password_hash, "argon2_hash");
         assert_eq!(cred.pin_hash, Some("argon2_pin_hash".to_string()));
 
@@ -295,7 +296,7 @@ mod tests {
             r#"
             INSERT INTO recovery_code (id, workspace_id, branch_id, user_id, batch_id, code_hash)
             VALUES ('rec_1', 'ws_1', 'br_1', 'user_1', 'batch_1', 'code_hash_val')
-            "#
+            "#,
         )
         .execute(&pool)
         .await
@@ -336,10 +337,11 @@ mod tests {
         .await
         .unwrap();
 
-        let grant: PermissionGrant = sqlx::query_as("SELECT * FROM permission_grant WHERE id = 'grant_1'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let grant: PermissionGrant =
+            sqlx::query_as("SELECT * FROM permission_grant WHERE id = 'grant_1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(grant.permission, "inventory:adjust");
     }
 }

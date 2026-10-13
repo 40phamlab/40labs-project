@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { LabOrder, LabSample, LabResult, TestCatalogEntry } from '@40labs/types';
-import { initialLabOrders, initialLabSamples } from '../devData';
 import { lab } from '../api';
 
 interface LabState {
@@ -21,8 +20,8 @@ interface LabState {
 }
 
 export const useLabStore = create<LabState>((set) => ({
-  orders: [...initialLabOrders],
-  samples: [...initialLabSamples],
+  orders: [],
+  samples: [],
   results: [],
   catalog: [],
   selectedOrderId: null,
@@ -32,11 +31,13 @@ export const useLabStore = create<LabState>((set) => ({
   setActiveTab: (activeTab) => set({ activeTab }),
 
   fetchResultsAndCatalog: async () => {
-    const [results, catalog] = await Promise.all([
+    const [orders, samples, results, catalog] = await Promise.all([
+      lab.listOrders(),
+      lab.listSamples(),
       lab.listResults(),
       lab.listCatalog(),
     ]);
-    set({ results, catalog });
+    set({ orders, samples, results, catalog });
   },
 
   createOrder: async (customerId, testCatalogId) => {

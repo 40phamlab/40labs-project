@@ -7,8 +7,11 @@ import type {
   TestCatalogEntry,
   LabOrderStatus,
   LabSampleStatus,
+  MedicineWithInventory,
+  LabQcData,
 } from '@40labs/types';
 import { labApi, usersApi, auditApi, CreateLabOrderPayload } from '../api';
+import type { CreateTestCatalogPayload, CreateLabQcEquipmentPayload, CreateLabQcRecordPayload } from '../api/labApi';
 import { labKeys, dashboardKeys } from './queryKeys';
 
 export type { CreateLabOrderPayload };
@@ -61,6 +64,13 @@ export function useLab() {
     queryFn: async () => labApi.listCatalog(),
   });
 
+  const { data: stock = [], isLoading: isLoadingStock, isError: isErrorStock, error: errorStock, refetch: refetchStock } = useQuery<MedicineWithInventory[]>({
+    queryKey: labKeys.stock(), queryFn: () => labApi.listStock(),
+  });
+  const { data: qcData = { equipment: [], records: [] }, isLoading: isLoadingQc, isError: isErrorQc, error: errorQc, refetch: refetchQc } = useQuery<LabQcData>({
+    queryKey: labKeys.qc(), queryFn: () => labApi.getQcData(),
+  });
+
   const {
     data: users = [],
   } = useQuery({
@@ -75,16 +85,18 @@ export function useLab() {
     queryFn: async () => auditApi.list(),
   });
 
-  const isLoading = isLoadingOrders || isLoadingSamples || isLoadingResults || isLoadingCatalog;
-  const isError = isErrorOrders || isErrorSamples || isErrorResults || isErrorCatalog;
-  const error = errorOrders || errorSamples || errorResults || errorCatalog;
+  const isLoading = isLoadingOrders || isLoadingSamples || isLoadingResults || isLoadingCatalog || isLoadingStock || isLoadingQc;
+  const isError = isErrorOrders || isErrorSamples || isErrorResults || isErrorCatalog || isErrorStock || isErrorQc;
+  const error = errorOrders || errorSamples || errorResults || errorCatalog || errorStock || errorQc;
 
   const refetch = React.useCallback(() => {
     refetchOrders();
     refetchSamples();
     refetchResults();
     refetchCatalog();
-  }, [refetchOrders, refetchSamples, refetchResults, refetchCatalog]);
+    refetchStock();
+    refetchQc();
+  }, [refetchOrders, refetchSamples, refetchResults, refetchCatalog, refetchStock, refetchQc]);
 
   // Mutations
   const createOrderMutation = useMutation({
@@ -147,6 +159,19 @@ export function useLab() {
     },
   });
 
+  const createCatalogMutation = useMutation({
+    mutationFn: (payload: CreateTestCatalogPayload) => labApi.createCatalogEntry(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: labKeys.all }),
+  });
+  const createQcEquipmentMutation = useMutation({
+    mutationFn: (payload: CreateLabQcEquipmentPayload) => labApi.createQcEquipment(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: labKeys.qc() }),
+  });
+  const createQcRecordMutation = useMutation({
+    mutationFn: (payload: CreateLabQcRecordPayload) => labApi.createQcRecord(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: labKeys.qc() }),
+  });
+
   // UI State
   const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null);
   const [activeTab, setActiveTab] = React.useState<'orders' | 'samples' | 'catalog' | string>('samples');
@@ -156,6 +181,8 @@ export function useLab() {
     samples,
     results,
     catalog,
+    stock,
+    qcData,
     users,
     auditLogs,
     isLoading,
@@ -190,7 +217,15 @@ export function useLab() {
         referenceRange,
         isOutOfRange,
       }),
+    createCatalogEntry: (payload: CreateTestCatalogPayload) => createCatalogMutation.mutateAsync(payload),
+    createQcEquipment: (payload: CreateLabQcEquipmentPayload) => createQcEquipmentMutation.mutateAsync(payload),
+    createQcRecord: (payload: CreateLabQcRecordPayload) => createQcRecordMutation.mutateAsync(payload),
 
     isCreatingOrder: createOrderMutation.isPending,
+    isCollectingSample: collectSampleMutation.isPending,
+    isEnteringResult: enterResultMutation.isPending,
+    isCreatingCatalogEntry: createCatalogMutation.isPending,
+    isCreatingQcEquipment: createQcEquipmentMutation.isPending,
+    isCreatingQcRecord: createQcRecordMutation.isPending,
   };
 }

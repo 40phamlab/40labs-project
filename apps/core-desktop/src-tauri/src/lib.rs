@@ -1,17 +1,17 @@
+pub mod activation;
+pub mod auth;
 pub mod commands;
 pub mod db;
+pub mod debug;
 pub mod models;
 pub mod repositories;
-pub mod services;
-pub mod auth;
 pub mod security;
-pub mod activation;
-pub mod debug;
+pub mod services;
 
-use db::{init_db_pool, AppState};
-use services::lan::LanServerState;
 use auth::{AuthState, RealClock};
+use db::{init_db_pool, AppState};
 use security::keystore::Keystore;
+use services::lan::LanServerState;
 use std::sync::Arc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -30,7 +30,8 @@ pub fn run() {
 
     let api_base_url = std::env::var("API_BASE_URL").ok();
     let pubkey_hex = std::env::var("ACTIVATION_PUBKEY").ok();
-    let (otp_client, activation_client) = activation::client::ActivationClientFactory::create_clients(api_base_url, pubkey_hex);
+    let (otp_client, activation_client) =
+        activation::client::ActivationClientFactory::create_clients(api_base_url, pubkey_hex);
 
     let port = 4040;
     let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
@@ -121,6 +122,11 @@ pub fn run() {
             commands::lab_cmd::update_lab_sample_status,
             commands::lab_cmd::get_lab_results,
             commands::lab_cmd::get_test_catalog,
+            commands::lab_cmd::create_test_catalog_entry,
+            commands::lab_cmd::get_lab_stock,
+            commands::lab_cmd::get_lab_qc_data,
+            commands::lab_cmd::create_lab_qc_equipment,
+            commands::lab_cmd::create_lab_qc_record,
             commands::lab_cmd::enter_lab_result,
             // Audit
             commands::audit_cmd::get_audit_logs,

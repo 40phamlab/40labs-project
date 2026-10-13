@@ -1,5 +1,5 @@
-use sqlx::SqlitePool;
 use crate::models::staff_notification::StaffNotification;
+use sqlx::SqlitePool;
 
 pub struct StaffNotificationRepository;
 
@@ -11,7 +11,7 @@ impl StaffNotificationRepository {
                 id, workspace_id, branch_id, sender_user_id, sender_name,
                 audience, target_role, target_user_id, severity, subject, body, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&n.id)
         .bind(&n.workspace_id)
@@ -149,7 +149,7 @@ impl StaffNotificationRepository {
             r#"
             INSERT OR IGNORE INTO staff_notification_reads (id, notification_id, user_id, read_at)
             VALUES (?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(read_id)
         .bind(notification_id)

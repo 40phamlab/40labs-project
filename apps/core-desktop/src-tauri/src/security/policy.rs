@@ -2,26 +2,41 @@ use regex::Regex;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PolicyError {
-    #[error("Username must be 3-32 characters, lowercase alphanumeric, dots, underscores, or hyphens")]
+    #[error(
+        "Username must be 3-32 characters, lowercase alphanumeric, dots, underscores, or hyphens"
+    )]
     InvalidUsername,
     #[error("Password must be 8-128 characters and cannot equal the username")]
     InvalidPasswordLengthOrEquality,
     #[error("Password is too common or appears on the denylist")]
     CommonPassword,
-    #[error("PIN must be exactly 6 digits and cannot be trivial (all same, sequential, or common)")]
+    #[error(
+        "PIN must be exactly 6 digits and cannot be trivial (all same, sequential, or common)"
+    )]
     InvalidPin,
 }
 
 const COMMON_PASSWORDS: &[&str] = &[
-    "password", "password123", "12345678", "qwertyuiop", "admin123",
-    "letmein123", "welcome123", "changeme", "secret123", "password1",
-    "123456789", "123456783", "qwerty1234", "abc123456", "password2025"
+    "password",
+    "password123",
+    "12345678",
+    "qwertyuiop",
+    "admin123",
+    "letmein123",
+    "welcome123",
+    "changeme",
+    "secret123",
+    "password1",
+    "123456789",
+    "123456783",
+    "qwerty1234",
+    "abc123456",
+    "password2025",
 ];
 
 const TRIVIAL_PINS: &[&str] = &[
-    "000000", "111111", "222222", "333333", "444444",
-    "555555", "666666", "777777", "888888", "999999",
-    "123456", "654321", "121212", "112233", "789012"
+    "000000", "111111", "222222", "333333", "444444", "555555", "666666", "777777", "888888",
+    "999999", "123456", "654321", "121212", "112233", "789012",
 ];
 
 pub fn validate_username(username: &str) -> Result<String, PolicyError> {
@@ -85,7 +100,10 @@ mod tests {
 
     #[test]
     fn test_validate_username() {
-        assert_eq!(validate_username("  Amani_Owner.1  ").unwrap(), "amani_owner.1");
+        assert_eq!(
+            validate_username("  Amani_Owner.1  ").unwrap(),
+            "amani_owner.1"
+        );
         assert!(validate_username("ab").is_err());
         assert!(validate_username("invalid username!").is_err());
     }

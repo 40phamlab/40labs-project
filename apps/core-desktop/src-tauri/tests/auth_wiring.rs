@@ -1,8 +1,8 @@
-use std::fs;
-use std::path::Path;
-use regex::Regex;
 use core_desktop_lib::auth::policy::get_command_policy_map;
 use core_desktop_lib::debug::redact_sensitive;
+use regex::Regex;
+use std::fs;
+use std::path::Path;
 
 #[test]
 fn test_redaction_rules() {

@@ -1,10 +1,14 @@
+use crate::models::integrations::{CollaboratorRef, IntegrationsConfig, UpdateIntegrationsPayload};
 use sqlx::SqlitePool;
-use crate::models::integrations::{IntegrationsConfig, CollaboratorRef, UpdateIntegrationsPayload};
 
 pub struct IntegrationsRepository;
 
 impl IntegrationsRepository {
-    pub async fn get(pool: &SqlitePool, workspace_id: &str, branch_id: &str) -> Result<IntegrationsConfig, sqlx::Error> {
+    pub async fn get(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+    ) -> Result<IntegrationsConfig, sqlx::Error> {
         let row = sqlx::query(
             r#"
             SELECT id, workspace_id, branch_id, email_connected, email_address,
@@ -13,7 +17,7 @@ impl IntegrationsRepository {
             FROM integrations_config
             WHERE workspace_id = ?
             LIMIT 1
-            "#
+            "#,
         )
         .bind(workspace_id)
         .fetch_optional(pool)
@@ -34,8 +38,10 @@ impl IntegrationsRepository {
             let created_at: String = r.get("created_at");
             let updated_at: String = r.get("updated_at");
 
-            let web_apps_connected: Vec<String> = serde_json::from_str(&web_apps_json).unwrap_or_default();
-            let collaborators: Vec<CollaboratorRef> = serde_json::from_str(&collab_json).unwrap_or_default();
+            let web_apps_connected: Vec<String> =
+                serde_json::from_str(&web_apps_json).unwrap_or_default();
+            let collaborators: Vec<CollaboratorRef> =
+                serde_json::from_str(&collab_json).unwrap_or_default();
 
             Ok(IntegrationsConfig {
                 id,
@@ -55,8 +61,11 @@ impl IntegrationsRepository {
             // Seed initial integrations config row
             let now = chrono::Utc::now().to_rfc3339();
             let id = format!("int_cfg_{}", uuid::Uuid::new_v4());
-            let default_web_apps = serde_json::to_string(&vec!["Web App".to_string(), "Admin Portal".to_string()]).unwrap_or_else(|_| "[]".into());
-            let default_collabs = serde_json::to_string(&Vec::<CollaboratorRef>::new()).unwrap_or_else(|_| "[]".into());
+            let default_web_apps =
+                serde_json::to_string(&vec!["Web App".to_string(), "Admin Portal".to_string()])
+                    .unwrap_or_else(|_| "[]".into());
+            let default_collabs = serde_json::to_string(&Vec::<CollaboratorRef>::new())
+                .unwrap_or_else(|_| "[]".into());
 
             sqlx::query(
                 r#"
@@ -94,14 +103,23 @@ impl IntegrationsRepository {
         }
     }
 
-    pub async fn update(pool: &SqlitePool, workspace_id: &str, branch_id: &str, payload: UpdateIntegrationsPayload) -> Result<IntegrationsConfig, sqlx::Error> {
+    pub async fn update(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        payload: UpdateIntegrationsPayload,
+    ) -> Result<IntegrationsConfig, sqlx::Error> {
         let current = Self::get(pool, workspace_id, branch_id).await?;
 
         let email_conn = payload.email_connected.unwrap_or(current.email_connected);
         let email_addr = payload.email_address.or(current.email_address);
-        let wa_conn = payload.whatsapp_connected.unwrap_or(current.whatsapp_connected);
+        let wa_conn = payload
+            .whatsapp_connected
+            .unwrap_or(current.whatsapp_connected);
         let wa_num = payload.whatsapp_number.or(current.whatsapp_number);
-        let web_apps = payload.web_apps_connected.unwrap_or(current.web_apps_connected);
+        let web_apps = payload
+            .web_apps_connected
+            .unwrap_or(current.web_apps_connected);
         let mob_phone = payload.mobile_phone.or(current.mobile_phone);
         let collabs = payload.collaborators.unwrap_or(current.collaborators);
 
@@ -116,7 +134,7 @@ impl IntegrationsRepository {
                 whatsapp_number = ?, web_apps_connected = ?, mobile_phone = ?,
                 collaborators = ?, updated_at = ?
             WHERE workspace_id = ? AND id = ?
-            "#
+            "#,
         )
         .bind(if email_conn { 1 } else { 0 })
         .bind(&email_addr)

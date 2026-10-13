@@ -1,17 +1,23 @@
-use sqlx::{SqlitePool, SqliteConnection};
 use crate::models::auth::UserCredential;
+use sqlx::{SqliteConnection, SqlitePool};
 
 pub struct CredentialRepository;
 
 impl CredentialRepository {
-    pub async fn get_by_user_id(pool: &SqlitePool, user_id: &str) -> Result<Option<UserCredential>, sqlx::Error> {
+    pub async fn get_by_user_id(
+        pool: &SqlitePool,
+        user_id: &str,
+    ) -> Result<Option<UserCredential>, sqlx::Error> {
         sqlx::query_as::<_, UserCredential>("SELECT * FROM user_credential WHERE user_id = ?")
             .bind(user_id)
             .fetch_optional(pool)
             .await
     }
 
-    pub async fn create(conn: &mut SqliteConnection, cred: &UserCredential) -> Result<(), sqlx::Error> {
+    pub async fn create(
+        conn: &mut SqliteConnection,
+        cred: &UserCredential,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO user_credential (
@@ -19,7 +25,7 @@ impl CredentialRepository {
                 failed_password_attempts, failed_pin_attempts, locked_until,
                 password_changed_at, pin_changed_at, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&cred.user_id)
         .bind(&cred.workspace_id)
@@ -38,7 +44,12 @@ impl CredentialRepository {
         Ok(())
     }
 
-    pub async fn update_password(conn: &mut SqliteConnection, user_id: &str, password_hash: &str, changed_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_password(
+        conn: &mut SqliteConnection,
+        user_id: &str,
+        password_hash: &str,
+        changed_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE user_credential
@@ -55,7 +66,12 @@ impl CredentialRepository {
         Ok(())
     }
 
-    pub async fn update_pin(conn: &mut SqliteConnection, user_id: &str, pin_hash: &str, changed_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_pin(
+        conn: &mut SqliteConnection,
+        user_id: &str,
+        pin_hash: &str,
+        changed_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE user_credential
@@ -72,7 +88,13 @@ impl CredentialRepository {
         Ok(())
     }
 
-    pub async fn increment_password_failures(conn: &mut SqliteConnection, user_id: &str, attempts: i64, locked_until: Option<&str>, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn increment_password_failures(
+        conn: &mut SqliteConnection,
+        user_id: &str,
+        attempts: i64,
+        locked_until: Option<&str>,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE user_credential
@@ -89,7 +111,11 @@ impl CredentialRepository {
         Ok(())
     }
 
-    pub async fn reset_password_failures(conn: &mut SqliteConnection, user_id: &str, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn reset_password_failures(
+        conn: &mut SqliteConnection,
+        user_id: &str,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE user_credential
@@ -104,7 +130,12 @@ impl CredentialRepository {
         Ok(())
     }
 
-    pub async fn increment_pin_failures(conn: &mut SqliteConnection, user_id: &str, attempts: i64, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn increment_pin_failures(
+        conn: &mut SqliteConnection,
+        user_id: &str,
+        attempts: i64,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE user_credential
@@ -120,7 +151,11 @@ impl CredentialRepository {
         Ok(())
     }
 
-    pub async fn reset_pin_failures(conn: &mut SqliteConnection, user_id: &str, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn reset_pin_failures(
+        conn: &mut SqliteConnection,
+        user_id: &str,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE user_credential

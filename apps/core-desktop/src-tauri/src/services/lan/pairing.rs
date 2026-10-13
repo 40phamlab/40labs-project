@@ -10,10 +10,10 @@ use std::sync::Arc;
 use std::time::{Duration as StdDuration, Instant};
 use uuid::Uuid;
 
-use crate::models::device::{PairDeviceRequest, PairDeviceResponse};
-use crate::models::audit::AuditLogEntry;
-use crate::repositories::{device_repo, audit_repo::AuditRepository};
 use super::LanServerState;
+use crate::models::audit::AuditLogEntry;
+use crate::models::device::{PairDeviceRequest, PairDeviceResponse};
+use crate::repositories::{audit_repo::AuditRepository, device_repo};
 
 pub async fn health_handler() -> Json<Value> {
     Json(json!({
@@ -27,7 +27,9 @@ pub async fn pair_handler(
     connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(req): Json<PairDeviceRequest>,
 ) -> Result<Json<PairDeviceResponse>, (StatusCode, Json<Value>)> {
-    let client_ip = connect_info.map(|ci| ci.0.ip()).unwrap_or_else(|| IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
+    let client_ip = connect_info
+        .map(|ci| ci.0.ip())
+        .unwrap_or_else(|| IpAddr::V4(std::net::Ipv4Addr::LOCALHOST));
 
     // 1. Brute-force rate limiting check
     {
@@ -37,7 +39,7 @@ pub async fn pair_handler(
                 if instant.elapsed() < StdDuration::from_secs(900) {
                     return Err((
                         StatusCode::TOO_MANY_REQUESTS,
-                        Json(json!({ "error": "Too many pairing failures. Please retry later." }))
+                        Json(json!({ "error": "Too many pairing failures. Please retry later." })),
                     ));
                 } else {
                     failures.remove(&client_ip);
@@ -59,7 +61,7 @@ pub async fn pair_handler(
         record_failure(&state, client_ip).await;
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Invalid or missing device label" }))
+            Json(json!({ "error": "Invalid or missing device label" })),
         ));
     }
 
@@ -68,7 +70,7 @@ pub async fn pair_handler(
         record_failure(&state, client_ip).await;
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Invalid or missing device type" }))
+            Json(json!({ "error": "Invalid or missing device type" })),
         ));
     }
 
@@ -82,13 +84,17 @@ pub async fn pair_handler(
             record_failure(&state, client_ip).await;
             return Err((
                 StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "Invalid or expired pairing session" }))
+                Json(json!({ "error": "Invalid or expired pairing session" })),
             ));
         }
     };
 
     // 4. Issue 32-byte secure random token and compute SHA-256 hash
-    let raw_credential = format!("tok_{}{}", Uuid::new_v4().to_string(), Uuid::new_v4().to_string());
+    let raw_credential = format!(
+        "tok_{}{}",
+        Uuid::new_v4().to_string(),
+        Uuid::new_v4().to_string()
+    );
     let mut hasher = Sha256::new();
     hasher.update(raw_credential.as_bytes());
     let credential_hash = format!("{:x}", hasher.finalize());
@@ -107,12 +113,13 @@ pub async fn pair_handler(
         &permissions_json,
         &credential_hash,
     )
-    .await {
+    .await
+    {
         Ok(d) => d,
         Err(e) => {
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("DB Error: {}", e) }))
+                Json(json!({ "error": format!("DB Error: {}", e) })),
             ));
         }
     };
@@ -127,7 +134,9 @@ pub async fn pair_handler(
         performed_by_user_id: Some(user_id.clone()),
         target_entity_type: "PairedDevice".to_string(),
         target_entity_id: device.id.clone(),
-        metadata: Some(serde_json::json!({ "device_label": label, "device_type": dev_type }).to_string()),
+        metadata: Some(
+            serde_json::json!({ "device_label": label, "device_type": dev_type }).to_string(),
+        ),
     };
     let _ = AuditRepository::create(&state.pool, &audit_entry).await;
 
@@ -146,14 +155,14 @@ pub async fn pair_handler(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::lan::{router::create_router, LanServerState};
     use axum::{
         body::Body,
         http::{Request, StatusCode},
     };
-    use tower::ServiceExt;
     use sqlx::sqlite::SqlitePoolOptions;
     use std::sync::Arc;
-    use crate::services::lan::{LanServerState, router::create_router};
+    use tower::ServiceExt;
 
     async fn setup_test_state() -> Arc<LanServerState> {
         let pool = SqlitePoolOptions::new()
@@ -182,7 +191,10 @@ mod tests {
     #[tokio::test]
     async fn test_health_and_pairing_flow() {
         let state = setup_test_state().await;
-        let session = state.create_session("user_active", "{\"can_view_reports\":true}").await.unwrap();
+        let session = state
+            .create_session("user_active", "{\"can_view_reports\":true}")
+            .await
+            .unwrap();
         let token = session.qr_payload.split("&token=").nth(1).unwrap();
 
         let app = create_router(state);
@@ -190,7 +202,12 @@ mod tests {
         // 1. Health check (unauthenticated)
         let response = app
             .clone()
-            .oneshot(Request::builder().uri("/api/pairing/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/api/pairing/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
         assert_eq!(response.status(), StatusCode::OK);
@@ -215,7 +232,9 @@ mod tests {
             .await
             .unwrap();
         let status = response.status();
-        let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let body_str = String::from_utf8_lossy(&body_bytes);
         assert_eq!(status, StatusCode::OK, "Response body: {}", body_str);
         let pair_res: Value = serde_json::from_slice(&body_bytes).unwrap();
@@ -301,7 +320,9 @@ mod tests {
             )
             .await
             .unwrap();
-        let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let body_bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
         let pair_res: Value = serde_json::from_slice(&body_bytes).unwrap();
         let credential = pair_res["credential"].as_str().unwrap();
         let device_id = pair_res["device"]["id"].as_str().unwrap();
@@ -321,7 +342,9 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         // Block device immediately in DB
-        device_repo::update_device_status(&state.pool, "ws_010101", device_id, "blocked").await.unwrap();
+        device_repo::update_device_status(&state.pool, "ws_010101", device_id, "blocked")
+            .await
+            .unwrap();
 
         // Next request should be forbidden immediately without restart
         let response = app

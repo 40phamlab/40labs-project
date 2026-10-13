@@ -5,6 +5,9 @@ import type {
   TestCatalogEntry,
   LabOrderStatus,
   LabSampleStatus,
+  LabQcData,
+  LabQcEquipment,
+  LabQcRecord,
 } from '@40labs/types';
 import {
   initialLabOrders,
@@ -15,6 +18,30 @@ import {
   BRANCH_ID,
 } from '../devData';
 import { isUsingTauriIpc, invokeCommand } from './client';
+import { inventoryApi } from './inventoryApi';
+
+export interface CreateTestCatalogPayload {
+  name: string;
+  category: string;
+  referenceRange?: string;
+  price: number;
+}
+
+export interface CreateLabQcEquipmentPayload {
+  name: string;
+  manufacturer?: string;
+  model?: string;
+  assetTag?: string;
+}
+
+export interface CreateLabQcRecordPayload {
+  equipmentId: string;
+  controlName: string;
+  lotNumber?: string;
+  observedValue: string;
+  expectedRange: string;
+  outcome: 'pass' | 'fail';
+}
 
 export interface CreateLabOrderPayload {
   customerId: string;
@@ -25,6 +52,8 @@ let ordersStore: LabOrder[] = [...initialLabOrders];
 let samplesStore: LabSample[] = [...initialLabSamples];
 let resultsStore: LabResult[] = [...initialLabResults];
 let catalogStore: TestCatalogEntry[] = [...initialTestCatalog];
+let qcEquipmentStore: LabQcEquipment[] = [];
+let qcRecordsStore: LabQcRecord[] = [];
 
 export const labApi = {
   // Orders
@@ -81,7 +110,9 @@ export const labApi = {
     if (isUsingTauriIpc()) {
       await invokeCommand<boolean>('update_lab_order_status', { id, status });
       const orders = await invokeCommand<LabOrder[]>('get_lab_orders');
-      return orders.find((o) => o.id === id) || null;
+      const updated = orders.find((o) => o.id === id);
+      if (!updated) throw new Error('Lab order was not found after the status update. Refresh and try again.');
+      return updated;
     }
 
     const index = ordersStore.findIndex((o) => o.id === id);
@@ -156,7 +187,9 @@ export const labApi = {
     if (isUsingTauriIpc()) {
       await invokeCommand<boolean>('update_lab_sample_status', { id, status });
       const samples = await invokeCommand<LabSample[]>('get_lab_samples');
-      return samples.find((s) => s.id === id) || null;
+      const updated = samples.find((s) => s.id === id);
+      if (!updated) throw new Error('Lab sample was not found after the status update. Refresh and try again.');
+      return updated;
     }
 
     const index = samplesStore.findIndex((s) => s.id === id);
@@ -235,6 +268,55 @@ export const labApi = {
       return invokeCommand<TestCatalogEntry[]>('get_test_catalog');
     }
     return [...catalogStore];
+  },
+
+  createCatalogEntry: async (payload: CreateTestCatalogPayload): Promise<TestCatalogEntry> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<TestCatalogEntry>('create_test_catalog_entry', { payload });
+    }
+    const now = new Date().toISOString();
+    const entry: TestCatalogEntry = {
+      id: `test_${Date.now()}`, workspace_id: WORKSPACE_ID, branch_id: BRANCH_ID,
+      created_at: now, updated_at: now, name: payload.name.trim(), category: payload.category.trim(),
+      reference_range: payload.referenceRange?.trim() || null, price: payload.price,
+    };
+    catalogStore = [...catalogStore, entry].sort((a, b) => a.name.localeCompare(b.name));
+    return entry;
+  },
+
+  listStock: async () => {
+    if (isUsingTauriIpc()) return invokeCommand<import('@40labs/types').MedicineWithInventory[]>('get_lab_stock');
+    return inventoryApi.list();
+  },
+
+  getQcData: async (): Promise<LabQcData> => {
+    if (isUsingTauriIpc()) return invokeCommand<LabQcData>('get_lab_qc_data');
+    return { equipment: [...qcEquipmentStore], records: [...qcRecordsStore] };
+  },
+
+  createQcEquipment: async (payload: CreateLabQcEquipmentPayload): Promise<LabQcEquipment> => {
+    if (isUsingTauriIpc()) return invokeCommand<LabQcEquipment>('create_lab_qc_equipment', { payload });
+    const now = new Date().toISOString();
+    const equipment: LabQcEquipment = {
+      id: `labequipment_${Date.now()}`, workspace_id: WORKSPACE_ID, branch_id: BRANCH_ID,
+      created_at: now, updated_at: now, name: payload.name.trim(), manufacturer: payload.manufacturer || null,
+      model: payload.model || null, asset_tag: payload.assetTag || null, status: 'operational', last_calibrated_at: null,
+    };
+    qcEquipmentStore = [...qcEquipmentStore, equipment];
+    return equipment;
+  },
+
+  createQcRecord: async (payload: CreateLabQcRecordPayload): Promise<LabQcRecord> => {
+    if (isUsingTauriIpc()) return invokeCommand<LabQcRecord>('create_lab_qc_record', { payload });
+    const now = new Date().toISOString();
+    const record: LabQcRecord = {
+      id: `labqc_${Date.now()}`, workspace_id: WORKSPACE_ID, branch_id: BRANCH_ID,
+      created_at: now, updated_at: now, equipment_id: payload.equipmentId, control_name: payload.controlName,
+      lot_number: payload.lotNumber || null, observed_value: payload.observedValue, expected_range: payload.expectedRange,
+      outcome: payload.outcome, performed_by_user_id: 'user_001', performed_at: now,
+    };
+    qcRecordsStore = [record, ...qcRecordsStore];
+    return record;
   },
 
   getCatalogItem: async (id: string): Promise<TestCatalogEntry | null> => {

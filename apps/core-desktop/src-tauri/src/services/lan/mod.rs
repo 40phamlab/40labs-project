@@ -1,15 +1,15 @@
-pub mod pairing;
 pub mod auth;
+pub mod pairing;
 pub mod router;
 
+use chrono::{Duration, Utc};
 use sqlx::SqlitePool;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use chrono::{Utc, Duration};
-use uuid::Uuid;
 use std::net::IpAddr;
+use std::sync::Arc;
 use std::time::Instant;
+use tokio::sync::Mutex;
+use uuid::Uuid;
 
 use crate::models::device::PairingSessionInfo;
 
@@ -67,7 +67,10 @@ impl LanServerState {
 
         let local_ip = get_local_ip();
         let endpoint = format!("http://{}:{}", local_ip, self.server_port);
-        let qr_payload = format!("orbit://pair?endpoint={}&sessionId={}&token={}", endpoint, session_id, token);
+        let qr_payload = format!(
+            "orbit://pair?endpoint={}&sessionId={}&token={}",
+            endpoint, session_id, token
+        );
 
         Ok(PairingSessionInfo {
             session_id,
@@ -106,7 +109,10 @@ pub fn get_local_ip() -> String {
         for (_name, ip) in &interfaces {
             if ip.is_ipv4() && !ip.is_loopback() {
                 let ip_str = ip.to_string();
-                if ip_str.starts_with("192.168.") || ip_str.starts_with("10.") || ip_str.starts_with("172.") {
+                if ip_str.starts_with("192.168.")
+                    || ip_str.starts_with("10.")
+                    || ip_str.starts_with("172.")
+                {
                     return ip_str;
                 }
             }
@@ -128,7 +134,10 @@ pub async fn start_lan_server(state: Arc<LanServerState>, port: u16) {
     let listener = match tokio::net::TcpListener::bind(&addr).await {
         Ok(l) => l,
         Err(e) => {
-            eprintln!("[40Labs LAN] Failed to bind TCP listener on {}: {}", addr, e);
+            eprintln!(
+                "[40Labs LAN] Failed to bind TCP listener on {}: {}",
+                addr, e
+            );
             return;
         }
     };

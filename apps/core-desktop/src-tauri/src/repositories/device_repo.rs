@@ -1,9 +1,12 @@
-use sqlx::SqlitePool;
 use crate::models::device::PairedDevice;
 use chrono::Utc;
+use sqlx::SqlitePool;
 use uuid::Uuid;
 
-pub async fn get_paired_devices(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<PairedDevice>, sqlx::Error> {
+pub async fn get_paired_devices(
+    pool: &SqlitePool,
+    workspace_id: &str,
+) -> Result<Vec<PairedDevice>, sqlx::Error> {
     sqlx::query_as::<_, PairedDevice>(
         r#"
         SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
@@ -17,7 +20,11 @@ pub async fn get_paired_devices(pool: &SqlitePool, workspace_id: &str) -> Result
     .await
 }
 
-pub async fn get_device_by_id(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<Option<PairedDevice>, sqlx::Error> {
+pub async fn get_device_by_id(
+    pool: &SqlitePool,
+    workspace_id: &str,
+    id: &str,
+) -> Result<Option<PairedDevice>, sqlx::Error> {
     sqlx::query_as::<_, PairedDevice>(
         r#"
         SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
@@ -31,7 +38,10 @@ pub async fn get_device_by_id(pool: &SqlitePool, workspace_id: &str, id: &str) -
     .await
 }
 
-pub async fn get_device_by_credential_hash(pool: &SqlitePool, credential_hash: &str) -> Result<Option<PairedDevice>, sqlx::Error> {
+pub async fn get_device_by_credential_hash(
+    pool: &SqlitePool,
+    credential_hash: &str,
+) -> Result<Option<PairedDevice>, sqlx::Error> {
     sqlx::query_as::<_, PairedDevice>(
         r#"
         SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
@@ -82,7 +92,12 @@ pub async fn create_paired_device(
         .ok_or_else(|| sqlx::Error::RowNotFound)
 }
 
-pub async fn update_device_status(pool: &SqlitePool, workspace_id: &str, id: &str, status: &str) -> Result<(), sqlx::Error> {
+pub async fn update_device_status(
+    pool: &SqlitePool,
+    workspace_id: &str,
+    id: &str,
+    status: &str,
+) -> Result<(), sqlx::Error> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"
@@ -100,7 +115,12 @@ pub async fn update_device_status(pool: &SqlitePool, workspace_id: &str, id: &st
     Ok(())
 }
 
-pub async fn update_device_permissions(pool: &SqlitePool, workspace_id: &str, id: &str, permissions_json: &str) -> Result<(), sqlx::Error> {
+pub async fn update_device_permissions(
+    pool: &SqlitePool,
+    workspace_id: &str,
+    id: &str,
+    permissions_json: &str,
+) -> Result<(), sqlx::Error> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"
@@ -118,7 +138,11 @@ pub async fn update_device_permissions(pool: &SqlitePool, workspace_id: &str, id
     Ok(())
 }
 
-pub async fn update_last_connected(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<(), sqlx::Error> {
+pub async fn update_last_connected(
+    pool: &SqlitePool,
+    workspace_id: &str,
+    id: &str,
+) -> Result<(), sqlx::Error> {
     let now = Utc::now().to_rfc3339();
     sqlx::query(
         r#"

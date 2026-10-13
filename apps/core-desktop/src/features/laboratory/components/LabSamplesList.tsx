@@ -45,7 +45,7 @@ export interface LabSamplesListProps {
   orders: LabOrder[];
   customers: Customer[];
   testCatalog: TestCatalogEntry[];
-  onUpdateSampleStatus: (sampleId: string, status: LabSampleStatus) => void;
+  onUpdateSampleStatus: (sampleId: string, status: LabSampleStatus) => Promise<unknown>;
   loading?: boolean;
   error?: string | Error | null;
   onRetry?: () => void;
@@ -86,6 +86,8 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
   const [selectedSampleForDrawer, setSelectedSampleForDrawer] =
     React.useState<LabSample | null>(null);
   const [toasts, setToasts] = React.useState<ToastItem[]>([]);
+  const [pendingSampleId, setPendingSampleId] = React.useState<string | null>(null);
+  const statusUpdatePending = React.useRef(false);
 
   const addToast = (
     message: string,
@@ -139,10 +141,10 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
   }, [samples, activeTimeFilter]);
 
   // Handle sample status updates (optimistic local update)
-  const handleStatusChange = (sample: LabSample, newStatus: LabSampleStatus) => {
-    // Question to Sairiamu: Should "Remove" or sample status changes require a PIN?
-    // Sample status changes aren't in GOTCHAS.md's PIN-gated action list, so updating status directly.
-    onUpdateSampleStatus(sample.id, newStatus);
+  const handleStatusChange = async (sample: LabSample, newStatus: LabSampleStatus) => {
+    if (statusUpdatePending.current) return;
+    statusUpdatePending.current = true;
+    setPendingSampleId(sample.id);
     const statusLabels: Record<LabSampleStatus, string> = {
       collected: 'Collected',
       used: 'Used',
@@ -150,10 +152,16 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
       declined: 'Declined',
       removed: 'Removed',
     };
-    addToast(
-      `Sample ${sample.sample_label} status updated to ${statusLabels[newStatus]}.`,
-      newStatus === 'declined' || newStatus === 'removed' ? 'danger' : 'success'
-    );
+    try {
+      await onUpdateSampleStatus(sample.id, newStatus);
+      addToast(`Sample ${sample.sample_label} status updated to ${statusLabels[newStatus]}.`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : typeof error === 'string' ? error : 'Could not update the laboratory sample. Please try again.';
+      addToast(message, 'danger');
+    } finally {
+      statusUpdatePending.current = false;
+      setPendingSampleId(null);
+    }
   };
 
   // Table Columns Definition
@@ -287,52 +295,57 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
             >
               <DropdownMenuItem
                 label="More Info"
+                disabled={!!pendingSampleId}
                 icon={<Info size={14} className="text-primary" />}
                 onClick={() => {
                   setActiveMenuSampleId(null);
                   setSelectedSampleForDrawer(item);
                 }}
               />
-              <DropdownMenuItem
+              {item.status === 'collected' && <DropdownMenuItem
                 label="Used"
+                disabled={!!pendingSampleId}
                 icon={<CheckCircle2 size={14} className="text-primary" />}
                 onClick={() => {
                   setActiveMenuSampleId(null);
                   handleStatusChange(item, 'used');
                 }}
-              />
-              <DropdownMenuItem
+              />}
+              {item.status === 'collected' && <DropdownMenuItem
                 label="Insufficient"
+                disabled={!!pendingSampleId}
                 icon={<AlertTriangle size={14} className="text-accent" />}
                 onClick={() => {
                   setActiveMenuSampleId(null);
                   handleStatusChange(item, 'insufficient');
                 }}
-              />
-              <DropdownMenuItem
+              />}
+              {item.status === 'collected' && <DropdownMenuItem
                 label="Decline"
+                disabled={!!pendingSampleId}
                 variant="danger"
                 icon={<XCircle size={14} />}
                 onClick={() => {
                   setActiveMenuSampleId(null);
                   handleStatusChange(item, 'declined');
                 }}
-              />
-              <DropdownMenuItem
+              />}
+              {item.status === 'collected' && <DropdownMenuItem
                 label="Remove"
+                disabled={!!pendingSampleId}
                 variant="danger"
                 icon={<Trash2 size={14} />}
                 onClick={() => {
                   setActiveMenuSampleId(null);
                   handleStatusChange(item, 'removed');
                 }}
-              />
+              />}
             </Dropdown>
           );
         },
       },
     ],
-    [orders, customers, testCatalog, activeMenuSampleId]
+    [orders, customers, testCatalog, activeMenuSampleId, pendingSampleId]
   );
 
   return (

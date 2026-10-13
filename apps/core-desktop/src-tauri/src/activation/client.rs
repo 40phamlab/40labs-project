@@ -4,7 +4,10 @@ use std::sync::Arc;
 pub struct ActivationClientFactory;
 
 impl ActivationClientFactory {
-    pub fn create_clients(base_url: Option<String>, pubkey_hex: Option<String>) -> (Arc<dyn OtpClient>, Arc<dyn ActivationClient>) {
+    pub fn create_clients(
+        base_url: Option<String>,
+        pubkey_hex: Option<String>,
+    ) -> (Arc<dyn OtpClient>, Arc<dyn ActivationClient>) {
         let url = base_url.unwrap_or_else(|| "http://127.0.0.1:3000".into());
 
         #[cfg(debug_assertions)]
@@ -17,10 +20,9 @@ impl ActivationClientFactory {
             }
         }
 
-        let http = crate::activation::http_client::HttpActivationClient::new(
-            url,
-            pubkey_hex.as_deref(),
-        ).expect("Failed to initialize HttpActivationClient");
+        let http =
+            crate::activation::http_client::HttpActivationClient::new(url, pubkey_hex.as_deref())
+                .expect("Failed to initialize HttpActivationClient");
         let arc = Arc::new(http);
         (arc.clone(), arc)
     }

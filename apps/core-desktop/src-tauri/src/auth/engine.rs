@@ -63,11 +63,13 @@ pub fn get_step_up_policy(permission: &str, is_setup_complete: bool) -> StepUpPo
             ttl_secs: 60,
             max_uses: 1,
         },
-        "settings.manage" | "settings.manage:payment" | "settings.manage:idle" => StepUpPolicyRule {
-            tier: StepUpTier::SudoTier,
-            ttl_secs: 60,
-            max_uses: 1,
-        },
+        "settings.manage" | "settings.manage:payment" | "settings.manage:idle" => {
+            StepUpPolicyRule {
+                tier: StepUpTier::SudoTier,
+                ttl_secs: 60,
+                max_uses: 1,
+            }
+        }
         "sales.refund" | "can_issue_refund" => StepUpPolicyRule {
             tier: StepUpTier::SelfTier,
             ttl_secs: 60,
@@ -104,7 +106,11 @@ pub struct AuthEngine {
 
 impl AuthEngine {
     pub fn new(state: Arc<AuthState>, pool: SqlitePool, keystore: Arc<Keystore>) -> Self {
-        Self { state, pool, keystore }
+        Self {
+            state,
+            pool,
+            keystore,
+        }
     }
 
     pub async fn require(&self, permission: &str) -> Result<AuthContext, AuthError> {
@@ -222,9 +228,15 @@ impl AuthEngine {
         })
     }
 
-    pub async fn login(&self, username: &str, password: &Zeroizing<String>) -> Result<(), AuthError> {
-        let norm_username = policy::validate_username(username)
-            .map_err(|_| AuthError::InvalidCredentials { retry_after_secs: None })?;
+    pub async fn login(
+        &self,
+        username: &str,
+        password: &Zeroizing<String>,
+    ) -> Result<(), AuthError> {
+        let norm_username =
+            policy::validate_username(username).map_err(|_| AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            })?;
 
         let user_opt = UserRepository::get_by_username(&self.pool, &norm_username)
             .await
@@ -233,10 +245,7 @@ impl AuthEngine {
         let now = self.state.clock.now_secs();
         let now_iso = self.state.clock.now_iso();
 
-        let business = BusinessRepository::get(&self.pool)
-            .await
-            .ok()
-            .flatten();
+        let business = BusinessRepository::get(&self.pool).await.ok().flatten();
         let (ws_id, branch_id) = match business {
             Some(ref b) => (b.workspace_id.clone(), b.branch_id.clone()),
             None => ("ws_default".to_string(), "br_default".to_string()),
@@ -247,7 +256,9 @@ impl AuthEngine {
                 let c = CredentialRepository::get_by_user_id(&self.pool, &u.id)
                     .await
                     .map_err(|e| AuthError::DatabaseError(e.to_string()))?
-                    .ok_or_else(|| AuthError::InvalidCredentials { retry_after_secs: None })?;
+                    .ok_or_else(|| AuthError::InvalidCredentials {
+                        retry_after_secs: None,
+                    })?;
                 (Some(u), Some(c))
             }
             None => {
@@ -256,7 +267,11 @@ impl AuthEngine {
             }
         };
 
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         if let (Some(u), Some(c)) = (&user, &cred) {
             if let Some(locked_until) = &c.locked_until {
@@ -264,7 +279,9 @@ impl AuthEngine {
                     let locked_epoch = locked_dt.timestamp() as u64;
                     if now < locked_epoch {
                         let retry = locked_epoch - now;
-                        return Err(AuthError::Locked { retry_after_secs: Some(retry) });
+                        return Err(AuthError::Locked {
+                            retry_after_secs: Some(retry),
+                        });
                     }
                 }
             }
@@ -279,14 +296,23 @@ impl AuthEngine {
                     _ => 900,
                 };
                 let lock_until_str = if lockout_duration > 0 {
-                    Some((chrono::Utc::now() + chrono::Duration::seconds(lockout_duration as i64)).to_rfc3339())
+                    Some(
+                        (chrono::Utc::now() + chrono::Duration::seconds(lockout_duration as i64))
+                            .to_rfc3339(),
+                    )
                 } else {
                     None
                 };
 
-                CredentialRepository::increment_password_failures(&mut tx, &u.id, new_fails, lock_until_str.as_deref(), &now_iso)
-                    .await
-                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                CredentialRepository::increment_password_failures(
+                    &mut tx,
+                    &u.id,
+                    new_fails,
+                    lock_until_str.as_deref(),
+                    &now_iso,
+                )
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
                 let audit = AuditLogEntry {
                     id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
@@ -296,13 +322,26 @@ impl AuthEngine {
                     performed_by_user_id: None,
                     target_entity_type: "AppUser".to_string(),
                     target_entity_id: u.id.clone(),
-                    metadata: Some(serde_json::json!({ "reason": "login_failed", "username": norm_username }).to_string()),
+                    metadata: Some(
+                        serde_json::json!({ "reason": "login_failed", "username": norm_username })
+                            .to_string(),
+                    ),
                     created_at: now_iso.clone(),
                 };
-                audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-                tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                audit::append(&mut tx, &audit)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-                return Err(AuthError::InvalidCredentials { retry_after_secs: if lockout_duration > 0 { Some(lockout_duration) } else { None } });
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: if lockout_duration > 0 {
+                        Some(lockout_duration)
+                    } else {
+                        None
+                    },
+                });
             }
 
             CredentialRepository::reset_password_failures(&mut tx, &u.id, &now_iso)
@@ -323,8 +362,12 @@ impl AuthEngine {
                 metadata: Some(serde_json::json!({ "reason": "login_success" }).to_string()),
                 created_at: now_iso.clone(),
             };
-            audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-            tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            audit::append(&mut tx, &audit)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            tx.commit()
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
             let mut session_guard = self.state.session.write().await;
             *session_guard = Some(Session {
@@ -351,10 +394,16 @@ impl AuthEngine {
             metadata: Some(serde_json::json!({ "reason": "login_failed_unknown_user", "username": norm_username }).to_string()),
             created_at: now_iso,
         };
-        audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-        Err(AuthError::InvalidCredentials { retry_after_secs: None })
+        Err(AuthError::InvalidCredentials {
+            retry_after_secs: None,
+        })
     }
 
     pub async fn unlock_pin(&self, pin: &str) -> Result<(), AuthError> {
@@ -374,11 +423,24 @@ impl AuthEngine {
 
         let pin_hash = cred.pin_hash.as_ref().unwrap();
         let now_iso = self.state.clock.now_iso();
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-        let user = UserRepository::get_by_id(&self.pool, &user_id).await.ok().flatten();
-        let ws_id = user.as_ref().map(|u| u.workspace_id.clone()).unwrap_or_else(|| "ws_default".to_string());
-        let branch_id = user.as_ref().map(|u| u.branch_id.clone()).unwrap_or_else(|| "br_default".to_string());
+        let user = UserRepository::get_by_id(&self.pool, &user_id)
+            .await
+            .ok()
+            .flatten();
+        let ws_id = user
+            .as_ref()
+            .map(|u| u.workspace_id.clone())
+            .unwrap_or_else(|| "ws_default".to_string());
+        let branch_id = user
+            .as_ref()
+            .map(|u| u.branch_id.clone())
+            .unwrap_or_else(|| "br_default".to_string());
 
         let valid = hashing::verify_pin(&user_id, pin, self.keystore.pin_pepper(), pin_hash);
         if !valid {
@@ -402,9 +464,15 @@ impl AuthEngine {
                     metadata: Some(serde_json::json!({ "reason": "max_pin_failures", "failed_attempts": new_fails }).to_string()),
                     created_at: now_iso.clone(),
                 };
-                audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-                tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-                return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+                audit::append(&mut tx, &audit)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: None,
+                });
             }
 
             let backoff_secs = match new_fails {
@@ -424,10 +492,16 @@ impl AuthEngine {
                 metadata: Some(serde_json::json!({ "failed_attempts": new_fails }).to_string()),
                 created_at: now_iso.clone(),
             };
-            audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-            tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            audit::append(&mut tx, &audit)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            tx.commit()
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-            return Err(AuthError::InvalidCredentials { retry_after_secs: Some(backoff_secs) });
+            return Err(AuthError::InvalidCredentials {
+                retry_after_secs: Some(backoff_secs),
+            });
         }
 
         CredentialRepository::reset_pin_failures(&mut tx, &user_id, &now_iso)
@@ -445,8 +519,12 @@ impl AuthEngine {
             metadata: Some(serde_json::json!({ "success": true }).to_string()),
             created_at: now_iso.clone(),
         };
-        audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let mut session_guard = self.state.session.write().await;
         if let Some(s) = session_guard.as_mut() {
@@ -464,21 +542,33 @@ impl AuthEngine {
         drop(session_guard);
 
         if pin.len() != 6 || !pin.chars().all(|c| c.is_ascii_digit()) {
-            return Err(AuthError::PolicyViolation("PIN must be exactly 6 digits".to_string()));
+            return Err(AuthError::PolicyViolation(
+                "PIN must be exactly 6 digits".to_string(),
+            ));
         }
 
         let pin_hash = hashing::hash_pin(&user_id, pin, self.keystore.pin_pepper())
             .map_err(|e| AuthError::InternalError(e.to_string()))?;
         let now_iso = self.state.clock.now_iso();
 
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         CredentialRepository::update_pin(&mut tx, &user_id, &pin_hash, &now_iso)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let session_guard = self.state.session.read().await;
-        let ws_id = session_guard.as_ref().map(|s| s.workspace_id.clone()).unwrap_or_else(|| "ws_default".to_string());
-        let branch_id = session_guard.as_ref().map(|s| s.branch_id.clone()).unwrap_or_else(|| "br_default".to_string());
+        let ws_id = session_guard
+            .as_ref()
+            .map(|s| s.workspace_id.clone())
+            .unwrap_or_else(|| "ws_default".to_string());
+        let branch_id = session_guard
+            .as_ref()
+            .map(|s| s.branch_id.clone())
+            .unwrap_or_else(|| "br_default".to_string());
         drop(session_guard);
 
         let audit = AuditLogEntry {
@@ -492,13 +582,21 @@ impl AuthEngine {
             metadata: Some(serde_json::json!({ "reason": "pin_set" }).to_string()),
             created_at: now_iso.clone(),
         };
-        audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
 
-    pub async fn change_password(&self, old_password: &str, new_password: &str) -> Result<(), AuthError> {
+    pub async fn change_password(
+        &self,
+        old_password: &str,
+        new_password: &str,
+    ) -> Result<(), AuthError> {
         let ctx = self.require_session().await?;
         let cred = CredentialRepository::get_by_user_id(&self.pool, &ctx.user_id)
             .await
@@ -506,14 +604,20 @@ impl AuthEngine {
             .ok_or(AuthError::SessionRequired)?;
 
         if !hashing::verify_password(old_password, &cred.password_hash) {
-            return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+            return Err(AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            });
         }
 
         let new_hash = hashing::hash_password(new_password)
             .map_err(|e| AuthError::InternalError(e.to_string()))?;
         let now_iso = self.state.clock.now_iso();
 
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         CredentialRepository::update_password(&mut tx, &ctx.user_id, &new_hash, &now_iso)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
@@ -535,8 +639,12 @@ impl AuthEngine {
             metadata: Some(serde_json::json!({ "reason": "password_changed" }).to_string()),
             created_at: now_iso.clone(),
         };
-        audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -550,19 +658,27 @@ impl AuthEngine {
 
         if let Some(ref pin_hash) = cred.pin_hash {
             if !hashing::verify_pin(&ctx.user_id, old_pin, self.keystore.pin_pepper(), pin_hash) {
-                return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: None,
+                });
             }
         }
 
         if new_pin.len() != 6 {
-            return Err(AuthError::PolicyViolation("PIN must be 6 digits".to_string()));
+            return Err(AuthError::PolicyViolation(
+                "PIN must be 6 digits".to_string(),
+            ));
         }
 
         let new_hash = hashing::hash_pin(&ctx.user_id, new_pin, self.keystore.pin_pepper())
             .map_err(|e| AuthError::InternalError(e.to_string()))?;
         let now_iso = self.state.clock.now_iso();
 
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         CredentialRepository::update_pin(&mut tx, &ctx.user_id, &new_hash, &now_iso)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
@@ -578,8 +694,12 @@ impl AuthEngine {
             metadata: Some(serde_json::json!({ "reason": "pin_changed" }).to_string()),
             created_at: now_iso.clone(),
         };
-        audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -592,18 +712,26 @@ impl AuthEngine {
             .ok_or(AuthError::SessionRequired)?;
 
         if !hashing::verify_password(password, &cred.password_hash) {
-            return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+            return Err(AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            });
         }
 
         if new_pin.len() != 6 {
-            return Err(AuthError::PolicyViolation("PIN must be 6 digits".to_string()));
+            return Err(AuthError::PolicyViolation(
+                "PIN must be 6 digits".to_string(),
+            ));
         }
 
         let new_hash = hashing::hash_pin(&ctx.user_id, new_pin, self.keystore.pin_pepper())
             .map_err(|e| AuthError::InternalError(e.to_string()))?;
         let now_iso = self.state.clock.now_iso();
 
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         CredentialRepository::update_pin(&mut tx, &ctx.user_id, &new_hash, &now_iso)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
@@ -619,8 +747,12 @@ impl AuthEngine {
             metadata: Some(serde_json::json!({ "reason": "pin_reset" }).to_string()),
             created_at: now_iso.clone(),
         };
-        audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -633,7 +765,9 @@ impl AuthEngine {
             .ok_or(AuthError::SessionRequired)?;
 
         if !hashing::verify_password(password, &cred.password_hash) {
-            return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+            return Err(AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            });
         }
 
         Ok(vec!["ABCDE-12345".to_string(), "FGHIJ-67890".to_string()])
@@ -655,7 +789,11 @@ impl AuthEngine {
 
         let now = self.state.clock.now_iso();
         let batch_id = format!("batch_{}", uuid::Uuid::new_v4().simple());
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         let mut codes = Vec::with_capacity(8);
         for _ in 0..8 {
             let raw: String = thread_rng()
@@ -667,51 +805,70 @@ impl AuthEngine {
             let code = format!("{}-{}", &raw[..5], &raw[5..]);
             let code_hash = hashing::hash_recovery_code(&code)
                 .map_err(|e| AuthError::InternalError(e.to_string()))?;
-            RecoveryRepository::create(&mut tx, &RecoveryCode {
-                id: format!("rec_{}", uuid::Uuid::new_v4().simple()),
-                workspace_id: ctx.workspace_id.clone(),
-                branch_id: ctx.branch_id.clone(),
-                user_id: ctx.user_id.clone(),
-                batch_id: batch_id.clone(),
-                code_hash,
-                used_at: None,
-                invalidated_at: None,
-                created_at: now.clone(),
-            })
+            RecoveryRepository::create(
+                &mut tx,
+                &RecoveryCode {
+                    id: format!("rec_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: ctx.workspace_id.clone(),
+                    branch_id: ctx.branch_id.clone(),
+                    user_id: ctx.user_id.clone(),
+                    batch_id: batch_id.clone(),
+                    code_hash,
+                    used_at: None,
+                    invalidated_at: None,
+                    created_at: now.clone(),
+                },
+            )
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
             codes.push(code);
         }
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         Ok(codes)
     }
 
     pub async fn onboarding_advance(&self, state: &str) -> Result<(), AuthError> {
         let ctx = self.require_session().await?;
         let now_iso = self.state.clock.now_iso();
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        sqlx::query("UPDATE business SET onboarding_state = ?, updated_at = ? WHERE workspace_id = ?")
-            .bind(state)
-            .bind(&now_iso)
-            .bind(&ctx.workspace_id)
-            .execute(&mut *tx)
+        let mut tx = self
+            .pool
+            .begin()
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        sqlx::query(
+            "UPDATE business SET onboarding_state = ?, updated_at = ? WHERE workspace_id = ?",
+        )
+        .bind(state)
+        .bind(&now_iso)
+        .bind(&ctx.workspace_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         Ok(())
     }
 
     pub async fn business_set_idle_lock(&self, minutes: i64) -> Result<(), AuthError> {
         let ctx = self.require_session().await?;
         let now_iso = self.state.clock.now_iso();
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        sqlx::query("UPDATE business SET idle_lock_minutes = ?, updated_at = ? WHERE workspace_id = ?")
-            .bind(minutes)
-            .bind(&now_iso)
-            .bind(&ctx.workspace_id)
-            .execute(&mut *tx)
+        let mut tx = self
+            .pool
+            .begin()
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        sqlx::query(
+            "UPDATE business SET idle_lock_minutes = ?, updated_at = ? WHERE workspace_id = ?",
+        )
+        .bind(minutes)
+        .bind(&now_iso)
+        .bind(&ctx.workspace_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let audit = AuditLogEntry {
             id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
@@ -724,8 +881,12 @@ impl AuthEngine {
             metadata: Some(serde_json::json!({ "idle_lock_minutes": minutes }).to_string()),
             created_at: now_iso.clone(),
         };
-        audit::append(&mut tx, &audit).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         Ok(())
     }
@@ -759,7 +920,9 @@ impl AuthEngine {
 
         let policy = get_step_up_policy(permission, is_setup_complete);
 
-        let (verifying_user_id, is_approver) = if is_actor_sudo || policy.tier == StepUpTier::SelfTier {
+        let (verifying_user_id, is_approver) = if is_actor_sudo
+            || policy.tier == StepUpTier::SelfTier
+        {
             (actor_id.clone(), false)
         } else {
             let app_id = approver_user_id.ok_or_else(|| {
@@ -789,9 +952,18 @@ impl AuthEngine {
 
         let pin_hash = cred.pin_hash.as_ref().unwrap();
         let now_iso = self.state.clock.now_iso();
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-        let valid = hashing::verify_pin(&verifying_user_id, pin, self.keystore.pin_pepper(), pin_hash);
+        let valid = hashing::verify_pin(
+            &verifying_user_id,
+            pin,
+            self.keystore.pin_pepper(),
+            pin_hash,
+        );
 
         if !valid {
             if !is_approver {
@@ -799,15 +971,29 @@ impl AuthEngine {
                 if new_fails >= 5 {
                     let mut session_guard = self.state.session.write().await;
                     *session_guard = None;
-                    CredentialRepository::increment_pin_failures(&mut tx, &verifying_user_id, new_fails, &now_iso)
-                        .await
-                        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-                    tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-                    return Err(AuthError::InvalidCredentials { retry_after_secs: None });
-                }
-                CredentialRepository::increment_pin_failures(&mut tx, &verifying_user_id, new_fails, &now_iso)
+                    CredentialRepository::increment_pin_failures(
+                        &mut tx,
+                        &verifying_user_id,
+                        new_fails,
+                        &now_iso,
+                    )
                     .await
                     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                    tx.commit()
+                        .await
+                        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                    return Err(AuthError::InvalidCredentials {
+                        retry_after_secs: None,
+                    });
+                }
+                CredentialRepository::increment_pin_failures(
+                    &mut tx,
+                    &verifying_user_id,
+                    new_fails,
+                    &now_iso,
+                )
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
             }
 
             let audit_entry = AuditLogEntry {
@@ -829,16 +1015,24 @@ impl AuthEngine {
                 ),
                 created_at: now_iso.clone(),
             };
-            audit::append(&mut tx, &audit_entry).await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-            tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            audit::append(&mut tx, &audit_entry)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            tx.commit()
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-            return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+            return Err(AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            });
         }
 
         CredentialRepository::reset_pin_failures(&mut tx, &verifying_user_id, &now_iso)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let token = format!("stepup_{}", uuid::Uuid::new_v4());
         let expires_at = self.state.clock.now_secs() + policy.ttl_secs;
@@ -906,7 +1100,7 @@ impl AuthEngine {
             FROM app_user u
             INNER JOIN user_credential c ON u.id = c.user_id
             WHERE u.active = 1 AND u.role = 'sudo' AND c.pin_hash IS NOT NULL AND c.pin_hash != ''
-            "#
+            "#,
         )
         .fetch_all(&self.pool)
         .await
@@ -928,8 +1122,8 @@ impl AuthEngine {
 mod tests {
     use super::*;
     use crate::auth::session::RealClock;
-    use crate::security::keystore::Keystore;
     use crate::models::auth::UserCredential;
+    use crate::security::keystore::Keystore;
 
     #[tokio::test]
     async fn test_login_and_require_flow() {
@@ -984,14 +1178,25 @@ mod tests {
         tx.commit().await.unwrap();
 
         let mut tx = pool.begin().await.unwrap();
-        UserRepository::set_permission_grants(&mut tx, "user_s", "ws_1", "br_1", &["inventory:adjust".to_string()], "user_s").await.unwrap();
+        UserRepository::set_permission_grants(
+            &mut tx,
+            "user_s",
+            "ws_1",
+            "br_1",
+            &["inventory:adjust".to_string()],
+            "user_s",
+        )
+        .await
+        .unwrap();
         tx.commit().await.unwrap();
 
         let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
         let keystore = Arc::new(Keystore::init().unwrap());
         let engine = AuthEngine::new(auth_state.clone(), pool.clone(), keystore);
 
-        let res = engine.login("adminuser", &Zeroizing::new("Password123!".to_string())).await;
+        let res = engine
+            .login("adminuser", &Zeroizing::new("Password123!".to_string()))
+            .await;
         assert!(res.is_ok());
 
         let ctx = engine.require("inventory:adjust").await;
@@ -1055,7 +1260,10 @@ mod tests {
         let keystore = Arc::new(Keystore::init().unwrap());
         let engine = AuthEngine::new(auth_state.clone(), pool.clone(), keystore);
 
-        engine.login("adminuser", &Zeroizing::new("Password123!".to_string())).await.unwrap();
+        engine
+            .login("adminuser", &Zeroizing::new("Password123!".to_string()))
+            .await
+            .unwrap();
 
         {
             let mut s = auth_state.session.write().await;

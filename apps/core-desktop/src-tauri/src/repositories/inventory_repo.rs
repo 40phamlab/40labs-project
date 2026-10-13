@@ -1,5 +1,5 @@
-use sqlx::SqlitePool;
 use crate::models::inventory::{InventoryItem, Medicine, MedicineWithInventory, StockAdjustment};
+use sqlx::SqlitePool;
 
 pub struct InventoryRepository;
 
@@ -11,7 +11,7 @@ impl InventoryRepository {
     ) -> Result<Vec<MedicineWithInventory>, sqlx::Error> {
         let items: Vec<InventoryItem> = if include_deactivated {
             sqlx::query_as::<_, InventoryItem>(
-                "SELECT * FROM inventory_item WHERE workspace_id = ? ORDER BY created_at DESC"
+                "SELECT * FROM inventory_item WHERE workspace_id = ? ORDER BY created_at DESC",
             )
             .bind(workspace_id)
             .fetch_all(pool)
@@ -28,7 +28,7 @@ impl InventoryRepository {
         let mut result = Vec::new();
         for item in items {
             let medicine = sqlx::query_as::<_, Medicine>(
-                "SELECT * FROM medicine WHERE workspace_id = ? AND id = ?"
+                "SELECT * FROM medicine WHERE workspace_id = ? AND id = ?",
             )
             .bind(workspace_id)
             .bind(&item.medicine_id)
@@ -52,7 +52,7 @@ impl InventoryRepository {
         id: &str,
     ) -> Result<Option<MedicineWithInventory>, sqlx::Error> {
         let item = sqlx::query_as::<_, InventoryItem>(
-            "SELECT * FROM inventory_item WHERE workspace_id = ? AND id = ?"
+            "SELECT * FROM inventory_item WHERE workspace_id = ? AND id = ?",
         )
         .bind(workspace_id)
         .bind(id)
@@ -61,7 +61,7 @@ impl InventoryRepository {
 
         if let Some(inv_item) = item {
             let medicine = sqlx::query_as::<_, Medicine>(
-                "SELECT * FROM medicine WHERE workspace_id = ? AND id = ?"
+                "SELECT * FROM medicine WHERE workspace_id = ? AND id = ?",
             )
             .bind(workspace_id)
             .bind(&inv_item.medicine_id)
@@ -89,7 +89,7 @@ impl InventoryRepository {
                 id, workspace_id, branch_id, name, generic_name, category, unit,
                 is_controlled_substance, requires_prescription, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&med.id)
         .bind(&med.workspace_id)
@@ -119,7 +119,7 @@ impl InventoryRepository {
                 buy_price, sell_price, quantity, low_stock_threshold, cold_chain_required,
                 is_deactivated, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&item.id)
         .bind(&item.workspace_id)
@@ -173,7 +173,7 @@ impl InventoryRepository {
                 id, workspace_id, branch_id, inventory_item_id, adjusted_by_user_id,
                 delta, reason, audit_log_id, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&adj.id)
         .bind(&adj.workspace_id)

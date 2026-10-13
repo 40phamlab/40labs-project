@@ -9,14 +9,12 @@ import {
   IconButton,
   ConfirmDialog,
   ToastContainer,
-  Tooltip,
 } from '@40labs/ui-components';
 import {
   MoreVertical,
-  CheckCircle,
-  Share2,
-  MessageSquare,
   XCircle,
+  TestTube,
+  FileCheck,
 } from 'lucide-react';
 import type {
   LabOrder,
@@ -25,14 +23,16 @@ import type {
   LabOrderStatus,
 } from '@40labs/types';
 
-export type ChannelTab = 'online' | 'forwarded' | 'unsolved';
-export type TimeRange = 'today' | 'week' | 'month';
+export type ChannelTab = 'active' | 'completed' | 'all' | 'cancelled';
+export type TimeRange = 'today' | 'week' | 'month' | 'all';
 
 export interface LabOrdersListProps {
   orders: LabOrder[];
   testCatalog: TestCatalogEntry[];
   customers: Customer[];
-  onUpdateOrderStatus: (orderId: string, newStatus: LabOrderStatus) => void;
+  onUpdateOrderStatus: (orderId: string, newStatus: LabOrderStatus) => Promise<unknown>;
+  onCollectSample: (order: LabOrder) => void;
+  onEnterResult: (order: LabOrder) => void;
   loading?: boolean;
   error?: string | Error | null;
   onRetry?: () => void;
@@ -49,17 +49,21 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
   testCatalog,
   customers,
   onUpdateOrderStatus,
+  onCollectSample,
+  onEnterResult,
   loading,
   error,
   onRetry,
 }) => {
-  const [activeChannel, setActiveChannel] = React.useState<ChannelTab>('unsolved');
-  const [timeRange, setTimeRange] = React.useState<TimeRange>('month');
+  const [activeChannel, setActiveChannel] = React.useState<ChannelTab>('active');
+  const [timeRange, setTimeRange] = React.useState<TimeRange>('all');
   const [activeMenuOrderId, setActiveMenuOrderId] = React.useState<string | null>(null);
 
   // Dialog & Toast State
   const [cancelOrderTarget, setCancelOrderTarget] = React.useState<LabOrder | null>(null);
   const [toasts, setToasts] = React.useState<ToastItem[]>([]);
+  const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
+  const statusUpdatePending = React.useRef(false);
 
   const addToast = (
     message: string,
@@ -74,35 +78,34 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
   };
 
   // Counts for Channel FilterTabs
-  const unsolvedCount = React.useMemo(() => {
-    return orders.filter((o) => o.status === 'unsolved').length;
-  }, [orders]);
+  const completedCount = orders.filter((o) => o.status === 'report_ready' || o.status === 'result_entered').length;
+  const cancelledCount = orders.filter((o) => o.status === 'cancelled').length;
 
   const channelTabs = React.useMemo(
     () => [
-      { id: 'online', label: 'Online', count: 0 },
-      { id: 'forwarded', label: 'Forwarded', count: 0 },
-      { id: 'unsolved', label: 'Unsolved', count: unsolvedCount },
+      { id: 'active', label: 'Active', count: orders.filter((o) => !['report_ready', 'result_entered', 'cancelled'].includes(o.status)).length },
+      { id: 'completed', label: 'Completed', count: completedCount },
+      { id: 'all', label: 'All', count: orders.length },
+      { id: 'cancelled', label: 'Cancelled', count: cancelledCount },
     ],
-    [unsolvedCount]
+    [orders, completedCount, cancelledCount]
   );
 
   const timeOptions = [
     { label: 'Today', value: 'today' },
     { label: 'Last week', value: 'week' },
     { label: 'Last month', value: 'month' },
+    { label: 'All time', value: 'all' },
   ];
 
   // Filtering Logic
   const filteredOrders = React.useMemo(() => {
-    // Online and Forwarded render empty-state this phase per spec
-    if (activeChannel === 'online' || activeChannel === 'forwarded') {
-      return [];
-    }
-
     const now = new Date().getTime();
     return orders.filter((o) => {
-      if (o.status !== 'unsolved') return false;
+      const isCompleted = o.status === 'report_ready' || o.status === 'result_entered';
+      if (activeChannel === 'active' && (isCompleted || o.status === 'cancelled')) return false;
+      if (activeChannel === 'completed' && !isCompleted) return false;
+      if (activeChannel === 'cancelled' && o.status !== 'cancelled') return false;
 
       const created = new Date(o.created_at).getTime();
       const diffDays = (now - created) / (1000 * 60 * 60 * 24);
@@ -110,24 +113,27 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
       if (timeRange === 'today') return diffDays <= 1;
       if (timeRange === 'week') return diffDays <= 7;
       if (timeRange === 'month') return diffDays <= 30;
+      if (timeRange === 'all') return true;
       return true;
     });
   }, [orders, activeChannel, timeRange]);
 
-  // Handle Solve Action (unsolved -> pending)
-  const handleSolve = (order: LabOrder) => {
-    onUpdateOrderStatus(order.id, 'pending');
-    addToast(`Order #${order.id} solved and moved to pending queue.`, 'success');
-  };
-
   // Handle Cancel Action (confirm modal handler)
-  const handleConfirmCancel = () => {
-    if (cancelOrderTarget) {
-      // Question to Sairiamu: Cancel isn't in the PIN-gated action list; flag to confirm if turning down a paid test should require PIN.
-      onUpdateOrderStatus(cancelOrderTarget.id, 'cancelled');
-      addToast(`Order #${cancelOrderTarget.id} turned down and cancelled.`, 'danger');
+  const handleConfirmCancel = async () => {
+    if (!cancelOrderTarget || statusUpdatePending.current) return;
+    statusUpdatePending.current = true;
+    setIsUpdatingStatus(true);
+    try {
+      await onUpdateOrderStatus(cancelOrderTarget.id, 'cancelled');
+      addToast(`Order #${cancelOrderTarget.id} turned down and cancelled.`, 'success');
+      setCancelOrderTarget(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : typeof error === 'string' ? error : 'Could not update the laboratory order. Please try again.';
+      addToast(message, 'danger');
+    } finally {
+      statusUpdatePending.current = false;
+      setIsUpdatingStatus(false);
     }
-    setCancelOrderTarget(null);
   };
 
   // Table Columns
@@ -213,36 +219,10 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
                 />
               }
             >
-              <DropdownMenuItem
-                label="Solve"
-                icon={<CheckCircle size={14} className="text-primary" />}
-                onClick={() => {
-                  setActiveMenuOrderId(null);
-                  handleSolve(item);
-                }}
-              />
+              {item.status === 'pending' && <DropdownMenuItem label="Collect sample" icon={<TestTube size={14} className="text-primary" />} onClick={() => { setActiveMenuOrderId(null); onCollectSample(item); }} />}
+              {item.status === 'sample_collected' && <DropdownMenuItem label="Enter result" icon={<FileCheck size={14} className="text-primary" />} onClick={() => { setActiveMenuOrderId(null); onEnterResult(item); }} />}
 
-              <Tooltip content="Patient ordering and inter-lab routing (v3.5)" position="left">
-                <div className="w-full">
-                  <DropdownMenuItem
-                    label="Forward"
-                    icon={<Share2 size={14} />}
-                    disabled
-                  />
-                </div>
-              </Tooltip>
-
-              <Tooltip content="Direct patient messaging via WhatsApp/SMS" position="left">
-                <div className="w-full">
-                  <DropdownMenuItem
-                    label="Contact"
-                    icon={<MessageSquare size={14} />}
-                    disabled
-                  />
-                </div>
-              </Tooltip>
-
-              <DropdownMenuItem
+              {!['report_ready', 'result_entered', 'cancelled'].includes(item.status) && <DropdownMenuItem
                 label="Cancel"
                 variant="danger"
                 icon={<XCircle size={14} />}
@@ -250,29 +230,21 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
                   setActiveMenuOrderId(null);
                   setCancelOrderTarget(item);
                 }}
-              />
+              />}
             </Dropdown>
           );
         },
       },
     ],
-    [customers, testCatalog, activeMenuOrderId]
+    [customers, testCatalog, activeMenuOrderId, onCollectSample, onEnterResult]
   );
 
   const getEmptyMessage = () => {
-    if (activeChannel === 'online') {
-      return 'Shows online-ordered tests once patient ordering integration is active';
-    }
-    if (activeChannel === 'forwarded') {
-      return 'Shows online-ordered tests once patient ordering integration is active';
-    }
-    return 'No unsolved orders';
+    return 'No orders in this view';
   };
 
   const channelLabelMap: Record<ChannelTab, string> = {
-    online: 'Online',
-    forwarded: 'Forwarded',
-    unsolved: 'Unsolved',
+    active: 'Active', completed: 'Completed', all: 'All', cancelled: 'Cancelled',
   };
 
   return (
@@ -318,12 +290,13 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
       <ConfirmDialog
         isOpen={!!cancelOrderTarget}
         onClose={() => setCancelOrderTarget(null)}
-        onConfirm={handleConfirmCancel}
+        onConfirm={() => { void handleConfirmCancel(); }}
         title="Turn down this test?"
         message={`Are you sure you want to turn down order #${cancelOrderTarget?.id}? This will mark the test status as cancelled.`}
         confirmText="Confirm Cancel"
         cancelText="Keep Order"
         intent="danger"
+        loading={isUpdatingStatus}
       />
 
       {/* Toast Notifications */}

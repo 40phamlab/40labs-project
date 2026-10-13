@@ -1,5 +1,5 @@
-use sqlx::SqlitePool;
 use crate::models::purchases::{PurchaseOrder, PurchaseOrderLine, Supplier};
+use sqlx::SqlitePool;
 
 #[derive(Debug, sqlx::FromRow)]
 struct PORow {
@@ -18,18 +18,24 @@ struct PORow {
 pub struct PurchasesRepository;
 
 impl PurchasesRepository {
-    pub async fn list_suppliers(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<Supplier>, sqlx::Error> {
+    pub async fn list_suppliers(
+        pool: &SqlitePool,
+        workspace_id: &str,
+    ) -> Result<Vec<Supplier>, sqlx::Error> {
         sqlx::query_as::<_, Supplier>(
-            "SELECT * FROM supplier WHERE workspace_id = ? ORDER BY created_at DESC"
+            "SELECT * FROM supplier WHERE workspace_id = ? ORDER BY created_at DESC",
         )
         .bind(workspace_id)
         .fetch_all(pool)
         .await
     }
 
-    pub async fn list_purchase_orders(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<PurchaseOrder>, sqlx::Error> {
+    pub async fn list_purchase_orders(
+        pool: &SqlitePool,
+        workspace_id: &str,
+    ) -> Result<Vec<PurchaseOrder>, sqlx::Error> {
         let rows = sqlx::query_as::<_, PORow>(
-            "SELECT * FROM purchase_order WHERE workspace_id = ? ORDER BY created_at DESC"
+            "SELECT * FROM purchase_order WHERE workspace_id = ? ORDER BY created_at DESC",
         )
         .bind(workspace_id)
         .fetch_all(pool)
@@ -38,7 +44,7 @@ impl PurchasesRepository {
         let mut orders = Vec::new();
         for r in rows {
             let lines = sqlx::query_as::<_, PurchaseOrderLine>(
-                "SELECT * FROM purchase_order_line WHERE purchase_order_id = ?"
+                "SELECT * FROM purchase_order_line WHERE purchase_order_id = ?",
             )
             .bind(&r.id)
             .fetch_all(pool)
@@ -138,7 +144,7 @@ impl PurchasesRepository {
         id: &str,
     ) -> Result<Option<PurchaseOrder>, sqlx::Error> {
         let row = sqlx::query_as::<_, PORow>(
-            "SELECT * FROM purchase_order WHERE workspace_id = ? AND id = ?"
+            "SELECT * FROM purchase_order WHERE workspace_id = ? AND id = ?",
         )
         .bind(workspace_id)
         .bind(id)
@@ -147,7 +153,7 @@ impl PurchasesRepository {
 
         if let Some(r) = row {
             let lines = sqlx::query_as::<_, PurchaseOrderLine>(
-                "SELECT * FROM purchase_order_line WHERE purchase_order_id = ?"
+                "SELECT * FROM purchase_order_line WHERE purchase_order_id = ?",
             )
             .bind(&r.id)
             .fetch_all(pool)
@@ -263,12 +269,21 @@ mod tests {
         assert_eq!(pos[0].status, "draft");
         assert_eq!(pos[0].lines.len(), 1);
 
-        let approved = PurchasesRepository::approve_purchase_order(&pool, "ws_po", "po_test_001", "user_po_test", "2026-01-01T11:00:00Z")
-            .await
-            .expect("Failed to approve PO")
-            .expect("PO must exist");
+        let approved = PurchasesRepository::approve_purchase_order(
+            &pool,
+            "ws_po",
+            "po_test_001",
+            "user_po_test",
+            "2026-01-01T11:00:00Z",
+        )
+        .await
+        .expect("Failed to approve PO")
+        .expect("PO must exist");
 
         assert_eq!(approved.status, "completed");
-        assert_eq!(approved.approved_by_user_id, Some("user_po_test".to_string()));
+        assert_eq!(
+            approved.approved_by_user_id,
+            Some("user_po_test".to_string())
+        );
     }
 }

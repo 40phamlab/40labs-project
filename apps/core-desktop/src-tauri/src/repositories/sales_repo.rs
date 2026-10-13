@@ -1,5 +1,5 @@
-use sqlx::{SqlitePool, SqliteConnection};
-use crate::models::sales::{Sale, SaleLine, FiscalReceipt};
+use crate::models::sales::{FiscalReceipt, Sale, SaleLine};
+use sqlx::{SqliteConnection, SqlitePool};
 
 #[derive(Debug, sqlx::FromRow)]
 struct SaleRow {
@@ -36,12 +36,10 @@ impl SalesRepository {
         .await?;
 
         if let Some(r) = record {
-            let lines = sqlx::query_as::<_, SaleLine>(
-                "SELECT * FROM sale_line WHERE sale_id = ?"
-            )
-            .bind(&r.id)
-            .fetch_all(pool)
-            .await?;
+            let lines = sqlx::query_as::<_, SaleLine>("SELECT * FROM sale_line WHERE sale_id = ?")
+                .bind(&r.id)
+                .fetch_all(pool)
+                .await?;
 
             Ok(Some(Sale {
                 id: r.id,
@@ -65,7 +63,10 @@ impl SalesRepository {
         }
     }
 
-    pub async fn list_sales(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<Sale>, sqlx::Error> {
+    pub async fn list_sales(
+        pool: &SqlitePool,
+        workspace_id: &str,
+    ) -> Result<Vec<Sale>, sqlx::Error> {
         let sales_records = sqlx::query_as::<_, SaleRow>(
             "SELECT id, workspace_id, branch_id, customer_id, payment_method, discount_amount, discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at, created_at, updated_at, idempotency_key FROM sale WHERE workspace_id = ? ORDER BY created_at DESC"
         )
@@ -75,12 +76,10 @@ impl SalesRepository {
 
         let mut sales = Vec::new();
         for r in sales_records {
-            let lines = sqlx::query_as::<_, SaleLine>(
-                "SELECT * FROM sale_line WHERE sale_id = ?"
-            )
-            .bind(&r.id)
-            .fetch_all(pool)
-            .await?;
+            let lines = sqlx::query_as::<_, SaleLine>("SELECT * FROM sale_line WHERE sale_id = ?")
+                .bind(&r.id)
+                .fetch_all(pool)
+                .await?;
 
             sales.push(Sale {
                 id: r.id,
@@ -104,7 +103,10 @@ impl SalesRepository {
         Ok(sales)
     }
 
-    pub async fn create_sale(executor: &mut SqliteConnection, sale: &Sale) -> Result<(), sqlx::Error> {
+    pub async fn create_sale(
+        executor: &mut SqliteConnection,
+        sale: &Sale,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO sale (
@@ -112,7 +114,7 @@ impl SalesRepository {
                 discount_authorized_by_user_id, tax_amount, grand_total, currency, synced_at,
                 created_at, updated_at, idempotency_key
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&sale.id)
         .bind(&sale.workspace_id)
@@ -137,7 +139,7 @@ impl SalesRepository {
                 INSERT INTO sale_line (
                     id, sale_id, inventory_item_id, medicine_name, quantity, unit_price, subtotal
                 ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                "#
+                "#,
             )
             .bind(&line.id)
             .bind(&line.sale_id)
@@ -153,7 +155,10 @@ impl SalesRepository {
         Ok(())
     }
 
-    pub async fn create_fiscal_receipt(executor: &mut SqliteConnection, receipt: &FiscalReceipt) -> Result<(), sqlx::Error> {
+    pub async fn create_fiscal_receipt(
+        executor: &mut SqliteConnection,
+        receipt: &FiscalReceipt,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO fiscal_receipt (
@@ -161,7 +166,7 @@ impl SalesRepository {
                 local_signature, tra_receipt_number, queued_at, submitted_at,
                 retry_count, buffering_window_hours, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&receipt.id)
         .bind(&receipt.workspace_id)
@@ -183,9 +188,12 @@ impl SalesRepository {
         Ok(())
     }
 
-    pub async fn list_fiscal_receipts(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<FiscalReceipt>, sqlx::Error> {
+    pub async fn list_fiscal_receipts(
+        pool: &SqlitePool,
+        workspace_id: &str,
+    ) -> Result<Vec<FiscalReceipt>, sqlx::Error> {
         sqlx::query_as::<_, FiscalReceipt>(
-            "SELECT * FROM fiscal_receipt WHERE workspace_id = ? ORDER BY created_at DESC"
+            "SELECT * FROM fiscal_receipt WHERE workspace_id = ? ORDER BY created_at DESC",
         )
         .bind(workspace_id)
         .fetch_all(pool)

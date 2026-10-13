@@ -50,9 +50,9 @@ export const NewLabOrderModal: React.FC<NewLabOrderModalProps> = ({
       return;
     }
 
-    const customerId = selectedCustomer?.id || customers[0]?.id;
+    const customerId = selectedCustomer?.id;
     if (!customerId) {
-      setErrorMsg('Please select an existing patient.');
+      setErrorMsg('Choose a registered patient from the matching customer list.');
       return;
     }
 

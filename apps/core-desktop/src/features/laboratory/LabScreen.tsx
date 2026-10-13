@@ -26,7 +26,6 @@ import {
   Clock,
   User as UserIcon,
   Activity,
-  DollarSign,
   RefreshCw,
   Plus,
 } from 'lucide-react';
@@ -37,6 +36,9 @@ import { LabSamplesList } from './components/LabSamplesList';
 import { NewLabOrderModal } from './components/NewLabOrderModal';
 import { useLab } from '../../hooks/useLab';
 import { useCustomers } from '../../hooks/useCustomers';
+import { NewTestCatalogModal } from './components/NewTestCatalogModal';
+import { LabQcPanel } from './components/LabQcPanel';
+import { LabOrderActionModal } from './components/LabOrderActionModal';
 
 export type LabTab =
   | 'dashboard'
@@ -84,12 +86,16 @@ const LAB_SUBNAV_SECTIONS: SubNavSection[] = [
 export const LabScreen: React.FC = () => {
   const [activeLabTab, setActiveLabTab] = React.useState<LabTab>('samples');
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isCatalogModalOpen, setIsCatalogModalOpen] = React.useState(false);
+  const [orderAction, setOrderAction] = React.useState<{ mode: 'sample' | 'result'; orderId: string } | null>(null);
 
   const {
     orders,
     samples,
     results,
     catalog: testCatalog,
+    stock,
+    qcData,
     users,
     auditLogs,
     isLoading,
@@ -100,6 +106,16 @@ export const LabScreen: React.FC = () => {
     updateOrderStatus,
     updateSampleStatus,
     isCreatingOrder,
+    createCatalogEntry,
+    createQcEquipment,
+    createQcRecord,
+    isCreatingCatalogEntry,
+    isCreatingQcEquipment,
+    isCreatingQcRecord,
+    collectSample,
+    enterResult,
+    isCollectingSample,
+    isEnteringResult,
   } = useLab();
 
   const { customers } = useCustomers();
@@ -124,6 +140,9 @@ export const LabScreen: React.FC = () => {
     },
     [updateSampleStatus]
   );
+
+  const selectedActionOrder = orderAction ? orders.find((order) => order.id === orderAction.orderId) || null : null;
+  const selectedActionTest = selectedActionOrder ? testCatalog.find((test) => test.id === selectedActionOrder.test_catalog_id) : undefined;
 
   // Columns for Results view
   const resultColumns: ColumnDefinition<LabResult>[] = React.useMemo(
@@ -235,6 +254,8 @@ export const LabScreen: React.FC = () => {
             testCatalog={testCatalog}
             customers={customers}
             onUpdateOrderStatus={handleUpdateOrderStatus}
+            onCollectSample={(order) => setOrderAction({ mode: 'sample', orderId: order.id })}
+            onEnterResult={(order) => setOrderAction({ mode: 'result', orderId: order.id })}
             loading={isLoading}
             error={isError ? (error as Error) : null}
             onRetry={refetch}
@@ -272,6 +293,7 @@ export const LabScreen: React.FC = () => {
       case 'test-catalog':
         return (
           <div className="flex flex-col gap-4 w-full">
+            <div className="flex justify-end"><Button type="button" intent="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsCatalogModalOpen(true)}>Add test</Button></div>
             <DataTable
               data={testCatalog}
               columns={catalogColumns}
@@ -285,65 +307,41 @@ export const LabScreen: React.FC = () => {
 
       case 'qc-equipment':
         return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-            <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-text text-sm">Sysmex XN-350 Hematology Analyzer</span>
-                <Badge variant="success">Operational</Badge>
-              </div>
-              <div className="text-xs text-text-muted flex flex-col gap-1">
-                <p>Last Calibrated: 2 days ago</p>
-                <p>QC Control Pass Rate: <span className="font-bold text-primary">100%</span></p>
-                <p>Status: Ready for CBC & Blood Profiles</p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3">
-              <div className="flex justify-between items-center">
-                <span className="font-bold text-text text-sm">Reflotron Plus Biochemistry System</span>
-                <Badge variant="success">Operational</Badge>
-              </div>
-              <div className="text-xs text-text-muted flex flex-col gap-1">
-                <p>Last Calibrated: 1 day ago</p>
-                <p>QC Control Pass Rate: <span className="font-bold text-primary">98.5%</span></p>
-                <p>Status: Calibration verified for Glucose & Lipid panels</p>
-              </div>
-            </div>
-          </div>
+          <LabQcPanel data={qcData} loading={isCreatingQcEquipment || isCreatingQcRecord} onAddEquipment={createQcEquipment} onRecord={createQcRecord} error={isError ? (error as Error)?.message || 'Unable to load laboratory data.' : null} onRetry={refetch} />
         );
 
       case 'analytics':
+        {
+          const resultOrderIds = new Set(results.map((result) => result.lab_order_id));
+          const completedOrders = orders.filter((order) => resultOrderIds.has(order.id));
+          const withinDay = completedOrders.filter((order) => {
+            const result = results.find((item) => item.lab_order_id === order.id);
+            return result && new Date(result.created_at).getTime() - new Date(order.created_at).getTime() <= 24 * 60 * 60 * 1000;
+          }).length;
+          const orderValue = orders.reduce((sum, order) => sum + (testCatalog.find((test) => test.id === order.test_catalog_id)?.price || 0), 0);
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
             <KPITile title="Total Requisitions" value={orders.length} tone="default" icon={<Activity size={18} />} subtext="Current period total" />
-            <KPITile title="TAT SLA Compliance" value="98.2%" tone="primary" icon={<Clock size={18} />} subtext="Under 24h turnaround" />
+            <KPITile title="Results within 24 hours" value={completedOrders.length ? `${Math.round((withinDay / completedOrders.length) * 100)}%` : '—'} tone="primary" icon={<Clock size={18} />} subtext={`${withinDay} of ${completedOrders.length} completed orders`} />
             <KPITile title="Critical Out-Of-Range" value={results.filter(r => r.is_out_of_range).length} tone="danger" icon={<AlertTriangle size={18} />} subtext="Flagged for review" />
-            <KPITile title="Estimated Revenue" value="1,450,000 TZS" tone="primary" icon={<DollarSign size={18} />} subtext="Lab test earnings" />
+            <KPITile title="Ordered test value" value={`${orderValue.toLocaleString()} TZS`} tone="primary" icon={<Activity size={18} />} subtext="Catalog price total for orders" />
           </div>
         );
+        }
 
       case 'lab-store':
+        {
+          const lowStockCount = stock.filter((item) => item.quantity <= item.low_stock_threshold).length;
+          const expiredCount = stock.filter((item) => new Date(item.expiry_date) < new Date()).length;
         return (
-          <div className="p-4 rounded-card bg-panel-strong/40 border border-border/50 flex flex-col gap-3 w-full">
-            <div className="grid grid-cols-3 gap-4 text-xs">
-              <div className="p-3 bg-panel rounded-card border border-border/40">
-                <p className="text-text-muted font-bold uppercase text-[10px]">EDTA Blood Tubes</p>
-                <p className="text-lg font-bold text-primary">500 units</p>
-                <p className="text-[10px] text-text-muted">Stock Level: Good</p>
-              </div>
-              <div className="p-3 bg-panel rounded-card border border-border/40">
-                <p className="text-text-muted font-bold uppercase text-[10px]">Malaria RDT Cassettes</p>
-                <p className="text-lg font-bold text-accent">120 units</p>
-                <p className="text-[10px] text-text-muted">Stock Level: Reorder Soon</p>
-              </div>
-              <div className="p-3 bg-panel rounded-card border border-border/40">
-                <p className="text-text-muted font-bold uppercase text-[10px]">Glucose Test Strips</p>
-                <p className="text-lg font-bold text-primary">250 strips</p>
-                <p className="text-[10px] text-text-muted">Stock Level: Good</p>
-              </div>
-            </div>
-          </div>
+          <section className="flex flex-col gap-4 w-full">
+            {isError && <div role="alert" className="flex items-center justify-between gap-3 rounded-card border border-danger/30 bg-danger/10 p-3 text-sm text-danger"><span>{(error as Error)?.message || 'Unable to load laboratory stock.'}</span><Button type="button" intent="neutral" onClick={refetch}>Retry</Button></div>}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><KPITile title="Stock batches" value={stock.length} tone="default" icon={<Store size={18} />} /><KPITile title="At or below reorder level" value={lowStockCount} tone={lowStockCount ? 'danger' : 'primary'} icon={<AlertTriangle size={18} />} /><KPITile title="Expired batches" value={expiredCount} tone={expiredCount ? 'danger' : 'default'} icon={<Clock size={18} />} /></div>
+            <div className="rounded-card border border-border/50 overflow-x-auto"><table className="w-full text-sm"><thead className="bg-panel-strong/40 text-left text-xs text-text-muted"><tr><th className="p-3">Item</th><th className="p-3">Category</th><th className="p-3">Batch</th><th className="p-3">Quantity</th><th className="p-3">Reorder at</th><th className="p-3">Expiry</th><th className="p-3">Status</th></tr></thead><tbody className="divide-y divide-border/50">{stock.map((item) => { const expired = new Date(item.expiry_date) < new Date(); const low = item.quantity <= item.low_stock_threshold; return <tr key={item.id}><td className="p-3 font-medium">{item.medicine.name}</td><td className="p-3">{item.medicine.category}</td><td className="p-3 font-mono">{item.batch_number}</td><td className="p-3">{item.quantity} {item.medicine.unit}</td><td className="p-3">{item.low_stock_threshold}</td><td className="p-3">{new Date(item.expiry_date).toLocaleDateString()}</td><td className="p-3"><Badge variant={expired || low ? 'danger' : 'success'}>{expired ? 'Expired' : low ? 'Reorder' : 'Available'}</Badge></td></tr>; })}</tbody></table>{stock.length === 0 && <p className="p-5 text-sm text-text-muted">No inventory batches are recorded for this branch.</p>}</div>
+            <p className="text-xs text-text-muted">Quantities are read from this branch’s inventory batches. Replenishment and adjustments are managed in Inventory.</p>
+          </section>
         );
+        }
 
       case 'lab-manager':
         return (
@@ -424,6 +422,7 @@ export const LabScreen: React.FC = () => {
         />
       }
       overlays={
+        <>
         <NewLabOrderModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
@@ -432,6 +431,9 @@ export const LabScreen: React.FC = () => {
           testCatalog={testCatalog}
           isLoading={isCreatingOrder}
         />
+        <NewTestCatalogModal isOpen={isCatalogModalOpen} onClose={() => setIsCatalogModalOpen(false)} onSubmit={createCatalogEntry} isLoading={isCreatingCatalogEntry} />
+        <LabOrderActionModal mode={orderAction?.mode || null} order={selectedActionOrder} testName={selectedActionTest?.name || 'Laboratory test'} loading={isCollectingSample || isEnteringResult} onClose={() => setOrderAction(null)} onCollectSample={collectSample} onEnterResult={enterResult} />
+        </>
       }
     >
       <SubNavLayout

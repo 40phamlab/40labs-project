@@ -1,17 +1,17 @@
 pub mod audit_cmd;
+pub mod auth_cmd;
+pub mod business_cmd;
 pub mod customer_cmd;
+pub mod devices_cmd;
+pub mod integrations_cmd;
 pub mod inventory_cmd;
 pub mod lab_cmd;
-pub mod sales_cmd;
-pub mod purchases_cmd;
-pub mod system_cmd;
 pub mod notification_cmd;
-pub mod devices_cmd;
-pub mod auth_cmd;
-pub mod user_cmd;
+pub mod purchases_cmd;
 pub mod registration_cmd;
-pub mod business_cmd;
-pub mod integrations_cmd;
+pub mod sales_cmd;
+pub mod system_cmd;
+pub mod user_cmd;
 
 #[cfg(test)]
 mod tests {
@@ -71,6 +71,11 @@ mod tests {
             "update_lab_sample_status",
             "get_lab_results",
             "get_test_catalog",
+            "create_test_catalog_entry",
+            "get_lab_stock",
+            "get_lab_qc_data",
+            "create_lab_qc_equipment",
+            "create_lab_qc_record",
             "enter_lab_result",
             "get_audit_logs",
             "get_notifications",

@@ -1,5 +1,5 @@
-use sqlx::{SqlitePool, SqliteConnection};
 use crate::models::auth::{AppUser, Owner, PermissionGrant};
+use sqlx::{SqliteConnection, SqlitePool};
 
 pub struct UserRepository;
 
@@ -11,7 +11,10 @@ impl UserRepository {
             .await
     }
 
-    pub async fn get_by_username(pool: &SqlitePool, username: &str) -> Result<Option<AppUser>, sqlx::Error> {
+    pub async fn get_by_username(
+        pool: &SqlitePool,
+        username: &str,
+    ) -> Result<Option<AppUser>, sqlx::Error> {
         sqlx::query_as::<_, AppUser>("SELECT * FROM app_user WHERE username = ?")
             .bind(username.trim().to_lowercase())
             .fetch_optional(pool)
@@ -25,11 +28,10 @@ impl UserRepository {
     }
 
     pub async fn count_active_sudo(pool: &SqlitePool) -> Result<i64, sqlx::Error> {
-        let row: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM app_user WHERE role = 'sudo' AND active = 1"
-        )
-        .fetch_one(pool)
-        .await?;
+        let row: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM app_user WHERE role = 'sudo' AND active = 1")
+                .fetch_one(pool)
+                .await?;
         Ok(row.0)
     }
 
@@ -41,7 +43,7 @@ impl UserRepository {
                 phone, role, role_preset, is_superintendent, active, owner_id,
                 must_change_credentials, last_login_at, created_by_user_id, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&user.id)
         .bind(&user.workspace_id)
@@ -66,7 +68,12 @@ impl UserRepository {
         Ok(())
     }
 
-    pub async fn update_active(conn: &mut SqliteConnection, id: &str, active: i64, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_active(
+        conn: &mut SqliteConnection,
+        id: &str,
+        active: i64,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE app_user SET active = ?, updated_at = ? WHERE id = ?")
             .bind(active)
             .bind(updated_at)
@@ -76,7 +83,16 @@ impl UserRepository {
         Ok(())
     }
 
-    pub async fn update_profile(conn: &mut SqliteConnection, id: &str, first_name: &str, last_name: &str, full_name: &str, phone: Option<&str>, role_preset: &str, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_profile(
+        conn: &mut SqliteConnection,
+        id: &str,
+        first_name: &str,
+        last_name: &str,
+        full_name: &str,
+        phone: Option<&str>,
+        role_preset: &str,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE app_user
@@ -96,7 +112,11 @@ impl UserRepository {
         Ok(())
     }
 
-    pub async fn update_last_login(conn: &mut SqliteConnection, id: &str, last_login_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_last_login(
+        conn: &mut SqliteConnection,
+        id: &str,
+        last_login_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE app_user SET last_login_at = ?, updated_at = ? WHERE id = ?")
             .bind(last_login_at)
             .bind(last_login_at)
@@ -107,7 +127,10 @@ impl UserRepository {
     }
 
     // Owner repo methods
-    pub async fn create_owner(conn: &mut SqliteConnection, owner: &Owner) -> Result<(), sqlx::Error> {
+    pub async fn create_owner(
+        conn: &mut SqliteConnection,
+        owner: &Owner,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO owner (id, workspace_id, branch_id, first_name, last_name, phone, email, created_at, updated_at)
@@ -129,14 +152,24 @@ impl UserRepository {
     }
 
     // Permission grants
-    pub async fn get_permissions(pool: &SqlitePool, user_id: &str) -> Result<Vec<PermissionGrant>, sqlx::Error> {
+    pub async fn get_permissions(
+        pool: &SqlitePool,
+        user_id: &str,
+    ) -> Result<Vec<PermissionGrant>, sqlx::Error> {
         sqlx::query_as::<_, PermissionGrant>("SELECT * FROM permission_grant WHERE user_id = ?")
             .bind(user_id)
             .fetch_all(pool)
             .await
     }
 
-    pub async fn set_permission_grants(conn: &mut SqliteConnection, user_id: &str, workspace_id: &str, branch_id: &str, permissions: &[String], granted_by: &str) -> Result<(), sqlx::Error> {
+    pub async fn set_permission_grants(
+        conn: &mut SqliteConnection,
+        user_id: &str,
+        workspace_id: &str,
+        branch_id: &str,
+        permissions: &[String],
+        granted_by: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query("DELETE FROM permission_grant WHERE user_id = ?")
             .bind(user_id)
             .execute(&mut *conn)

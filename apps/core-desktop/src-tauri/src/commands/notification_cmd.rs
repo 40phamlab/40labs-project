@@ -1,13 +1,12 @@
-use tauri::{State, Manager};
-use sha2::{Sha256, Digest};
+use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
 use crate::models::notification::{
-    Notification, NotificationMessage, MessageAttachment,
-    SendMessagePayload, SaveAttachmentPayload
+    MessageAttachment, Notification, NotificationMessage, SaveAttachmentPayload, SendMessagePayload,
 };
 use crate::repositories::notification_repo::NotificationRepository;
-use crate::auth::{AuthEngine, AuthErrorResponse};
-use crate::services::documents::{ExportCategory, ensure_layout, sanitize_file_name, unique_path};
+use crate::services::documents::{ensure_layout, sanitize_file_name, unique_path, ExportCategory};
+use sha2::{Digest, Sha256};
+use tauri::{Manager, State};
 
 const MAX_IMAGE_SIZE: i64 = 16 * 1024 * 1024; // 16 MB
 const MAX_AUDIO_SIZE: i64 = 16 * 1024 * 1024; // 16 MB
@@ -33,8 +32,15 @@ pub async fn create_notification(
     state: State<'_, AppState>,
     payload: CreateNotificationPayload,
 ) -> Result<Notification, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
 
     let now = chrono::Utc::now().to_rfc3339();
     let notif_id = format!("notif_{}", uuid::Uuid::new_v4());
@@ -94,8 +100,15 @@ pub async fn create_notification(
 pub async fn get_notifications(
     state: State<'_, AppState>,
 ) -> Result<Vec<Notification>, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
     NotificationRepository::list(&state.pool, &ctx.workspace_id)
         .await
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
@@ -106,8 +119,15 @@ pub async fn get_notification_messages(
     state: State<'_, AppState>,
     notification_id: String,
 ) -> Result<Vec<NotificationMessage>, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
     NotificationRepository::list_messages(&state.pool, &ctx.workspace_id, &notification_id)
         .await
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
@@ -118,13 +138,23 @@ pub async fn send_notification_message(
     state: State<'_, AppState>,
     payload: SendMessagePayload,
 ) -> Result<NotificationMessage, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
-
-    let notif = NotificationRepository::get_by_id(&state.pool, &ctx.workspace_id, &payload.notification_id)
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
         .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| crate::auth::AuthError::NotFound("Notification not found".to_string()).to_response())?;
+        .map_err(|e| e.to_response())?;
+
+    let notif =
+        NotificationRepository::get_by_id(&state.pool, &ctx.workspace_id, &payload.notification_id)
+            .await
+            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
+            .ok_or_else(|| {
+                crate::auth::AuthError::NotFound("Notification not found".to_string()).to_response()
+            })?;
 
     let now = chrono::Utc::now().to_rfc3339();
     let msg_id = format!("msg_{}", uuid::Uuid::new_v4());
@@ -172,8 +202,15 @@ pub async fn mark_notification_read(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<Notification, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
 
     NotificationRepository::update_status(&state.pool, &ctx.workspace_id, &id, "read")
         .await
@@ -182,7 +219,9 @@ pub async fn mark_notification_read(
     NotificationRepository::get_by_id(&state.pool, &ctx.workspace_id, &id)
         .await
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| crate::auth::AuthError::NotFound("Notification not found".to_string()).to_response())
+        .ok_or_else(|| {
+            crate::auth::AuthError::NotFound("Notification not found".to_string()).to_response()
+        })
 }
 
 #[tauri::command]
@@ -190,8 +229,15 @@ pub async fn archive_notification(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<Notification, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
 
     NotificationRepository::soft_delete(&state.pool, &ctx.workspace_id, &id)
         .await
@@ -200,7 +246,9 @@ pub async fn archive_notification(
     NotificationRepository::get_by_id(&state.pool, &ctx.workspace_id, &id)
         .await
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| crate::auth::AuthError::NotFound("Notification not found".to_string()).to_response())
+        .ok_or_else(|| {
+            crate::auth::AuthError::NotFound("Notification not found".to_string()).to_response()
+        })
 }
 
 #[tauri::command]
@@ -209,29 +257,49 @@ pub async fn save_attachment(
     state: State<'_, AppState>,
     payload: SaveAttachmentPayload,
 ) -> Result<MessageAttachment, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
 
     // Validate mime vs kind
     let mime_lower = payload.mime_type.to_lowercase();
     match payload.kind.as_str() {
         "image" => {
             if !mime_lower.starts_with("image/") {
-                return Err(crate::auth::AuthError::PolicyViolation("Mime type must be image/* for kind 'image'".to_string()).to_response());
+                return Err(crate::auth::AuthError::PolicyViolation(
+                    "Mime type must be image/* for kind 'image'".to_string(),
+                )
+                .to_response());
             }
         }
         "audio" => {
             if !mime_lower.starts_with("audio/") {
-                return Err(crate::auth::AuthError::PolicyViolation("Mime type must be audio/* for kind 'audio'".to_string()).to_response());
+                return Err(crate::auth::AuthError::PolicyViolation(
+                    "Mime type must be audio/* for kind 'audio'".to_string(),
+                )
+                .to_response());
             }
         }
         "file" => {
             // file can be any mime type (video, application/*, etc.)
         }
-        _ => return Err(crate::auth::AuthError::PolicyViolation("Invalid attachment kind".to_string()).to_response()),
+        _ => {
+            return Err(crate::auth::AuthError::PolicyViolation(
+                "Invalid attachment kind".to_string(),
+            )
+            .to_response())
+        }
     }
 
-    let app_data_dir = app.path().app_data_dir()
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
 
     let attachment_id = format!("att_{}", uuid::Uuid::new_v4());
@@ -255,10 +323,17 @@ pub async fn save_attachment(
 
     if let Some(bytes) = &payload.bytes {
         if bytes.len() as i64 > 16 * 1024 * 1024 {
-            return Err(crate::auth::AuthError::PolicyViolation("Bytes exceed 16MB IPC limit; use source_path for large files".to_string()).to_response());
+            return Err(crate::auth::AuthError::PolicyViolation(
+                "Bytes exceed 16MB IPC limit; use source_path for large files".to_string(),
+            )
+            .to_response());
         }
         if bytes.len() as i64 > limit {
-            return Err(crate::auth::AuthError::PolicyViolation(format!("Attachment exceeds size limit for kind '{}'", payload.kind)).to_response());
+            return Err(crate::auth::AuthError::PolicyViolation(format!(
+                "Attachment exceeds size limit for kind '{}'",
+                payload.kind
+            ))
+            .to_response());
         }
         size_bytes = bytes.len() as i64;
         hasher.update(bytes);
@@ -269,16 +344,27 @@ pub async fn save_attachment(
     } else if let Some(source_path_str) = &payload.source_path {
         let src_path = std::path::Path::new(source_path_str);
         if !src_path.is_absolute() || !src_path.is_file() {
-            return Err(crate::auth::AuthError::PolicyViolation("Source path must be an absolute file".to_string()).to_response());
+            return Err(crate::auth::AuthError::PolicyViolation(
+                "Source path must be an absolute file".to_string(),
+            )
+            .to_response());
         }
 
         let mut src_file = match tokio::fs::File::open(src_path).await {
             Ok(f) => f,
-            Err(e) => return Err(crate::auth::AuthError::NotFound(format!("Source file not found: {}", e)).to_response()),
+            Err(e) => {
+                return Err(crate::auth::AuthError::NotFound(format!(
+                    "Source file not found: {}",
+                    e
+                ))
+                .to_response())
+            }
         };
         let mut dest_file = match tokio::fs::File::create(&full_storage_path).await {
             Ok(f) => f,
-            Err(e) => return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response()),
+            Err(e) => {
+                return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response())
+            }
         };
 
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -295,7 +381,11 @@ pub async fn save_attachment(
             size_bytes += n as i64;
             if size_bytes > limit {
                 let _ = tokio::fs::remove_file(&full_storage_path).await;
-                return Err(crate::auth::AuthError::PolicyViolation(format!("File exceeds size limit for kind '{}'", payload.kind)).to_response());
+                return Err(crate::auth::AuthError::PolicyViolation(format!(
+                    "File exceeds size limit for kind '{}'",
+                    payload.kind
+                ))
+                .to_response());
             }
             hasher.update(&buf[..n]);
             if let Err(e) = dest_file.write_all(&buf[..n]).await {
@@ -308,7 +398,10 @@ pub async fn save_attachment(
             return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response());
         }
     } else {
-        return Err(crate::auth::AuthError::PolicyViolation("Either bytes or source_path must be provided".to_string()).to_response());
+        return Err(crate::auth::AuthError::PolicyViolation(
+            "Either bytes or source_path must be provided".to_string(),
+        )
+        .to_response());
     }
 
     let sha256_hash = format!("{:x}", hasher.finalize());
@@ -344,26 +437,45 @@ pub async fn resolve_attachment_path(
     state: State<'_, AppState>,
     attachment_id: String,
 ) -> Result<String, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
-
-    let att = NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, &attachment_id)
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
         .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| crate::auth::AuthError::NotFound("Attachment not found".to_string()).to_response())?;
+        .map_err(|e| e.to_response())?;
 
-    let app_data_dir = app.path().app_data_dir()
+    let att =
+        NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, &attachment_id)
+            .await
+            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
+            .ok_or_else(|| {
+                crate::auth::AuthError::NotFound("Attachment not found".to_string()).to_response()
+            })?;
+
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
     let source_path = app_data_dir.join(&att.storage_path);
 
-    let canonical_app_data = app_data_dir.canonicalize()
+    let canonical_app_data = app_data_dir
+        .canonicalize()
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
-    let canonical_source = source_path.canonicalize()
-        .map_err(|_e| crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response())?;
+    let canonical_source = source_path.canonicalize().map_err(|_e| {
+        crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response()
+    })?;
 
-    let expected_prefix = canonical_app_data.join("attachments").join(&ctx.workspace_id);
+    let expected_prefix = canonical_app_data
+        .join("attachments")
+        .join(&ctx.workspace_id);
     if !canonical_source.starts_with(&expected_prefix) {
-        return Err(crate::auth::AuthError::PolicyViolation("Access denied: path traversal attempt".to_string()).to_response());
+        return Err(crate::auth::AuthError::PolicyViolation(
+            "Access denied: path traversal attempt".to_string(),
+        )
+        .to_response());
     }
 
     Ok(canonical_source.to_string_lossy().to_string())
@@ -376,30 +488,48 @@ pub async fn export_attachment(
     attachment_id: String,
     category: ExportCategory,
 ) -> Result<ExportResult, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
-
-    let att = NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, &attachment_id)
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
         .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| crate::auth::AuthError::NotFound("Attachment not found".to_string()).to_response())?;
+        .map_err(|e| e.to_response())?;
 
-    let app_data_dir = app.path().app_data_dir()
+    let att =
+        NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, &attachment_id)
+            .await
+            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
+            .ok_or_else(|| {
+                crate::auth::AuthError::NotFound("Attachment not found".to_string()).to_response()
+            })?;
+
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
     let source_path = app_data_dir.join(&att.storage_path);
 
-    let canonical_app_data = app_data_dir.canonicalize()
+    let canonical_app_data = app_data_dir
+        .canonicalize()
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
-    let canonical_source = source_path.canonicalize()
-        .map_err(|_e| crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response())?;
+    let canonical_source = source_path.canonicalize().map_err(|_e| {
+        crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response()
+    })?;
 
-    let expected_prefix = canonical_app_data.join("attachments").join(&ctx.workspace_id);
+    let expected_prefix = canonical_app_data
+        .join("attachments")
+        .join(&ctx.workspace_id);
     if !canonical_source.starts_with(&expected_prefix) {
-        return Err(crate::auth::AuthError::PolicyViolation("Access denied".to_string()).to_response());
+        return Err(
+            crate::auth::AuthError::PolicyViolation("Access denied".to_string()).to_response(),
+        );
     }
 
-    let root = ensure_layout(&app)
-        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
+    let root =
+        ensure_layout(&app).map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
     let target_dir = root.join(category.folder_name());
     std::fs::create_dir_all(&target_dir)
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
@@ -424,15 +554,25 @@ pub async fn save_bytes_to_documents(
     file_name: String,
     bytes: Vec<u8>,
 ) -> Result<ExportResult, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let _ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let _ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
 
     if bytes.len() as i64 > MAX_FILE_SIZE {
-        return Err(crate::auth::AuthError::PolicyViolation("File exceeds 100MB limit".to_string()).to_response());
+        return Err(crate::auth::AuthError::PolicyViolation(
+            "File exceeds 100MB limit".to_string(),
+        )
+        .to_response());
     }
 
-    let root = ensure_layout(&app)
-        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
+    let root =
+        ensure_layout(&app).map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
     let target_dir = root.join(category.folder_name());
     std::fs::create_dir_all(&target_dir)
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
@@ -460,31 +600,57 @@ pub async fn export_attachment_to_path(
     // Requires an absolute path, rejects UNC/device paths (\\?\, \\.\), and sanitizes only the final component.
     // Why: When user chooses a specific destination via dialog, we respect their directory choice
     // but sanitize the filename component to prevent path injection/traversal while preserving target folder.
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
-
-    let att = NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, &attachment_id)
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
         .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| crate::auth::AuthError::NotFound("Attachment not found".to_string()).to_response())?;
+        .map_err(|e| e.to_response())?;
+
+    let att =
+        NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, &attachment_id)
+            .await
+            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
+            .ok_or_else(|| {
+                crate::auth::AuthError::NotFound("Attachment not found".to_string()).to_response()
+            })?;
 
     let dest = std::path::PathBuf::from(&dest_path);
     if !dest.is_absolute() {
-        return Err(crate::auth::AuthError::PolicyViolation("Destination path must be absolute".to_string()).to_response());
+        return Err(crate::auth::AuthError::PolicyViolation(
+            "Destination path must be absolute".to_string(),
+        )
+        .to_response());
     }
 
     let path_str = dest.to_string_lossy();
-    if path_str.starts_with(r"\\?\") || path_str.starts_with(r"\\.\") || path_str.starts_with(r"//?/") || path_str.starts_with(r"//./") {
-        return Err(crate::auth::AuthError::PolicyViolation("UNC and device paths are prohibited".to_string()).to_response());
+    if path_str.starts_with(r"\\?\")
+        || path_str.starts_with(r"\\.\")
+        || path_str.starts_with(r"//?/")
+        || path_str.starts_with(r"//./")
+    {
+        return Err(crate::auth::AuthError::PolicyViolation(
+            "UNC and device paths are prohibited".to_string(),
+        )
+        .to_response());
     }
 
-    let file_name_comp = dest.file_name()
-        .ok_or_else(|| crate::auth::AuthError::PolicyViolation("Invalid destination file name".to_string()).to_response())?
+    let file_name_comp = dest
+        .file_name()
+        .ok_or_else(|| {
+            crate::auth::AuthError::PolicyViolation("Invalid destination file name".to_string())
+                .to_response()
+        })?
         .to_string_lossy();
     let sanitized_file_name = sanitize_file_name(&file_name_comp);
 
-    let parent = dest.parent()
-        .ok_or_else(|| crate::auth::AuthError::PolicyViolation("Invalid destination directory".to_string()).to_response())?;
+    let parent = dest.parent().ok_or_else(|| {
+        crate::auth::AuthError::PolicyViolation("Invalid destination directory".to_string())
+            .to_response()
+    })?;
     let final_dest = parent.join(sanitized_file_name);
 
     if let Some(p) = final_dest.parent() {
@@ -492,18 +658,26 @@ pub async fn export_attachment_to_path(
             .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
     }
 
-    let app_data_dir = app.path().app_data_dir()
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
     let source_path = app_data_dir.join(&att.storage_path);
 
-    let canonical_app_data = app_data_dir.canonicalize()
+    let canonical_app_data = app_data_dir
+        .canonicalize()
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
-    let canonical_source = source_path.canonicalize()
-        .map_err(|_e| crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response())?;
+    let canonical_source = source_path.canonicalize().map_err(|_e| {
+        crate::auth::AuthError::NotFound("Stored file not found".to_string()).to_response()
+    })?;
 
-    let expected_prefix = canonical_app_data.join("attachments").join(&ctx.workspace_id);
+    let expected_prefix = canonical_app_data
+        .join("attachments")
+        .join(&ctx.workspace_id);
     if !canonical_source.starts_with(&expected_prefix) {
-        return Err(crate::auth::AuthError::PolicyViolation("Access denied".to_string()).to_response());
+        return Err(
+            crate::auth::AuthError::PolicyViolation("Access denied".to_string()).to_response(),
+        );
     }
 
     std::fs::copy(&canonical_source, &final_dest)
@@ -534,4 +708,3 @@ mod tests {
         assert!(is_valid("file", "video/mp4"));
     }
 }
-

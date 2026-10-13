@@ -4,11 +4,11 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use std::sync::Arc;
-use sqlx::migrate::Migrator;
 use crate::auth::AuthState;
 use crate::security::keystore::Keystore;
 use crate::services::lan::LanServerState;
+use sqlx::migrate::Migrator;
+use std::sync::Arc;
 
 static SQLITE_MIGRATOR: Migrator = sqlx::migrate!("../../../infra/db/sqlite-schema/migrations");
 
@@ -104,7 +104,10 @@ pub struct AppState {
 pub fn resolve_db_url() -> Result<String, Box<dyn std::error::Error>> {
     if let Ok(url) = env::var("DATABASE_URL") {
         if !url.trim().is_empty() {
-            println!("[40Labs DB] Using DATABASE_URL environment override: {}", url);
+            println!(
+                "[40Labs DB] Using DATABASE_URL environment override: {}",
+                url
+            );
             return Ok(url);
         }
     }
@@ -177,7 +180,10 @@ pub async fn init_db_pool() -> Result<SqlitePool, Box<dyn std::error::Error>> {
 }
 
 pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn std::error::Error>> {
-    println!("[40Labs DB] Initializing SQLx connection pool at: {}", db_url);
+    println!(
+        "[40Labs DB] Initializing SQLx connection pool at: {}",
+        db_url
+    );
 
     let connect_options = SqliteConnectOptions::from_str(db_url)?
         .create_if_missing(true)
@@ -198,8 +204,14 @@ pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn s
 
     if let Err(err) = migrate_res {
         let err_str = err.to_string();
-        if err_str.contains("mismatch") || err_str.contains("migration") || err_str.contains("VersionMismatch") {
-            eprintln!("[40Labs DB ERROR] Migration checksum or version mismatch detected: {}", err_str);
+        if err_str.contains("mismatch")
+            || err_str.contains("migration")
+            || err_str.contains("VersionMismatch")
+        {
+            eprintln!(
+                "[40Labs DB ERROR] Migration checksum or version mismatch detected: {}",
+                err_str
+            );
             if cfg!(debug_assertions) {
                 eprintln!("[40Labs DB] [DEBUG] Please run `pnpm db:reset` to clear the dev database and re-run migrations.");
             } else {
@@ -384,10 +396,11 @@ mod tests {
         .await
         .expect("Failed inserting audit log row");
 
-        let update_res = sqlx::query("UPDATE audit_log SET metadata = '{\"tampered\": true}' WHERE id = ?")
-            .bind(&audit_id)
-            .execute(&pool)
-            .await;
+        let update_res =
+            sqlx::query("UPDATE audit_log SET metadata = '{\"tampered\": true}' WHERE id = ?")
+                .bind(&audit_id)
+                .execute(&pool)
+                .await;
         assert!(update_res.is_err(), "Expected UPDATE on audit_log to fail");
         let err_msg = update_res.unwrap_err().to_string();
         assert!(
@@ -411,7 +424,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_invalid_db_url_fails_explicitly() {
-        let invalid_res = init_db_pool_with_url("sqlite:///non_existent_dir_xyz/invalid.db?mode=ro").await;
-        assert!(invalid_res.is_err(), "Expected initialization with invalid database URL to return an error explicitly");
+        let invalid_res =
+            init_db_pool_with_url("sqlite:///non_existent_dir_xyz/invalid.db?mode=ro").await;
+        assert!(
+            invalid_res.is_err(),
+            "Expected initialization with invalid database URL to return an error explicitly"
+        );
     }
 }

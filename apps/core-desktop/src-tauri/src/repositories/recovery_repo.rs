@@ -1,10 +1,14 @@
-use sqlx::{SqlitePool, SqliteConnection};
 use crate::models::auth::RecoveryCode;
+use sqlx::{SqliteConnection, SqlitePool};
 
 pub struct RecoveryRepository;
 
 impl RecoveryRepository {
-    pub async fn invalidate_active_batches(conn: &mut SqliteConnection, user_id: &str, invalidated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn invalidate_active_batches(
+        conn: &mut SqliteConnection,
+        user_id: &str,
+        invalidated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE recovery_code
@@ -19,7 +23,10 @@ impl RecoveryRepository {
         Ok(())
     }
 
-    pub async fn create(conn: &mut SqliteConnection, code: &RecoveryCode) -> Result<(), sqlx::Error> {
+    pub async fn create(
+        conn: &mut SqliteConnection,
+        code: &RecoveryCode,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO recovery_code (id, workspace_id, branch_id, user_id, batch_id, code_hash, created_at)
@@ -38,7 +45,10 @@ impl RecoveryRepository {
         Ok(())
     }
 
-    pub async fn get_active_by_user(pool: &SqlitePool, user_id: &str) -> Result<Vec<RecoveryCode>, sqlx::Error> {
+    pub async fn get_active_by_user(
+        pool: &SqlitePool,
+        user_id: &str,
+    ) -> Result<Vec<RecoveryCode>, sqlx::Error> {
         sqlx::query_as::<_, RecoveryCode>(
             r#"
             SELECT * FROM recovery_code
@@ -50,7 +60,11 @@ impl RecoveryRepository {
         .await
     }
 
-    pub async fn mark_used(conn: &mut SqliteConnection, id: &str, used_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn mark_used(
+        conn: &mut SqliteConnection,
+        id: &str,
+        used_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE recovery_code SET used_at = ? WHERE id = ?")
             .bind(used_at)
             .bind(id)

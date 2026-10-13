@@ -1,4 +1,4 @@
-use ed25519_dalek::{SigningKey, VerifyingKey, Signer};
+use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 use hkdf::Hkdf;
 use rand::rngs::OsRng;
 use rand::RngCore;
@@ -66,7 +66,10 @@ impl Keystore {
         Self::from_raw_keys(master, device)
     }
 
-    fn from_raw_keys(master_secret_bytes: [u8; 32], device_key_bytes: [u8; 32]) -> Result<Self, KeystoreError> {
+    fn from_raw_keys(
+        master_secret_bytes: [u8; 32],
+        device_key_bytes: [u8; 32],
+    ) -> Result<Self, KeystoreError> {
         let master_secret = Zeroizing::new(master_secret_bytes);
 
         let hk = Hkdf::<Sha256>::new(Some(b"40labs_salt_v1"), master_secret.as_ref());
@@ -123,7 +126,9 @@ impl Keystore {
                 let bytes = hex::decode(encoded.trim())
                     .map_err(|e| KeystoreError::SerializationError(e.to_string()))?;
                 if bytes.len() != 32 {
-                    return Err(KeystoreError::SerializationError("Invalid master secret length".into()));
+                    return Err(KeystoreError::SerializationError(
+                        "Invalid master secret length".into(),
+                    ));
                 }
                 let mut arr = [0u8; 32];
                 arr.copy_from_slice(&bytes);
@@ -167,7 +172,9 @@ impl Keystore {
                 let bytes = hex::decode(encoded.trim())
                     .map_err(|e| KeystoreError::SerializationError(e.to_string()))?;
                 if bytes.len() != 32 {
-                    return Err(KeystoreError::SerializationError("Invalid device key length".into()));
+                    return Err(KeystoreError::SerializationError(
+                        "Invalid device key length".into(),
+                    ));
                 }
                 let mut arr = [0u8; 32];
                 arr.copy_from_slice(&bytes);

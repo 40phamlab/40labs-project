@@ -35,6 +35,8 @@ export const labKeys = {
   samples: () => [...labKeys.all, 'samples'] as const,
   results: () => [...labKeys.all, 'results'] as const,
   catalog: () => [...labKeys.all, 'catalog'] as const,
+  stock: () => [...labKeys.all, 'stock'] as const,
+  qc: () => [...labKeys.all, 'qc'] as const,
   users: () => [...labKeys.all, 'users'] as const,
   auditLogs: () => [...labKeys.all, 'auditLogs'] as const,
 };

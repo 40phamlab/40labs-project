@@ -1,6 +1,74 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct LabQcEquipment {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub name: String,
+    pub manufacturer: Option<String>,
+    pub model: Option<String>,
+    pub asset_tag: Option<String>,
+    pub status: String,
+    pub last_calibrated_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct LabQcRecord {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub equipment_id: String,
+    pub control_name: String,
+    pub lot_number: Option<String>,
+    pub observed_value: String,
+    pub expected_range: String,
+    pub outcome: String,
+    pub performed_by_user_id: String,
+    pub performed_at: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LabQcData {
+    pub equipment: Vec<LabQcEquipment>,
+    pub records: Vec<LabQcRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTestCatalogRequest {
+    pub name: String,
+    pub category: String,
+    pub reference_range: Option<String>,
+    pub price: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateLabQcEquipmentRequest {
+    pub name: String,
+    pub manufacturer: Option<String>,
+    pub model: Option<String>,
+    pub asset_tag: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateLabQcRecordRequest {
+    pub equipment_id: String,
+    pub control_name: String,
+    pub lot_number: Option<String>,
+    pub observed_value: String,
+    pub expected_range: String,
+    pub outcome: String,
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct LabOrder {
     pub id: String,
     pub workspace_id: String,

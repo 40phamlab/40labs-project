@@ -1,8 +1,8 @@
-use tauri::State;
-use crate::db::AppState;
-use crate::auth::{AuthErrorResponse, AuthError};
 use crate::activation::RegisterRequest;
+use crate::auth::{AuthError, AuthErrorResponse};
+use crate::db::AppState;
 use serde::Serialize;
+use tauri::State;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,9 +21,15 @@ fn normalize_tz_phone(input: &str) -> Result<String, AuthErrorResponse> {
     } else if digits.len() == 9 {
         format!("255{digits}")
     } else {
-        return Err(AuthError::PolicyViolation("Invalid Tanzanian phone number".into()).to_response());
+        return Err(
+            AuthError::PolicyViolation("Invalid Tanzanian phone number".into()).to_response(),
+        );
     };
-    if normalized.as_bytes().get(3).is_some_and(|prefix| matches!(prefix, b'6' | b'7')) {
+    if normalized
+        .as_bytes()
+        .get(3)
+        .is_some_and(|prefix| matches!(prefix, b'6' | b'7'))
+    {
         Ok(normalized)
     } else {
         Err(AuthError::PolicyViolation("Invalid Tanzanian phone number".into()).to_response())
@@ -31,74 +37,185 @@ fn normalize_tz_phone(input: &str) -> Result<String, AuthErrorResponse> {
 }
 
 #[tauri::command]
-pub async fn otp_request(state: State<'_, AppState>, phone: String) -> Result<i64, AuthErrorResponse> {
+pub async fn otp_request(
+    state: State<'_, AppState>,
+    phone: String,
+) -> Result<i64, AuthErrorResponse> {
     let phone = normalize_tz_phone(&phone)?;
-    state.otp_client
+    state
+        .otp_client
         .request_otp(&phone)
         .await
         .map_err(|e| AuthError::InternalError(e).to_response())
 }
 
 #[tauri::command]
-pub async fn otp_verify(state: State<'_, AppState>, phone: String, code: String) -> Result<String, AuthErrorResponse> {
+pub async fn otp_verify(
+    state: State<'_, AppState>,
+    phone: String,
+    code: String,
+) -> Result<String, AuthErrorResponse> {
     let phone = normalize_tz_phone(&phone)?;
     if code.len() != 6 || !code.bytes().all(|byte| byte.is_ascii_digit()) {
         return Err(AuthError::PolicyViolation("OTP must be 6 digits".into()).to_response());
     }
-    state.otp_client
+    state
+        .otp_client
         .verify_otp(&phone, &code)
         .await
         .map_err(|e| AuthError::InternalError(e).to_response())
 }
 
 #[tauri::command]
-pub async fn registration_commit(state: State<'_, AppState>, payload: serde_json::Value) -> Result<RegistrationResult, AuthErrorResponse> {
-    let verification_token = payload.get("verification_token").and_then(|v| v.as_str()).ok_or_else(|| AuthError::PolicyViolation("Missing verification_token".into()).to_response())?;
-    let business_name = payload.get("business_name").and_then(|v| v.as_str()).filter(|s| !s.trim().is_empty()).ok_or_else(|| AuthError::PolicyViolation("Business name is required".into()).to_response())?;
-    let owner_first_name = payload.get("owner_first_name").and_then(|v| v.as_str()).filter(|s| !s.trim().is_empty()).ok_or_else(|| AuthError::PolicyViolation("Owner first name is required".into()).to_response())?;
-    let owner_last_name = payload.get("owner_last_name").and_then(|v| v.as_str()).filter(|s| !s.trim().is_empty()).ok_or_else(|| AuthError::PolicyViolation("Owner last name is required".into()).to_response())?;
-    let owner_email = payload.get("owner_email").and_then(|v| v.as_str()).map(String::from);
-    let terms_accepted = payload.get("terms_accepted").and_then(|v| v.as_bool()).unwrap_or(false);
-    let terms_version = payload.get("terms_version").and_then(|v| v.as_str()).unwrap_or("v1.0");
-    let terms_locale = payload.get("terms_locale").and_then(|v| v.as_str()).unwrap_or("en");
-    let terms_text_sha256 = payload.get("terms_text_sha256").and_then(|v| v.as_str()).unwrap_or("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
-    let owner_phone = normalize_tz_phone(payload.get("owner_phone").and_then(|v| v.as_str()).unwrap_or(""))?;
-    let business_phone = match payload.get("business_phone").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()) {
+pub async fn registration_commit(
+    state: State<'_, AppState>,
+    payload: serde_json::Value,
+) -> Result<RegistrationResult, AuthErrorResponse> {
+    let verification_token = payload
+        .get("verification_token")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| {
+            AuthError::PolicyViolation("Missing verification_token".into()).to_response()
+        })?;
+    let business_name = payload
+        .get("business_name")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| {
+            AuthError::PolicyViolation("Business name is required".into()).to_response()
+        })?;
+    let owner_first_name = payload
+        .get("owner_first_name")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| {
+            AuthError::PolicyViolation("Owner first name is required".into()).to_response()
+        })?;
+    let owner_last_name = payload
+        .get("owner_last_name")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| {
+            AuthError::PolicyViolation("Owner last name is required".into()).to_response()
+        })?;
+    let owner_email = payload
+        .get("owner_email")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let terms_accepted = payload
+        .get("terms_accepted")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let terms_version = payload
+        .get("terms_version")
+        .and_then(|v| v.as_str())
+        .unwrap_or("v1.0");
+    let terms_locale = payload
+        .get("terms_locale")
+        .and_then(|v| v.as_str())
+        .unwrap_or("en");
+    let terms_text_sha256 = payload
+        .get("terms_text_sha256")
+        .and_then(|v| v.as_str())
+        .unwrap_or("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    let owner_phone = normalize_tz_phone(
+        payload
+            .get("owner_phone")
+            .and_then(|v| v.as_str())
+            .unwrap_or(""),
+    )?;
+    let business_phone = match payload
+        .get("business_phone")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         Some(phone) => normalize_tz_phone(phone)?,
         None => owner_phone.clone(),
     };
-    let business_email = payload.get("business_email").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(String::from);
-    let business_type = payload.get("business_type").and_then(|v| v.as_str()).unwrap_or("Pharmacy");
-    let role_scopes: Vec<&str> = match payload.get("role_scopes").and_then(|v| v.as_str()).unwrap_or("pharmacy") {
+    let business_email = payload
+        .get("business_email")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from);
+    let business_type = payload
+        .get("business_type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Pharmacy");
+    let role_scopes: Vec<&str> = match payload
+        .get("role_scopes")
+        .and_then(|v| v.as_str())
+        .unwrap_or("pharmacy")
+    {
         "lab" => vec!["lab"],
         "both" => vec!["pharmacy", "lab"],
         _ => vec!["pharmacy"],
     };
     let role_scopes_json = serde_json::to_string(&role_scopes)
         .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
-    let scale = payload.get("scale").and_then(|v| v.as_str()).unwrap_or("medium");
+    let scale = payload
+        .get("scale")
+        .and_then(|v| v.as_str())
+        .unwrap_or("medium");
     let region = payload.get("region").and_then(|v| v.as_str()).unwrap_or("");
-    let district = payload.get("district").and_then(|v| v.as_str()).unwrap_or("");
+    let district = payload
+        .get("district")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     let mtaa = payload.get("mtaa").and_then(|v| v.as_str()).unwrap_or("");
     let kata = payload.get("kata").and_then(|v| v.as_str()).unwrap_or("");
     let latitude = payload.get("latitude").and_then(|v| v.as_f64());
     let longitude = payload.get("longitude").and_then(|v| v.as_f64());
-    let lipa_namba = payload.get("lipa_namba").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty());
-    let payment_number = payload.get("payment_number").and_then(|v| v.as_str()).map(str::trim).filter(|s| !s.is_empty());
-    let logo_data_url = payload.get("logo_data_url").and_then(|v| v.as_str()).filter(|s| !s.is_empty());
+    let lipa_namba = payload
+        .get("lipa_namba")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let payment_number = payload
+        .get("payment_number")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
+    let logo_data_url = payload
+        .get("logo_data_url")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty());
     let declared_branch_count = match payload.get("declared_branch_count") {
         Some(value) if !value.is_null() => {
-            let count = value.as_i64().or_else(|| value.as_str().and_then(|s| s.parse::<i64>().ok()))
-                .ok_or_else(|| AuthError::PolicyViolation("Invalid branch count".into()).to_response())?;
+            let count = value
+                .as_i64()
+                .or_else(|| value.as_str().and_then(|s| s.parse::<i64>().ok()))
+                .ok_or_else(|| {
+                    AuthError::PolicyViolation("Invalid branch count".into()).to_response()
+                })?;
             if count < 1 {
-                return Err(AuthError::PolicyViolation("Branch count must be at least 1".into()).to_response());
+                return Err(
+                    AuthError::PolicyViolation("Branch count must be at least 1".into())
+                        .to_response(),
+                );
             }
             Some(count)
         }
         _ => Some(1),
     };
-    let username = payload.get("username").and_then(|v| v.as_str()).filter(|s| regex::Regex::new(r"^[a-z0-9._-]{3,32}$").unwrap().is_match(s)).ok_or_else(|| AuthError::PolicyViolation("Invalid username".into()).to_response())?;
-    let password = payload.get("password").and_then(|v| v.as_str()).filter(|s| s.len() >= 12 && s.len() <= 128).ok_or_else(|| AuthError::PolicyViolation("Password must be between 12 and 128 bytes".into()).to_response())?;
+    let username = payload
+        .get("username")
+        .and_then(|v| v.as_str())
+        .filter(|s| {
+            regex::Regex::new(r"^[a-z0-9._-]{3,32}$")
+                .unwrap()
+                .is_match(s)
+        })
+        .ok_or_else(|| AuthError::PolicyViolation("Invalid username".into()).to_response())?;
+    let password = payload
+        .get("password")
+        .and_then(|v| v.as_str())
+        .filter(|s| s.len() >= 12 && s.len() <= 128)
+        .ok_or_else(|| {
+            AuthError::PolicyViolation("Password must be between 12 and 128 bytes".into())
+                .to_response()
+        })?;
     if !terms_accepted {
         return Err(AuthError::PolicyViolation("Terms must be accepted".into()).to_response());
     }
@@ -115,7 +232,8 @@ pub async fn registration_commit(state: State<'_, AppState>, payload: serde_json
         terms_text_sha256: terms_text_sha256.to_string(),
     };
 
-    let reg_resp = state.activation_client
+    let reg_resp = state
+        .activation_client
         .register(reg_req)
         .await
         .map_err(|e| {
@@ -124,11 +242,16 @@ pub async fn registration_commit(state: State<'_, AppState>, payload: serde_json
         })?;
 
     let now = chrono::Utc::now().to_rfc3339();
-    let mut tx = state.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
     let owner_id = format!("owner_{}", uuid::Uuid::new_v4().simple());
     let user_id = format!("user_sudo_{}", uuid::Uuid::new_v4().simple());
-    let pwd_hash = crate::security::hashing::hash_password(password).map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+    let pwd_hash = crate::security::hashing::hash_password(password)
+        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
     let full_name = format!("{} {}", owner_first_name, owner_last_name);
 
     sqlx::query(
@@ -252,7 +375,9 @@ pub async fn registration_commit(state: State<'_, AppState>, payload: serde_json
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
-    tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    tx.commit()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
     Ok(RegistrationResult {
         business_id: reg_resp.business_id,
         workspace_id: reg_resp.workspace_id,
@@ -274,6 +399,11 @@ mod tests {
 }
 
 #[tauri::command]
-pub async fn recovery_redeem(_state: State<'_, AppState>, _username: String, _code: String, _new_password: String) -> Result<(), AuthErrorResponse> {
+pub async fn recovery_redeem(
+    _state: State<'_, AppState>,
+    _username: String,
+    _code: String,
+    _new_password: String,
+) -> Result<(), AuthErrorResponse> {
     Ok(())
 }

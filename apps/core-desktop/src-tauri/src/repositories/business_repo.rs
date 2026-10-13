@@ -1,5 +1,5 @@
-use sqlx::{SqlitePool, SqliteConnection};
 use crate::models::business::Business;
+use sqlx::{SqliteConnection, SqlitePool};
 
 pub struct BusinessRepository;
 
@@ -31,7 +31,8 @@ impl BusinessRepository {
             let tin: Option<String> = r.get("tin");
             let tmda_number: Option<String> = r.get("tmda_number");
             let role_scopes_json: String = r.get("role_scopes");
-            let role_scopes: Vec<String> = serde_json::from_str(&role_scopes_json).unwrap_or_default();
+            let role_scopes: Vec<String> =
+                serde_json::from_str(&role_scopes_json).unwrap_or_default();
             let tier: String = r.get("tier");
             let contact_mobile: String = r.get("contact_mobile");
             let contact_email: Option<String> = r.get("contact_email");
@@ -74,11 +75,14 @@ impl BusinessRepository {
                 name,
                 tin,
                 tmda_number,
-                role_scopes: role_scopes.iter().map(|s| match s.as_str() {
-                    "lab" => crate::models::business::BusinessRoleScope::Lab,
-                    "supplier" => crate::models::business::BusinessRoleScope::Supplier,
-                    _ => crate::models::business::BusinessRoleScope::Pharmacy,
-                }).collect(),
+                role_scopes: role_scopes
+                    .iter()
+                    .map(|s| match s.as_str() {
+                        "lab" => crate::models::business::BusinessRoleScope::Lab,
+                        "supplier" => crate::models::business::BusinessRoleScope::Supplier,
+                        _ => crate::models::business::BusinessRoleScope::Pharmacy,
+                    })
+                    .collect(),
                 tier: match tier.as_str() {
                     "class_1" => crate::models::business::PricingTier::Class1,
                     "class_2" => crate::models::business::PricingTier::Class2,
@@ -104,8 +108,12 @@ impl BusinessRepository {
                 },
                 owner_id,
                 onboarding_state: match onboarding_state.as_deref() {
-                    Some("owner_first_login") => Some(crate::models::business::OnboardingState::OwnerFirstLogin),
-                    Some("setup_complete") => Some(crate::models::business::OnboardingState::SetupComplete),
+                    Some("owner_first_login") => {
+                        Some(crate::models::business::OnboardingState::OwnerFirstLogin)
+                    }
+                    Some("setup_complete") => {
+                        Some(crate::models::business::OnboardingState::SetupComplete)
+                    }
                     _ => Some(crate::models::business::OnboardingState::Registered),
                 },
                 business_type,
@@ -156,49 +164,105 @@ impl BusinessRepository {
         let now = chrono::Utc::now().to_rfc3339();
 
         if let Some(n) = name {
-            sqlx::query("UPDATE business SET name = ?, updated_at = ?").bind(n).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET name = ?, updated_at = ?")
+                .bind(n)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(t) = tin {
-            sqlx::query("UPDATE business SET tin = ?, updated_at = ?").bind(t).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET tin = ?, updated_at = ?")
+                .bind(t)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(tmda) = tmda_number {
-            sqlx::query("UPDATE business SET tmda_number = ?, updated_at = ?").bind(tmda).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET tmda_number = ?, updated_at = ?")
+                .bind(tmda)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(m) = contact_mobile {
-            sqlx::query("UPDATE business SET contact_mobile = ?, updated_at = ?").bind(m).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET contact_mobile = ?, updated_at = ?")
+                .bind(m)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(e) = contact_email {
-            sqlx::query("UPDATE business SET contact_email = ?, updated_at = ?").bind(e).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET contact_email = ?, updated_at = ?")
+                .bind(e)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(w) = contact_whatsapp {
-            sqlx::query("UPDATE business SET contact_whatsapp = ?, updated_at = ?").bind(w).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET contact_whatsapp = ?, updated_at = ?")
+                .bind(w)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(r) = address_region {
-            sqlx::query("UPDATE business SET address_region = ?, updated_at = ?").bind(r).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET address_region = ?, updated_at = ?")
+                .bind(r)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(d) = address_district {
-            sqlx::query("UPDATE business SET address_district = ?, updated_at = ?").bind(d).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET address_district = ?, updated_at = ?")
+                .bind(d)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(p) = address_place {
-            sqlx::query("UPDATE business SET address_place = ?, updated_at = ?").bind(p).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET address_place = ?, updated_at = ?")
+                .bind(p)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(l) = logo_url {
-            sqlx::query("UPDATE business SET logo_url = ?, updated_at = ?").bind(l).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET logo_url = ?, updated_at = ?")
+                .bind(l)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(ln) = lipa_namba {
-            sqlx::query("UPDATE business SET lipa_namba = ?, updated_at = ?").bind(ln).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET lipa_namba = ?, updated_at = ?")
+                .bind(ln)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(pn) = payment_number {
-            sqlx::query("UPDATE business SET payment_number = ?, updated_at = ?").bind(pn).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET payment_number = ?, updated_at = ?")
+                .bind(pn)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
         if let Some(app_mode) = appearance_mode {
-            sqlx::query("UPDATE business SET appearance_mode = ?, updated_at = ?").bind(app_mode).bind(&now).execute(pool).await?;
+            sqlx::query("UPDATE business SET appearance_mode = ?, updated_at = ?")
+                .bind(app_mode)
+                .bind(&now)
+                .execute(pool)
+                .await?;
         }
 
         Self::get(pool).await
     }
 
-    pub async fn update_onboarding_state(conn: &mut SqliteConnection, state: &str, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_onboarding_state(
+        conn: &mut SqliteConnection,
+        state: &str,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE business SET onboarding_state = ?, updated_at = ?")
             .bind(state)
             .bind(updated_at)
@@ -207,7 +271,11 @@ impl BusinessRepository {
         Ok(())
     }
 
-    pub async fn update_idle_lock(conn: &mut SqliteConnection, minutes: i32, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_idle_lock(
+        conn: &mut SqliteConnection,
+        minutes: i32,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE business SET idle_lock_minutes = ?, updated_at = ?")
             .bind(minutes)
             .bind(updated_at)
@@ -216,7 +284,12 @@ impl BusinessRepository {
         Ok(())
     }
 
-    pub async fn update_payment(conn: &mut SqliteConnection, lipa_namba: Option<&str>, payment_number: Option<&str>, updated_at: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_payment(
+        conn: &mut SqliteConnection,
+        lipa_namba: Option<&str>,
+        payment_number: Option<&str>,
+        updated_at: &str,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE business SET lipa_namba = ?, payment_number = ?, updated_at = ?")
             .bind(lipa_namba)
             .bind(payment_number)
@@ -226,8 +299,12 @@ impl BusinessRepository {
         Ok(())
     }
 
-    pub async fn create(conn: &mut SqliteConnection, business: &Business) -> Result<(), sqlx::Error> {
-        let scopes_json = serde_json::to_string(&business.role_scopes).unwrap_or_else(|_| "[\"pharmacy\"]".into());
+    pub async fn create(
+        conn: &mut SqliteConnection,
+        business: &Business,
+    ) -> Result<(), sqlx::Error> {
+        let scopes_json = serde_json::to_string(&business.role_scopes)
+            .unwrap_or_else(|_| "[\"pharmacy\"]".into());
         let tier_str = match business.tier {
             crate::models::business::PricingTier::Class1 => "class_1",
             crate::models::business::PricingTier::Class2 => "class_2",
@@ -299,7 +376,9 @@ impl BusinessRepository {
 mod tests {
     use super::*;
     use crate::db::init_db_pool_with_url;
-    use crate::models::business::{BusinessContacts, BusinessAddress, AppearanceMode, PricingTier, BusinessRoleScope};
+    use crate::models::business::{
+        AppearanceMode, BusinessAddress, BusinessContacts, BusinessRoleScope, PricingTier,
+    };
 
     #[tokio::test]
     async fn test_business_repository_crud() {
@@ -357,7 +436,10 @@ mod tests {
         BusinessRepository::create(&mut *tx, &b).await.unwrap();
         tx.commit().await.unwrap();
 
-        let fetched = BusinessRepository::get(&pool).await.unwrap().expect("Business must exist");
+        let fetched = BusinessRepository::get(&pool)
+            .await
+            .unwrap()
+            .expect("Business must exist");
         assert_eq!(fetched.name, "Initial Pharmacy");
         assert_eq!(fetched.contacts.mobile, "0700000000");
 

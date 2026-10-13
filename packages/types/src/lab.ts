@@ -40,3 +40,28 @@ export interface TestCatalogEntry extends BaseEntity {
   reference_range: string | null;
   price: number;
 }
+
+export interface LabQcEquipment extends BaseEntity {
+  name: string;
+  manufacturer: string | null;
+  model: string | null;
+  asset_tag: string | null;
+  status: 'operational' | 'maintenance' | 'out_of_service';
+  last_calibrated_at: string | null;
+}
+
+export interface LabQcRecord extends BaseEntity {
+  equipment_id: string;
+  control_name: string;
+  lot_number: string | null;
+  observed_value: string;
+  expected_range: string;
+  outcome: 'pass' | 'fail';
+  performed_by_user_id: string;
+  performed_at: string;
+}
+
+export interface LabQcData {
+  equipment: LabQcEquipment[];
+  records: LabQcRecord[];
+}

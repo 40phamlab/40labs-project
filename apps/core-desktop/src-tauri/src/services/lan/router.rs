@@ -1,40 +1,44 @@
 use axum::{
-    extract::{Extension, State, Path, Query},
-    http::{StatusCode, HeaderMap},
+    extract::{Extension, Path, Query, State},
+    http::{HeaderMap, StatusCode},
     middleware,
-    routing::{get, post, patch},
+    routing::{get, patch, post},
     Json, Router,
 };
 use serde_json::{json, Value};
 use sqlx::Row;
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
-use super::{pairing, auth::{AuthedDevice, auth_middleware}, LanServerState};
+use super::{
+    auth::{auth_middleware, AuthedDevice},
+    pairing, LanServerState,
+};
 use crate::auth::AuthContext;
-use crate::models::staff_notification::{StaffNotification, CreateStaffNotificationPayload};
-use crate::repositories::staff_notification_repo::StaffNotificationRepository;
 use crate::models::audit::AuditLogEntry;
-use crate::repositories::audit_repo::AuditRepository;
-use crate::models::inventory::AddStockRequest;
-use crate::services::inventory_service::InventoryService;
-use crate::repositories::inventory_repo::InventoryRepository;
-use crate::models::lab::{CollectLabSampleRequest, RecordLabResultRequest};
-use crate::services::lab_service::LabService;
-use crate::repositories::lab_repo::LabRepository;
 use crate::models::customers::AddCustomerRequest;
-use crate::services::customer_service::CustomerService;
-use crate::repositories::customer_repo::CustomerRepository;
+use crate::models::inventory::AddStockRequest;
+use crate::models::lab::{CollectLabSampleRequest, RecordLabResultRequest};
 use crate::models::sales::CreateSaleRequest;
-use crate::services::sales_service::SalesService;
+use crate::models::staff_notification::{CreateStaffNotificationPayload, StaffNotification};
+use crate::repositories::audit_repo::AuditRepository;
+use crate::repositories::customer_repo::CustomerRepository;
+use crate::repositories::inventory_repo::InventoryRepository;
+use crate::repositories::lab_repo::LabRepository;
 use crate::repositories::sales_repo::SalesRepository;
+use crate::repositories::staff_notification_repo::StaffNotificationRepository;
+use crate::services::customer_service::CustomerService;
+use crate::services::inventory_service::InventoryService;
+use crate::services::lab_service::LabService;
+use crate::services::sales_service::SalesService;
 
 pub async fn devices_me_handler(
     State(state): State<Arc<LanServerState>>,
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
 ) -> Json<Value> {
-    let mut permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let mut permissions: Value =
+        serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
 
     if let Some(obj) = permissions.as_object_mut() {
         obj.entry("can_view_stock").or_insert(json!(true));
@@ -129,22 +133,30 @@ pub async fn summary_handler(
         .await
         .ok()
         .flatten();
-    let sales_total: i64 = sales_row.as_ref().and_then(|r| r.try_get("total").ok()).unwrap_or(0);
+    let sales_total: i64 = sales_row
+        .as_ref()
+        .and_then(|r| r.try_get("total").ok())
+        .unwrap_or(0);
 
-    let patients_row = sqlx::query("SELECT COUNT(*) as cnt FROM customer WHERE date(created_at, '+3 hours') = ?")
-        .bind(&today_str)
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten();
-    let patients_count: i64 = patients_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
+    let patients_row =
+        sqlx::query("SELECT COUNT(*) as cnt FROM customer WHERE date(created_at, '+3 hours') = ?")
+            .bind(&today_str)
+            .fetch_optional(&state.pool)
+            .await
+            .ok()
+            .flatten();
+    let patients_count: i64 = patients_row
+        .and_then(|r| r.try_get("cnt").ok())
+        .unwrap_or(0);
 
-    let samples_row = sqlx::query("SELECT COUNT(*) as cnt FROM lab_sample WHERE date(created_at, '+3 hours') = ?")
-        .bind(&today_str)
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten();
+    let samples_row = sqlx::query(
+        "SELECT COUNT(*) as cnt FROM lab_sample WHERE date(created_at, '+3 hours') = ?",
+    )
+    .bind(&today_str)
+    .fetch_optional(&state.pool)
+    .await
+    .ok()
+    .flatten();
     let samples_count: i64 = samples_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
 
     let results_row = sqlx::query("SELECT COUNT(*) as cnt FROM lab_order WHERE status = 'completed' AND date(updated_at, '+3 hours') = ?")
@@ -155,12 +167,16 @@ pub async fn summary_handler(
         .flatten();
     let results_count: i64 = results_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
 
-    let low_stock_row = sqlx::query("SELECT COUNT(*) as cnt FROM inventory_item WHERE quantity <= low_stock_threshold")
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten();
-    let low_stock_count: i64 = low_stock_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
+    let low_stock_row = sqlx::query(
+        "SELECT COUNT(*) as cnt FROM inventory_item WHERE quantity <= low_stock_threshold",
+    )
+    .fetch_optional(&state.pool)
+    .await
+    .ok()
+    .flatten();
+    let low_stock_count: i64 = low_stock_row
+        .and_then(|r| r.try_get("cnt").ok())
+        .unwrap_or(0);
 
     let user_row = sqlx::query("SELECT role, workspace_id, branch_id FROM app_user WHERE id = ?")
         .bind(&device.user_id)
@@ -176,7 +192,11 @@ pub async fn summary_handler(
             let br: String = r.get("branch_id");
             (role, ws, br)
         }
-        None => ("staff".to_string(), device.workspace_id.clone(), device.branch_id.clone()),
+        None => (
+            "staff".to_string(),
+            device.workspace_id.clone(),
+            device.branch_id.clone(),
+        ),
     };
 
     let unread_row = sqlx::query(
@@ -319,7 +339,12 @@ pub async fn heartbeat_handler(
     State(state): State<Arc<LanServerState>>,
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
 ) -> Json<Value> {
-    let _ = crate::repositories::device_repo::update_last_connected(&state.pool, &device.workspace_id, &device.id).await;
+    let _ = crate::repositories::device_repo::update_last_connected(
+        &state.pool,
+        &device.workspace_id,
+        &device.id,
+    )
+    .await;
     Json(json!({
         "status": "ok",
         "deviceId": device.id,
@@ -333,7 +358,8 @@ pub async fn get_staff_notifications_handler(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
     let cursor = params.get("cursor").map(|s| s.as_str());
-    let limit = params.get("limit")
+    let limit = params
+        .get("limit")
         .and_then(|s| s.parse::<i64>().ok())
         .unwrap_or(50);
 
@@ -350,7 +376,11 @@ pub async fn get_staff_notifications_handler(
             let br: String = r.get("branch_id");
             (role, ws, br)
         }
-        None => ("staff".to_string(), device.workspace_id.clone(), device.branch_id.clone()),
+        None => (
+            "staff".to_string(),
+            device.workspace_id.clone(),
+            device.branch_id.clone(),
+        ),
     };
 
     let items = StaffNotificationRepository::list_for_user(
@@ -383,13 +413,19 @@ pub async fn post_staff_notification_handler(
     headers: HeaderMap,
     Json(payload): Json<CreateStaffNotificationPayload>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    let idempotency_key = headers.get("idempotency-key")
+    let idempotency_key = headers
+        .get("idempotency-key")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
 
     if let Some(ref key) = idempotency_key {
-        if let Ok(Some(existing)) = StaffNotificationRepository::get_by_id(&state.pool, key, &device.user_id).await {
-            return Ok((StatusCode::OK, Json(serde_json::to_value(existing).unwrap())));
+        if let Ok(Some(existing)) =
+            StaffNotificationRepository::get_by_id(&state.pool, key, &device.user_id).await
+        {
+            return Ok((
+                StatusCode::OK,
+                Json(serde_json::to_value(existing).unwrap()),
+            ));
         }
     }
 
@@ -397,20 +433,26 @@ pub async fn post_staff_notification_handler(
         || payload.severity.as_deref() == Some("alert");
 
     if needs_permission {
-        let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
-        let can_send = permissions.get("can_send_notifications")
+        let permissions: Value =
+            serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+        let can_send = permissions
+            .get("can_send_notifications")
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
         if !can_send {
-            return Err((StatusCode::FORBIDDEN, "Permission 'can_send_notifications' required".to_string()));
+            return Err((
+                StatusCode::FORBIDDEN,
+                "Permission 'can_send_notifications' required".to_string(),
+            ));
         }
     }
 
-    let user_row = sqlx::query("SELECT full_name, workspace_id, branch_id FROM app_user WHERE id = ?")
-        .bind(&device.user_id)
-        .fetch_optional(&state.pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let user_row =
+        sqlx::query("SELECT full_name, workspace_id, branch_id FROM app_user WHERE id = ?")
+            .bind(&device.user_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let (sender_name, workspace_id, branch_id) = match user_row {
         Some(r) => {
@@ -419,13 +461,22 @@ pub async fn post_staff_notification_handler(
             let br: String = r.get("branch_id");
             (name, ws, br)
         }
-        None => ("Staff User".to_string(), device.workspace_id.clone(), device.branch_id.clone()),
+        None => (
+            "Staff User".to_string(),
+            device.workspace_id.clone(),
+            device.branch_id.clone(),
+        ),
     };
 
-    let notification_id = idempotency_key.unwrap_or_else(|| format!("notif_{}", Uuid::new_v4().simple()));
+    let notification_id =
+        idempotency_key.unwrap_or_else(|| format!("notif_{}", Uuid::new_v4().simple()));
     let now = chrono::Utc::now().to_rfc3339();
     let severity = payload.severity.unwrap_or_else(|| {
-        if payload.audience == "alert" { "alert".to_string() } else { "info".to_string() }
+        if payload.audience == "alert" {
+            "alert".to_string()
+        } else {
+            "info".to_string()
+        }
     });
 
     let notification = StaffNotification {
@@ -464,16 +515,22 @@ pub async fn post_staff_notification_handler(
             performed_by_user_id: Some(device.user_id.clone()),
             target_entity_type: "staff_notification".to_string(),
             target_entity_id: notification_id,
-            metadata: Some(json!({
-                "audience": payload.audience,
-                "severity": severity
-            }).to_string()),
+            metadata: Some(
+                json!({
+                    "audience": payload.audience,
+                    "severity": severity
+                })
+                .to_string(),
+            ),
         };
 
         let _ = AuditRepository::create(&state.pool, &audit_entry).await;
     }
 
-    Ok((StatusCode::CREATED, Json(serde_json::to_value(notification).unwrap())))
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::to_value(notification).unwrap()),
+    ))
 }
 
 pub async fn patch_staff_notification_read_handler(
@@ -497,27 +554,42 @@ pub async fn get_stock_handler(
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let items = InventoryRepository::list_medicines_with_inventory(&state.pool, &device.workspace_id, false)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let items = InventoryRepository::list_medicines_with_inventory(
+        &state.pool,
+        &device.workspace_id,
+        false,
+    )
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let search = params.get("search").map(|s| s.to_lowercase());
     let low_stock_only = params.get("lowStock").map(|s| s == "true").unwrap_or(false);
 
-    let filtered: Vec<_> = items.into_iter().filter(|item| {
-        if low_stock_only && item.inventory_item.quantity > item.inventory_item.low_stock_threshold {
-            return false;
-        }
-        if let Some(ref q) = search {
-            let name_match = item.medicine.name.to_lowercase().contains(q);
-            let generic_match = item.medicine.generic_name.as_deref().unwrap_or("").to_lowercase().contains(q);
-            let batch_match = item.inventory_item.batch_number.to_lowercase().contains(q);
-            if !name_match && !generic_match && !batch_match {
+    let filtered: Vec<_> = items
+        .into_iter()
+        .filter(|item| {
+            if low_stock_only
+                && item.inventory_item.quantity > item.inventory_item.low_stock_threshold
+            {
                 return false;
             }
-        }
-        true
-    }).collect();
+            if let Some(ref q) = search {
+                let name_match = item.medicine.name.to_lowercase().contains(q);
+                let generic_match = item
+                    .medicine
+                    .generic_name
+                    .as_deref()
+                    .unwrap_or("")
+                    .to_lowercase()
+                    .contains(q);
+                let batch_match = item.inventory_item.batch_number.to_lowercase().contains(q);
+                if !name_match && !generic_match && !batch_match {
+                    return false;
+                }
+            }
+            true
+        })
+        .collect();
 
     Ok(Json(json!(filtered)))
 }
@@ -527,10 +599,11 @@ pub async fn get_stock_item_handler(
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let item = InventoryRepository::get_inventory_item_by_id(&state.pool, &device.workspace_id, &id)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-        .ok_or_else(|| (StatusCode::NOT_FOUND, "Stock item not found".to_string()))?;
+    let item =
+        InventoryRepository::get_inventory_item_by_id(&state.pool, &device.workspace_id, &id)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+            .ok_or_else(|| (StatusCode::NOT_FOUND, "Stock item not found".to_string()))?;
 
     Ok(Json(json!(item)))
 }
@@ -541,12 +614,17 @@ pub async fn post_stock_receipt_handler(
     _headers: HeaderMap,
     Json(payload): Json<AddStockRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
-    let can_update = permissions.get("can_update_stock")
+    let permissions: Value =
+        serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_update = permissions
+        .get("can_update_stock")
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
     if !can_update {
-        return Err((StatusCode::FORBIDDEN, "Permission 'can_update_stock' required".to_string()));
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Permission 'can_update_stock' required".to_string(),
+        ));
     }
 
     let ctx = AuthContext {
@@ -559,14 +637,17 @@ pub async fn post_stock_receipt_handler(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    Ok((StatusCode::CREATED, Json(serde_json::to_value(result).unwrap())))
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::to_value(result).unwrap()),
+    ))
 }
 
 pub async fn get_lab_orders_handler(
     State(state): State<Arc<LanServerState>>,
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let orders = LabRepository::list_orders(&state.pool, &device.workspace_id)
+    let orders = LabRepository::list_orders(&state.pool, &device.workspace_id, &device.branch_id)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     Ok(Json(json!(orders)))
@@ -578,12 +659,17 @@ pub async fn post_lab_samples_handler(
     _headers: HeaderMap,
     Json(payload): Json<CollectLabSampleRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
-    let can_add = permissions.get("can_add_lab_sample")
+    let permissions: Value =
+        serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_add = permissions
+        .get("can_add_lab_sample")
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
     if !can_add {
-        return Err((StatusCode::FORBIDDEN, "Permission 'can_add_lab_sample' required".to_string()));
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Permission 'can_add_lab_sample' required".to_string(),
+        ));
     }
 
     let ctx = AuthContext {
@@ -596,7 +682,10 @@ pub async fn post_lab_samples_handler(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    Ok((StatusCode::CREATED, Json(serde_json::to_value(sample).unwrap())))
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::to_value(sample).unwrap()),
+    ))
 }
 
 pub async fn post_lab_results_handler(
@@ -605,12 +694,17 @@ pub async fn post_lab_results_handler(
     _headers: HeaderMap,
     Json(payload): Json<RecordLabResultRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
-    let can_record = permissions.get("can_record_lab_result")
+    let permissions: Value =
+        serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_record = permissions
+        .get("can_record_lab_result")
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
     if !can_record {
-        return Err((StatusCode::FORBIDDEN, "Permission 'can_record_lab_result' required".to_string()));
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Permission 'can_record_lab_result' required".to_string(),
+        ));
     }
 
     let ctx = AuthContext {
@@ -636,16 +730,19 @@ pub async fn get_customers_handler(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let search = params.get("search").map(|s| s.to_lowercase());
-    let filtered: Vec<_> = customers.into_iter().filter(|c| {
-        if let Some(ref q) = search {
-            let name_match = c.full_name.to_lowercase().contains(q);
-            let phone_match = c.phone.contains(q);
-            if !name_match && !phone_match {
-                return false;
+    let filtered: Vec<_> = customers
+        .into_iter()
+        .filter(|c| {
+            if let Some(ref q) = search {
+                let name_match = c.full_name.to_lowercase().contains(q);
+                let phone_match = c.phone.contains(q);
+                if !name_match && !phone_match {
+                    return false;
+                }
             }
-        }
-        true
-    }).collect();
+            true
+        })
+        .collect();
 
     Ok(Json(json!(filtered)))
 }
@@ -656,12 +753,17 @@ pub async fn post_customers_handler(
     _headers: HeaderMap,
     Json(payload): Json<AddCustomerRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
-    let can_manage = permissions.get("can_manage_customers")
+    let permissions: Value =
+        serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_manage = permissions
+        .get("can_manage_customers")
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
     if !can_manage {
-        return Err((StatusCode::FORBIDDEN, "Permission 'can_manage_customers' required".to_string()));
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Permission 'can_manage_customers' required".to_string(),
+        ));
     }
 
     let ctx = AuthContext {
@@ -671,14 +773,20 @@ pub async fn post_customers_handler(
     };
 
     match CustomerService::create_customer(&state.pool, &ctx, payload).await {
-        Ok(cust) => Ok((StatusCode::CREATED, Json(serde_json::to_value(cust).unwrap()))),
+        Ok(cust) => Ok((
+            StatusCode::CREATED,
+            Json(serde_json::to_value(cust).unwrap()),
+        )),
         Err(err) if err.starts_with("CONFLICT_DUPLICATE_PHONE:") => {
             let json_data = &err["CONFLICT_DUPLICATE_PHONE:".len()..];
             let existing_cust: Value = serde_json::from_str(json_data).unwrap_or(json!({}));
-            Ok((StatusCode::CONFLICT, Json(json!({
-                "error": "Customer with this phone number already exists",
-                "existingCustomer": existing_cust
-            }))))
+            Ok((
+                StatusCode::CONFLICT,
+                Json(json!({
+                    "error": "Customer with this phone number already exists",
+                    "existingCustomer": existing_cust
+                })),
+            ))
         }
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, e)),
     }
@@ -690,21 +798,38 @@ pub async fn post_sales_handler(
     headers: HeaderMap,
     Json(payload): Json<CreateSaleRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    let permissions: Value = serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
-    let can_create = permissions.get("can_create_sale")
+    let permissions: Value =
+        serde_json::from_str(&device.permissions_json).unwrap_or_else(|_| json!({}));
+    let can_create = permissions
+        .get("can_create_sale")
         .and_then(|v| v.as_bool())
         .unwrap_or(true);
     if !can_create {
-        return Err((StatusCode::FORBIDDEN, "Permission 'can_create_sale' required".to_string()));
+        return Err((
+            StatusCode::FORBIDDEN,
+            "Permission 'can_create_sale' required".to_string(),
+        ));
     }
 
-    let idempotency_key = headers.get("idempotency-key")
+    let idempotency_key = headers
+        .get("idempotency-key")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string())
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, "Missing Idempotency-Key header".to_string()))?;
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                "Missing Idempotency-Key header".to_string(),
+            )
+        })?;
 
-    if let Ok(Some(existing)) = SalesRepository::get_by_idempotency_key(&state.pool, &device.workspace_id, &idempotency_key).await {
-        return Ok((StatusCode::OK, Json(serde_json::to_value(existing).unwrap())));
+    if let Ok(Some(existing)) =
+        SalesRepository::get_by_idempotency_key(&state.pool, &device.workspace_id, &idempotency_key)
+            .await
+    {
+        return Ok((
+            StatusCode::OK,
+            Json(serde_json::to_value(existing).unwrap()),
+        ));
     }
 
     let ctx = AuthContext {
@@ -717,7 +842,10 @@ pub async fn post_sales_handler(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
 
-    Ok((StatusCode::CREATED, Json(serde_json::to_value(sale).unwrap())))
+    Ok((
+        StatusCode::CREATED,
+        Json(serde_json::to_value(sale).unwrap()),
+    ))
 }
 
 pub fn create_router(state: Arc<LanServerState>) -> Router {
@@ -727,15 +855,24 @@ pub fn create_router(state: Arc<LanServerState>) -> Router {
         .route("/staff/roster", get(staff_roster_handler))
         .route("/me/summary", get(summary_handler))
         .route("/activity", get(activity_handler))
-        .route("/staff-notifications", get(get_staff_notifications_handler).post(post_staff_notification_handler))
-        .route("/staff-notifications/:id/read", patch(patch_staff_notification_read_handler))
+        .route(
+            "/staff-notifications",
+            get(get_staff_notifications_handler).post(post_staff_notification_handler),
+        )
+        .route(
+            "/staff-notifications/:id/read",
+            patch(patch_staff_notification_read_handler),
+        )
         .route("/stock", get(get_stock_handler))
         .route("/stock/:id", get(get_stock_item_handler))
         .route("/stock/receipts", post(post_stock_receipt_handler))
         .route("/lab/orders", get(get_lab_orders_handler))
         .route("/lab/samples", post(post_lab_samples_handler))
         .route("/lab/results", post(post_lab_results_handler))
-        .route("/customers", get(get_customers_handler).post(post_customers_handler))
+        .route(
+            "/customers",
+            get(get_customers_handler).post(post_customers_handler),
+        )
         .route("/sales", post(post_sales_handler))
         .route_layer(middleware::from_fn_with_state(
             Arc::clone(&state),

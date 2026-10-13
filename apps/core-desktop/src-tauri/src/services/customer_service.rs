@@ -6,7 +6,7 @@ use crate::auth::AuthContext;
 use crate::models::audit::AuditLogEntry;
 use crate::models::customers::{AddCustomerRequest, Customer, UpdateCustomerRequest};
 use crate::repositories::audit_repo::audit;
-use crate::repositories::customer_repo::{CustomerRepository, normalize_tz_phone};
+use crate::repositories::customer_repo::{normalize_tz_phone, CustomerRepository};
 
 pub struct CustomerService;
 
@@ -16,12 +16,15 @@ impl CustomerService {
         ctx: &AuthContext,
         req: AddCustomerRequest,
     ) -> Result<Customer, String> {
-        let norm_phone = normalize_tz_phone(&req.phone)
-            .ok_or_else(|| "Invalid phone number format. Must be 0XXXXXXXXX, 255XXXXXXXXX, or +255XXXXXXXXX".to_string())?;
+        let norm_phone = normalize_tz_phone(&req.phone).ok_or_else(|| {
+            "Invalid phone number format. Must be 0XXXXXXXXX, 255XXXXXXXXX, or +255XXXXXXXXX"
+                .to_string()
+        })?;
 
-        if let Some(existing) = CustomerRepository::find_by_workspace_and_phone(pool, &ctx.workspace_id, &norm_phone)
-            .await
-            .map_err(|e| e.to_string())?
+        if let Some(existing) =
+            CustomerRepository::find_by_workspace_and_phone(pool, &ctx.workspace_id, &norm_phone)
+                .await
+                .map_err(|e| e.to_string())?
         {
             return Err(format!("DUPLICATE_PHONE:{}", existing.id));
         }
@@ -43,9 +46,15 @@ impl CustomerService {
             sex: req.sex,
             blood_group: req.blood_group,
             allergies: req.allergies.and_then(|v| serde_json::to_string(&v).ok()),
-            chronic_conditions: req.chronic_conditions.and_then(|v| serde_json::to_string(&v).ok()),
-            current_medications: req.current_medications.and_then(|v| serde_json::to_string(&v).ok()),
-            emergency_contact: req.emergency_contact.and_then(|v| serde_json::to_string(&v).ok()),
+            chronic_conditions: req
+                .chronic_conditions
+                .and_then(|v| serde_json::to_string(&v).ok()),
+            current_medications: req
+                .current_medications
+                .and_then(|v| serde_json::to_string(&v).ok()),
+            emergency_contact: req
+                .emergency_contact
+                .and_then(|v| serde_json::to_string(&v).ok()),
             ward_district: req.ward_district,
             pharmacy_notes: req.pharmacy_notes,
             archived_at: None,
@@ -105,15 +114,29 @@ impl CustomerService {
             full_name: req.full_name.unwrap_or(existing.full_name),
             phone,
             email: req.email.or(existing.email),
-            outstanding_balance: req.outstanding_balance.unwrap_or(existing.outstanding_balance),
+            outstanding_balance: req
+                .outstanding_balance
+                .unwrap_or(existing.outstanding_balance),
             notes: req.notes.or(existing.notes),
             dob: req.dob.or(existing.dob),
             sex: req.sex.or(existing.sex),
             blood_group: req.blood_group.or(existing.blood_group),
-            allergies: req.allergies.and_then(|v| serde_json::to_string(&v).ok()).or(existing.allergies),
-            chronic_conditions: req.chronic_conditions.and_then(|v| serde_json::to_string(&v).ok()).or(existing.chronic_conditions),
-            current_medications: req.current_medications.and_then(|v| serde_json::to_string(&v).ok()).or(existing.current_medications),
-            emergency_contact: req.emergency_contact.and_then(|v| serde_json::to_string(&v).ok()).or(existing.emergency_contact),
+            allergies: req
+                .allergies
+                .and_then(|v| serde_json::to_string(&v).ok())
+                .or(existing.allergies),
+            chronic_conditions: req
+                .chronic_conditions
+                .and_then(|v| serde_json::to_string(&v).ok())
+                .or(existing.chronic_conditions),
+            current_medications: req
+                .current_medications
+                .and_then(|v| serde_json::to_string(&v).ok())
+                .or(existing.current_medications),
+            emergency_contact: req
+                .emergency_contact
+                .and_then(|v| serde_json::to_string(&v).ok())
+                .or(existing.emergency_contact),
             ward_district: req.ward_district.or(existing.ward_district),
             pharmacy_notes: req.pharmacy_notes.or(existing.pharmacy_notes),
             archived_at: req.archived_at.or(existing.archived_at),

@@ -9,9 +9,9 @@ use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
+use super::LanServerState;
 use crate::models::device::PairedDevice;
 use crate::repositories::device_repo;
-use super::LanServerState;
 
 #[derive(Debug, Clone)]
 pub struct AuthedDevice {
@@ -69,8 +69,10 @@ pub async fn auth_middleware(
     let should_update = match &device.last_connected_at {
         Some(ts) => {
             if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(ts) {
-                chrono::Utc::now().signed_duration_since(dt.with_timezone(&chrono::Utc))
-                    .num_seconds() > 60
+                chrono::Utc::now()
+                    .signed_duration_since(dt.with_timezone(&chrono::Utc))
+                    .num_seconds()
+                    > 60
             } else {
                 true
             }
@@ -79,7 +81,8 @@ pub async fn auth_middleware(
     };
 
     if should_update {
-        let _ = device_repo::update_last_connected(&state.pool, &device.workspace_id, &device.id).await;
+        let _ =
+            device_repo::update_last_connected(&state.pool, &device.workspace_id, &device.id).await;
     }
 
     req.extensions_mut().insert(AuthedDevice { device });
@@ -91,7 +94,11 @@ pub fn require_permission(
     permission_key: &str,
 ) -> Result<(), (StatusCode, Json<Value>)> {
     let perms: Value = serde_json::from_str(&device.permissions_json).unwrap_or_default();
-    if perms.get(permission_key).and_then(|v| v.as_bool()).unwrap_or(false) {
+    if perms
+        .get(permission_key)
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
         Ok(())
     } else {
         Err((

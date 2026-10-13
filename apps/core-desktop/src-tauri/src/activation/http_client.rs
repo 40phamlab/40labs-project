@@ -1,6 +1,6 @@
 use super::{ActivationClient, OtpClient, RegisterRequest, RegisterResponse};
 use async_trait::async_trait;
-use ed25519_dalek::{Signature, VerifyingKey, Verifier};
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use reqwest::Client;
 use serde::Deserialize;
 
@@ -12,14 +12,19 @@ pub struct HttpActivationClient {
 
 // Public key derived from the development API's all-zero 32-byte signing seed.
 // Production builds should provide ACTIVATION_PUBKEY explicitly.
-const DEFAULT_ED25519_PUBKEY_HEX: &str = "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29";
+const DEFAULT_ED25519_PUBKEY_HEX: &str =
+    "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29";
 
 impl HttpActivationClient {
     pub fn new(base_url: String, pubkey_hex: Option<&str>) -> Result<Self, String> {
         let hex_str = match pubkey_hex {
             Some(key) => key,
             None if cfg!(debug_assertions) => DEFAULT_ED25519_PUBKEY_HEX,
-            None => return Err("ACTIVATION_PUBKEY must be configured outside development builds".into()),
+            None => {
+                return Err(
+                    "ACTIVATION_PUBKEY must be configured outside development builds".into(),
+                )
+            }
         };
         let bytes = hex::decode(hex_str).map_err(|e| e.to_string())?;
         if bytes.len() != 32 {
@@ -81,7 +86,8 @@ struct OtpVerifyResp {
 impl OtpClient for HttpActivationClient {
     async fn request_otp(&self, phone: &str) -> Result<i64, String> {
         let url = format!("{}/api/v1/activation/otp/request", self.base_url);
-        let res = self.client
+        let res = self
+            .client
             .post(&url)
             .json(&serde_json::json!({ "phone": phone }))
             .send()
@@ -91,7 +97,11 @@ impl OtpClient for HttpActivationClient {
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!("OTP request failed ({}): {}", status, body.chars().take(300).collect::<String>()));
+            return Err(format!(
+                "OTP request failed ({}): {}",
+                status,
+                body.chars().take(300).collect::<String>()
+            ));
         }
 
         let data: OtpReqResp = res.json().await.map_err(|e| e.to_string())?;
@@ -100,7 +110,8 @@ impl OtpClient for HttpActivationClient {
 
     async fn verify_otp(&self, phone: &str, code: &str) -> Result<String, String> {
         let url = format!("{}/api/v1/activation/otp/verify", self.base_url);
-        let res = self.client
+        let res = self
+            .client
             .post(&url)
             .json(&serde_json::json!({ "phone": phone, "code": code }))
             .send()
@@ -110,7 +121,11 @@ impl OtpClient for HttpActivationClient {
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!("OTP verification failed ({}): {}", status, body.chars().take(300).collect::<String>()));
+            return Err(format!(
+                "OTP verification failed ({}): {}",
+                status,
+                body.chars().take(300).collect::<String>()
+            ));
         }
 
         let data: OtpVerifyResp = res.json().await.map_err(|e| e.to_string())?;
@@ -122,7 +137,8 @@ impl OtpClient for HttpActivationClient {
 impl ActivationClient for HttpActivationClient {
     async fn register(&self, req: RegisterRequest) -> Result<RegisterResponse, String> {
         let url = format!("{}/api/v1/activation/register", self.base_url);
-        let res = self.client
+        let res = self
+            .client
             .post(&url)
             .json(&req)
             .send()
@@ -132,7 +148,11 @@ impl ActivationClient for HttpActivationClient {
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!("Registration failed ({}): {}", status, body.chars().take(300).collect::<String>()));
+            return Err(format!(
+                "Registration failed ({}): {}",
+                status,
+                body.chars().take(300).collect::<String>()
+            ));
         }
 
         let data: RegisterResponse = res.json().await.map_err(|e| e.to_string())?;
@@ -147,9 +167,9 @@ impl ActivationClient for HttpActivationClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ed25519_dalek::{SigningKey, Signer};
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use base64::Engine;
+    use ed25519_dalek::{Signer, SigningKey};
 
     #[test]
     fn test_http_client_grant_verification() {
@@ -158,7 +178,8 @@ mod tests {
         let verifying_key = ed25519_dalek::VerifyingKey::from(&signing_key);
         let pubkey_hex = hex::encode(verifying_key.to_bytes());
 
-        let client = HttpActivationClient::new("http://localhost:3000".into(), Some(&pubkey_hex)).unwrap();
+        let client =
+            HttpActivationClient::new("http://localhost:3000".into(), Some(&pubkey_hex)).unwrap();
 
         let payload_json = r#"{"business_id":"AFYA-123456","workspace_id":"ws_1","branch_id":"br_1","phone_hash":"abc","issued_at":"2025-01-01T00:00:00Z"}"#;
         let sig = signing_key.sign(payload_json.as_bytes());
@@ -175,7 +196,10 @@ mod tests {
     fn default_dev_key_verifies_grants_signed_by_dev_api() {
         let signing_key = SigningKey::from_bytes(&[0u8; 32]);
         let verifying_key = ed25519_dalek::VerifyingKey::from(&signing_key);
-        assert_eq!(hex::encode(verifying_key.to_bytes()), DEFAULT_ED25519_PUBKEY_HEX);
+        assert_eq!(
+            hex::encode(verifying_key.to_bytes()),
+            DEFAULT_ED25519_PUBKEY_HEX
+        );
 
         let client = HttpActivationClient::new("http://127.0.0.1:3000".into(), None).unwrap();
         let payload_json = r#"{"business_id":"AFYA-123456","workspace_id":"ws_dev","branch_id":"branch_dev","phone_hash":"phone-hash","issued_at":"2026-10-11T00:00:00Z"}"#;

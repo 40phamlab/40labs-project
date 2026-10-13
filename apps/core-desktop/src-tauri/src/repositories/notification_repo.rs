@@ -1,21 +1,28 @@
+use crate::models::notification::{MessageAttachment, Notification, NotificationMessage};
 use sqlx::SqlitePool;
-use crate::models::notification::{Notification, NotificationMessage, MessageAttachment};
 
 pub struct NotificationRepository;
 
 impl NotificationRepository {
-    pub async fn list(pool: &SqlitePool, workspace_id: &str) -> Result<Vec<Notification>, sqlx::Error> {
+    pub async fn list(
+        pool: &SqlitePool,
+        workspace_id: &str,
+    ) -> Result<Vec<Notification>, sqlx::Error> {
         sqlx::query_as::<_, Notification>(
-            "SELECT * FROM notifications WHERE workspace_id = ? ORDER BY received_at DESC"
+            "SELECT * FROM notifications WHERE workspace_id = ? ORDER BY received_at DESC",
         )
         .bind(workspace_id)
         .fetch_all(pool)
         .await
     }
 
-    pub async fn get_by_id(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<Option<Notification>, sqlx::Error> {
+    pub async fn get_by_id(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        id: &str,
+    ) -> Result<Option<Notification>, sqlx::Error> {
         sqlx::query_as::<_, Notification>(
-            "SELECT * FROM notifications WHERE workspace_id = ? AND id = ?"
+            "SELECT * FROM notifications WHERE workspace_id = ? AND id = ?",
         )
         .bind(workspace_id)
         .bind(id)
@@ -32,7 +39,7 @@ impl NotificationRepository {
                 html_content, plain_text_content, related_entity_type, related_entity_id,
                 received_at, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&n.id)
         .bind(&n.workspace_id)
@@ -59,10 +66,15 @@ impl NotificationRepository {
         Ok(())
     }
 
-    pub async fn update_status(pool: &SqlitePool, workspace_id: &str, id: &str, status: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_status(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        id: &str,
+        status: &str,
+    ) -> Result<(), sqlx::Error> {
         let now = chrono::Utc::now().to_rfc3339();
         sqlx::query(
-            "UPDATE notifications SET status = ?, updated_at = ? WHERE workspace_id = ? AND id = ?"
+            "UPDATE notifications SET status = ?, updated_at = ? WHERE workspace_id = ? AND id = ?",
         )
         .bind(status)
         .bind(now)
@@ -74,7 +86,11 @@ impl NotificationRepository {
         Ok(())
     }
 
-    pub async fn soft_delete(pool: &SqlitePool, workspace_id: &str, id: &str) -> Result<(), sqlx::Error> {
+    pub async fn soft_delete(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        id: &str,
+    ) -> Result<(), sqlx::Error> {
         let now = chrono::Utc::now().to_rfc3339();
         sqlx::query(
             "UPDATE notifications SET status = 'archived', updated_at = ? WHERE workspace_id = ? AND id = ?"
@@ -88,7 +104,11 @@ impl NotificationRepository {
         Ok(())
     }
 
-    pub async fn list_messages(pool: &SqlitePool, workspace_id: &str, notification_id: &str) -> Result<Vec<NotificationMessage>, sqlx::Error> {
+    pub async fn list_messages(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        notification_id: &str,
+    ) -> Result<Vec<NotificationMessage>, sqlx::Error> {
         let mut messages = sqlx::query_as::<_, NotificationMessage>(
             "SELECT * FROM notification_messages WHERE workspace_id = ? AND notification_id = ? ORDER BY sent_at ASC"
         )
@@ -99,7 +119,7 @@ impl NotificationRepository {
 
         for msg in &mut messages {
             let attachments = sqlx::query_as::<_, MessageAttachment>(
-                "SELECT * FROM message_attachments WHERE workspace_id = ? AND message_id = ?"
+                "SELECT * FROM message_attachments WHERE workspace_id = ? AND message_id = ?",
             )
             .bind(workspace_id)
             .bind(&msg.id)
@@ -111,14 +131,17 @@ impl NotificationRepository {
         Ok(messages)
     }
 
-    pub async fn create_message(pool: &SqlitePool, msg: &NotificationMessage) -> Result<(), sqlx::Error> {
+    pub async fn create_message(
+        pool: &SqlitePool,
+        msg: &NotificationMessage,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO notification_messages (
                 id, workspace_id, branch_id, notification_id, direction,
                 content_type, body, html_content, status, sent_at, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&msg.id)
         .bind(&msg.workspace_id)
@@ -138,9 +161,13 @@ impl NotificationRepository {
         Ok(())
     }
 
-    pub async fn get_attachment(pool: &SqlitePool, workspace_id: &str, attachment_id: &str) -> Result<Option<MessageAttachment>, sqlx::Error> {
+    pub async fn get_attachment(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        attachment_id: &str,
+    ) -> Result<Option<MessageAttachment>, sqlx::Error> {
         sqlx::query_as::<_, MessageAttachment>(
-            "SELECT * FROM message_attachments WHERE workspace_id = ? AND id = ?"
+            "SELECT * FROM message_attachments WHERE workspace_id = ? AND id = ?",
         )
         .bind(workspace_id)
         .bind(attachment_id)
@@ -148,7 +175,10 @@ impl NotificationRepository {
         .await
     }
 
-    pub async fn create_attachment(pool: &SqlitePool, att: &MessageAttachment) -> Result<(), sqlx::Error> {
+    pub async fn create_attachment(
+        pool: &SqlitePool,
+        att: &MessageAttachment,
+    ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO message_attachments (
@@ -156,7 +186,7 @@ impl NotificationRepository {
                 file_name, mime_type, size_bytes, storage_path, sha256,
                 duration_ms, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&att.id)
         .bind(&att.workspace_id)

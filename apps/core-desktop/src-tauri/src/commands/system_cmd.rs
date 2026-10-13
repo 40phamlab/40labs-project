@@ -16,4 +16,3 @@ pub fn frontend_log(level: String, msg: String) {
         }
     }
 }
-

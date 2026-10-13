@@ -1,8 +1,8 @@
-use tauri::State;
+use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
 use crate::models::business::Business;
 use crate::repositories::business_repo::BusinessRepository;
-use crate::auth::{AuthEngine, AuthErrorResponse};
+use tauri::State;
 
 #[derive(Debug, serde::Deserialize, Default)]
 #[serde(default)]
@@ -35,16 +35,23 @@ pub struct UpdateBusinessPayload {
 }
 
 #[tauri::command]
-pub async fn get_business(
-    state: State<'_, AppState>,
-) -> Result<Business, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let _ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+pub async fn get_business(state: State<'_, AppState>) -> Result<Business, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let _ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
 
     let b = BusinessRepository::get(&state.pool)
         .await
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| crate::auth::AuthError::NotFound("Business profile not found".to_string()).to_response())?;
+        .ok_or_else(|| {
+            crate::auth::AuthError::NotFound("Business profile not found".to_string()).to_response()
+        })?;
 
     Ok(b)
 }
@@ -54,8 +61,15 @@ pub async fn update_business(
     state: State<'_, AppState>,
     payload: UpdateBusinessPayload,
 ) -> Result<Business, AuthErrorResponse> {
-    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
-    let _ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let _ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
 
     let name = payload.name.as_deref();
     let tin = payload.tin.as_ref().map(|opt| opt.as_deref());
@@ -104,7 +118,9 @@ pub async fn update_business(
     )
     .await
     .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-    .ok_or_else(|| crate::auth::AuthError::NotFound("Business profile not found".to_string()).to_response())?;
+    .ok_or_else(|| {
+        crate::auth::AuthError::NotFound("Business profile not found".to_string()).to_response()
+    })?;
 
     Ok(updated)
 }
