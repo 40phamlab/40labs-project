@@ -1,8 +1,11 @@
 import * as React from 'react';
 import { Image as ImageIcon, Download } from 'lucide-react';
+import { resolveAttachmentPreviewUrl } from '../../../../api/notificationsApi';
 
 export interface ImageMessageProps {
   url?: string;
+  attachmentId?: string;
+  mimeType?: string;
   name?: string;
   size?: string;
   className?: string;
@@ -10,23 +13,46 @@ export interface ImageMessageProps {
 
 export const ImageMessage: React.FC<ImageMessageProps> = ({
   url,
+  attachmentId,
+  mimeType,
   name = 'Shared Image',
   size,
   className = '',
 }) => {
+  const [resolvedUrl, setResolvedUrl] = React.useState(url || '');
   const [isLoading, setIsLoading] = React.useState(true);
   const [hasError, setHasError] = React.useState(false);
   const [isExpanded, setIsExpanded] = React.useState(false);
 
-  const imageUrl = url || '';
+  React.useEffect(() => {
+    let active = true;
+    setResolvedUrl(url || '');
+    setHasError(false);
+    setIsLoading(true);
+    if (!url && attachmentId) {
+      resolveAttachmentPreviewUrl(attachmentId)
+        .then((resolved) => { if (active) setResolvedUrl(resolved); })
+        .catch(() => { if (active) { setIsLoading(false); setHasError(true); } });
+    } else if (!url) {
+      setIsLoading(false);
+      setHasError(true);
+    }
+    return () => { active = false; };
+  }, [attachmentId, mimeType, url]);
 
-  if (!imageUrl || hasError) {
+  const imageUrl = resolvedUrl;
+
+  if (hasError) {
     return (
       <div className={`flex items-center gap-2 p-3 bg-panel-strong/40 border border-border/30 rounded-card text-xs text-text-muted ${className}`}>
         <ImageIcon size={16} className="text-text-muted" />
         <span>Image unavailable: {name}</span>
       </div>
     );
+  }
+
+  if (!imageUrl) {
+    return <div className={`w-64 h-40 rounded-card bg-panel-strong/50 animate-pulse ${className}`} aria-label={`Loading ${name}`} />;
   }
 
   return (

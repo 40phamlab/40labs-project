@@ -1,4 +1,5 @@
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
+use tauri::Manager;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -100,19 +101,18 @@ pub struct AppState {
     pub activation_client: Arc<dyn crate::activation::ActivationClient>,
 }
 
-/// Centralized resolution of database path and connection URL.
+/// Optional development override retained for local workflows.
 pub fn resolve_db_url() -> Result<String, Box<dyn std::error::Error>> {
     if let Ok(url) = env::var("DATABASE_URL") {
         if !url.trim().is_empty() {
-            println!(
-                "[40Labs DB] Using DATABASE_URL environment override: {}",
-                url
-            );
             return Ok(url);
         }
     }
 
-    let db_path = resolve_db_file_path()?;
+    if !cfg!(debug_assertions) {
+        return Err("Release database path requires the Tauri application data resolver".into());
+    }
+    let db_path = resolve_dev_database_path()?;
 
     if let Some(parent) = db_path.parent() {
         if !parent.exists() {
@@ -120,10 +120,7 @@ pub fn resolve_db_url() -> Result<String, Box<dyn std::error::Error>> {
         }
     }
 
-    let db_path_str = db_path.to_string_lossy();
-    println!("[40Labs DB] Resolved database path: {}", db_path_str);
-
-    Ok(format!("sqlite:{}?mode=rwc", db_path_str))
+    Ok(format!("sqlite:{}?mode=rwc", db_path.display()))
 }
 
 pub fn resolve_db_file_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
@@ -160,36 +157,49 @@ fn resolve_dev_database_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
 }
 
 fn resolve_prod_database_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
-    let base_dir = std::env::var_os("APPDATA")
-        .map(PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("XDG_DATA_HOME")
-                .map(PathBuf::from)
-                .or_else(|| {
-                    std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local").join("share"))
-                })
-        })
-        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-
-    Ok(base_dir.join("com.40labs.core-desktop").join("40labs.db"))
+    Err("Release database path must be resolved through Tauri's app_data_dir".into())
 }
 
 pub async fn init_db_pool() -> Result<SqlitePool, Box<dyn std::error::Error>> {
-    let db_url = resolve_db_url()?;
-    init_db_pool_with_url(&db_url).await
+    if cfg!(debug_assertions) {
+        let path = resolve_dev_database_path()?;
+        return init_db_pool_with_path(&path).await;
+    }
+    Err("Release database initialization requires a Tauri AppHandle".into())
+}
+
+pub async fn init_db_pool_for_app(app: &tauri::AppHandle) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+    let path = if cfg!(debug_assertions) {
+        resolve_dev_database_path()?
+    } else {
+        app.path().app_data_dir()?.join("40labs.db")
+    };
+    init_db_pool_with_path(&path).await
+}
+
+async fn init_db_pool_with_path(path: &std::path::Path) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("Unable to prepare database directory ({}): {e}", e.kind()))?;
+    }
+    tracing::debug!("Opening SQLite database (path redacted)");
+    let options = SqliteConnectOptions::new()
+        .filename(path)
+        .create_if_missing(true)
+        .journal_mode(SqliteJournalMode::Wal)
+        .foreign_keys(true);
+    init_db_pool_with_options(options).await
 }
 
 pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn std::error::Error>> {
-    println!(
-        "[40Labs DB] Initializing SQLx connection pool at: {}",
-        db_url
-    );
-
     let connect_options = SqliteConnectOptions::from_str(db_url)?
         .create_if_missing(true)
         .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true);
 
+    init_db_pool_with_options(connect_options).await
+}
+
+async fn init_db_pool_with_options(connect_options: SqliteConnectOptions) -> Result<SqlitePool, Box<dyn std::error::Error>> {
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
         .connect_with(connect_options)
@@ -208,14 +218,11 @@ pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn s
             || err_str.contains("migration")
             || err_str.contains("VersionMismatch")
         {
-            eprintln!(
-                "[40Labs DB ERROR] Migration checksum or version mismatch detected: {}",
-                err_str
-            );
+            tracing::error!("SQLite migration version/checksum mismatch; database contents were left untouched");
             if cfg!(debug_assertions) {
-                eprintln!("[40Labs DB] [DEBUG] Please run `pnpm db:reset` to clear the dev database and re-run migrations.");
+                tracing::error!("Development migration mismatch: inspect migration history and schema; database was not reset");
             } else {
-                eprintln!("[40Labs DB] [RELEASE] Migration mismatch in production. Refusing to start and never auto-deleting data.");
+                tracing::error!("Release migration mismatch: refusing to start; database was not reset");
             }
         }
         return Err(err);
@@ -365,6 +372,26 @@ mod tests {
             "Expected 0 foreign key violations, found: {:?}",
             fk_violations
         );
+    }
+
+    #[tokio::test]
+    async fn opens_path_with_spaces_and_reserved_characters_and_reuses_existing_database() {
+        let dir = std::env::temp_dir().join(format!("40labs db #?% {}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("data #?%.db");
+        let pool = init_db_pool_with_path(&path).await.unwrap();
+        sqlx::query("CREATE TABLE path_test (value TEXT NOT NULL)")
+            .execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO path_test VALUES ('preserved')")
+            .execute(&pool).await.unwrap();
+        pool.close().await;
+
+        let reopened = init_db_pool_with_path(&path).await.unwrap();
+        let value: (String,) = sqlx::query_as("SELECT value FROM path_test")
+            .fetch_one(&reopened).await.unwrap();
+        assert_eq!(value.0, "preserved");
+        reopened.close().await;
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[tokio::test]

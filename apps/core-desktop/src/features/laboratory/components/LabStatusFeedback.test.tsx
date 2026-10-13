@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -7,6 +8,19 @@ import { LabSamplesList } from './LabSamplesList';
 afterEach(cleanup);
 
 describe('laboratory status feedback', () => {
+  test('identifies missing patient and order/test references instead of inventing labels', () => {
+    const sample = {
+      id: 'sample-missing', workspace_id: 'ws', branch_id: 'br', created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(), lab_order_id: 'order-missing', collected_by_user_id: 'user-1',
+      collected_at: new Date().toISOString(), sample_label: 'Blood', status: 'collected',
+    } as LabSample;
+    render(<LabSamplesList samples={[sample]} orders={[]} customers={[]} testCatalog={[]} onUpdateSampleStatus={vi.fn()} />);
+    expect(screen.getByText('Patient record missing · order order-missing')).toBeDefined();
+    expect(screen.getByText('Test record missing · order order-missing')).toBeDefined();
+    expect(screen.queryByText('Guest Patient')).toBeNull();
+    expect(screen.queryByText('General')).toBeNull();
+  });
+
   test('shows an IPC error and no success toast when sample status update fails', async () => {
     const updateSample = vi.fn().mockRejectedValue(new Error('Permission denied'));
     const sample = {

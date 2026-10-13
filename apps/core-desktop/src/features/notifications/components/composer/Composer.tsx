@@ -13,7 +13,7 @@ import { useNotificationsStore } from '../../../../stores/useNotificationsStore'
 export interface ComposerProps {
   notificationId: string;
   channel: MessageChannel;
-  onSend: (text: string, attachmentIds: string[]) => void;
+  onSend: (text: string, attachmentIds: string[]) => Promise<void> | void;
   className?: string;
 }
 
@@ -41,13 +41,20 @@ export const Composer: React.FC<ComposerProps> = ({
     setDraft(notificationId, val);
   };
 
-  const handleSend = () => {
+  const [isSending, setIsSending] = React.useState(false);
+  const handleSend = async () => {
     if (!text.trim() && attachments.length === 0) return;
-    onSend(text.trim(), attachments.map((a) => a.id));
-    clearDraft(notificationId);
-    setAttachments([]);
-    setIsAttachOpen(false);
-    setIsEmojiOpen(false);
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      await onSend(text.trim(), attachments.map((a) => a.id));
+      clearDraft(notificationId);
+      setAttachments([]);
+      setIsAttachOpen(false);
+      setIsEmojiOpen(false);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleAttachSaved = (att: MessageAttachment) => {

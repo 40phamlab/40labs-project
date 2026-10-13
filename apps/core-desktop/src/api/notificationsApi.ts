@@ -8,6 +8,7 @@ export interface CreateNotificationPayload {
   sender_address?: string;
   body: string;
   channel?: MessageChannel;
+  recipient_customer_id?: string;
 }
 
 export interface SendMessagePayload {
@@ -37,6 +38,16 @@ export interface ExportResult {
 let notificationsStore: Notification[] = [...initialNotifications];
 let messagesStore: NotificationMessage[] = [...initialMessages];
 let attachmentsStore: MessageAttachment[] = [...initialAttachments];
+const attachmentPreviewUrls = new Map<string, string>();
+
+export async function resolveAttachmentPreviewUrl(attachmentId: string): Promise<string> {
+  const cached = attachmentPreviewUrls.get(attachmentId);
+  if (cached) return cached;
+  if (!isUsingTauriIpc()) throw new Error('Attachment preview is unavailable');
+  const path = await invokeCommand<string>('resolve_attachment_path', { attachmentId });
+  const { convertFileSrc } = await import('@tauri-apps/api/core');
+  return convertFileSrc(path);
+}
 
 export const notificationsApi = {
   list: async (): Promise<Notification[]> => {
@@ -77,12 +88,12 @@ export const notificationsApi = {
       source_type: 'remote',
       sender_name: payload.sender_name,
       sender_business_id: null,
-      subject: `${payload.category.toUpperCase()} Notification`,
+      subject: payload.recipient_customer_id ? `Conversation with ${payload.sender_name}` : `${payload.category.toUpperCase()} Notification`,
       body: payload.body,
       status: 'unread',
       channel: payload.channel || 'amob',
-      related_entity_type: null,
-      related_entity_id: null,
+      related_entity_type: payload.recipient_customer_id ? 'customer' : null,
+      related_entity_id: payload.recipient_customer_id || null,
       received_at: now,
     };
 
@@ -102,7 +113,7 @@ export const notificationsApi = {
     };
 
     notificationsStore = [newNotif, ...notificationsStore];
-    messagesStore = [...messagesStore, newMsg];
+    if (payload.body.trim()) messagesStore = [...messagesStore, newMsg];
     return newNotif;
   },
 
@@ -133,8 +144,10 @@ export const notificationsApi = {
       sent_at: now,
       created_at: now,
       updated_at: now,
-      attachments: attachmentsStore.filter((a) => payload.attachmentIds?.includes(a.id)),
+      attachments: attachmentsStore.filter((a) => payload.attachmentIds?.includes(a.id)).map((a) => ({ ...a, message_id: newMsg.id, updated_at: now })),
     };
+
+    attachmentsStore = attachmentsStore.map((a) => payload.attachmentIds?.includes(a.id) ? { ...a, message_id: newMsg.id, updated_at: now } : a);
 
     messagesStore = [...messagesStore, newMsg];
 
@@ -215,6 +228,10 @@ export const notificationsApi = {
       created_at: now,
       updated_at: now,
     };
+    if (payload.bytes) {
+      const blob = new Blob([new Uint8Array(payload.bytes)], { type: payload.mimeType });
+      attachmentPreviewUrls.set(att.id, URL.createObjectURL(blob));
+    }
     attachmentsStore = [...attachmentsStore, att];
     return att;
   },

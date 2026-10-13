@@ -19,10 +19,10 @@ export const AttachmentRenderer: React.FC<AttachmentRendererProps> = ({
     <div className={`flex flex-col gap-2 my-2 ${className}`}>
       {attachments.map((att: any) => {
         if (att.kind === 'image' || att.type === 'image') {
-          return <ImageMessage key={att.id} name={att.file_name || att.name} size={att.size} url={att.url} />;
+          return <ImageMessage key={att.id} attachmentId={att.id} mimeType={att.mime_type} name={att.file_name || att.name} size={att.size} url={att.url} />;
         }
         if (att.kind === 'audio' || att.type === 'audio') {
-          return <AudioMessage key={att.id} name={att.file_name || att.name} size={att.size} url={att.url} durationMs={att.duration_ms || att.durationMs} />;
+          return <AudioMessage key={att.id} attachmentId={att.id} name={att.file_name || att.name} size={att.size} url={att.url} durationMs={att.duration_ms || att.durationMs} />;
         }
         return <FileMessage key={att.id} attachmentId={att.id} name={att.file_name || att.name} size={att.size} url={att.url} />;
       })}

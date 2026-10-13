@@ -775,6 +775,7 @@ dependencies = [
  "hex",
  "hkdf",
  "hmac",
+ "infer",
  "keyring",
  "local-ip-address",
  "rand 0.8.8",

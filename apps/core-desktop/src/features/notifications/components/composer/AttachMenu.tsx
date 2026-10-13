@@ -19,6 +19,11 @@ export const AttachMenu: React.FC<AttachMenuProps> = ({
 }) => {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const mimeForName = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase();
+    const known: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf', txt: 'text/plain' };
+    return ext ? known[ext] || 'application/octet-stream' : 'application/octet-stream';
+  };
 
   const handleFileSelect = async (kind: 'image' | 'file') => {
     try {
@@ -28,22 +33,28 @@ export const AttachMenu: React.FC<AttachMenuProps> = ({
           multiple: true,
           filters: kind === 'image'
             ? [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }]
-            : [{ name: 'Documents', extensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'] }]
+            : [{ name: 'Documents', extensions: ['pdf', 'txt'] }]
         });
 
         if (selected) {
           const paths = Array.isArray(selected) ? selected : [selected];
+          const failed: string[] = [];
+          const successful: string[] = [];
           for (const filePath of paths) {
             const fileName = filePath.split(/[\\/]/).pop() || 'file';
-            const mimeType = kind === 'image' ? 'image/png' : 'application/pdf';
-            const saved = await notificationsApi.saveAttachment({
-              messageId,
-              kind,
-              fileName,
-              mimeType,
-              sourcePath: filePath,
-            });
-            onAttachSaved(saved);
+            const mimeType = mimeForName(fileName);
+            try {
+              const saved = await notificationsApi.saveAttachment({ messageId, kind, fileName, mimeType, sourcePath: filePath });
+              onAttachSaved(saved);
+              successful.push(fileName);
+            } catch (err) {
+              console.error('Save attachment error:', err);
+              failed.push(fileName);
+            }
+          }
+          if (failed.length) {
+            const proceed = window.confirm(`Failed: ${failed.join(', ')}. Uploaded subset: ${successful.join(', ') || '(none)'}. OK keeps this subset for the message. Cancel returns without sending; choose failed files again to retry or continue without them.`);
+            if (!proceed) return;
           }
         }
       } else {
@@ -52,7 +63,7 @@ export const AttachMenu: React.FC<AttachMenuProps> = ({
       }
     } catch (err) {
       console.error('Attach error:', err);
-      toast.error('Failed to attach file.');
+      toast.error('One or more files failed validation or upload.');
     }
     onClose();
   };
@@ -61,11 +72,13 @@ export const AttachMenu: React.FC<AttachMenuProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    let failed: string[] = [];
+    let successful: string[] = [];
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const maxBytes = file.type.startsWith('image/') || file.type.startsWith('audio/') ? 16 * 1024 * 1024 : 100 * 1024 * 1024;
       if (file.size > maxBytes) {
-        toast.error(`File "${file.name}" exceeds size limit.`);
+        failed.push(file.name);
         continue;
       }
 
@@ -78,15 +91,21 @@ export const AttachMenu: React.FC<AttachMenuProps> = ({
           messageId,
           kind,
           fileName: file.name,
-          mimeType: file.type || 'application/octet-stream',
+          mimeType: file.type || mimeForName(file.name),
           bytes,
         });
         onAttachSaved(saved);
+        successful.push(file.name);
       } catch (err) {
         console.error('Save attachment error:', err);
-        toast.error(`Failed to save attachment ${file.name}`);
+        failed.push(file.name);
       }
     }
+    if (failed.length) {
+      const proceed = window.confirm(`Failed: ${failed.join(', ')}. Uploaded subset: ${successful.join(', ') || '(none)'}. OK keeps this subset for the message. Cancel returns without sending; choose failed files again to retry or continue without them.`);
+      if (!proceed) return;
+    }
+    e.target.value = '';
     onClose();
   };
 

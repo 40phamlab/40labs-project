@@ -9,6 +9,7 @@ import { NotificationsListPanel } from './components/NotificationsListPanel';
 import { NotificationDetailPanel } from './components/NotificationDetailPanel';
 import { NewConversationModal, ContactOption } from './components/NewConversationModal';
 import { useNotifications, useNotificationMessages } from '../../hooks/useNotifications';
+import { useToast } from '../../hooks/useToast';
 
 export const NotificationsScreen: React.FC = () => {
   const {
@@ -23,7 +24,8 @@ export const NotificationsScreen: React.FC = () => {
     createNotification,
   } = useNotifications();
 
-  const { sendMessage, saveAttachment } = useNotificationMessages(selectedId);
+  const { sendMessage } = useNotificationMessages(selectedId);
+  const { toast } = useToast();
 
   const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
   const [channelFilter, setChannelFilter] = React.useState<'all' | MessageChannel>('all');
@@ -82,49 +84,35 @@ export const NotificationsScreen: React.FC = () => {
   }, [notifications, markAsRead]);
 
   const handleSendReply = React.useCallback(
-    async (id: string, replyText: string, attachments?: any[]) => {
-      let attachmentIds: string[] = [];
-      if (attachments && attachments.length > 0) {
-        for (const att of attachments) {
-          try {
-            const saved = await saveAttachment({
-              messageId: `msg_rep_${Date.now()}`,
-              kind: att.type === 'image' ? 'image' : att.type === 'audio' ? 'audio' : 'file',
-              fileName: att.name,
-              mimeType: att.type === 'image' ? 'image/png' : att.type === 'audio' ? 'audio/wav' : 'application/pdf',
-              bytes: [1, 2, 3, 4],
-            });
-            attachmentIds.push(saved.id);
-          } catch (err) {
-            console.error('Failed to save attachment:', err);
-          }
-        }
+    async (id: string, replyText: string, attachmentIds: string[] = []) => {
+      try {
+        await sendMessage({ notificationId: id, body: replyText, attachmentIds });
+      } catch (err) {
+        console.error('Failed to send notification message:', err);
+        toast.error('Message was not sent. Your attachments remain in the composer. Retry or remove them before sending.');
+        throw err;
       }
-
-      await sendMessage({
-        notificationId: id,
-        body: replyText,
-        attachmentIds,
-      });
     },
-    [sendMessage, saveAttachment]
+    [sendMessage, toast]
   );
 
   const handleStartNewConversation = React.useCallback(
-    async (contact: ContactOption, initialMessage: string, channel: MessageChannel) => {
-      const newNotif = await createNotification({
+    async (contacts: ContactOption[], channel: MessageChannel) => {
+      const results = await Promise.allSettled(contacts.map((contact) => createNotification({
         sender_name: contact.name,
         sender_address: contact.identifier,
-        body: initialMessage || `Hello ${contact.name}, starting new conversation workflow.`,
-        category: contact.type === 'Customer' || contact.type === 'Patient' ? 'customers' : 'business',
+        body: '',
+        category: 'customers',
         channel,
-      });
-      if (newNotif && newNotif.id) {
-        setSelectedId(newNotif.id);
-      }
-      setIsNewConversationOpen(false);
+        recipient_customer_id: contact.id,
+      })));
+      const created = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
+      const failedContactIds = results.flatMap((result, index) => result.status === 'rejected' ? [contacts[index].id] : []);
+      if (created[0]?.id) setSelectedId(created[0].id);
+      if (failedContactIds.length > 0) toast.error(`Started ${created.length} direct chat(s); ${failedContactIds.length} could not be created.`);
+      return { failedContactIds, createdCount: created.length };
     },
-    [createNotification, setSelectedId]
+    [createNotification, setSelectedId, toast]
   );
 
   return (

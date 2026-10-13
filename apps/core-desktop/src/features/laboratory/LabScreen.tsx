@@ -39,6 +39,7 @@ import { useCustomers } from '../../hooks/useCustomers';
 import { NewTestCatalogModal } from './components/NewTestCatalogModal';
 import { LabQcPanel } from './components/LabQcPanel';
 import { LabOrderActionModal } from './components/LabOrderActionModal';
+import { formatDateTime } from '@40labs/i18n';
 
 export type LabTab =
   | 'dashboard'
@@ -153,7 +154,7 @@ export const LabScreen: React.FC = () => {
         render: (item) => {
           const order = orders.find((o) => o.id === item.lab_order_id);
           const test = order ? testCatalog.find((t) => t.id === order.test_catalog_id) : undefined;
-          return <span className="font-bold text-text">{test?.name || 'Lab Test'}</span>;
+          return <span className="font-bold text-text">{test?.name || `Test record missing · ${order?.test_catalog_id || item.lab_order_id}`}</span>;
         },
       },
       {
@@ -162,7 +163,7 @@ export const LabScreen: React.FC = () => {
         render: (item) => {
           const order = orders.find((o) => o.id === item.lab_order_id);
           const customer = order ? customers.find((c) => c.id === order.customer_id) : undefined;
-          return <span className="font-medium text-text">{customer?.full_name || 'Guest Patient'}</span>;
+          return <span className="font-medium text-text">{customer?.full_name || `Patient record missing · ${order?.customer_id || item.lab_order_id}`}</span>;
         },
       },
       {
@@ -312,19 +313,12 @@ export const LabScreen: React.FC = () => {
 
       case 'analytics':
         {
-          const resultOrderIds = new Set(results.map((result) => result.lab_order_id));
-          const completedOrders = orders.filter((order) => resultOrderIds.has(order.id));
-          const withinDay = completedOrders.filter((order) => {
-            const result = results.find((item) => item.lab_order_id === order.id);
-            return result && new Date(result.created_at).getTime() - new Date(order.created_at).getTime() <= 24 * 60 * 60 * 1000;
-          }).length;
-          const orderValue = orders.reduce((sum, order) => sum + (testCatalog.find((test) => test.id === order.test_catalog_id)?.price || 0), 0);
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
             <KPITile title="Total Requisitions" value={orders.length} tone="default" icon={<Activity size={18} />} subtext="Current period total" />
-            <KPITile title="Results within 24 hours" value={completedOrders.length ? `${Math.round((withinDay / completedOrders.length) * 100)}%` : '—'} tone="primary" icon={<Clock size={18} />} subtext={`${withinDay} of ${completedOrders.length} completed orders`} />
+            <KPITile title="Turnaround SLA" value="—" tone="default" icon={<Clock size={18} />} subtext="Configure a branch SLA to calculate performance" />
             <KPITile title="Critical Out-Of-Range" value={results.filter(r => r.is_out_of_range).length} tone="danger" icon={<AlertTriangle size={18} />} subtext="Flagged for review" />
-            <KPITile title="Ordered test value" value={`${orderValue.toLocaleString()} TZS`} tone="primary" icon={<Activity size={18} />} subtext="Catalog price total for orders" />
+            <KPITile title="Recorded lab revenue" value="—" tone="default" icon={<Activity size={18} />} subtext="No linked realized-revenue source is available" />
           </div>
         );
         }
@@ -375,7 +369,7 @@ export const LabScreen: React.FC = () => {
                     <p className="font-bold text-text">{log.action}</p>
                     <p className="text-[10px] text-text-muted font-mono">Entity: {log.target_entity_type} ({log.target_entity_id})</p>
                   </div>
-                  <span className="text-[10px] text-text-muted font-mono">{new Date(log.created_at).toLocaleString('en-GB')}</span>
+                  <span className="text-[10px] text-text-muted font-mono">{formatDateTime(log.created_at) || 'Invalid date'}</span>
                 </div>
               ))}
             </div>

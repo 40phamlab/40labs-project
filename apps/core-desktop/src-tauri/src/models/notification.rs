@@ -47,7 +47,7 @@ pub struct MessageAttachment {
     pub id: String,
     pub workspace_id: String,
     pub branch_id: String,
-    pub message_id: String,
+    pub message_id: Option<String>,
     pub kind: String,
     pub file_name: String,
     pub mime_type: String,

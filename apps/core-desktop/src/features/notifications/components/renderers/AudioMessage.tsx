@@ -1,8 +1,10 @@
 import * as React from 'react';
 import { Play, Pause, Mic } from 'lucide-react';
 import { IconButton } from '@40labs/ui-components';
+import { resolveAttachmentPreviewUrl } from '../../../../api/notificationsApi';
 
 export interface AudioMessageProps {
+  attachmentId?: string;
   name?: string;
   size?: string;
   url?: string;
@@ -11,6 +13,7 @@ export interface AudioMessageProps {
 }
 
 export const AudioMessage: React.FC<AudioMessageProps> = ({
+  attachmentId,
   name = 'Voice message',
   size: _size,
   url,
@@ -18,9 +21,21 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
   className = '',
 }) => {
   const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [resolvedUrl, setResolvedUrl] = React.useState(url || '');
   const [isPlaying, setIsPlaying] = React.useState(false);
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(durationMs ? durationMs / 1000 : 15);
+
+  React.useEffect(() => {
+    let active = true;
+    setResolvedUrl(url || '');
+    if (!url && attachmentId) {
+      resolveAttachmentPreviewUrl(attachmentId).then((path) => { if (active) setResolvedUrl(path); }).catch((error) => {
+        console.error('Failed to load voice attachment:', error);
+      });
+    }
+    return () => { active = false; };
+  }, [attachmentId, url]);
 
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -52,7 +67,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
 
   return (
     <div className={`flex items-center gap-3 p-3 bg-panel-strong/40 border border-border/30 rounded-card max-w-xs shadow-2xs ${className}`}>
-      {url && <audio ref={audioRef} src={url} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata} onEnded={() => setIsPlaying(false)} />}
+      {resolvedUrl && <audio ref={audioRef} src={resolvedUrl} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata} onEnded={() => setIsPlaying(false)} />}
       <IconButton
         icon={isPlaying ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white ml-0.5" />}
         label={isPlaying ? 'Pause audio' : 'Play audio'}

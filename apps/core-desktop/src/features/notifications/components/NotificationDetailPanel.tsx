@@ -14,7 +14,7 @@ export interface NotificationDetailPanelProps {
   onMarkAsRead?: (id: string) => void;
   onArchive?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onSendReply?: (id: string, replyText: string, attachmentIds?: string[]) => void;
+  onSendReply?: (id: string, replyText: string, attachmentIds?: string[]) => Promise<void> | void;
   onBack?: () => void;
   className?: string;
 }
@@ -80,7 +80,7 @@ export const NotificationDetailPanel: React.FC<NotificationDetailPanelProps> = (
 
   const handleSend = async (text: string, attachmentIds: string[]) => {
     if (onSendReply) {
-      onSendReply(notification.id, text, attachmentIds);
+      await onSendReply(notification.id, text, attachmentIds);
     } else {
       await sendMessage({
         notificationId: notification.id,

@@ -29,7 +29,6 @@ import type {
 } from '@40labs/types';
 import { NewLabOrderModal } from './NewLabOrderModal';
 
-export const DEFAULT_LAB_SLA_HOURS = 2;
 
 export interface LabDashboardProps {
   orders: LabOrder[];
@@ -75,15 +74,6 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
     return orders.filter((o) => o.status === 'pending').length;
   }, [orders]);
 
-  const overdueTatCount = React.useMemo(() => {
-    const now = Date.now();
-    return orders.filter((o) => {
-      if (o.status !== 'pending' && o.status !== 'sample_collected') return false;
-      const created = new Date(o.created_at).getTime();
-      const elapsedHours = (now - created) / (1000 * 60 * 60);
-      return elapsedHours > DEFAULT_LAB_SLA_HOURS;
-    }).length;
-  }, [orders]);
 
   const criticalValsCount = React.useMemo(() => {
     return results.filter((r) => r.is_out_of_range && !r.override_authorized_by_user_id).length;
@@ -113,7 +103,7 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
           return (
             <div className="flex flex-col">
               <span className="font-bold text-text">{test?.name || 'Unknown Test'}</span>
-              <span className="text-[10px] text-text-muted">{test?.category || 'General'}</span>
+              <span className="text-[10px] text-text-muted">{test ? (test.category || 'Category not set') : `Test record missing · ${item.test_catalog_id}`}</span>
             </div>
           );
         },
@@ -125,7 +115,7 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
           const customer = customers.find((c) => c.id === item.customer_id);
           return (
             <div className="flex flex-col">
-              <span className="font-medium text-text">{customer?.full_name || 'Guest Patient'}</span>
+              <span className="font-medium text-text">{customer ? (customer.full_name || 'Name not recorded') : `Patient record missing · ${item.customer_id}`}</span>
               <span className="text-[10px] font-mono text-text-muted">{customer?.phone || '—'}</span>
             </div>
           );
@@ -213,10 +203,10 @@ export const LabDashboard: React.FC<LabDashboardProps> = ({
         />
         <KPITile
           title="Overdue TAT"
-          value={overdueTatCount}
-          tone="danger"
+          value="—"
+          tone="default"
           icon={<AlertTriangle size={18} />}
-          subtext={`> ${DEFAULT_LAB_SLA_HOURS}h SLA turnaround`}
+          subtext="Configure a branch SLA to calculate overdue work"
         />
         <KPITile
           title="Critical Vals"

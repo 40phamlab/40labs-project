@@ -31,14 +31,10 @@ import type {
   TestCatalogEntry,
   LabSampleStatus,
 } from '@40labs/types';
+import { formatDate, formatDateTime } from '@40labs/i18n';
+import { isInLabDatePeriod } from '../utils/dateFilters';
 
-/**
- * Standard Turnaround Time SLA constant in hours.
- * Reused by Overdue TAT KPI calculations across Lab screens.
- */
-export const TAT_SLA_HOURS = 24;
-
-export type SampleTimeFilter = 'recently' | 'month' | 'all';
+export type SampleTimeFilter = 'today' | 'week' | 'month' | 'all';
 
 export interface LabSamplesListProps {
   samples: LabSample[];
@@ -79,7 +75,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
   onRetry,
 }) => {
   const [activeTimeFilter, setActiveTimeFilter] =
-    React.useState<SampleTimeFilter>('recently');
+    React.useState<SampleTimeFilter>('today');
   const [activeMenuSampleId, setActiveMenuSampleId] = React.useState<
     string | null
   >(null);
@@ -101,27 +97,23 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Compute counts for FilterTabs based on collected_at
+  // Counts follow the same local calendar boundaries as the selected filters.
   const counts = React.useMemo(() => {
-    const now = Date.now();
-    let recently = 0;
-    let month = 0;
+    const now = new Date();
     const all = samples.length;
-
-    for (const s of samples) {
-      const collectedTime = new Date(s.collected_at).getTime();
-      const diffDays = (now - collectedTime) / (1000 * 60 * 60 * 24);
-      if (diffDays <= 7) recently++;
-      if (diffDays <= 30) month++;
-    }
-
-    return { recently, month, all };
+    return {
+      today: samples.filter((s) => isInLabDatePeriod(s.collected_at, 'today', now)).length,
+      week: samples.filter((s) => isInLabDatePeriod(s.collected_at, 'week', now)).length,
+      month: samples.filter((s) => isInLabDatePeriod(s.collected_at, 'month', now)).length,
+      all,
+    };
   }, [samples]);
 
   const filterTabs = React.useMemo(
     () => [
-      { id: 'recently', label: 'Recently', count: counts.recently },
-      { id: 'month', label: 'Last month', count: counts.month },
+      { id: 'today', label: 'Today', count: counts.today },
+      { id: 'week', label: 'This week', count: counts.week },
+      { id: 'month', label: 'This month', count: counts.month },
       { id: 'all', label: 'All', count: counts.all },
     ],
     [counts]
@@ -129,13 +121,9 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
 
   // Client-side date filtering on collected_at
   const filteredSamples = React.useMemo(() => {
-    const now = Date.now();
+    const now = new Date();
     return samples.filter((s) => {
-      const collectedTime = new Date(s.collected_at).getTime();
-      const diffDays = (now - collectedTime) / (1000 * 60 * 60 * 24);
-
-      if (activeTimeFilter === 'recently') return diffDays <= 7;
-      if (activeTimeFilter === 'month') return diffDays <= 30;
+      if (activeTimeFilter !== 'all') return isInLabDatePeriod(s.collected_at, activeTimeFilter, now);
       return true;
     });
   }, [samples, activeTimeFilter]);
@@ -177,7 +165,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
             : undefined;
           return (
             <span className="font-bold text-text">
-              {customer?.full_name || 'Guest Patient'}
+              {customer ? (customer.full_name || 'Name not recorded') : `Patient record missing · ${order?.customer_id || `order ${item.lab_order_id}`}`}
             </span>
           );
         },
@@ -192,7 +180,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
             : undefined;
           return (
             <span className="font-medium text-text-muted">
-              {test?.category || test?.name || 'General'}
+              {test ? (test.category || test.name || 'Category not set') : `Test record missing · ${order?.test_catalog_id || `order ${item.lab_order_id}`}`}
             </span>
           );
         },
@@ -225,30 +213,15 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
         key: 'in',
         header: 'In',
         render: (item) => {
-          const formatted = new Date(item.collected_at).toLocaleDateString(
-            'en-GB',
-            {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            }
-          );
+          const formatted = formatDate(item.collected_at) || 'Invalid date';
           return <span className="text-xs text-text-muted">{formatted}</span>;
         },
       },
       {
         key: 'end',
         header: 'End',
-        render: (item) => {
-          const endTime = new Date(
-            new Date(item.collected_at).getTime() +
-              TAT_SLA_HOURS * 60 * 60 * 1000
-          );
-          const formatted = endTime.toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-          });
+        render: () => {
+          const formatted = 'Not configured';
           return <span className="text-xs text-text-muted">{formatted}</span>;
         },
       },
@@ -426,15 +399,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
                     <div className="flex justify-between">
                       <span className="text-text-muted">Collected At (In):</span>
                       <span className="font-medium">
-                        {new Date(
-                          selectedSampleForDrawer.collected_at
-                        ).toLocaleString('en-GB', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {formatDateTime(selectedSampleForDrawer.collected_at) || 'Invalid date'}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -442,23 +407,12 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
                         Target Completion (End):
                       </span>
                       <span className="font-medium">
-                        {new Date(
-                          new Date(
-                            selectedSampleForDrawer.collected_at
-                          ).getTime() +
-                            TAT_SLA_HOURS * 60 * 60 * 1000
-                        ).toLocaleString('en-GB', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        Not configured
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-text-muted">TAT SLA Target:</span>
-                      <span className="font-mono">{TAT_SLA_HOURS} Hours</span>
+                      <span className="font-mono">Not configured</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-text-muted">
@@ -484,12 +438,12 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
                     <div className="flex justify-between">
                       <span className="text-text-muted">Test Name:</span>
                       <span className="font-bold">
-                        {test?.name || 'Unknown Test'}
+                        {test?.name || `Test record missing · ${order?.test_catalog_id || selectedSampleForDrawer.lab_order_id}`}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-text-muted">Category:</span>
-                      <span>{test?.category || 'General'}</span>
+                      <span>{test ? (test.category || 'Category not set') : `Test record missing · ${order?.test_catalog_id || selectedSampleForDrawer.lab_order_id}`}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-text-muted">
@@ -531,7 +485,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
                     <div className="flex justify-between">
                       <span className="text-text-muted">Patient Name:</span>
                       <span className="font-bold">
-                        {customer?.full_name || 'Guest Patient'}
+                        {customer ? (customer.full_name || 'Name not recorded') : `Patient record missing · ${order?.customer_id || selectedSampleForDrawer.lab_order_id}`}
                       </span>
                     </div>
                     <div className="flex justify-between">

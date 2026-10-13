@@ -22,6 +22,8 @@ import type {
   Customer,
   LabOrderStatus,
 } from '@40labs/types';
+import { formatDate } from '@40labs/i18n';
+import { isInLabDatePeriod } from '../utils/dateFilters';
 
 export type ChannelTab = 'active' | 'completed' | 'all' | 'cancelled';
 export type TimeRange = 'today' | 'week' | 'month' | 'all';
@@ -107,12 +109,7 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
       if (activeChannel === 'completed' && !isCompleted) return false;
       if (activeChannel === 'cancelled' && o.status !== 'cancelled') return false;
 
-      const created = new Date(o.created_at).getTime();
-      const diffDays = (now - created) / (1000 * 60 * 60 * 24);
-
-      if (timeRange === 'today') return diffDays <= 1;
-      if (timeRange === 'week') return diffDays <= 7;
-      if (timeRange === 'month') return diffDays <= 30;
+      if (timeRange !== 'all' && !isInLabDatePeriod(o.created_at, timeRange, new Date(now))) return false;
       if (timeRange === 'all') return true;
       return true;
     });
@@ -145,8 +142,8 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
         render: (item) => {
           const customer = customers.find((c) => c.id === item.customer_id);
           return (
-            <span className="font-bold text-text">
-              {customer?.full_name || 'Guest Patient'}
+            <span className="font-bold text-text" title={`Customer reference: ${item.customer_id}`}>
+              {customer ? (customer.full_name || 'Name not recorded') : `Patient record missing · ${item.customer_id}`}
             </span>
           );
         },
@@ -158,7 +155,7 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
           const test = testCatalog.find((t) => t.id === item.test_catalog_id);
           return (
             <span className="font-medium text-text-muted">
-              {test?.category || 'General'}
+              {test ? (test.category || 'Category not set') : `Test record missing · ${item.test_catalog_id}`}
             </span>
           );
         },
@@ -188,11 +185,7 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
         key: 'date',
         header: 'Date',
         render: (item) => {
-          const formatted = new Date(item.created_at).toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-          });
+          const formatted = formatDate(item.created_at) || 'Invalid date';
           return <span className="text-xs text-text-muted">{formatted}</span>;
         },
       },

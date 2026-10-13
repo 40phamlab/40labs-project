@@ -16,7 +16,7 @@ export interface NotificationMessage extends BaseEntity {
 }
 
 export interface MessageAttachment extends BaseEntity {
-  message_id: string;
+  message_id: string | null;
   kind: AttachmentKind;
   file_name: string;
   mime_type: string;

@@ -9,21 +9,17 @@ pub mod security;
 pub mod services;
 
 use auth::{AuthState, RealClock};
-use db::{init_db_pool, AppState};
+use db::{init_db_pool_for_app, AppState};
 use security::keystore::Keystore;
 use services::lan::LanServerState;
 use std::sync::Arc;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     debug::init();
 
     let runtime = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-
-    let pool = runtime.block_on(async { init_db_pool().await }).unwrap_or_else(|err| {
-        tracing::error!("[40Labs Startup Error] Failed to initialize persistent SQLite database pool: {}.", err);
-        panic!("Fatal database initialization failure: {}. Application cannot start without a valid persistent database pool.", err);
-    });
 
     let keystore = Arc::new(Keystore::init().expect("Failed to initialize security keystore"));
     let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
@@ -33,31 +29,32 @@ pub fn run() {
     let (otp_client, activation_client) =
         activation::client::ActivationClientFactory::create_clients(api_base_url, pubkey_hex);
 
-    let port = 4040;
-    let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
-    let lan_state_clone = Arc::clone(&lan_state);
-    let lan_state_for_server = Arc::clone(&lan_state);
-
-    runtime.spawn(async move {
-        services::lan::start_lan_server(lan_state_for_server, port).await;
-    });
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .setup(move |app| {
+            let pool = runtime.block_on(init_db_pool_for_app(app.handle())).map_err(|_err| {
+                tracing::error!("Failed to initialize persistent SQLite database (details redacted; check directory permissions, available storage, and migration diagnostics)");
+                Box::<dyn std::error::Error>::from("Database initialization failed; see redacted diagnostics")
+            })?;
+            let port = 4040;
+            let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
+            let lan_state_for_server = Arc::clone(&lan_state);
+            runtime.spawn(async move {
+                services::lan::start_lan_server(lan_state_for_server, port).await;
+            });
+            app.manage(AppState {
+                pool,
+                lan_state,
+                auth_state,
+                keystore,
+                otp_client,
+                activation_client,
+            });
             if let Err(e) = services::documents::ensure_layout(app.handle()) {
                 tracing::warn!("Failed to initialize Documents layout on startup: {}. Will lazy-create on first write.", e);
             }
             Ok(())
-        })
-        .manage(AppState {
-            pool,
-            lan_state: lan_state_clone,
-            auth_state,
-            keystore,
-            otp_client,
-            activation_client,
         })
         .invoke_handler(tauri::generate_handler![
             commands::system_cmd::system_health_check,
