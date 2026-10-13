@@ -25,9 +25,20 @@ describe('useConnectivityStore (Network Interface State)', () => {
     vi.useFakeTimers();
     const store = useConnectivityStore.getState();
 
+    // Simulate window network event
     store.setSourceFn(() => false);
-    store.checkConnectivity(); // triggers check
-    expect(useConnectivityStore.getState().status).toBe('online'); // not updated immediately if event listener debounced
+    window.dispatchEvent(new Event('offline'));
+
+    // Status is still 'online' immediately after event dispatch due to 500ms debounce
+    expect(useConnectivityStore.getState().status).toBe('online');
+
+    // Advance time by 499ms - still 'online'
+    vi.advanceTimersByTime(499);
+    expect(useConnectivityStore.getState().status).toBe('online');
+
+    // Advance past 500ms threshold - now updated to 'offline'
+    vi.advanceTimersByTime(2);
+    expect(useConnectivityStore.getState().status).toBe('offline');
 
     vi.useRealTimers();
   });

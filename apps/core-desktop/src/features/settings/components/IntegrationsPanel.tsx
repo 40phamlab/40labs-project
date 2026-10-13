@@ -192,11 +192,11 @@ export const IntegrationsPanel: React.FC = () => {
             <select
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
-              className="w-full bg-panel border border-border rounded-input px-3 py-1.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full bg-surface border border-border rounded-input px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
             >
-              <option value="">Choose staff...</option>
+              <option value="" className="bg-surface text-text-primary">Choose staff...</option>
               {availableUsers.map((u) => (
-                <option key={u.id} value={u.id}>
+                <option key={u.id} value={u.id} className="bg-surface text-text-primary">
                   {u.full_name} ({u.role})
                 </option>
               ))}
@@ -208,10 +208,10 @@ export const IntegrationsPanel: React.FC = () => {
             <select
               value={selectedScope}
               onChange={(e) => setSelectedScope(e.target.value as 'view' | 'manage')}
-              className="w-full bg-panel border border-border rounded-input px-3 py-1.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full bg-surface border border-border rounded-input px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
             >
-              <option value="view">View Only</option>
-              <option value="manage">Manage</option>
+              <option value="view" className="bg-surface text-text-primary">View Only</option>
+              <option value="manage" className="bg-surface text-text-primary">Manage</option>
             </select>
           </div>
 

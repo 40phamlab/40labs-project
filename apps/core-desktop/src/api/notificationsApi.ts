@@ -62,6 +62,9 @@ export const notificationsApi = {
   },
 
   create: async (payload: CreateNotificationPayload): Promise<Notification> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Notification>('create_notification', { payload });
+    }
     const now = new Date().toISOString();
     const notifId = `notif_${Date.now()}`;
     const newNotif: Notification = {

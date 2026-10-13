@@ -36,16 +36,29 @@ export const labApi = {
   },
   listOrders: (): Promise<LabOrder[]> => labApi.list(),
 
-  get: (id: string): LabOrder | null => {
+  get: async (id: string): Promise<LabOrder | null> => {
+    if (isUsingTauriIpc()) {
+      const list = await invokeCommand<LabOrder[]>('get_lab_orders');
+      return list.find((o) => o.id === id) || null;
+    }
     return ordersStore.find((o) => o.id === id) || null;
   },
-  getOrder: (id: string): LabOrder | null => labApi.get(id),
+  getOrder: (id: string): Promise<LabOrder | null> => labApi.get(id),
 
-  create: (payload: CreateLabOrderPayload): LabOrder => {
+  create: async (payload: CreateLabOrderPayload): Promise<LabOrder> => {
     return labApi.createOrder(payload.customerId, payload.testCatalogId);
   },
 
-  createOrder: (customerId: string, testCatalogId: string): LabOrder => {
+  createOrder: async (customerId: string, testCatalogId: string): Promise<LabOrder> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabOrder>('create_lab_order', {
+        payload: {
+          customerId,
+          testCatalogId,
+        },
+      });
+    }
+
     const now = new Date().toISOString();
     const newOrder: LabOrder = {
       id: `labord_${Date.now()}`,
@@ -64,7 +77,13 @@ export const labApi = {
     return newOrder;
   },
 
-  updateOrderStatus: (id: string, status: LabOrderStatus): LabOrder | null => {
+  updateOrderStatus: async (id: string, status: LabOrderStatus): Promise<LabOrder | null> => {
+    if (isUsingTauriIpc()) {
+      await invokeCommand<boolean>('update_lab_order_status', { id, status });
+      const orders = await invokeCommand<LabOrder[]>('get_lab_orders');
+      return orders.find((o) => o.id === id) || null;
+    }
+
     const index = ordersStore.findIndex((o) => o.id === id);
     if (index === -1) return null;
 
@@ -92,11 +111,24 @@ export const labApi = {
     return [...samplesStore];
   },
 
-  getSample: (id: string): LabSample | null => {
+  getSample: async (id: string): Promise<LabSample | null> => {
+    if (isUsingTauriIpc()) {
+      const list = await invokeCommand<LabSample[]>('get_lab_samples');
+      return list.find((s) => s.id === id) || null;
+    }
     return samplesStore.find((s) => s.id === id) || null;
   },
 
-  collectSample: (orderId: string, sampleLabel: string): LabSample => {
+  collectSample: async (orderId: string, sampleLabel: string): Promise<LabSample> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabSample>('collect_lab_sample', {
+        payload: {
+          labOrderId: orderId,
+          sampleLabel,
+        },
+      });
+    }
+
     const now = new Date().toISOString();
     const newSample: LabSample = {
       id: `labsample_${Date.now()}`,
@@ -120,7 +152,13 @@ export const labApi = {
     return newSample;
   },
 
-  updateSampleStatus: (id: string, status: LabSampleStatus): LabSample | null => {
+  updateSampleStatus: async (id: string, status: LabSampleStatus): Promise<LabSample | null> => {
+    if (isUsingTauriIpc()) {
+      await invokeCommand<boolean>('update_lab_sample_status', { id, status });
+      const samples = await invokeCommand<LabSample[]>('get_lab_samples');
+      return samples.find((s) => s.id === id) || null;
+    }
+
     const index = samplesStore.findIndex((s) => s.id === id);
     if (index === -1) return null;
 
@@ -135,18 +173,38 @@ export const labApi = {
   },
 
   // Results
-  listResults: (): LabResult[] => [...resultsStore],
+  listResults: async (): Promise<LabResult[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabResult[]>('get_lab_results');
+    }
+    return [...resultsStore];
+  },
 
-  getResult: (id: string): LabResult | null => {
+  getResult: async (id: string): Promise<LabResult | null> => {
+    if (isUsingTauriIpc()) {
+      const list = await invokeCommand<LabResult[]>('get_lab_results');
+      return list.find((r) => r.id === id) || null;
+    }
     return resultsStore.find((r) => r.id === id) || null;
   },
 
-  enterResult: (
+  enterResult: async (
     orderId: string,
     value: string,
     referenceRange: string,
     isOutOfRange: boolean
-  ): LabResult => {
+  ): Promise<LabResult> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabResult>('enter_lab_result', {
+        payload: {
+          labOrderId: orderId,
+          value,
+          referenceRange,
+          isOutOfRange,
+        },
+      });
+    }
+
     const now = new Date().toISOString();
     const newResult: LabResult = {
       id: `labresult_${Date.now()}`,
@@ -172,17 +230,26 @@ export const labApi = {
   },
 
   // Catalog
-  listCatalog: (): TestCatalogEntry[] => [...catalogStore],
+  listCatalog: async (): Promise<TestCatalogEntry[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<TestCatalogEntry[]>('get_test_catalog');
+    }
+    return [...catalogStore];
+  },
 
-  getCatalogItem: (id: string): TestCatalogEntry | null => {
+  getCatalogItem: async (id: string): Promise<TestCatalogEntry | null> => {
+    if (isUsingTauriIpc()) {
+      const list = await invokeCommand<TestCatalogEntry[]>('get_test_catalog');
+      return list.find((c) => c.id === id) || null;
+    }
     return catalogStore.find((c) => c.id === id) || null;
   },
 
   // Backwards compatibility aliases
   getOrders: (): Promise<LabOrder[]> => labApi.listOrders(),
   getSamples: (): Promise<LabSample[]> => labApi.listSamples(),
-  getResults: (): LabResult[] => labApi.listResults(),
-  getCatalog: (): TestCatalogEntry[] => labApi.listCatalog(),
+  getResults: (): Promise<LabResult[]> => labApi.listResults(),
+  getCatalog: (): Promise<TestCatalogEntry[]> => labApi.listCatalog(),
 };
 
 export const lab = labApi;

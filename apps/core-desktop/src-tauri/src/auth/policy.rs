@@ -56,6 +56,8 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
 
     map.insert("get_purchase_orders", CommandPolicy::SessionOnly);
     map.insert("get_suppliers", CommandPolicy::SessionOnly);
+    map.insert("create_purchase_order", CommandPolicy::SessionOnly);
+    map.insert("approve_purchase_order", CommandPolicy::Permission("purchases.approve"));
 
     map.insert("get_lab_orders", CommandPolicy::SessionOnly);
     map.insert("create_lab_order", CommandPolicy::Permission("lab.order"));
@@ -69,6 +71,7 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("get_notifications", CommandPolicy::SessionOnly);
     map.insert("get_notification_messages", CommandPolicy::SessionOnly);
     map.insert("send_notification_message", CommandPolicy::SessionOnly);
+    map.insert("create_notification", CommandPolicy::SessionOnly);
     map.insert("mark_notification_read", CommandPolicy::SessionOnly);
     map.insert("archive_notification", CommandPolicy::SessionOnly);
     map.insert("save_attachment", CommandPolicy::SessionOnly);
@@ -76,6 +79,15 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("resolve_attachment_path", CommandPolicy::SessionOnly);
     map.insert("save_bytes_to_documents", CommandPolicy::SessionOnly);
     map.insert("export_attachment_to_path", CommandPolicy::SessionOnly);
+
+    map.insert("get_business", CommandPolicy::SessionOnly);
+    map.insert("update_business", CommandPolicy::Permission("settings.manage"));
+    map.insert("get_integrations_config", CommandPolicy::SessionOnly);
+    map.insert("update_integrations_config", CommandPolicy::Permission("settings.manage"));
+
+    map.insert("get_lab_results", CommandPolicy::SessionOnly);
+    map.insert("get_test_catalog", CommandPolicy::SessionOnly);
+    map.insert("enter_lab_result", CommandPolicy::Permission("lab.result.enter"));
 
     map.insert("get_paired_devices", CommandPolicy::Permission("devices.manage"));
     map.insert("initiate_pairing_session", CommandPolicy::Permission("devices.manage"));

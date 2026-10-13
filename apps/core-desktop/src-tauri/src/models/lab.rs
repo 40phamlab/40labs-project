@@ -49,3 +49,40 @@ pub struct RecordLabResultRequest {
     pub result_notes: String,
     pub status: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct TestCatalogEntry {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub name: String,
+    pub category: String,
+    pub reference_range: Option<String>,
+    pub price: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct LabResult {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub lab_order_id: String,
+    pub entered_by_user_id: String,
+    pub value: String,
+    pub reference_range: Option<String>,
+    pub is_out_of_range: bool,
+    pub override_authorized_by_user_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EnterLabResultRequest {
+    pub lab_order_id: String,
+    pub value: String,
+    pub reference_range: Option<String>,
+    pub is_out_of_range: Option<bool>,
+}

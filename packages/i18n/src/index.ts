@@ -230,6 +230,20 @@ export const translations = {
     'auth.error.networkUnavailable': 'Network unavailable',
     'auth.error.unknown': 'An unknown error occurred',
 
+    // EmptyState
+    'emptystate.empty.title': 'No data yet',
+    'emptystate.empty.desc': 'Add your first item to get started.',
+    'emptystate.filtered.title': 'No results for these filters',
+    'emptystate.filtered.desc': 'Try adjusting your search criteria or filters.',
+    'emptystate.filtered.action': 'Clear Filters',
+    'emptystate.error.title': 'Failed to load data',
+    'emptystate.error.desc': 'A system error occurred. Please try again.',
+    'emptystate.error.action': 'Try Again',
+    'emptystate.offline.title': 'You are offline',
+    'emptystate.offline.desc': 'Saved locally. Will sync when connected.',
+    'emptystate.noAccess.title': 'Access denied',
+    'emptystate.noAccess.desc': 'You do not have permission to access this area.',
+
     // Connectivity
     'connectivity.online': 'Online',
     'connectivity.offline': 'Offline',

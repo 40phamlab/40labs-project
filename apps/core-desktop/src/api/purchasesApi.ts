@@ -25,11 +25,28 @@ export const purchasesApi = {
   },
   listPurchaseOrders: (): Promise<PurchaseOrder[]> => purchasesApi.list(),
 
-  get: (id: string): PurchaseOrder | null => {
+  get: async (id: string): Promise<PurchaseOrder | null> => {
+    if (isUsingTauriIpc()) {
+      const list = await invokeCommand<PurchaseOrder[]>('get_purchase_orders');
+      return list.find((po) => po.id === id) || null;
+    }
     return purchaseOrdersStore.find((po) => po.id === id) || null;
   },
 
-  create: (supplierId: string, lines: CreatePurchaseOrderLine[]): PurchaseOrder => {
+  create: async (supplierId: string, lines: CreatePurchaseOrderLine[]): Promise<PurchaseOrder> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<PurchaseOrder>('create_purchase_order', {
+        payload: {
+          supplierId,
+          lines: lines.map((l) => ({
+            medicineId: l.medicine_id,
+            quantity: l.quantity,
+            unitCost: l.unit_cost,
+          })),
+        },
+      });
+    }
+
     const now = new Date().toISOString();
     const totalCost = lines.reduce((sum, line) => sum + line.quantity * line.unit_cost, 0);
 
@@ -41,7 +58,13 @@ export const purchasesApi = {
       updated_at: now,
       supplier_id: supplierId,
       status: 'draft',
-      lines,
+      lines: lines.map((l, i) => ({
+        id: `poline_${Date.now()}_${i}`,
+        purchase_order_id: `po_${Date.now()}`,
+        medicine_id: l.medicine_id,
+        quantity: l.quantity,
+        unit_cost: l.unit_cost,
+      })),
       total_cost: totalCost,
       approved_by_user_id: null,
       submitted_at: null,
@@ -65,7 +88,11 @@ export const purchasesApi = {
     return updatedPO;
   },
 
-  approve: (poId: string): PurchaseOrder | null => {
+  approve: async (poId: string): Promise<PurchaseOrder | null> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<PurchaseOrder>('approve_purchase_order', { id: poId });
+    }
+
     const now = new Date().toISOString();
     const index = purchaseOrdersStore.findIndex((po) => po.id === poId);
     if (index === -1) return null;
@@ -95,16 +122,20 @@ export const purchasesApi = {
     return [...suppliersStore];
   },
 
-  getSupplier: (id: string): Supplier | null => {
+  getSupplier: async (id: string): Promise<Supplier | null> => {
+    if (isUsingTauriIpc()) {
+      const list = await invokeCommand<Supplier[]>('get_suppliers');
+      return list.find((s) => s.id === id) || null;
+    }
     return suppliersStore.find((s) => s.id === id) || null;
   },
 
   // Backwards compatibility aliases
   getPurchaseOrders: (): Promise<PurchaseOrder[]> => purchasesApi.list(),
   getSuppliers: (): Promise<Supplier[]> => purchasesApi.listSuppliers(),
-  createPurchaseOrder: (supplierId: string, lines: CreatePurchaseOrderLine[]): PurchaseOrder =>
+  createPurchaseOrder: (supplierId: string, lines: CreatePurchaseOrderLine[]): Promise<PurchaseOrder> =>
     purchasesApi.create(supplierId, lines),
-  approvePurchaseOrder: (poId: string): PurchaseOrder | null => purchasesApi.approve(poId),
+  approvePurchaseOrder: (poId: string): Promise<PurchaseOrder | null> => purchasesApi.approve(poId),
 };
 
 export const purchases = purchasesApi;

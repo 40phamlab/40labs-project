@@ -133,6 +133,71 @@ impl BusinessRepository {
         }
     }
 
+    pub async fn update_business_profile(
+        pool: &SqlitePool,
+        name: Option<&str>,
+        tin: Option<Option<&str>>,
+        tmda_number: Option<Option<&str>>,
+        contact_mobile: Option<&str>,
+        contact_email: Option<Option<&str>>,
+        contact_whatsapp: Option<Option<&str>>,
+        address_region: Option<&str>,
+        address_district: Option<&str>,
+        address_place: Option<&str>,
+        logo_url: Option<Option<&str>>,
+        lipa_namba: Option<Option<&str>>,
+        payment_number: Option<Option<&str>>,
+        appearance_mode: Option<&str>,
+    ) -> Result<Option<Business>, sqlx::Error> {
+        let existing = Self::get(pool).await?;
+        if existing.is_none() {
+            return Ok(None);
+        }
+        let now = chrono::Utc::now().to_rfc3339();
+
+        if let Some(n) = name {
+            sqlx::query("UPDATE business SET name = ?, updated_at = ?").bind(n).bind(&now).execute(pool).await?;
+        }
+        if let Some(t) = tin {
+            sqlx::query("UPDATE business SET tin = ?, updated_at = ?").bind(t).bind(&now).execute(pool).await?;
+        }
+        if let Some(tmda) = tmda_number {
+            sqlx::query("UPDATE business SET tmda_number = ?, updated_at = ?").bind(tmda).bind(&now).execute(pool).await?;
+        }
+        if let Some(m) = contact_mobile {
+            sqlx::query("UPDATE business SET contact_mobile = ?, updated_at = ?").bind(m).bind(&now).execute(pool).await?;
+        }
+        if let Some(e) = contact_email {
+            sqlx::query("UPDATE business SET contact_email = ?, updated_at = ?").bind(e).bind(&now).execute(pool).await?;
+        }
+        if let Some(w) = contact_whatsapp {
+            sqlx::query("UPDATE business SET contact_whatsapp = ?, updated_at = ?").bind(w).bind(&now).execute(pool).await?;
+        }
+        if let Some(r) = address_region {
+            sqlx::query("UPDATE business SET address_region = ?, updated_at = ?").bind(r).bind(&now).execute(pool).await?;
+        }
+        if let Some(d) = address_district {
+            sqlx::query("UPDATE business SET address_district = ?, updated_at = ?").bind(d).bind(&now).execute(pool).await?;
+        }
+        if let Some(p) = address_place {
+            sqlx::query("UPDATE business SET address_place = ?, updated_at = ?").bind(p).bind(&now).execute(pool).await?;
+        }
+        if let Some(l) = logo_url {
+            sqlx::query("UPDATE business SET logo_url = ?, updated_at = ?").bind(l).bind(&now).execute(pool).await?;
+        }
+        if let Some(ln) = lipa_namba {
+            sqlx::query("UPDATE business SET lipa_namba = ?, updated_at = ?").bind(ln).bind(&now).execute(pool).await?;
+        }
+        if let Some(pn) = payment_number {
+            sqlx::query("UPDATE business SET payment_number = ?, updated_at = ?").bind(pn).bind(&now).execute(pool).await?;
+        }
+        if let Some(app_mode) = appearance_mode {
+            sqlx::query("UPDATE business SET appearance_mode = ?, updated_at = ?").bind(app_mode).bind(&now).execute(pool).await?;
+        }
+
+        Self::get(pool).await
+    }
+
     pub async fn update_onboarding_state(conn: &mut SqliteConnection, state: &str, updated_at: &str) -> Result<(), sqlx::Error> {
         sqlx::query("UPDATE business SET onboarding_state = ?, updated_at = ?")
             .bind(state)
@@ -227,5 +292,100 @@ impl BusinessRepository {
         .execute(conn)
         .await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::init_db_pool_with_url;
+    use crate::models::business::{BusinessContacts, BusinessAddress, AppearanceMode, PricingTier, BusinessRoleScope};
+
+    #[tokio::test]
+    async fn test_business_repository_crud() {
+        let pool = init_db_pool_with_url("sqlite::memory:")
+            .await
+            .expect("Failed to initialize DB pool");
+
+        let mut tx = pool.begin().await.unwrap();
+
+        let b = Business {
+            id: "bus_test_1".to_string(),
+            workspace_id: "ws_bus_test".to_string(),
+            branch_id: "br_bus_test".to_string(),
+            business_id: "BIZ-999".to_string(),
+            name: "Initial Pharmacy".to_string(),
+            tin: Some("111-222-333".to_string()),
+            tmda_number: Some("TMDA/001".to_string()),
+            role_scopes: vec![BusinessRoleScope::Pharmacy],
+            tier: PricingTier::Free,
+            contacts: BusinessContacts {
+                mobile: "0700000000".to_string(),
+                email: Some("initial@40labs.tz".to_string()),
+                whatsapp: None,
+            },
+            address: BusinessAddress {
+                region: "Dar".to_string(),
+                district: "Kinondoni".to_string(),
+                place: "Makumbusho".to_string(),
+            },
+            logo_url: None,
+            appearance_mode: AppearanceMode::Light,
+            owner_id: None,
+            onboarding_state: None,
+            business_type: None,
+            country: Some("TZ".to_string()),
+            address_ward: None,
+            address_street: None,
+            address_area: None,
+            latitude: None,
+            longitude: None,
+            lipa_namba: None,
+            payment_number: None,
+            declared_branch_count: Some(1),
+            terms_version: None,
+            terms_locale: None,
+            terms_text_sha256: None,
+            terms_accepted_at: None,
+            terms_accepted_by_user_id: None,
+            scale: None,
+            idle_lock_minutes: 5,
+            created_at: "2026-01-01T00:00:00Z".to_string(),
+            updated_at: "2026-01-01T00:00:00Z".to_string(),
+        };
+
+        BusinessRepository::create(&mut *tx, &b).await.unwrap();
+        tx.commit().await.unwrap();
+
+        let fetched = BusinessRepository::get(&pool).await.unwrap().expect("Business must exist");
+        assert_eq!(fetched.name, "Initial Pharmacy");
+        assert_eq!(fetched.contacts.mobile, "0700000000");
+
+        let updated = BusinessRepository::update_business_profile(
+            &pool,
+            Some("Updated Pharmacy"),
+            Some(Some("999-888-777")),
+            None,
+            Some("0799887766"),
+            None,
+            None,
+            Some("Arusha"),
+            None,
+            None,
+            None,
+            Some(Some("554433")),
+            Some(Some("+255799887766")),
+            Some("dark"),
+        )
+        .await
+        .unwrap()
+        .expect("Updated business must exist");
+
+        assert_eq!(updated.name, "Updated Pharmacy");
+        assert_eq!(updated.tin, Some("999-888-777".to_string()));
+        assert_eq!(updated.contacts.mobile, "0799887766");
+        assert_eq!(updated.address.region, "Arusha");
+        assert_eq!(updated.lipa_namba, Some("554433".to_string()));
+        assert_eq!(updated.appearance_mode, AppearanceMode::Dark);
     }
 }

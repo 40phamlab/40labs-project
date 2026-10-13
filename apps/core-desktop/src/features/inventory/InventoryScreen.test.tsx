@@ -1,15 +1,19 @@
 import '@testing-library/jest-dom/vitest';
-import { describe, test, expect } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { describe, test, expect, afterEach } from 'vitest';
+import { screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InventoryScreen } from './InventoryScreen';
 import { renderWithProviders } from '../../../../../tests/test-utils';
 
 describe('InventoryScreen Integration', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   test('renders InventoryScreen with toolbar action buttons', async () => {
     renderWithProviders(<InventoryScreen />);
 
-    const addStockButton = screen.getByRole('button', { name: /add stock/i });
+    const addStockButton = screen.getAllByRole('button', { name: /add stock/i })[0];
     expect(addStockButton).toBeInTheDocument();
   });
 
@@ -41,7 +45,7 @@ describe('InventoryScreen Integration', () => {
   test('opens Add Stock modal when Add Stock button is clicked', async () => {
     renderWithProviders(<InventoryScreen />);
 
-    const addStockButton = screen.getByRole('button', { name: /add stock/i });
+    const addStockButton = screen.getAllByRole('button', { name: /add stock/i })[0];
     await userEvent.click(addStockButton);
 
     await waitFor(() => {

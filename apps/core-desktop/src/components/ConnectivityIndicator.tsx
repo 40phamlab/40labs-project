@@ -7,8 +7,8 @@ export const ConnectivityIndicator: React.FC = () => {
   const status = useConnectivityStore((s) => s.status);
   const isOnline = status === 'online';
 
-  const label = isOnline ? t('connectivity.online') : t('connectivity.offline');
-  const ariaLabel = isOnline ? t('connectivity.ariaOnline') : t('connectivity.ariaOffline');
+  const label = isOnline ? t('connectivity.online', 'en') : t('connectivity.offline', 'en');
+  const ariaLabel = isOnline ? t('connectivity.ariaOnline', 'en') : t('connectivity.ariaOffline', 'en');
 
   return (
     <div

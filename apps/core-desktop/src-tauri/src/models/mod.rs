@@ -9,6 +9,7 @@ pub mod purchases;
 pub mod notification;
 pub mod staff_notification;
 pub mod device;
+pub mod integrations;
 
 #[cfg(test)]
 pub const DEFAULT_WORKSPACE_ID: &str = "ws_010101";

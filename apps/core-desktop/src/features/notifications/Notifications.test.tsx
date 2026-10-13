@@ -1,9 +1,13 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ComposerInput } from './components/composer/ComposerInput';
 import { MessageStatusIcon } from './components/renderers/MessageStatusIcon';
 
 describe('Notifications Feature Unit Tests', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('ComposerInput handles Enter to send and Shift+Enter for newline', () => {
     const handleSend = vi.fn();
     const handleChange = vi.fn();

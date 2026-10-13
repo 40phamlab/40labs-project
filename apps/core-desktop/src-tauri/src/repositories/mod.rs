@@ -12,3 +12,4 @@ pub mod credential_repo;
 pub mod recovery_repo;
 pub mod device_binding_repo;
 pub mod business_repo;
+pub mod integrations_repo;

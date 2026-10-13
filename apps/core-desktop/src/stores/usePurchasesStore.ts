@@ -12,8 +12,8 @@ interface PurchasesState {
   createPurchaseOrder: (
     supplierId: string,
     lines: { medicine_id: string; quantity: number; unit_cost: number }[]
-  ) => PurchaseOrder;
-  approvePurchaseOrder: (poId: string) => void;
+  ) => Promise<PurchaseOrder>;
+  approvePurchaseOrder: (poId: string) => Promise<void>;
 }
 
 export const usePurchasesStore = create<PurchasesState>((set) => ({
@@ -23,8 +23,8 @@ export const usePurchasesStore = create<PurchasesState>((set) => ({
 
   setSelectedPOId: (selectedPOId) => set({ selectedPOId }),
 
-  createPurchaseOrder: (supplierId, lines) => {
-    const newPO = purchases.create(supplierId, lines);
+  createPurchaseOrder: async (supplierId, lines) => {
+    const newPO = await purchases.create(supplierId, lines);
 
     set((state) => ({
       purchaseOrders: [newPO, ...state.purchaseOrders],
@@ -34,8 +34,8 @@ export const usePurchasesStore = create<PurchasesState>((set) => ({
     return newPO;
   },
 
-  approvePurchaseOrder: (poId) => {
-    const updatedPO = purchases.approve(poId);
+  approvePurchaseOrder: async (poId) => {
+    const updatedPO = await purchases.approve(poId);
     if (updatedPO) {
       set((state) => ({
         purchaseOrders: state.purchaseOrders.map((po) =>

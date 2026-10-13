@@ -19,6 +19,77 @@ pub struct ExportResult {
     pub folder: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CreateNotificationPayload {
+    pub category: String,
+    pub sender_name: String,
+    pub sender_address: Option<String>,
+    pub body: String,
+    pub channel: Option<String>,
+}
+
+#[tauri::command]
+pub async fn create_notification(
+    state: State<'_, AppState>,
+    payload: CreateNotificationPayload,
+) -> Result<Notification, AuthErrorResponse> {
+    let engine = AuthEngine::new(state.auth_state.clone(), state.pool.clone(), state.keystore.clone());
+    let ctx = engine.require_session().await.map_err(|e| e.to_response())?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let notif_id = format!("notif_{}", uuid::Uuid::new_v4());
+    let subject = format!("{} Notification", payload.category.to_uppercase());
+    let channel = payload.channel.unwrap_or_else(|| "amob".to_string());
+
+    let notif = Notification {
+        id: notif_id.clone(),
+        workspace_id: ctx.workspace_id.clone(),
+        branch_id: ctx.branch_id.clone(),
+        category: payload.category,
+        source_type: "remote".to_string(),
+        sender_name: payload.sender_name,
+        sender_business_id: None,
+        subject,
+        body: payload.body.clone(),
+        status: "unread".to_string(),
+        channel,
+        content_type: Some("text".to_string()),
+        html_content: None,
+        plain_text_content: Some(payload.body.clone()),
+        related_entity_type: None,
+        related_entity_id: None,
+        received_at: now.clone(),
+        created_at: now.clone(),
+        updated_at: now.clone(),
+    };
+
+    NotificationRepository::create(&state.pool, &notif)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    let msg = NotificationMessage {
+        id: format!("msg_{}", uuid::Uuid::new_v4()),
+        workspace_id: ctx.workspace_id.clone(),
+        branch_id: ctx.branch_id.clone(),
+        notification_id: notif_id,
+        direction: "incoming".to_string(),
+        content_type: "text".to_string(),
+        body: payload.body,
+        html_content: None,
+        status: "read".to_string(),
+        sent_at: now.clone(),
+        created_at: now.clone(),
+        updated_at: now,
+        attachments: None,
+    };
+
+    NotificationRepository::create_message(&state.pool, &msg)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    Ok(notif)
+}
+
 #[tauri::command]
 pub async fn get_notifications(
     state: State<'_, AppState>,

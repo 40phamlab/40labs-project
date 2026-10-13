@@ -64,6 +64,12 @@ export interface GetDashboardSummaryOptions {
   nowDate?: Date;
 }
 
+function safeNum(val: unknown): number {
+  if (val === null || val === undefined) return 0;
+  const num = typeof val === 'number' ? val : Number(val);
+  return Number.isFinite(num) ? num : 0;
+}
+
 export function getInitialDashboardSummary(
   options?: GetDashboardSummaryOptions
 ): DashboardSummary {
@@ -81,8 +87,8 @@ export function getInitialDashboardSummary(
 
   // 1. Today's Sales & Transactions
   const todaysSalesTotal = sales
-    .filter((s) => s.created_at.slice(0, 10) === todayStr)
-    .reduce((sum, s) => sum + s.grand_total, 0);
+    .filter((s) => s && s.created_at && s.created_at.slice(0, 10) === todayStr)
+    .reduce((sum, s) => sum + safeNum(s.grand_total), 0);
 
   const transactions = sales.length;
 
@@ -91,51 +97,71 @@ export function getInitialDashboardSummary(
   let monthProfit = 0;
 
   sales.forEach((s) => {
+    if (!s || !s.created_at) return;
     const isToday = s.created_at.slice(0, 10) === todayStr;
     const isThisMonth = s.created_at.slice(0, 7) === currentMonthStr;
 
     if (!isToday && !isThisMonth) return;
 
-    s.lines.forEach((line) => {
-      const invItem = inventoryItems.find((item) => item.id === line.inventory_item_id);
-      if (!invItem || typeof invItem.buy_price !== 'number') {
+    (s.lines || []).forEach((line) => {
+      if (!line) return;
+
+      // Match inventory item using canonical inventory_item_id or medicine_id
+      const invItem = inventoryItems.find(
+        (item) =>
+          item.id === line.inventory_item_id ||
+          (line.medicine_id && item.medicine_id === line.medicine_id)
+      );
+
+      if (!invItem || typeof invItem.buy_price !== 'number' || !Number.isFinite(invItem.buy_price)) {
         console.warn(
-          `[DashboardSummary] Cost price unavailable for line ${line.id} (inventory_item_id: ${line.inventory_item_id})`
+          `[DashboardSummary] Cost price unavailable for line ${line.id} (inventory_item_id: ${line.inventory_item_id}, medicine_id: ${line.medicine_id})`
         );
         return;
       }
 
-      const costPrice = invItem.buy_price;
-      const unitSellPrice = line.unit_price;
-      const lineProfit = (unitSellPrice - costPrice) * line.quantity;
+      const costPrice = safeNum(invItem.buy_price);
+      const unitSellPrice = safeNum(line.unit_price);
+      const qty = safeNum(line.quantity);
+      const lineProfit = (unitSellPrice - costPrice) * qty;
 
-      if (isToday) {
-        todayProfit += lineProfit;
-      }
-      if (isThisMonth) {
-        monthProfit += lineProfit;
+      if (Number.isFinite(lineProfit)) {
+        if (isToday) {
+          todayProfit += lineProfit;
+        }
+        if (isThisMonth) {
+          monthProfit += lineProfit;
+        }
       }
     });
   });
 
   // 3. Pending Purchase Orders (status in 'draft', 'pending')
   const pendingPurchaseOrdersList = purchaseOrders.filter(
-    (po) => po.status === 'draft' || po.status === 'pending'
+    (po) => po && (po.status === 'draft' || po.status === 'pending')
   );
-  const supplierDebt = pendingPurchaseOrdersList.reduce((sum, po) => sum + po.total_cost, 0);
+  const supplierDebt = pendingPurchaseOrdersList.reduce(
+    (sum, po) => sum + safeNum(po.total_cost),
+    0
+  );
 
-  const purchaseOrdersPendingItems: PendingItem[] = pendingPurchaseOrdersList.map((po) => ({
-    id: po.id,
-    kind: 'purchase_order',
-    title: `PO #${po.id.slice(0, 8)}`,
-    subtitle: `${po.lines.length} items • TZS ${po.total_cost.toLocaleString()}`,
-    created_at: po.created_at,
-    target: 'purchases',
-  }));
+  const purchaseOrdersPendingItems: PendingItem[] = pendingPurchaseOrdersList.map((po) => {
+    const totalCostNum = safeNum(po.total_cost);
+    return {
+      id: po.id,
+      kind: 'purchase_order',
+      title: `PO #${po.id.slice(0, 8)}`,
+      subtitle: `${(po.lines || []).length} items • TZS ${totalCostNum.toLocaleString()}`,
+      created_at: po.created_at,
+      target: 'purchases',
+    };
+  });
 
-  // 4. Pending Lab Orders (status in 'pending', 'sample_collected', 'result_entered'; report_ready/unsolved/cancelled out)
+  // 4. Pending Lab Orders
   const pendingLabOrdersList = labOrders.filter(
-    (lo) => lo.status === 'pending' || lo.status === 'sample_collected' || lo.status === 'result_entered'
+    (lo) =>
+      lo &&
+      (lo.status === 'pending' || lo.status === 'sample_collected' || lo.status === 'result_entered')
   );
   const labOrdersPendingItems: PendingItem[] = pendingLabOrdersList.map((lo) => ({
     id: lo.id,
@@ -146,7 +172,6 @@ export function getInitialDashboardSummary(
     target: 'lab',
   }));
 
-  // GAP: Sale entity in packages/types lacks status / held status. No held sales found.
   const heldSalesItems: PendingItem[] = [];
 
   const pending = {
@@ -157,30 +182,33 @@ export function getInitialDashboardSummary(
 
   // 5. Customer Debt & Balance
   const customerDebt = customers.reduce(
-    (sum, c) => sum + (c.outstanding_balance || 0),
+    (sum, c) => sum + safeNum(c.outstanding_balance),
     0
   );
 
   // 6. Inventory Metrics
   const inventoryValue = inventoryItems.reduce(
-    (sum, item) => sum + item.sell_price * item.quantity,
+    (sum, item) => sum + safeNum(item.sell_price) * safeNum(item.quantity),
     0
   );
-  const totalStock = inventoryItems.reduce((sum, i) => sum + i.quantity, 0);
-  const categories = new Set(medicines.map((m) => m.category)).size;
-  const emptyItems = inventoryItems.filter((i) => i.quantity === 0).length;
-  const expiredItems = inventoryItems.filter(
-    (i) => new Date(i.expiry_date) < now
-  ).length;
+  const totalStock = inventoryItems.reduce((sum, i) => sum + safeNum(i.quantity), 0);
+  const categories = new Set(medicines.map((m) => m.category).filter(Boolean)).size;
+  const emptyItems = inventoryItems.filter((i) => safeNum(i.quantity) === 0).length;
+  const expiredItems = inventoryItems.filter((i) => {
+    if (!i.expiry_date) return false;
+    const exp = new Date(i.expiry_date);
+    return !Number.isNaN(exp.getTime()) && exp < now;
+  }).length;
 
   // 7. Patients in Track
   const patientEventMap = new Map<string, PatientInTrack>();
 
   customers.forEach((cust) => {
+    if (!cust) return;
     let latestEvent: PatientInTrack | null = null;
 
     sales
-      .filter((s) => s.customer_id === cust.id)
+      .filter((s) => s && s.customer_id === cust.id)
       .forEach((s) => {
         const candidate: PatientInTrack = {
           customer_id: cust.id,
@@ -198,7 +226,7 @@ export function getInitialDashboardSummary(
       });
 
     labOrders
-      .filter((lo) => lo.customer_id === cust.id)
+      .filter((lo) => lo && lo.customer_id === cust.id)
       .forEach((lo) => {
         let eventType: 'lab_ordered' | 'lab_ready' | null = null;
         if (lo.status === 'report_ready') {
@@ -238,18 +266,18 @@ export function getInitialDashboardSummary(
   );
 
   return {
-    monthlyProfit: monthProfit,
-    profit: todayProfit,
-    todaysSales: todaysSalesTotal,
-    transactions,
-    supplierDebt,
-    customerDebt,
-    customerBalance: customerDebt,
-    inventoryValue,
-    totalStock,
-    categories,
-    emptyItems,
-    expiredItems,
+    monthlyProfit: safeNum(monthProfit),
+    profit: safeNum(todayProfit),
+    todaysSales: safeNum(todaysSalesTotal),
+    transactions: safeNum(transactions),
+    supplierDebt: safeNum(supplierDebt),
+    customerDebt: safeNum(customerDebt),
+    customerBalance: safeNum(customerDebt),
+    inventoryValue: safeNum(inventoryValue),
+    totalStock: safeNum(totalStock),
+    categories: safeNum(categories),
+    emptyItems: safeNum(emptyItems),
+    expiredItems: safeNum(expiredItems),
     pending,
     patientsInTrack,
     sales,

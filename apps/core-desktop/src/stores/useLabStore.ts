@@ -14,24 +14,33 @@ interface LabState {
   setSelectedOrderId: (id: string | null) => void;
   setActiveTab: (tab: 'orders' | 'samples' | 'catalog') => void;
 
-  createOrder: (customerId: string, testCatalogId: string) => LabOrder;
-  collectSample: (orderId: string, sampleLabel: string) => LabSample;
-  enterResult: (orderId: string, value: string, referenceRange: string, isOutOfRange: boolean) => LabResult;
+  createOrder: (customerId: string, testCatalogId: string) => Promise<LabOrder>;
+  collectSample: (orderId: string, sampleLabel: string) => Promise<LabSample>;
+  enterResult: (orderId: string, value: string, referenceRange: string, isOutOfRange: boolean) => Promise<LabResult>;
+  fetchResultsAndCatalog: () => Promise<void>;
 }
 
 export const useLabStore = create<LabState>((set) => ({
   orders: [...initialLabOrders],
   samples: [...initialLabSamples],
-  results: lab.listResults(),
-  catalog: lab.listCatalog(),
+  results: [],
+  catalog: [],
   selectedOrderId: null,
   activeTab: 'orders',
 
   setSelectedOrderId: (selectedOrderId) => set({ selectedOrderId }),
   setActiveTab: (activeTab) => set({ activeTab }),
 
-  createOrder: (customerId, testCatalogId) => {
-    const newOrder = lab.createOrder(customerId, testCatalogId);
+  fetchResultsAndCatalog: async () => {
+    const [results, catalog] = await Promise.all([
+      lab.listResults(),
+      lab.listCatalog(),
+    ]);
+    set({ results, catalog });
+  },
+
+  createOrder: async (customerId, testCatalogId) => {
+    const newOrder = await lab.createOrder(customerId, testCatalogId);
 
     set((state) => ({
       orders: [newOrder, ...state.orders],
@@ -41,8 +50,8 @@ export const useLabStore = create<LabState>((set) => ({
     return newOrder;
   },
 
-  collectSample: (orderId, sampleLabel) => {
-    const newSample = lab.collectSample(orderId, sampleLabel);
+  collectSample: async (orderId, sampleLabel) => {
+    const newSample = await lab.collectSample(orderId, sampleLabel);
 
     set((state) => ({
       samples: [newSample, ...state.samples],
@@ -54,8 +63,8 @@ export const useLabStore = create<LabState>((set) => ({
     return newSample;
   },
 
-  enterResult: (orderId, value, referenceRange, isOutOfRange) => {
-    const newResult = lab.enterResult(orderId, value, referenceRange, isOutOfRange);
+  enterResult: async (orderId, value, referenceRange, isOutOfRange) => {
+    const newResult = await lab.enterResult(orderId, value, referenceRange, isOutOfRange);
 
     set((state) => ({
       results: [newResult, ...state.results],

@@ -8,25 +8,46 @@ import { inventoryApi } from './inventoryApi';
 import { purchasesApi } from './purchasesApi';
 import { labApi } from './labApi';
 import { customersApi } from './customersApi';
-import { isUsingTauriIpc, invokeCommand } from './client';
 
 export type { DashboardSummary, PatientInTrack };
 
 export const dashboardApi = {
   getSummary: async (): Promise<DashboardSummary> => {
-    if (isUsingTauriIpc()) {
-      return invokeCommand<DashboardSummary>('get_dashboard_summary');
+    const [
+      salesRes,
+      inventoryRes,
+      medicinesRes,
+      purchasesRes,
+      labOrdersRes,
+      customersRes,
+    ] = await Promise.allSettled([
+      salesApi.list(),
+      inventoryApi.list(),
+      inventoryApi.listMedicines(),
+      purchasesApi.list(),
+      labApi.listOrders(),
+      customersApi.list(),
+    ]);
+
+    // Critical data checks: sales and inventory
+    if (salesRes.status === 'rejected' && inventoryRes.status === 'rejected') {
+      throw salesRes.reason || inventoryRes.reason || new Error('Failed to load core dashboard data');
     }
 
-    const [salesList, inventoryList, medicinesList, purchasesList, labOrdersList, customersList] =
-      await Promise.all([
-        salesApi.list(),
-        inventoryApi.list(),
-        inventoryApi.listMedicines(),
-        purchasesApi.list(),
-        labApi.listOrders(),
-        customersApi.list(),
-      ]);
+    if (salesRes.status === 'rejected') {
+      throw salesRes.reason;
+    }
+
+    if (inventoryRes.status === 'rejected') {
+      throw inventoryRes.reason;
+    }
+
+    const salesList = salesRes.status === 'fulfilled' ? salesRes.value : [];
+    const inventoryList = inventoryRes.status === 'fulfilled' ? inventoryRes.value : [];
+    const medicinesList = medicinesRes.status === 'fulfilled' ? medicinesRes.value : [];
+    const purchasesList = purchasesRes.status === 'fulfilled' ? purchasesRes.value : [];
+    const labOrdersList = labOrdersRes.status === 'fulfilled' ? labOrdersRes.value : [];
+    const customersList = customersRes.status === 'fulfilled' ? customersRes.value : [];
 
     const inventoryItems = inventoryList.map((item) => ({
       id: item.id,

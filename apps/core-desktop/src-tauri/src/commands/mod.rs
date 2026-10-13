@@ -10,6 +10,8 @@ pub mod devices_cmd;
 pub mod auth_cmd;
 pub mod user_cmd;
 pub mod registration_cmd;
+pub mod business_cmd;
+pub mod integrations_cmd;
 
 #[cfg(test)]
 mod tests {
@@ -42,6 +44,10 @@ mod tests {
             "otp_verify",
             "onboarding_advance",
             "business_set_idle_lock",
+            "get_business",
+            "update_business",
+            "get_integrations_config",
+            "update_integrations_config",
             "get_inventory_list",
             "get_inventory_item",
             "create_stock_item",
@@ -55,14 +61,20 @@ mod tests {
             "get_fiscal_receipts",
             "get_purchase_orders",
             "get_suppliers",
+            "create_purchase_order",
+            "approve_purchase_order",
             "get_lab_orders",
             "create_lab_order",
             "update_lab_order_status",
             "get_lab_samples",
             "collect_lab_sample",
             "update_lab_sample_status",
+            "get_lab_results",
+            "get_test_catalog",
+            "enter_lab_result",
             "get_audit_logs",
             "get_notifications",
+            "create_notification",
             "get_notification_messages",
             "send_notification_message",
             "mark_notification_read",

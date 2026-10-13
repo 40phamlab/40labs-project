@@ -79,6 +79,11 @@ pub fn run() {
             commands::user_cmd::user_update,
             commands::user_cmd::user_set_active,
             commands::user_cmd::user_reset_credentials,
+            // Business & Integrations
+            commands::business_cmd::get_business,
+            commands::business_cmd::update_business,
+            commands::integrations_cmd::get_integrations_config,
+            commands::integrations_cmd::update_integrations_config,
             // Recovery & Registration & Onboarding
             commands::auth_cmd::recovery_regenerate,
             commands::auth_cmd::recovery_generate_initial,
@@ -105,6 +110,8 @@ pub fn run() {
             // Purchases
             commands::purchases_cmd::get_purchase_orders,
             commands::purchases_cmd::get_suppliers,
+            commands::purchases_cmd::create_purchase_order,
+            commands::purchases_cmd::approve_purchase_order,
             // Lab
             commands::lab_cmd::get_lab_orders,
             commands::lab_cmd::create_lab_order,
@@ -112,10 +119,14 @@ pub fn run() {
             commands::lab_cmd::get_lab_samples,
             commands::lab_cmd::collect_lab_sample,
             commands::lab_cmd::update_lab_sample_status,
+            commands::lab_cmd::get_lab_results,
+            commands::lab_cmd::get_test_catalog,
+            commands::lab_cmd::enter_lab_result,
             // Audit
             commands::audit_cmd::get_audit_logs,
             // Notifications & Messages
             commands::notification_cmd::get_notifications,
+            commands::notification_cmd::create_notification,
             commands::notification_cmd::get_notification_messages,
             commands::notification_cmd::send_notification_message,
             commands::notification_cmd::mark_notification_read,
