@@ -15,3 +15,5 @@ export * from './reserved';
 export * from './schedule';
 export * from './integrations';
 export * from './backup';
+export * from './partner-facility';
+export * from './thread';

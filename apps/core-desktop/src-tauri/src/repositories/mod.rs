@@ -8,6 +8,7 @@ pub mod integrations_repo;
 pub mod inventory_repo;
 pub mod lab_repo;
 pub mod notification_repo;
+pub mod partner_facility_repo;
 pub mod purchases_repo;
 pub mod recovery_repo;
 pub mod sales_repo;

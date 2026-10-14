@@ -7,6 +7,7 @@ pub mod integrations_cmd;
 pub mod inventory_cmd;
 pub mod lab_cmd;
 pub mod notification_cmd;
+pub mod partner_facility_cmd;
 pub mod purchases_cmd;
 pub mod registration_cmd;
 pub mod sales_cmd;
@@ -71,9 +72,9 @@ mod tests {
             "update_lab_sample_status",
             "get_lab_results",
             "get_test_catalog",
-            "create_test_catalog_entry",
             "get_lab_stock",
             "get_lab_qc_data",
+            "create_test_catalog_entry",
             "create_lab_qc_equipment",
             "create_lab_qc_record",
             "enter_lab_result",
@@ -95,6 +96,10 @@ mod tests {
             "block_device",
             "unblock_device",
             "remove_device",
+            "partner_facility_list",
+            "partner_facility_create",
+            "partner_facility_update_status",
+            "partner_facility_delete",
         ];
 
         let policy_map = crate::auth::policy::get_command_policy_map();

@@ -145,6 +145,11 @@ pub fn run() {
             commands::devices_cmd::block_device,
             commands::devices_cmd::unblock_device,
             commands::devices_cmd::remove_device,
+            // Partner Facilities
+            commands::partner_facility_cmd::partner_facility_list,
+            commands::partner_facility_cmd::partner_facility_create,
+            commands::partner_facility_cmd::partner_facility_update_status,
+            commands::partner_facility_cmd::partner_facility_delete,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

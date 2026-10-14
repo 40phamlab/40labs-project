@@ -167,5 +167,10 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     );
     map.insert("remove_device", CommandPolicy::Permission("devices.manage"));
 
+    map.insert("partner_facility_list", CommandPolicy::SessionOnly);
+    map.insert("partner_facility_create", CommandPolicy::Permission("settings.manage"));
+    map.insert("partner_facility_update_status", CommandPolicy::Permission("settings.manage"));
+    map.insert("partner_facility_delete", CommandPolicy::Permission("settings.manage"));
+
     map
 }

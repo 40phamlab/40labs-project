@@ -7,6 +7,7 @@ pub mod integrations;
 pub mod inventory;
 pub mod lab;
 pub mod notification;
+pub mod partner_facility;
 pub mod purchases;
 pub mod sales;
 pub mod staff_notification;

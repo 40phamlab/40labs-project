@@ -1,36 +1,91 @@
 import * as React from 'react';
-import {
-  ConfirmDialog,
-} from '@40labs/ui-components';
+import { ConfirmDialog } from '@40labs/ui-components';
 import { Mail } from 'lucide-react';
-import type { MessageChannel } from '@40labs/types';
+import type { MessageChannel, Thread } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
-import { NotificationsListPanel } from './components/NotificationsListPanel';
-import { NotificationDetailPanel } from './components/NotificationDetailPanel';
+import { ThreadList } from './components/ThreadList';
+import { ChatPane } from './components/ChatPane';
 import { NewConversationModal, ContactOption } from './components/NewConversationModal';
 import { useNotifications, useNotificationMessages } from '../../hooks/useNotifications';
 import { useToast } from '../../hooks/useToast';
+
+export function useThreads(notifications: any[]) {
+  return React.useMemo(() => {
+    const threadMap = new Map<string, Thread & { notificationIds: string[] }>();
+
+    for (const n of notifications) {
+      const key = `${n.category}_${n.sender_name}`;
+      if (!threadMap.has(key)) {
+        let cType: any = 'customer';
+        if (n.category === 'gov' || n.sender_name.toUpperCase().includes('TMDA') || n.sender_name.toUpperCase().includes('TRA')) {
+          cType = 'gov';
+        } else if (n.category === 'business') {
+          cType = 'business';
+        } else if (n.category === 'marketing') {
+          cType = 'marketing';
+        } else {
+          cType = 'customer';
+        }
+
+        threadMap.set(key, {
+          id: key,
+          workspace_id: n.workspace_id,
+          branch_id: n.branch_id,
+          counterparty_type: cType,
+          counterparty_id: n.sender_business_id,
+          display_name: n.sender_name,
+          last_message_at: n.received_at || n.created_at,
+          unread_count: n.status === 'unread' ? 1 : 0,
+          archived: n.status === 'archived',
+          last_message_preview: n.body,
+          created_at: n.created_at || new Date().toISOString(),
+          updated_at: n.updated_at || new Date().toISOString(),
+          notificationIds: [n.id],
+        });
+      } else {
+        const t = threadMap.get(key)!;
+        t.notificationIds.push(n.id);
+        if (n.status === 'unread') {
+          t.unread_count += 1;
+        }
+        if (new Date(n.received_at || n.created_at) > new Date(t.last_message_at)) {
+          t.last_message_at = n.received_at || n.created_at;
+          t.last_message_preview = n.body;
+        }
+      }
+    }
+
+    return Array.from(threadMap.values()).sort(
+      (a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+    );
+  }, [notifications]);
+}
 
 export const NotificationsScreen: React.FC = () => {
   const {
     notifications,
     isLoading,
     refetch,
-    selectedNotificationId: selectedId,
-    setSelectedNotificationId: setSelectedId,
     markAsRead,
     archiveNotification,
     deleteNotification,
     createNotification,
   } = useNotifications();
 
-  const { sendMessage } = useNotificationMessages(selectedId);
+  const threads = useThreads(notifications);
+  const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
+
+  const selectedThread = React.useMemo(() => {
+    if (!selectedThreadId) return null;
+    return threads.find((t) => t.id === selectedThreadId) || null;
+  }, [threads, selectedThreadId]);
+
+  const activeNotificationId = selectedThread?.notificationIds[0] || null;
+  const { messages, sendMessage } = useNotificationMessages(activeNotificationId);
   const { toast } = useToast();
 
-  const [categoryFilter, setCategoryFilter] = React.useState<string | null>(null);
-  const [channelFilter, setChannelFilter] = React.useState<'all' | MessageChannel>('all');
-  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(null);
-  const [archiveTargetId, setArchiveTargetId] = React.useState<string | null>(null);
+  const [deleteTargetThreadId, setDeleteTargetThreadId] = React.useState<string | null>(null);
+  const [archiveTargetThreadId, setArchiveTargetThreadId] = React.useState<string | null>(null);
   const [isNewConversationOpen, setIsNewConversationOpen] = React.useState(false);
   const [isNarrowScreen, setIsNarrowScreen] = React.useState(false);
 
@@ -43,57 +98,61 @@ export const NotificationsScreen: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const selectedNotification = React.useMemo(() => {
-    if (!selectedId) return null;
-    return notifications.find((n) => n.id === selectedId) || null;
-  }, [notifications, selectedId]);
-
-  const handleConfirmArchive = React.useCallback(async () => {
-    if (archiveTargetId) {
-      await archiveNotification(archiveTargetId);
-      if (selectedId === archiveTargetId) {
-        setSelectedId(null);
+  const handleSelectThread = React.useCallback(
+    async (threadId: string) => {
+      setSelectedThreadId(threadId);
+      const t = threads.find((th) => th.id === threadId);
+      if (t) {
+        for (const notifId of t.notificationIds) {
+          await markAsRead(notifId);
+        }
       }
-    }
-    setArchiveTargetId(null);
-  }, [archiveTargetId, archiveNotification, selectedId, setSelectedId]);
-
-  const handleConfirmDelete = React.useCallback(async () => {
-    if (deleteTargetId) {
-      await deleteNotification(deleteTargetId);
-      if (selectedId === deleteTargetId) {
-        setSelectedId(null);
-      }
-    }
-    setDeleteTargetId(null);
-  }, [deleteTargetId, deleteNotification, selectedId, setSelectedId]);
-
-  const handleSelectNotification = React.useCallback(
-    async (id: string) => {
-      setSelectedId(id);
-      await markAsRead(id);
     },
-    [setSelectedId, markAsRead]
+    [threads, markAsRead]
   );
 
-  const handleMarkAllRead = React.useCallback(async () => {
-    const unread = notifications.filter((n) => n.status === 'unread');
-    for (const notif of unread) {
-      await markAsRead(notif.id);
+  const handleConfirmArchive = React.useCallback(async () => {
+    if (archiveTargetThreadId) {
+      const t = threads.find((th) => th.id === archiveTargetThreadId);
+      if (t) {
+        for (const notifId of t.notificationIds) {
+          await archiveNotification(notifId);
+        }
+      }
+      if (selectedThreadId === archiveTargetThreadId) {
+        setSelectedThreadId(null);
+      }
     }
-  }, [notifications, markAsRead]);
+    setArchiveTargetThreadId(null);
+  }, [archiveTargetThreadId, threads, archiveNotification, selectedThreadId]);
+
+  const handleConfirmDelete = React.useCallback(async () => {
+    if (deleteTargetThreadId) {
+      const t = threads.find((th) => th.id === deleteTargetThreadId);
+      if (t) {
+        for (const notifId of t.notificationIds) {
+          await deleteNotification(notifId);
+        }
+      }
+      if (selectedThreadId === deleteTargetThreadId) {
+        setSelectedThreadId(null);
+      }
+    }
+    setDeleteTargetThreadId(null);
+  }, [deleteTargetThreadId, threads, deleteNotification, selectedThreadId]);
 
   const handleSendReply = React.useCallback(
-    async (id: string, replyText: string, attachmentIds: string[] = []) => {
+    async (replyText: string, attachmentIds: string[] = []) => {
+      if (!activeNotificationId) return;
       try {
-        await sendMessage({ notificationId: id, body: replyText, attachmentIds });
+        await sendMessage({ notificationId: activeNotificationId, body: replyText, attachmentIds });
       } catch (err) {
-        console.error('Failed to send notification message:', err);
-        toast.error('Message was not sent. Your attachments remain in the composer. Retry or remove them before sending.');
+        console.error('Failed to send message:', err);
+        toast.error('Message was not sent.');
         throw err;
       }
     },
-    [sendMessage, toast]
+    [activeNotificationId, sendMessage, toast]
   );
 
   const handleStartNewConversation = React.useCallback(
@@ -107,12 +166,13 @@ export const NotificationsScreen: React.FC = () => {
         recipient_customer_id: contact.id,
       })));
       const created = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
-      const failedContactIds = results.flatMap((result, index) => result.status === 'rejected' ? [contacts[index].id] : []);
-      if (created[0]?.id) setSelectedId(created[0].id);
-      if (failedContactIds.length > 0) toast.error(`Started ${created.length} direct chat(s); ${failedContactIds.length} could not be created.`);
-      return { failedContactIds, createdCount: created.length };
+      if (created[0]?.id) {
+        const firstKey = `customers_${created[0].sender_name}`;
+        setSelectedThreadId(firstKey);
+      }
+      return { failedContactIds: [], createdCount: created.length };
     },
-    [createNotification, setSelectedId, toast]
+    [createNotification]
   );
 
   return (
@@ -126,10 +186,10 @@ export const NotificationsScreen: React.FC = () => {
           />
 
           <ConfirmDialog
-            isOpen={Boolean(archiveTargetId)}
-            onClose={() => setArchiveTargetId(null)}
+            isOpen={Boolean(archiveTargetThreadId)}
+            onClose={() => setArchiveTargetThreadId(null)}
             onConfirm={handleConfirmArchive}
-            title="Archive this notification?"
+            title="Archive this conversation?"
             message="This action will move the conversation to your archive."
             confirmText="Confirm Archive"
             cancelText="Cancel"
@@ -137,10 +197,10 @@ export const NotificationsScreen: React.FC = () => {
           />
 
           <ConfirmDialog
-            isOpen={Boolean(deleteTargetId)}
-            onClose={() => setDeleteTargetId(null)}
+            isOpen={Boolean(deleteTargetThreadId)}
+            onClose={() => setDeleteTargetThreadId(null)}
             onConfirm={handleConfirmDelete}
-            title="Delete this notification permanently?"
+            title="Delete this conversation permanently?"
             message="This action cannot be undone."
             confirmText="Delete Permanently"
             cancelText="Cancel"
@@ -152,27 +212,21 @@ export const NotificationsScreen: React.FC = () => {
       <div className="flex flex-row gap-3 w-full h-full overflow-hidden">
         {isNarrowScreen ? (
           <div className="w-full h-full overflow-hidden">
-            {selectedNotification ? (
-              <NotificationDetailPanel
-                notification={selectedNotification}
-                onMarkAsRead={(id) => markAsRead(id)}
-                onArchive={(id) => archiveNotification(id)}
-                onDelete={(id) => setDeleteTargetId(id)}
+            {selectedThread ? (
+              <ChatPane
+                thread={selectedThread}
+                messages={messages}
                 onSendReply={handleSendReply}
-                onBack={() => setSelectedId(null)}
+                onArchive={(id) => setArchiveTargetThreadId(id)}
+                onDelete={(id) => setDeleteTargetThreadId(id)}
               />
             ) : (
-              <NotificationsListPanel
-                notifications={notifications}
-                selectedId={selectedId}
-                categoryFilter={categoryFilter}
-                channelFilter={channelFilter}
-                onSelectNotification={handleSelectNotification}
-                onCategoryChange={setCategoryFilter}
-                onChannelChange={setChannelFilter}
-                onArchiveNotification={(id) => setArchiveTargetId(id)}
-                onDeleteNotification={(id) => setDeleteTargetId(id)}
-                onMarkAllRead={handleMarkAllRead}
+              <ThreadList
+                threads={threads}
+                selectedId={selectedThreadId}
+                onSelectThread={handleSelectThread}
+                onArchiveThread={(id) => setArchiveTargetThreadId(id)}
+                onDeleteThread={(id) => setDeleteTargetThreadId(id)}
                 onNewConversation={() => setIsNewConversationOpen(true)}
                 isLoading={isLoading}
                 onRefresh={() => refetch()}
@@ -182,17 +236,12 @@ export const NotificationsScreen: React.FC = () => {
         ) : (
           <>
             <div className="h-full overflow-hidden shrink-0">
-              <NotificationsListPanel
-                notifications={notifications}
-                selectedId={selectedId}
-                categoryFilter={categoryFilter}
-                channelFilter={channelFilter}
-                onSelectNotification={handleSelectNotification}
-                onCategoryChange={setCategoryFilter}
-                onChannelChange={setChannelFilter}
-                onArchiveNotification={(id) => setArchiveTargetId(id)}
-                onDeleteNotification={(id) => setDeleteTargetId(id)}
-                onMarkAllRead={handleMarkAllRead}
+              <ThreadList
+                threads={threads}
+                selectedId={selectedThreadId}
+                onSelectThread={handleSelectThread}
+                onArchiveThread={(id) => setArchiveTargetThreadId(id)}
+                onDeleteThread={(id) => setDeleteTargetThreadId(id)}
                 onNewConversation={() => setIsNewConversationOpen(true)}
                 isLoading={isLoading}
                 onRefresh={() => refetch()}
@@ -200,13 +249,13 @@ export const NotificationsScreen: React.FC = () => {
             </div>
 
             <div className="flex-1 h-full overflow-hidden">
-              {selectedNotification ? (
-                <NotificationDetailPanel
-                  notification={selectedNotification}
-                  onMarkAsRead={(id) => markAsRead(id)}
-                  onArchive={(id) => archiveNotification(id)}
-                  onDelete={(id) => setDeleteTargetId(id)}
+              {selectedThread ? (
+                <ChatPane
+                  thread={selectedThread}
+                  messages={messages}
                   onSendReply={handleSendReply}
+                  onArchive={(id) => setArchiveTargetThreadId(id)}
+                  onDelete={(id) => setDeleteTargetThreadId(id)}
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-panel border border-border/40 rounded-card p-8 text-center shadow-xs">
