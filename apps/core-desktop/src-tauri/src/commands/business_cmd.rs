@@ -32,6 +32,7 @@ pub struct UpdateBusinessPayload {
     pub lipa_namba: Option<Option<String>>,
     pub payment_number: Option<Option<String>>,
     pub appearance_mode: Option<String>,
+    pub language: Option<String>,
 }
 
 #[tauri::command]
@@ -99,6 +100,7 @@ pub async fn update_business(
     let lipa_namba = payload.lipa_namba.as_ref().map(|opt| opt.as_deref());
     let payment_number = payload.payment_number.as_ref().map(|opt| opt.as_deref());
     let appearance_mode = payload.appearance_mode.as_deref();
+    let language = payload.language.as_deref();
 
     let updated = BusinessRepository::update_business_profile(
         &state.pool,
@@ -115,6 +117,7 @@ pub async fn update_business(
         lipa_namba,
         payment_number,
         appearance_mode,
+        language,
     )
     .await
     .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?

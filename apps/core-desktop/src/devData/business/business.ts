@@ -22,7 +22,8 @@ export const initialBusiness: Business = {
     place: 'Kariakoo Market St',
   },
   logo_url: null,
-  appearance_mode: 'light',
+  appearance_mode: 'system',
+  language: 'sw-TZ',
   created_at: nowIso(),
   updated_at: nowIso(),
 };

@@ -26,7 +26,8 @@ export interface Business extends BaseEntity {
     place: string;
   };
   logo_url: string | null;
-  appearance_mode: 'light' | 'dark'; // ONLY toggle — no custom theming per locked decision
+  appearance_mode: 'light' | 'dark' | 'system';
+  language?: 'sw-TZ' | 'en' | string;
   owner_id?: string | null;
   onboarding_state?: OnboardingState;
   business_type?: string | null;

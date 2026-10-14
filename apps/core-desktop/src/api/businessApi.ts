@@ -17,7 +17,8 @@ export interface UpdateBusinessPayload {
     place: string;
   };
   logo_url?: string | null;
-  appearance_mode?: 'light' | 'dark';
+  appearance_mode?: 'light' | 'dark' | 'system';
+  language?: 'sw-TZ' | 'en' | string;
 }
 
 let businessStore: Business = { ...initialBusiness };

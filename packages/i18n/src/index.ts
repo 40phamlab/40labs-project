@@ -19,12 +19,15 @@ export const translations = {
     'nav.collapseSidebar': 'Kunja upande',
     'nav.expandSidebar': 'Panua upande',
 
-    // Settings
+    // Settings & Appearance
     'settings.title': 'Mipangilio',
     'settings.language': 'Lugha',
     'settings.theme': 'Mandhari',
     'settings.dark': 'Giza',
     'settings.light': 'Nuru',
+    'settings.system': 'Mfumo',
+    'settings.kiswahili': 'Kiswahili',
+    'settings.english': 'English',
 
     // Pairing (Verified by user)
     'pairing.title': 'unga kifaa',
@@ -214,12 +217,15 @@ export const translations = {
     'nav.collapseSidebar': 'Collapse sidebar',
     'nav.expandSidebar': 'Expand sidebar',
 
-    // Settings
+    // Settings & Appearance
     'settings.title': 'Settings',
     'settings.language': 'Language',
     'settings.theme': 'Theme',
     'settings.dark': 'Dark',
     'settings.light': 'Light',
+    'settings.system': 'System',
+    'settings.kiswahili': 'Kiswahili',
+    'settings.english': 'English',
 
     // Auth Errors
     'auth.error.invalidCredentials': 'Invalid username or password',

@@ -31,6 +31,7 @@ pub enum OnboardingState {
 pub enum AppearanceMode {
     Light,
     Dark,
+    System,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -62,6 +63,7 @@ pub struct Business {
     pub address: BusinessAddress,
     pub logo_url: Option<String>,
     pub appearance_mode: AppearanceMode,
+    pub language: String,
     pub owner_id: Option<String>,
     pub onboarding_state: Option<OnboardingState>,
     pub business_type: Option<String>,

@@ -24,7 +24,8 @@ export const initialPharmacyBusiness: Business = {
     place: 'Soweto',
   },
   logo_url: null,
-  appearance_mode: 'light',
+  appearance_mode: 'system',
+  language: 'sw-TZ',
 };
 
 export const initialPharmacySecondBusiness: Business = {
@@ -50,7 +51,8 @@ export const initialPharmacySecondBusiness: Business = {
     place: 'Kijitonyama',
   },
   logo_url: null,
-  appearance_mode: 'light',
+  appearance_mode: 'system',
+  language: 'sw-TZ',
 };
 
 export const initialPharmacyBusinesses: Business[] = [initialPharmacyBusiness, initialPharmacySecondBusiness];
