@@ -14,7 +14,7 @@ export const Composer: React.FC<ComposerProps> = ({ onSend, isReadOnly = false }
   if (isReadOnly) {
     return (
       <div className="p-3 bg-panel-strong border-t border-border/40 text-center text-xs text-text-muted">
-        This conversation is read-only (Government notice channel). Replies are disabled per locking rules.
+        Read-Only
       </div>
     );
   }

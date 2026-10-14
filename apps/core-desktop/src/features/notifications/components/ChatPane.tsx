@@ -29,7 +29,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   if (!thread) {
     return (
       <div className="flex-1 h-full flex flex-col items-center justify-center bg-panel text-text-muted p-8 text-center">
-        <p className="text-sm">Select a conversation to start chatting</p>
+        <p className="text-sm">No Conversation Selected</p>
       </div>
     );
   }
