@@ -1,5 +1,5 @@
 use axum::{
-    http::StatusCode,
+    http::{HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -81,9 +81,11 @@ impl IntoResponse for ApiError {
         let mut response = body.into_response();
         *response.status_mut() = status;
         if let Some(ra) = retry {
+            let hv = HeaderValue::from_str(&ra.to_string())
+                .unwrap_or_else(|_| HeaderValue::from(ra));
             response.headers_mut().insert(
                 axum::http::header::RETRY_AFTER,
-                axum::http::HeaderValue::from_str(&ra.to_string()).unwrap(),
+                hv,
             );
         }
         response

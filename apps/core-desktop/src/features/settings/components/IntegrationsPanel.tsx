@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Panel, Toggle, Button, StatusBadge } from '@40labs/ui-components';
+import { Panel, Switch, Button, StatusBadge } from '@40labs/ui-components';
 import { Mail, MessageSquare, Globe, Smartphone, Plus, Trash2 } from 'lucide-react';
 import { useIntegrations } from '../../../hooks/useIntegrations';
 import { useUsers } from '../../../hooks/useUsers';
@@ -101,11 +101,10 @@ export const IntegrationsPanel: React.FC = () => {
                 </span>
               </div>
             </div>
-            <Toggle
+            <Switch
               checked={integrationsConfig.email_connected}
               onChange={handleToggleEmail}
               disabled={isUpdatingIntegrations}
-              label={integrationsConfig.email_connected ? 'Connected' : 'Disconnected'}
             />
           </div>
 
@@ -122,11 +121,10 @@ export const IntegrationsPanel: React.FC = () => {
                 </span>
               </div>
             </div>
-            <Toggle
+            <Switch
               checked={integrationsConfig.whatsapp_connected}
               onChange={handleToggleWhatsapp}
               disabled={isUpdatingIntegrations}
-              label={integrationsConfig.whatsapp_connected ? 'Connected' : 'Disconnected'}
             />
           </div>
 
@@ -219,7 +217,7 @@ export const IntegrationsPanel: React.FC = () => {
             type="button"
             intent="primary"
             size="sm"
-            leftIcon={<Plus size= {14} />}
+            leftIcon={<Plus size={14} />}
             onClick={handleAddCollaborator}
             disabled={!selectedUserId || isUpdatingIntegrations}
           >

@@ -24,7 +24,8 @@ export function useFilePreview() {
 
   const openAttachment = async (att: MessageAttachment) => {
     try {
-      let fileUrl = (att as any).url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+      const attWithUrl = att as MessageAttachment & { url?: string };
+      let fileUrl = attWithUrl.url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
       let absPath = '';
 
       if (isUsingTauriIpc()) {
@@ -43,8 +44,8 @@ export function useFilePreview() {
           try {
             const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
             await revealItemInDir(res.path);
-          } catch (e) {
-            console.error('Failed to reveal item in dir:', e);
+          } catch {
+            toast.error('Failed to reveal item in directory.');
           }
         } else {
           toast.success(`Downloaded ${att.file_name}`);
@@ -64,8 +65,8 @@ export function useFilePreview() {
             try {
               const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
               await revealItemInDir(savedPath);
-            } catch (e) {
-              console.error('Failed to reveal item in dir:', e);
+            } catch {
+              toast.error('Failed to reveal item in directory.');
             }
           }
         } else {
@@ -96,8 +97,7 @@ export function useFilePreview() {
         onOpenExternal: handleOpenExternal,
         onClose: () => setState({ isOpen: false }),
       });
-    } catch (err) {
-      console.error('Failed to open attachment preview:', err);
+    } catch {
       toast.error('Failed to preview attachment.');
     }
   };

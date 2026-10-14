@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ArrowRight } from 'lucide-react';
-import { Avatar, StatusBadge } from '@40labs/ui-components';
+import { Avatar, StatusBadge, Surface } from '@40labs/ui-components';
 import { t } from '@40labs/i18n';
 import { useNavStore } from '../../../stores/useNavStore';
 import { useInventoryStore } from '../../../stores/useInventoryStore';
@@ -63,11 +63,16 @@ export const BottomRow: React.FC<BottomRowProps> = ({ summary }) => {
   return (
     <div className="h-[200px] lg:h-[210px] shrink-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
       {/* Business Health (~5 cols) */}
-      <div className="lg:col-span-5 bg-panel rounded-card border border-border/40 p-4 flex flex-col justify-between elevation-raised min-h-0">
-        <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-text pb-1 border-b border-border/30">
-          {t('dashboard.businessHealth')}
-        </h3>
-
+      <Surface
+        variant="raised"
+        padding="md"
+        className="lg:col-span-5 flex flex-col justify-between min-h-0"
+        header={
+          <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-text">
+            {t('dashboard.businessHealth')}
+          </h3>
+        }
+      >
         <div className="grid grid-cols-2 gap-y-2 gap-x-4 flex-1 pt-1">
           {/* Total Stock */}
           <div className="flex flex-col justify-between group cursor-pointer" onClick={handleViewTotal}>
@@ -124,14 +129,19 @@ export const BottomRow: React.FC<BottomRowProps> = ({ summary }) => {
             </span>
           </div>
         </div>
-      </div>
+      </Surface>
 
       {/* Patients in Track (~7 cols) */}
-      <div className="lg:col-span-7 bg-panel rounded-card border border-border/40 p-4 flex flex-col elevation-raised min-h-0">
-        <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-text pb-1 border-b border-border/30 mb-2">
-          {t('dashboard.patientsInTrack')}
-        </h3>
-
+      <Surface
+        variant="raised"
+        padding="md"
+        className="lg:col-span-7 flex flex-col min-h-0"
+        header={
+          <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-text">
+            {t('dashboard.patientsInTrack')}
+          </h3>
+        }
+      >
         {patients.length === 0 ? (
           <div className="flex-1 flex items-center justify-center text-xs text-text-muted italic">
             {t('dashboard.noPatientsInTrack')}
@@ -164,7 +174,7 @@ export const BottomRow: React.FC<BottomRowProps> = ({ summary }) => {
             })}
           </div>
         )}
-      </div>
+      </Surface>
     </div>
   );
 };

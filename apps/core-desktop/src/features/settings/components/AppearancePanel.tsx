@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Panel, Toggle } from '@40labs/ui-components';
+import { Panel, Switch } from '@40labs/ui-components';
 import type { Business } from '@40labs/types';
 import type { UpdateBusinessPayload } from '../../../hooks/useBusiness';
 import { Moon, Sun } from 'lucide-react';
@@ -46,11 +46,10 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
             </div>
           </div>
 
-          <Toggle
+          <Switch
             checked={isDarkMode}
             onChange={handleToggle}
             disabled={isLoading}
-            label={isDarkMode ? 'Dark Mode' : 'Light Mode'}
           />
         </div>
       </Panel>

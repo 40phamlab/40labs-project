@@ -242,7 +242,6 @@ export function DataTable<T>({
   loadingState,
   error,
   errorTitle,
-  errorMessage,
   errorState,
   onRetry,
   emptyMessage = 'No data available',
@@ -268,27 +267,20 @@ export function DataTable<T>({
   // Handle Error State
   if (error) {
     if (errorState) return <>{errorState}</>;
-    const resolvedMessage =
-      errorMessage ||
-      (typeof error === 'string'
-        ? error
-        : error instanceof Error
-        ? error.message
-        : 'An unexpected error occurred while loading data.');
-    return <ErrorState title={errorTitle} message={resolvedMessage} onRetry={onRetry} />;
+    return <ErrorState title={errorTitle} onRetry={onRetry} />;
   }
 
   // Handle Loading State
   if (loading) {
     if (loadingState) return <>{loadingState}</>;
-    if (loadingMessage) return <LoadingState message={loadingMessage} />;
+    if (loadingMessage) return <LoadingState />;
     return <SkeletonTable rows={5} columns={columns.length} density={actualDensity} />;
   }
 
   // Handle Empty State
   if (!data.length) {
     if (emptyState) return <>{emptyState}</>;
-    return <EmptyState message={emptyMessage} />;
+    return <EmptyState title={emptyMessage} />;
   }
 
   // Selection state calculation

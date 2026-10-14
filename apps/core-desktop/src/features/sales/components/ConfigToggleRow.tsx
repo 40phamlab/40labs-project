@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toggle } from '@40labs/ui-components';
+import { Switch } from '@40labs/ui-components';
 
 export interface ConfigToggleRowProps {
   label: string;
@@ -28,7 +28,7 @@ export const ConfigToggleRow: React.FC<ConfigToggleRowProps> = ({
       <span className="text-sm text-text">{label}</span>
 
       {type === 'switch' ? (
-        <Toggle
+        <Switch
           checked={!!value}
           onChange={onChange || (() => {})}
         />

@@ -178,12 +178,11 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
     try {
       if (nextState) {
-        console.log(`[SupplierStorefront] POST /suppliers/${supplier.id}/follow`);
+        // Followed
       } else {
-        console.log(`[SupplierStorefront] DELETE /suppliers/${supplier.id}/follow`);
+        // Unfollowed
       }
-    } catch (error) {
-      console.error('Failed to toggle follow status:', error);
+    } catch {
       setIsFollowed(!nextState);
     }
   }, [isFollowed, supplier]);
@@ -251,7 +250,6 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
       await updatePurchaseOrder(newDraftPO.id, { approved_by_user_id: 'user_001_sudo' });
     }
 
-    console.log('[SupplierStorefront] Created draft PurchaseOrder:', newDraftPO);
     if (onOrderCreated && newDraftPO) {
       onOrderCreated(newDraftPO);
     }

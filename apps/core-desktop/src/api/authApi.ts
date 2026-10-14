@@ -1,4 +1,4 @@
-import type { Business } from '@40labs/types';
+import type { Business, User } from '@40labs/types';
 import { invokeCommand, isTauriAvailable } from './client';
 import { logAuthDebug } from '../lib/debugLog';
 
@@ -30,22 +30,21 @@ export interface AuthApi {
   changePassword(oldPassword: string, newPassword: string): Promise<void>;
   changePin(oldPin: string, newPin: string): Promise<void>;
   resetOwnPin(password: string, newPin: string): Promise<void>;
-  usersList(): Promise<Array<any>>;
-  userCreate(payload: any): Promise<any>;
-  userUpdate(userId: string, payload: any): Promise<any>;
+  usersList(): Promise<Array<User>>;
+  userCreate(payload: Record<string, unknown>): Promise<User>;
+  userUpdate(userId: string, payload: Record<string, unknown>): Promise<User>;
   userSetActive(userId: string, active: boolean): Promise<void>;
   userResetCredentials(userId: string): Promise<string>;
   recoveryRedeem(username: string, code: string, newPassword: string): Promise<void>;
   recoveryRegenerate(password: string): Promise<Array<string>>;
   recoveryGenerateInitial(): Promise<Array<string>>;
-  registrationCommit(payload: any): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>;
+  registrationCommit(payload: Record<string, unknown>): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>;
   otpRequest(phone: string): Promise<void>;
   otpVerify(phone: string, code: string): Promise<string>;
   onboardingAdvance(state: string): Promise<void>;
   businessSetIdleLock(minutes: number): Promise<void>;
 }
 
-// Mock initial state: session: null, deviceBound: false, business: null, no seeded users
 let mockState: AuthStatusResponse = {
   deviceBound: false,
   business: null,
@@ -69,9 +68,9 @@ export const tauriAuthApi: AuthApi = {
   changePassword: (oldPassword, newPassword) => invokeCommand<void>('auth_change_password', { oldPassword, newPassword }),
   changePin: (oldPin, newPin) => invokeCommand<void>('auth_change_pin', { oldPin, newPin }),
   resetOwnPin: (password, newPin) => invokeCommand<void>('auth_reset_own_pin', { password, newPin }),
-  usersList: () => invokeCommand<Array<any>>('user_list'),
-  userCreate: (payload) => invokeCommand<any>('user_create', { payload }),
-  userUpdate: (userId, payload) => invokeCommand<any>('user_update', { userId, payload }),
+  usersList: () => invokeCommand<Array<User>>('user_list'),
+  userCreate: (payload) => invokeCommand<User>('user_create', { payload }),
+  userUpdate: (userId, payload) => invokeCommand<User>('user_update', { userId, payload }),
   userSetActive: (userId, active) => invokeCommand<void>('user_set_active', { userId, active }),
   userResetCredentials: (userId) => invokeCommand<string>('user_reset_credentials', { userId }),
   recoveryRedeem: (username, code, newPassword) => invokeCommand<void>('recovery_redeem', { username, code, newPassword }),
@@ -152,8 +151,8 @@ export const mockAuthApi: AuthApi = {
   changePin: async () => {},
   resetOwnPin: async () => {},
   usersList: async () => [],
-  userCreate: async (p) => p,
-  userUpdate: async (_id, p) => p,
+  userCreate: async (p) => p as unknown as User,
+  userUpdate: async (_id, p) => p as unknown as User,
   userSetActive: async () => {},
   userResetCredentials: async () => 'temp-pass-123',
   recoveryRedeem: async (username, code, newPassword) => {
@@ -165,29 +164,33 @@ export const mockAuthApi: AuthApi = {
   recoveryGenerateInitial: async () => ['ABCDE-12345', 'FGHIJ-67890'],
   registrationCommit: async (payload) => {
     mockState.deviceBound = true;
-    mockState.business = {
+    const biz: Business = {
       id: 'biz-1',
       business_id: 'AFYA-TEST01',
       workspace_id: 'ws-01',
       branch_id: 'branch-1',
-      name: payload.business_name || 'Afya Bora Pharmacy',
+      name: (payload.business_name as string) || 'Afya Bora Pharmacy',
       tin: null,
       tmda_number: null,
       role_scopes: payload.role_scopes === 'lab' ? ['lab'] : payload.role_scopes === 'both' ? ['pharmacy', 'lab'] : ['pharmacy'],
       tier: 'free',
-      business_type: payload.business_type || 'Pharmacy',
-      scale: payload.scale || 'medium',
-      logo_url: payload.logo_data_url || null,
+      business_type: (payload.business_type as string) || 'Pharmacy',
+      scale: (payload.scale as string) || 'medium',
+      logo_url: (payload.logo_data_url as string) || null,
       appearance_mode: 'light',
-      contacts: { mobile: payload.business_phone || payload.owner_phone || null, email: payload.business_email || payload.owner_email || null, whatsapp: null },
-      address: { region: payload.region || '', district: payload.district || '', place: payload.mtaa || payload.kata || '' },
+      contacts: {
+        mobile: (payload.business_phone as string) || (payload.owner_phone as string) || 'N/A',
+        email: (payload.business_email as string) || (payload.owner_email as string) || null,
+        whatsapp: null,
+      },
+      address: { region: (payload.region as string) || '', district: (payload.district as string) || '', place: (payload.mtaa as string) || (payload.kata as string) || '' },
       country: 'TZ',
-      address_ward: payload.kata || null,
-      address_area: payload.mtaa || null,
-      latitude: payload.latitude ?? null,
-      longitude: payload.longitude ?? null,
-      lipa_namba: payload.lipa_namba || null,
-      payment_number: payload.payment_number || null,
+      address_ward: (payload.kata as string) || null,
+      address_area: (payload.mtaa as string) || null,
+      latitude: (payload.latitude as number) ?? null,
+      longitude: (payload.longitude as number) ?? null,
+      lipa_namba: (payload.lipa_namba as string) || null,
+      payment_number: (payload.payment_number as string) || null,
       declared_branch_count: Number(payload.declared_branch_count || 1),
       owner_id: 'user-sudo-1',
       onboarding_state: 'setup_complete',
@@ -200,14 +203,15 @@ export const mockAuthApi: AuthApi = {
       created_at: '2026-10-01T00:00:00Z',
       updated_at: '2026-10-01T00:00:00Z',
     };
+    mockState.business = biz;
     mockState.session = null;
-    return { business_id: mockState.business.business_id, workspace_id: mockState.business.workspace_id, branch_id: mockState.business.branch_id };
+    return { business_id: biz.business_id, workspace_id: biz.workspace_id, branch_id: biz.branch_id };
   },
   otpRequest: async () => {},
   otpVerify: async () => 'mock-verification-token',
   onboardingAdvance: async (state) => {
     if (mockState.business) {
-      mockState.business.onboarding_state = state as any;
+      mockState.business.onboarding_state = state as Business['onboarding_state'];
     }
   },
   businessSetIdleLock: async (minutes) => {
@@ -242,16 +246,17 @@ export const authApi: AuthApi = new Proxy({} as AuthApi, {
 
     const fn = activeApi[prop];
     if (typeof fn === 'function') {
-      return async (...args: any[]) => {
+      return async (...args: unknown[]) => {
         const start = performance.now();
         try {
-          const res = await (fn as any)(...args);
+          const res = await (fn as (...a: unknown[]) => Promise<unknown>)(...args);
           const duration = Math.round(performance.now() - start);
           logAuthDebug(String(prop), duration, true);
           return res;
-        } catch (err: any) {
+        } catch (err: unknown) {
           const duration = Math.round(performance.now() - start);
-          const code = err?.code || 'ERROR';
+          const errObj = err as { code?: string };
+          const code = errObj?.code || 'ERROR';
           logAuthDebug(String(prop), duration, false, code);
           throw err;
         }

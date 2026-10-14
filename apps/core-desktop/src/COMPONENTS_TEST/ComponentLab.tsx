@@ -45,7 +45,6 @@ import {
   Select,
   Checkbox,
   Radio,
-  Toggle,
   Switch,
   DateInput,
   Breadcrumbs,
@@ -74,6 +73,8 @@ import {
   LoadingState,
   StatusBadge,
   AppShell,
+  Screen,
+  Surface,
 } from '@40labs/ui-components';
 import { Numpad } from '../features/sales/components/Numpad';
 import { ReceiptPreview } from '../features/sales/components/ReceiptPreview';
@@ -393,8 +394,8 @@ export function ComponentLab() {
                       <span className="text-xs">Switch</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Toggle checked={toggleVal} onChange={setToggleVal} />
-                      <span className="text-xs">Toggle</span>
+                      <Switch checked={toggleVal} onChange={setToggleVal} />
+                      <span className="text-xs">Switch 2</span>
                     </div>
                   </div>
                 </div>
@@ -467,14 +468,13 @@ export function ComponentLab() {
             <CardBody className="space-y-8">
               <div className="space-y-2">
                 <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Loading State</p>
-                <LoadingState message="Fetching Inventory..." />
+                <LoadingState />
               </div>
 
               <div className="space-y-2">
                 <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Empty State</p>
                 <EmptyState
                   title="No Orders Found"
-                  message="We couldn't find any orders matching your criteria."
                   action={<Button size="sm" intent="secondary">Clear Filters</Button>}
                 />
               </div>
@@ -525,6 +525,40 @@ export function ComponentLab() {
                 <Settings size={12} /> Tooltip Trigger
               </span>
             </Tooltip>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. SCREEN & SURFACE (R2-C LAYOUT COLLAPSE) */}
+      <section className="space-y-6">
+        <h2 className="text-xl font-heading font-bold text-primary border-b border-border/30 pb-2">8. Screen & Surface (R2-C Layout Collapse)</h2>
+
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider">Surface Variants & Padding</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Surface variant="flat" padding="sm" header={<span>Flat Surface (sm)</span>} footer={<span>Footer slot</span>}>
+              Content inside flat surface.
+            </Surface>
+            <Surface variant="raised" padding="md" header={<span>Raised Surface (md)</span>} footer={<span>Footer slot</span>}>
+              Content inside raised surface (elevation-raised).
+            </Surface>
+            <Surface variant="inset" padding="none">
+              <div className="p-4">Inset Surface (padding none + custom inner padding).</div>
+            </Surface>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-text-muted uppercase tracking-wider">Screen Component Preview</h3>
+          <div className="h-[400px] border border-border rounded-card overflow-hidden">
+            <Screen toolbar={<div className="text-xs font-bold text-accent">Toolbar Slot Inside Screen</div>} scroll>
+              <div className="space-y-4">
+                <Surface variant="raised" padding="md">
+                  <h4 className="font-bold text-sm">Screen Body Content</h4>
+                  <p className="text-xs text-text-muted mt-1">Screen enforces p-3 padding and single controlled scroll region.</p>
+                </Surface>
+              </div>
+            </Screen>
           </div>
         </div>
       </section>

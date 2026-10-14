@@ -255,7 +255,6 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
           <div className="my-auto p-4">
             <EmptyState
               variant={searchQuery.trim() ? 'filtered' : 'empty'}
-              description={searchQuery.trim() ? `No matches for "${searchQuery}"` : undefined}
               compact
             />
           </div>

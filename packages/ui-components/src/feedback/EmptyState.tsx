@@ -11,9 +11,6 @@ export interface EmptyStateProps {
   icon?: React.ReactNode;
   title?: string;
   titleKey?: TranslationKey | string;
-  description?: string;
-  descriptionKey?: TranslationKey | string;
-  message?: string;
   action?: {
     label?: string;
     labelKey?: TranslationKey | string;
@@ -40,28 +37,16 @@ const defaultTitleKeys: Record<EmptyStateVariant, TranslationKey> = {
   noAccess: 'emptystate.noAccess.title',
 };
 
-const defaultDescKeys: Record<EmptyStateVariant, TranslationKey> = {
-  empty: 'emptystate.empty.desc',
-  filtered: 'emptystate.filtered.desc',
-  error: 'emptystate.error.desc',
-  offline: 'emptystate.offline.desc',
-  noAccess: 'emptystate.noAccess.desc',
-};
-
 export const EmptyState: React.FC<EmptyStateProps> = ({
   icon,
   title,
   titleKey,
-  description,
-  descriptionKey,
-  message,
   action,
   variant = 'empty',
   compact = false,
   className = '',
 }) => {
   const resolvedTitle = title || t(titleKey ? (titleKey as any) : defaultTitleKeys[variant]);
-  const resolvedDesc = description || message || t(descriptionKey ? (descriptionKey as any) : defaultDescKeys[variant]);
   const resolvedIcon = icon || defaultIcons[variant];
 
   const renderAction = () => {
@@ -99,11 +84,6 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       <h3 className="font-heading text-[16px] leading-[24px] font-semibold text-text-primary">
         {resolvedTitle}
       </h3>
-      {resolvedDesc && (
-        <p className="text-ui-small text-text-secondary mt-1">
-          {resolvedDesc}
-        </p>
-      )}
       {renderAction()}
     </div>
   );

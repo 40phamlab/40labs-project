@@ -16,6 +16,8 @@ export const translations = {
     'nav.notifications': 'Taarifa',
     'nav.settings': 'Mipangilio',
     'nav.history': 'Historia',
+    'nav.collapseSidebar': 'Kunja upande',
+    'nav.expandSidebar': 'Panua upande',
 
     // Settings
     'settings.title': 'Mipangilio',
@@ -209,6 +211,8 @@ export const translations = {
     'nav.notifications': 'Notifications',
     'nav.settings': 'Settings',
     'nav.history': 'History',
+    'nav.collapseSidebar': 'Collapse sidebar',
+    'nav.expandSidebar': 'Expand sidebar',
 
     // Settings
     'settings.title': 'Settings',

@@ -45,6 +45,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         panic!("Refusing to start: Console OTP provider not allowed in production.");
     }
 
+    if config.app_env.to_lowercase() == "production" {
+        let is_invalid = config.activation_signing_key.is_empty()
+            || hex::decode(&config.activation_signing_key).map(|d| d.len() < 32).unwrap_or(true);
+        if is_invalid {
+            panic!("Refusing to start in production mode: ACTIVATION_SIGNING_KEY must be a valid hex string of at least 32 bytes.");
+        }
+    }
+
     if config.sms_mode.to_lowercase() == "live" || config.otp_provider.to_lowercase() == "nextsms" {
         if config.nextsms_api_token.is_empty() || config.nextsms_sender_id.is_empty() {
             if config.app_env.to_lowercase() == "production" {

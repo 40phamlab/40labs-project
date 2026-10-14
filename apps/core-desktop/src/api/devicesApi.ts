@@ -16,8 +16,8 @@ export const devicesApi = {
     if (isTauriAvailable()) {
       try {
         return await invokeCommand<PairedDevice[]>('get_paired_devices');
-      } catch (err) {
-        console.warn('Tauri get_paired_devices failed, falling back to mock memory store', err);
+      } catch {
+        // Fallback to mock memory store
       }
     }
     return [...devicesStore];
@@ -27,8 +27,8 @@ export const devicesApi = {
     if (isTauriAvailable()) {
       try {
         return await invokeCommand<PairingSessionInfo>('initiate_pairing_session', { userId, permissions });
-      } catch (err) {
-        console.warn('Tauri initiate_pairing_session failed, generating mock session', err);
+      } catch {
+        // Fallback to mock session
       }
     }
     const sessionId = `sess_${Math.random().toString(36).substring(2, 9)}`;
@@ -47,8 +47,8 @@ export const devicesApi = {
       try {
         await invokeCommand('update_device_permissions', { payload: { deviceId, permissions } });
         return;
-      } catch (err) {
-        console.warn('Tauri update_device_permissions failed, updating mock store', err);
+      } catch {
+        // Fallback
       }
     }
   },
@@ -60,8 +60,8 @@ export const devicesApi = {
         const list = await invokeCommand<PairedDevice[]>('get_paired_devices');
         const found = list.find((d) => d.id === id);
         if (found) return found;
-      } catch (err) {
-        console.warn('Tauri block_device failed', err);
+      } catch {
+        // Fallback
       }
     }
     const idx = devicesStore.findIndex((d) => d.id === id);
@@ -82,8 +82,8 @@ export const devicesApi = {
         const list = await invokeCommand<PairedDevice[]>('get_paired_devices');
         const found = list.find((d) => d.id === id);
         if (found) return found;
-      } catch (err) {
-        console.warn('Tauri unblock_device failed', err);
+      } catch {
+        // Fallback
       }
     }
     const idx = devicesStore.findIndex((d) => d.id === id);
@@ -102,8 +102,8 @@ export const devicesApi = {
       try {
         await invokeCommand('remove_device', { id });
         return true;
-      } catch (err) {
-        console.warn('Tauri remove_device failed', err);
+      } catch {
+        // Fallback
       }
     }
     const idx = devicesStore.findIndex((d) => d.id === id);

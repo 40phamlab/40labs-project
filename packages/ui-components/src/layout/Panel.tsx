@@ -1,23 +1,7 @@
-import * as React from 'react';
+import { Surface, SurfaceProps } from './Surface';
 
-export interface PanelProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'flat' | 'raised' | 'inset';
-  children?: React.ReactNode;
-}
+export interface PanelProps extends Omit<SurfaceProps, 'header' | 'footer'> {}
 
-export function Panel({ variant = 'flat', className = '', children, ...props }: PanelProps) {
-  const variantClasses = {
-    flat: 'bg-surface-secondary/40',
-    raised: 'bg-surface-primary elevation-raised',
-    inset: 'bg-surface-secondary/60 elevation-inset',
-  };
-
-  return (
-    <div
-      className={['rounded-card text-text', variantClasses[variant], className].join(' ')}
-      {...props}
-    >
-      {children}
-    </div>
-  );
+export function Panel({ variant = 'flat', padding = 'md', ...props }: PanelProps) {
+  return <Surface variant={variant} padding={padding} {...props} />;
 }

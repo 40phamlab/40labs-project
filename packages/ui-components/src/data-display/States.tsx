@@ -5,12 +5,10 @@ import { Skeleton } from '../feedback/Skeleton';
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableDensity } from './Table';
 
 export interface LoadingStateProps {
-  message?: string;
   className?: string;
 }
 
 export const LoadingState: React.FC<LoadingStateProps> = ({
-  message = 'Loading data...',
   className = '',
 }) => {
   return (
@@ -20,15 +18,13 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
         ${className}
       `}
     >
-      <Spinner size="md" className="mb-3 text-primary" />
-      <span className="text-xs font-bold uppercase tracking-wider text-text-muted">{message}</span>
+      <Spinner size="md" className="text-primary" />
     </div>
   );
 };
 
 export interface ErrorStateProps {
   title?: string;
-  message?: string;
   onRetry?: () => void;
   retryText?: string;
   className?: string;
@@ -36,9 +32,8 @@ export interface ErrorStateProps {
 
 export const ErrorState: React.FC<ErrorStateProps> = ({
   title = 'Failed to load data',
-  message = 'We encountered an error while fetching your data. Please try again.',
   onRetry,
-  retryText = 'Retry Connection',
+  retryText = 'Retry',
   className = '',
 }) => {
   return (
@@ -51,8 +46,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
       <div className="text-danger mb-3 p-2 bg-danger/10 rounded-full">
         <AlertTriangle size={28} />
       </div>
-      <h3 className="text-sm font-bold text-text mb-1">{title}</h3>
-      <p className="text-xs text-text-muted max-w-sm mb-5">{message}</p>
+      <h3 className="text-sm font-bold text-text mb-3">{title}</h3>
       {onRetry && (
         <button
           type="button"
@@ -68,14 +62,12 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 
 export interface SuccessStateProps {
   title?: string;
-  message?: string;
   action?: React.ReactNode;
   className?: string;
 }
 
 export const SuccessState: React.FC<SuccessStateProps> = ({
-  title = 'Success!',
-  message = 'Your operation has been completed successfully.',
+  title = 'Success',
   action,
   className = '',
 }) => {
@@ -89,8 +81,7 @@ export const SuccessState: React.FC<SuccessStateProps> = ({
       <div className="text-primary mb-3">
         <CheckCircle size={32} />
       </div>
-      <h3 className="text-sm font-bold text-text mb-1">{title}</h3>
-      <p className="text-xs text-text-muted max-w-xs">{message}</p>
+      <h3 className="text-sm font-bold text-text">{title}</h3>
       {action && <div className="mt-5">{action}</div>}
     </div>
   );

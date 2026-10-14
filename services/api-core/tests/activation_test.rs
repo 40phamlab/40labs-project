@@ -53,13 +53,32 @@ fn test_grant_signing_and_tamper_rejection() {
 }
 
 #[test]
-fn test_rate_limiter() {
+fn test_empty_key_rejected() {
+    let payload = ActivationGrantPayload {
+        business_id: generate_business_id(),
+        workspace_id: "ws_test".into(),
+        branch_id: "branch_test".into(),
+        phone_hash: "hash123".into(),
+        issued_at: "2025-01-01T00:00:00Z".into(),
+    };
+    assert!(sign_grant(&payload, "").is_err());
+    assert!(sign_grant(&payload, "invalidshortkey").is_err());
+}
+
+#[test]
+fn test_rate_limiter_evicts() {
     let limiter = RateLimiter::new();
     let key = "test_key";
 
     assert!(limiter.check_rate_limit(key, 2, Duration::from_secs(60)).is_ok());
     assert!(limiter.check_rate_limit(key, 2, Duration::from_secs(60)).is_ok());
+    assert!(limiter.check_rate_limit(key, 2, Duration::from_secs(60)).is_err());
 
-    let res = limiter.check_rate_limit(key, 2, Duration::from_secs(60));
-    assert!(res.is_err());
+    // Trigger eviction sweep by adding many keys
+    for i in 0..1200 {
+        let k = format!("evict_key_{}", i);
+        let _ = limiter.check_rate_limit(&k, 1, Duration::from_secs(1));
+    }
+
+    assert!(limiter.check_rate_limit("post_evict_key", 1, Duration::from_secs(60)).is_ok());
 }

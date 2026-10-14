@@ -25,7 +25,6 @@ export const SaleCartList: React.FC<SaleCartListProps> = ({
         <EmptyState
           variant="empty"
           title="Active Cart is Empty"
-          description="Search and click any medicine from the right panel to add it to this sale."
           compact
         />
       </div>

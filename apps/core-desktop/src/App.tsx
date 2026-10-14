@@ -102,7 +102,6 @@ export default function App() {
           <TabContainer
             isEmpty
             emptyTitle={`${label.replace('-', ' ')} Module`}
-            emptyMessage="This module is currently under development and will be available soon."
           />
         );
       }

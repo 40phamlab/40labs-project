@@ -9,7 +9,7 @@ import {
   FlaskConical,
   CheckCircle2,
 } from 'lucide-react';
-import { SearchInput, Badge } from '@40labs/ui-components';
+import { SearchInput, Badge, Surface } from '@40labs/ui-components';
 import { t } from '@40labs/i18n';
 import { useNavStore } from '../../../stores/useNavStore';
 import { useCustomersStore } from '../../../stores/useCustomersStore';
@@ -93,7 +93,7 @@ export const RightWorkspacePanel: React.FC<RightWorkspacePanelProps> = ({
   const totalPending = summary.pending.total;
 
   return (
-    <div className="bg-panel rounded-card border border-border/40 p-4 elevation-raised flex flex-col gap-4">
+    <Surface variant="raised" padding="md" className="flex flex-col gap-4">
       {/* 1. Search Section */}
       <div className="relative">
         <SearchInput
@@ -105,10 +105,9 @@ export const RightWorkspacePanel: React.FC<RightWorkspacePanelProps> = ({
         />
       </div>
 
-      {/* Divider */}
       <div className="border-t border-border/20" />
 
-      {/* 2. Quick Actions (Compact Action Tiles / Buttons without inner cards) */}
+      {/* 2. Quick Actions */}
       <div className="flex flex-col gap-2">
         <span className="font-heading text-[10px] font-bold uppercase tracking-wider text-text-muted px-0.5">
           {t('dashboard.quickActions')}
@@ -132,10 +131,9 @@ export const RightWorkspacePanel: React.FC<RightWorkspacePanelProps> = ({
         </div>
       </div>
 
-      {/* Divider */}
       <div className="border-t border-border/20" />
 
-      {/* 3. Pending / Notifications (Dense List-Based Layout without inner cards) */}
+      {/* 3. Pending / Notifications */}
       <div className="flex flex-col gap-2.5 flex-1">
         <div className="flex items-center justify-between px-0.5">
           <span className="font-heading text-[10px] font-bold uppercase tracking-wider text-text-muted">
@@ -156,7 +154,6 @@ export const RightWorkspacePanel: React.FC<RightWorkspacePanelProps> = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {/* Purchase Orders Dense List */}
               {poItems.length > 0 && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[10px] font-bold text-text-muted px-0.5">
@@ -196,7 +193,6 @@ export const RightWorkspacePanel: React.FC<RightWorkspacePanelProps> = ({
                 </div>
               )}
 
-              {/* Lab Tests Dense List */}
               {labItems.length > 0 && (
                 <div className="space-y-1">
                   <div className="flex items-center justify-between text-[10px] font-bold text-text-muted px-0.5">
@@ -239,6 +235,6 @@ export const RightWorkspacePanel: React.FC<RightWorkspacePanelProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </Surface>
   );
 };

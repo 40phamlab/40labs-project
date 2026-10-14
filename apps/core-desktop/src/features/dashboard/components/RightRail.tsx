@@ -8,7 +8,7 @@ import {
   FlaskConical,
   Lock,
 } from 'lucide-react';
-import { SearchInput, Badge, Tooltip } from '@40labs/ui-components';
+import { SearchInput, Badge, Tooltip, Surface } from '@40labs/ui-components';
 import { t } from '@40labs/i18n';
 import { useNavStore } from '../../../stores/useNavStore';
 import { useCustomersStore } from '../../../stores/useCustomersStore';
@@ -86,7 +86,7 @@ export const RightRail: React.FC<RightRailProps> = ({
   const labItems = summary.pending.labOrders;
 
   return (
-    <div className="bg-panel rounded-card border border-border/40 p-4 elevation-raised flex flex-col gap-3.5 h-full overflow-hidden">
+    <Surface variant="raised" padding="md" className="flex flex-col gap-3.5 h-full overflow-hidden">
       {/* 1. Search Section */}
       <div className="relative shrink-0">
         <SearchInput
@@ -100,7 +100,7 @@ export const RightRail: React.FC<RightRailProps> = ({
 
       <div className="border-t border-border/20 shrink-0" />
 
-      {/* 2. Quick Actions (2x2 Text Buttons) */}
+      {/* 2. Quick Actions */}
       <div className="flex flex-col gap-1.5 shrink-0">
         <span className="font-heading text-[10px] font-bold uppercase tracking-wider text-text-muted px-0.5">
           {t('dashboard.quickActions')}
@@ -126,7 +126,7 @@ export const RightRail: React.FC<RightRailProps> = ({
 
       <div className="border-t border-border/20 shrink-0" />
 
-      {/* 3. Pending / Notifications (THREE TILED SECTIONS: Purchases Orders, ePharmacy, 40Labs) */}
+      {/* 3. Pending / Notifications */}
       <div className="flex flex-col gap-3 flex-1 min-h-0 overflow-y-auto pr-0.5">
         <span className="font-heading text-[10px] font-bold uppercase tracking-wider text-text-muted px-0.5 shrink-0">
           {t('dashboard.pending')}
@@ -230,7 +230,7 @@ export const RightRail: React.FC<RightRailProps> = ({
           )}
         </div>
 
-        {/* Tile 3: ePharmacy (Disabled tile per design) */}
+        {/* Tile 3: ePharmacy */}
         <Tooltip content={t('dashboard.comingSoon')}>
           <div className="bg-surface-secondary/30 rounded border border-border/10 p-2.5 flex items-center justify-between opacity-60 cursor-not-allowed">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -243,6 +243,6 @@ export const RightRail: React.FC<RightRailProps> = ({
           </div>
         </Tooltip>
       </div>
-    </div>
+    </Surface>
   );
 };

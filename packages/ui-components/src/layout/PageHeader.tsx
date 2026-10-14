@@ -3,8 +3,6 @@ import * as React from 'react';
 export interface PageHeaderProps {
   /** Primary page title (string or custom React node) */
   title: React.ReactNode;
-  /** Subtitle or explanatory text */
-  subtitle?: React.ReactNode;
   /** Optional status or category badge displayed adjacent to title */
   badge?: React.ReactNode;
   /** Optional breadcrumbs rendered above header title */
@@ -16,15 +14,8 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-/**
- * PageHeader
- *
- * Standardized header component for all desktop pages in the 40Labs layout system.
- * Enforces title typography, consistent header height, subtitle formatting, and action layout.
- */
 export function PageHeader({
   title,
-  subtitle,
   badge,
   breadcrumbs,
   actions,
@@ -49,11 +40,6 @@ export function PageHeader({
             )}
             {badge && <div className="shrink-0">{badge}</div>}
           </div>
-          {subtitle && (
-            <p className="text-xs text-text-muted mt-0.5 leading-normal truncate">
-              {subtitle}
-            </p>
-          )}
         </div>
 
         {actions && (

@@ -1,24 +1,12 @@
 import * as React from 'react';
+import { Surface, SurfaceProps } from '../layout/Surface';
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface CardProps extends SurfaceProps {
   interactive?: boolean;
-  children?: React.ReactNode;
 }
 
-export function Card({ interactive = false, className = '', children, ...rest }: CardProps) {
-  return (
-    <div
-      className={[
-        'bg-panel rounded-card text-text overflow-hidden',
-        'elevation-raised',
-        interactive ? 'hover:elevation-hover cursor-pointer transition-shadow duration-150 ease-out' : '',
-        className,
-      ].filter(Boolean).join(' ')}
-      {...rest}
-    >
-      {children}
-    </div>
-  );
+export function Card({ variant = 'raised', padding = 'md', ...props }: CardProps) {
+  return <Surface variant={variant} padding={padding} {...props} />;
 }
 
 export function CardHeader({ className = '', children, ...props }: React.HTMLAttributes<HTMLDivElement>) {

@@ -1,11 +1,9 @@
 import * as React from 'react';
 import { ArrowRight, ShoppingBag, FlaskConical, CheckCircle2 } from 'lucide-react';
-import { Badge } from '@40labs/ui-components';
+import { Badge, Surface } from '@40labs/ui-components';
 import { t } from '@40labs/i18n';
 import { useNavStore } from '../../../stores/useNavStore';
 import type { DashboardSummary } from '../../../devData/dashboard/summary';
-
-// GAP: SummaryPanel component is not present in @40labs/ui-components package.
 
 interface PendingPanelProps {
   summary: DashboardSummary;
@@ -34,18 +32,21 @@ export const PendingPanel: React.FC<PendingPanelProps> = ({ summary }) => {
   const totalPending = summary.pending.total;
 
   return (
-    <div className="bg-panel rounded-card border border-border/50 p-4 elevation-raised flex flex-col gap-3">
-      {/* Panel Header */}
-      <div className="flex items-center justify-between border-b border-border/30 pb-2">
-        <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-text">
-          {t('dashboard.pending')}
-        </h3>
-        <Badge variant={totalPending > 0 ? 'warning' : 'neutral'} size="sm">
-          {totalPending}
-        </Badge>
-      </div>
-
-      {/* Internal Scroll Container */}
+    <Surface
+      variant="raised"
+      padding="md"
+      className="flex flex-col gap-3"
+      header={
+        <div className="flex items-center justify-between">
+          <h3 className="font-heading text-xs font-bold uppercase tracking-wider text-text">
+            {t('dashboard.pending')}
+          </h3>
+          <Badge variant={totalPending > 0 ? 'warning' : 'neutral'} size="sm">
+            {totalPending}
+          </Badge>
+        </div>
+      }
+    >
       <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1 flex-1">
         {totalPending === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center gap-2 text-text-muted">
@@ -55,8 +56,7 @@ export const PendingPanel: React.FC<PendingPanelProps> = ({ summary }) => {
             </p>
           </div>
         ) : (
-          <>
-            {/* Purchase Orders Section */}
+          <div className="space-y-4">
             {poItems.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] font-bold text-text-muted">
@@ -100,7 +100,6 @@ export const PendingPanel: React.FC<PendingPanelProps> = ({ summary }) => {
               </div>
             )}
 
-            {/* Lab Tests Section */}
             {labItems.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-[11px] font-bold text-text-muted">
@@ -143,9 +142,9 @@ export const PendingPanel: React.FC<PendingPanelProps> = ({ summary }) => {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </div>
-    </div>
+    </Surface>
   );
 };
