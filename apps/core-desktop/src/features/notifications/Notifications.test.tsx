@@ -5,6 +5,8 @@ import { MessageStatusIcon } from './components/renderers/MessageStatusIcon';
 import { Composer } from './components/composer/Composer';
 import { AttachmentTray } from './components/composer/AttachmentTray';
 import { MessageBubble } from './components/MessageBubble';
+import { MarkdownRenderer } from './components/renderers/MarkdownRenderer';
+import { formatInlineText, sanitizeHtml } from './components/renderers/sanitize';
 import { FilePreviewProvider } from '../../providers/FilePreviewProvider';
 import type { MessageAttachment, NotificationMessage } from '@40labs/types';
 
@@ -130,5 +132,32 @@ describe('Notifications Feature Unit Tests', () => {
     );
     expect(screen.getByText('Queued message')).toBeDefined();
     expect(screen.getByText('🕒')).toBeDefined();
+  });
+
+  it('MarkdownRenderer renders receipt table and total correctly', () => {
+    const markdownReceipt = `### Receipt #sale_44a
+| Item | Qty | Price |
+|---|---|---|
+| Paracetamol | 3 | 1,500 |
+**Total: TZS 4,500** — Cash`;
+
+    render(<MarkdownRenderer content={markdownReceipt} />);
+    expect(screen.getByText('Receipt #sale_44a')).toBeDefined();
+    expect(screen.getByText('Paracetamol')).toBeDefined();
+    expect(screen.getByText('Total: TZS 4,500')).toBeDefined();
+  });
+
+  it('Security sanitizer makes XSS payloads inert', () => {
+    const xssScript = '<script>alert("xss")</script>';
+    const sanitizedScript = sanitizeHtml(xssScript);
+    expect(sanitizedScript).not.toContain('<script>');
+
+    const xssImg = '<img src=x onerror=alert("xss")>';
+    const sanitizedImg = sanitizeHtml(xssImg);
+    expect(sanitizedImg).not.toContain('onerror');
+
+    const unsafeLink = '[click](javascript:alert("xss"))';
+    const formattedLink = formatInlineText(unsafeLink);
+    expect(formattedLink).not.toContain('javascript:');
   });
 });

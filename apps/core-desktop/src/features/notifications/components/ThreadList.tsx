@@ -26,14 +26,45 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   onRefresh,
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
+  const [filter, setFilter] = React.useState<string>('all');
+
+  const counts = React.useMemo(() => {
+    let all = 0;
+    let unread = 0;
+    let customers = 0;
+    let business = 0;
+    let gov = 0;
+    let system = 0;
+    let archived = 0;
+
+    for (const t of threads) {
+      if (t.archived) {
+        archived++;
+        continue;
+      }
+      all++;
+      if (t.unread_count > 0) unread++;
+      if (t.counterparty_type === 'customer') customers++;
+      if (t.counterparty_type === 'business') business++;
+      if (t.counterparty_type === 'gov') gov++;
+      if (t.counterparty_type === 'marketing' || t.counterparty_type === 'system') system++;
+    }
+
+    return { all, unread, customers, business, gov, system, archived };
+  }, [threads]);
 
   const filteredThreads = React.useMemo(() => {
     return threads.filter((t) => {
-      if (t.archived) return false;
-
-      if (categoryFilter === 'unread' && t.unread_count === 0) return false;
-      if (categoryFilter !== 'all' && categoryFilter !== 'unread' && t.counterparty_type !== categoryFilter) return false;
+      if (filter === 'archived') {
+        if (!t.archived) return false;
+      } else {
+        if (t.archived) return false;
+        if (filter === 'unread' && t.unread_count === 0) return false;
+        if (filter === 'customers' && t.counterparty_type !== 'customer') return false;
+        if (filter === 'business' && t.counterparty_type !== 'business') return false;
+        if (filter === 'gov' && t.counterparty_type !== 'gov') return false;
+        if (filter === 'system' && t.counterparty_type !== 'marketing' && t.counterparty_type !== 'system') return false;
+      }
 
       if (searchQuery && !t.display_name.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
@@ -41,25 +72,24 @@ export const ThreadList: React.FC<ThreadListProps> = ({
 
       return true;
     });
-  }, [threads, searchQuery, categoryFilter]);
+  }, [threads, searchQuery, filter]);
 
-  const unreadThreadsCount = React.useMemo(() => {
-    return threads.filter((t) => !t.archived && t.unread_count > 0).length;
-  }, [threads]);
+  const chips = [
+    { key: 'all', label: 'All', count: counts.all },
+    { key: 'unread', label: 'Unread', count: counts.unread },
+    { key: 'customers', label: 'Customers', count: counts.customers },
+    { key: 'business', label: 'Business', count: counts.business },
+    { key: 'gov', label: 'Gov', count: counts.gov },
+    { key: 'system', label: 'System', count: counts.system },
+    { key: 'archived', label: 'Archived', count: counts.archived },
+  ];
 
   return (
     <div className="flex flex-col w-80 h-full bg-panel border-r border-border/40 overflow-hidden shrink-0">
-      {/* Header & KPI Summary */}
+      {/* Header */}
       <div className="p-3 border-b border-border/40 space-y-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-text-primary">Chats</h2>
-            {unreadThreadsCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold">
-                {unreadThreadsCount} Unread
-              </span>
-            )}
-          </div>
+          <h2 className="text-sm font-bold text-text-primary">Chats</h2>
           <div className="flex items-center gap-1">
             <IconButton
               icon={<Plus size={16} />}
@@ -78,31 +108,34 @@ export const ThreadList: React.FC<ThreadListProps> = ({
           </div>
         </div>
 
-        {/* Search and Category Filter Dropdown */}
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-2.5 top-2.5 text-text-muted" />
-            <input
-              type="text"
-              placeholder="Search conversations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-surface border border-border rounded-input pl-8 pr-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
+        {/* Search */}
+        <div className="relative">
+          <Search size={14} className="absolute left-2.5 top-2.5 text-text-muted" />
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-surface border border-border rounded-input pl-8 pr-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
 
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="bg-surface border border-border rounded-input px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-          >
-            <option value="all">All</option>
-            <option value="unread">Unread</option>
-            <option value="gov">Gov</option>
-            <option value="customers">Customers</option>
-            <option value="business">Business</option>
-            <option value="marketing">Marketing</option>
-          </select>
+        {/* Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+          {chips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => setFilter(chip.key)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-colors cursor-pointer ${
+                filter === chip.key
+                  ? 'bg-primary text-white shadow-2xs'
+                  : 'bg-panel-strong text-text-muted hover:text-text hover:bg-surface-hover'
+              }`}
+            >
+              {chip.label} ({chip.count})
+            </button>
+          ))}
         </div>
       </div>
 

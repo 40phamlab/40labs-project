@@ -1,16 +1,17 @@
 import * as React from 'react';
 import { ConfirmDialog } from '@40labs/ui-components';
-import { Mail } from 'lucide-react';
 import type { MessageChannel } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
 import { ThreadList } from './components/ThreadList';
 import { ChatPane } from './components/ChatPane';
+import { NotificationsOverviewPanel } from './components/NotificationsOverviewPanel';
 import { NewConversationModal, ContactOption } from './components/NewConversationModal';
-import { useThreads, useThreadMessages, useSendThreadMessage, useMarkThreadRead, useArchiveThread, useFindOrCreateThread } from '../../hooks/useNotifications';
+import { useThreads, useThreadMessages, useSendThreadMessage, useMarkThreadRead, useArchiveThread, useFindOrCreateThread, useNotifications } from '../../hooks/useNotifications';
 import { useToast } from '../../hooks/useToast';
 
 export const NotificationsScreen: React.FC = () => {
   const { threads, isLoading, refetch } = useThreads(false);
+  const { notifications } = useNotifications();
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
 
   const selectedThread = React.useMemo(() => {
@@ -61,7 +62,7 @@ export const NotificationsScreen: React.FC = () => {
 
   const handleConfirmDelete = React.useCallback(async () => {
     if (deleteTargetThreadId) {
-      await archiveThread(deleteTargetThreadId); // soft archive/delete
+      await archiveThread(deleteTargetThreadId);
       if (selectedThreadId === deleteTargetThreadId) {
         setSelectedThreadId(null);
       }
@@ -196,11 +197,8 @@ export const NotificationsScreen: React.FC = () => {
                   onDelete={(id) => setDeleteTargetThreadId(id)}
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-panel border border-border/40 rounded-card p-8 text-center shadow-xs">
-                  <div className="w-12 h-12 rounded-full bg-panel-strong/60 flex items-center justify-center text-text-muted mb-3 border border-border/30">
-                    <Mail size={24} />
-                  </div>
-                  <h3 className="text-[15px] font-semibold text-text">No Conversation Selected</h3>
+                <div className="w-full h-full flex flex-col p-6 overflow-y-auto bg-surface-secondary/20">
+                  <NotificationsOverviewPanel notifications={notifications} />
                 </div>
               )}
             </div>

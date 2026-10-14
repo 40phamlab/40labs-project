@@ -49,6 +49,37 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
                 ))}
               </ul>
             );
+          case 'table':
+            return (
+              <div key={idx} className="overflow-x-auto my-2 border border-border/40 rounded-card bg-panel">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-panel-strong/60 border-b border-border/40">
+                      {token.headers?.map((h, i) => (
+                        <th
+                          key={i}
+                          className="p-2 font-bold text-text"
+                          dangerouslySetInnerHTML={{ __html: formatInlineText(h) }}
+                        />
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {token.rows?.map((row, r) => (
+                      <tr key={r} className="border-b border-border/20 hover:bg-panel-strong/30">
+                        {row.map((cell, c) => (
+                          <td
+                            key={c}
+                            className="p-2 text-text"
+                            dangerouslySetInnerHTML={{ __html: formatInlineText(cell) }}
+                          />
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
           case 'paragraph':
           default:
             return (

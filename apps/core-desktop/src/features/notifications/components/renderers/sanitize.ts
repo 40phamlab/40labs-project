@@ -3,6 +3,16 @@
  * Prevents script injection, unsafe URLs, and dangerous event handlers.
  */
 
+export function escapeHtml(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export function sanitizeHtml(html: string): string {
   if (!html) return '';
 
@@ -30,13 +40,15 @@ export function sanitizeHtml(html: string): string {
 }
 
 /**
- * Safe Markdown parser producing structured tokens or formatted text for aMob / internal messages.
+ * Safe Markdown parser producing structured tokens for aMob / internal messages (including tables).
  */
 export interface MarkdownToken {
-  type: 'heading' | 'paragraph' | 'list' | 'blockquote' | 'text';
+  type: 'heading' | 'paragraph' | 'list' | 'blockquote' | 'table' | 'code' | 'text';
   content: string;
   items?: string[];
   level?: number;
+  headers?: string[];
+  rows?: string[][];
 }
 
 export function parseMarkdown(markdown: string): MarkdownToken[] {
@@ -45,6 +57,8 @@ export function parseMarkdown(markdown: string): MarkdownToken[] {
   const lines = markdown.split(/\r?\n/);
   const tokens: MarkdownToken[] = [];
   let currentListItems: string[] = [];
+  let tableHeaders: string[] | null = null;
+  let tableRows: string[][] = [];
 
   const flushList = () => {
     if (currentListItems.length > 0) {
@@ -53,14 +67,41 @@ export function parseMarkdown(markdown: string): MarkdownToken[] {
     }
   };
 
+  const flushTable = () => {
+    if (tableHeaders) {
+      tokens.push({ type: 'table', content: '', headers: tableHeaders, rows: [...tableRows] });
+      tableHeaders = null;
+      tableRows = [];
+    }
+  };
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) {
       flushList();
+      flushTable();
       continue;
     }
 
-    // Headings (## Heading)
+    // Table rows (| item | item |)
+    if (line.startsWith('|') && line.endsWith('|')) {
+      flushList();
+      const cells = line.split('|').slice(1, -1).map((c) => c.trim());
+      // Check if separator row (|---|---|)
+      if (cells.every((c) => /^[:?-]+$/.test(c))) {
+        continue; // Skip separator line
+      }
+      if (!tableHeaders) {
+        tableHeaders = cells;
+      } else {
+        tableRows.push(cells);
+      }
+      continue;
+    } else {
+      flushTable();
+    }
+
+    // Headings (### Heading)
     if (line.startsWith('### ')) {
       flushList();
       tokens.push({ type: 'heading', level: 3, content: line.replace('### ', '') });
@@ -85,25 +126,40 @@ export function parseMarkdown(markdown: string): MarkdownToken[] {
     }
   }
   flushList();
+  flushTable();
 
   return tokens;
 }
 
 /**
- * Format inline markdown syntax (**bold**, *italic*, [link](url)) into safe elements or styled spans.
+ * Format inline markdown syntax (**bold**, *italic*, _italic_, ~strike~, `code`, [link](url))
+ * Escapes HTML first and strictly validates link URLs against http, https, mailto.
  */
 export function formatInlineText(text: string): string {
-  // Convert [link text](url) to safe HTML anchors
-  let formatted = text.replace(
-    /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary-hover">$1</a>'
+  if (!text) return '';
+
+  // 1. Escape HTML on the text
+  let escaped = escapeHtml(text);
+
+  // 2. Parse markdown links [label](url) securely in escaped text
+  escaped = escaped.replace(
+    /\[([^\]]+)\]\(([^\)]+)\)/g,
+    (_match, label, rawUrl) => {
+      const decodedUrl = rawUrl.replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&').trim();
+      const isSafe = /^https?:\/\//i.test(decodedUrl) || /^mailto:/i.test(decodedUrl);
+      const safeUrl = isSafe ? decodedUrl : '#';
+      return `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary-hover">${label}</a>`;
+    }
   );
 
   // Convert **bold**
-  formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-text">$1</strong>');
+  escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-text">$1</strong>');
+  // Convert *italic* or _italic_
+  escaped = escaped.replace(/(?:\*|_)([^*_]+)(?:\*|_)/g, '<em class="italic">$1</em>');
+  // Convert ~strike~
+  escaped = escaped.replace(/~([^~]+)~/g, '<del class="line-through text-text-muted">$1</del>');
+  // Convert `code`
+  escaped = escaped.replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-panel-strong font-mono text-[11px] text-text">$1</code>');
 
-  // Convert *italic*
-  formatted = formatted.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>');
-
-  return formatted;
+  return escaped;
 }
