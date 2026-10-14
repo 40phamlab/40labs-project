@@ -1,15 +1,15 @@
 import * as React from 'react';
 import {
   PageToolbar,
-  SubNavSection,
   DataTable,
   ColumnDefinition,
   Badge,
   KPITile,
   IconButton,
   Button,
+  type SubNavSection,
 } from '@40labs/ui-components';
-import { SubNavLayout } from '../../components/SubNavLayout';
+import { ContextualSidebar } from '../../components/ContextualSidebar';
 import { TabContainer } from '../../components/TabContainer';
 import {
   LayoutDashboard,
@@ -430,15 +430,17 @@ export const LabScreen: React.FC = () => {
         </>
       }
     >
-      <SubNavLayout
-        storageKey="lab"
-        widthClass="w-52"
-        sections={LAB_SUBNAV_SECTIONS}
-        activeItemId={activeLabTab}
-        onSelect={(id) => setActiveLabTab(id as LabTab)}
-      >
-        {renderContent()}
-      </SubNavLayout>
+      <div className="flex w-full h-full min-h-0 min-w-0 overflow-hidden">
+        <ContextualSidebar
+          storageKey="lab"
+          sections={LAB_SUBNAV_SECTIONS}
+          activeItemId={activeLabTab}
+          onSelect={(id) => setActiveLabTab(id as LabTab)}
+        />
+        <div className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto custom-scrollbar pl-4 pr-3 pt-3">
+          {renderContent()}
+        </div>
+      </div>
     </TabContainer>
   );
 };

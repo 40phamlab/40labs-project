@@ -1,8 +1,6 @@
 import * as React from 'react';
-import {
-  SubNavSection,
-} from '@40labs/ui-components';
-import { SubNavLayout } from '../../components/SubNavLayout';
+import type { SubNavSection } from '@40labs/ui-components';
+import { ContextualSidebar } from '../../components/ContextualSidebar';
 import { TabContainer } from '../../components/TabContainer';
 import {
   Building2,
@@ -188,19 +186,20 @@ export const SettingsScreen: React.FC = () => {
         />
       }
     >
-      <SubNavLayout
-        storageKey="settings"
-        widthClass="w-56"
-        contentClassName="pl-2 pr-1"
-        sections={SETTINGS_SUBNAV_SECTIONS}
-        activeItemId={activeTab}
-        onSelect={(id) => setActiveTab(id as SettingsTab)}
-      >
-        <div className="mb-4">
-          <h1 className="text-lg font-bold text-text-primary">{SETTINGS_TAB_TITLES[activeTab]}</h1>
+      <div className="flex w-full h-full min-h-0 min-w-0 overflow-hidden">
+        <ContextualSidebar
+          storageKey="settings"
+          sections={SETTINGS_SUBNAV_SECTIONS}
+          activeItemId={activeTab}
+          onSelect={(id) => setActiveTab(id as SettingsTab)}
+        />
+        <div className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto custom-scrollbar pl-4 pr-3 pt-3">
+          <div className="mb-4">
+            <h1 className="text-lg font-bold text-text-primary">{SETTINGS_TAB_TITLES[activeTab]}</h1>
+          </div>
+          {renderActivePanel()}
         </div>
-        {renderActivePanel()}
-      </SubNavLayout>
+      </div>
     </TabContainer>
   );
 };
