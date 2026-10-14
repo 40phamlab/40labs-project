@@ -39,6 +39,7 @@ pub struct Notification {
     pub received_at: String,
     pub created_at: String,
     pub updated_at: String,
+    pub thread_id: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, FromRow, Clone, Debug)]
