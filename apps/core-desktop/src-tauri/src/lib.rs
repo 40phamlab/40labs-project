@@ -30,6 +30,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(move |app| {
             let pool = tauri::async_runtime::block_on(init_db_pool_for_app(app.handle())).map_err(|_err| {
                 tracing::error!("Failed to initialize persistent SQLite database (details redacted; check directory permissions, available storage, and migration diagnostics)");

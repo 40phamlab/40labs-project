@@ -3,6 +3,7 @@ import { PanelLeft, Minus, Square, X } from 'lucide-react';
 import { useAppShell } from '@40labs/ui-components';
 import { HamburgerMenu } from './HamburgerMenu';
 import { BranchControl } from './BranchControl';
+import { OpenFileTabs } from './OpenFileTabs';
 import { ConnectivityIndicator } from './ConnectivityIndicator';
 import { ThemeLogo } from './brand';
 
@@ -94,6 +95,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           onSettingsClick={onSettingsClick}
           hasUpdateAvailable={hasUpdateAvailable}
         />
+
+        {/* Opened File Tabs (In front of Branches) */}
+        <OpenFileTabs />
 
         {/* Branch Control */}
         <BranchControl />

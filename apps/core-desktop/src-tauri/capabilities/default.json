@@ -22,6 +22,11 @@
     },
     "dialog:allow-open",
     "dialog:allow-save",
+    "fs:default",
+    {
+      "identifier": "fs:allow-read",
+      "allow": ["**"]
+    },
     "core:window:allow-toggle-maximize",
     "core:window:allow-maximize",
     "core:window:allow-unmaximize",

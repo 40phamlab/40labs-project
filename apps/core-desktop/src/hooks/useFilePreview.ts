@@ -3,15 +3,18 @@ import type { MessageAttachment } from '@40labs/types';
 import { isUsingTauriIpc, invokeCommand } from '../api/client';
 import { useToast } from './useToast';
 
+export interface PreviewFileItem {
+  fileName: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  url: string;
+}
+
 export interface FilePreviewState {
   isOpen: boolean;
-  file?: {
-    fileName: string;
-    mimeType?: string;
-    sizeBytes?: number;
-    url: string;
-  };
-  attachmentId?: string;
+  files: PreviewFileItem[];
+  currentIndex: number;
+  file?: PreviewFileItem;
   onDownload?: () => Promise<void>;
   onSaveAs?: () => Promise<void>;
   onOpenExternal?: () => Promise<void>;
@@ -20,7 +23,46 @@ export interface FilePreviewState {
 
 export function useFilePreview() {
   const { toast } = useToast();
-  const [state, setState] = React.useState<FilePreviewState>({ isOpen: false });
+  const [files, setFiles] = React.useState<PreviewFileItem[]>([]);
+  const [currentIndex, setCurrentIndex] = React.useState<number>(0);
+  const [isOpen, setIsOpen] = React.useState<boolean>(false);
+
+  const activeFile = files[currentIndex];
+
+  const openFile = (item: PreviewFileItem) => {
+    setFiles((prev) => {
+      const existingIdx = prev.findIndex((f) => f.url === item.url || f.fileName === item.fileName);
+      if (existingIdx >= 0) {
+        setCurrentIndex(existingIdx);
+        setIsOpen(true);
+        return prev;
+      }
+      const next = [...prev, item];
+      setCurrentIndex(next.length - 1);
+      setIsOpen(true);
+      return next;
+    });
+  };
+
+  const closeFileTab = (index: number, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setFiles((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (next.length === 0) {
+        setIsOpen(false);
+      } else if (currentIndex >= next.length) {
+        setCurrentIndex(next.length - 1);
+      }
+      return next;
+    });
+  };
+
+  const selectFileTab = (index: number) => {
+    if (index >= 0 && index < files.length) {
+      setCurrentIndex(index);
+      setIsOpen(true);
+    }
+  };
 
   const openAttachment = async (att: MessageAttachment) => {
     try {
@@ -34,68 +76,11 @@ export function useFilePreview() {
         fileUrl = convertFileSrc(absPath);
       }
 
-      const handleDownload = async () => {
-        if (isUsingTauriIpc()) {
-          const res = await invokeCommand<{ path: string; folder: string }>('export_attachment', {
-            attachmentId: att.id,
-            category: 'attachments',
-          });
-          toast.success(`Saved to ${res.path}`);
-          try {
-            const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
-            await revealItemInDir(res.path);
-          } catch {
-            toast.error('Failed to reveal item in directory.');
-          }
-        } else {
-          toast.success(`Downloaded ${att.file_name}`);
-        }
-      };
-
-      const handleSaveAs = async () => {
-        if (isUsingTauriIpc()) {
-          const { save } = await import('@tauri-apps/plugin-dialog');
-          const destPath = await save({ defaultPath: att.file_name });
-          if (destPath) {
-            const savedPath = await invokeCommand<string>('export_attachment_to_path', {
-              attachmentId: att.id,
-              destPath,
-            });
-            toast.success(`Saved to ${savedPath}`);
-            try {
-              const { revealItemInDir } = await import('@tauri-apps/plugin-opener');
-              await revealItemInDir(savedPath);
-            } catch {
-              toast.error('Failed to reveal item in directory.');
-            }
-          }
-        } else {
-          toast.success(`Saved ${att.file_name}`);
-        }
-      };
-
-      const handleOpenExternal = async () => {
-        if (isUsingTauriIpc() && absPath) {
-          const { openPath } = await import('@tauri-apps/plugin-opener');
-          await openPath(absPath);
-        } else {
-          window.open(fileUrl, '_blank');
-        }
-      };
-
-      setState({
-        isOpen: true,
-        file: {
-          fileName: att.file_name,
-          mimeType: att.mime_type,
-          sizeBytes: att.size_bytes,
-          url: fileUrl,
-        },
-        attachmentId: att.id,
-        onDownload: handleDownload,
-        onSaveAs: handleSaveAs,
-        onOpenExternal: handleOpenExternal,
-        onClose: () => setState({ isOpen: false }),
+      openFile({
+        fileName: att.file_name,
+        mimeType: att.mime_type,
+        sizeBytes: att.size_bytes,
+        url: fileUrl,
       });
     } catch {
       toast.error('Failed to preview attachment.');
@@ -104,31 +89,31 @@ export function useFilePreview() {
 
   const openBlob = (file: { fileName: string; mimeType?: string; blob: Blob }) => {
     const url = URL.createObjectURL(file.blob);
-    setState({
-      isOpen: true,
-      file: {
-        fileName: file.fileName,
-        mimeType: file.mimeType,
-        sizeBytes: file.blob.size,
-        url,
-      },
-      onClose: () => {
-        URL.revokeObjectURL(url);
-        setState({ isOpen: false });
-      },
+    openFile({
+      fileName: file.fileName,
+      mimeType: file.mimeType,
+      sizeBytes: file.blob.size,
+      url,
     });
   };
 
   const closeModal = () => {
-    if (state.file?.url.startsWith('blob:')) {
-      URL.revokeObjectURL(state.file.url);
-    }
-    setState({ isOpen: false });
-    state.onClose?.();
+    setIsOpen(false);
+  };
+
+  const previewState: FilePreviewState = {
+    isOpen,
+    files,
+    currentIndex,
+    file: activeFile,
+    onClose: closeModal,
   };
 
   return {
-    previewState: state,
+    previewState,
+    openFile,
+    closeFileTab,
+    selectFileTab,
     openAttachment,
     openBlob,
     closeModal,

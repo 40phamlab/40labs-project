@@ -56,6 +56,24 @@ export default function App() {
     prevUnreadRef.current = unreadCount;
   }, [unreadCount, playNotificationSound]);
 
+  // Global keyboard shortcuts (Ctrl+N for sales, Ctrl+, for settings, Ctrl+K for search)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        setActiveScreen('sales');
+      } else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        setActiveScreen('settings');
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setActiveScreen('dashboard');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setActiveScreen]);
+
   const NAV_ITEMS: Array<NavItem<ScreenId>> = [
     { id: 'dashboard', labelKey: 'nav.home', route: 'dashboard', icon: <Home size={18} /> },
     { id: 'sales', labelKey: 'nav.sales', route: 'sales', icon: <ShoppingCart size={18} /> },

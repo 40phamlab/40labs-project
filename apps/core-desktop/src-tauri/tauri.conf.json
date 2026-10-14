@@ -25,8 +25,9 @@
       "assetProtocol": {
         "enable": true,
         "scope": [
-          "$APPDATA/attachments/**",
-          "$DOCUMENT/40Labs/**"
+          "**",
+          "$APPDATA/**",
+          "$DOCUMENT/**"
         ]
       },
       "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost blob: data:; media-src 'self' asset: http://asset.localhost blob:; frame-src asset: http://asset.localhost blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost asset: http://asset.localhost http://localhost:4040;",
