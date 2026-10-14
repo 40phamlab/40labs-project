@@ -19,8 +19,6 @@ use tauri::Manager;
 pub fn run() {
     debug::init();
 
-    let runtime = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-
     let keystore = Arc::new(Keystore::init().expect("Failed to initialize security keystore"));
     let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
 
@@ -33,14 +31,14 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(move |app| {
-            let pool = runtime.block_on(init_db_pool_for_app(app.handle())).map_err(|_err| {
+            let pool = tauri::async_runtime::block_on(init_db_pool_for_app(app.handle())).map_err(|_err| {
                 tracing::error!("Failed to initialize persistent SQLite database (details redacted; check directory permissions, available storage, and migration diagnostics)");
                 Box::<dyn std::error::Error>::from("Database initialization failed; see redacted diagnostics")
             })?;
             let port = 4040;
             let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
             let lan_state_for_server = Arc::clone(&lan_state);
-            runtime.spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 services::lan::start_lan_server(lan_state_for_server, port).await;
             });
             app.manage(AppState {

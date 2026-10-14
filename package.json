@@ -8,6 +8,7 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "test": "vitest run",
+    "pre-push": "pnpm -F @40labs/core-desktop build && pnpm test",
     "lint:strings": "node --experimental-strip-types scripts/lint-strings.ts",
     "db:reset": "node scripts/db-reset.js"
   },

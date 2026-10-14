@@ -24,7 +24,10 @@ Offline-first pharmacy + lab + dispensary management platform for Tanzania/East 
 ✅ **Design Tokens & Parity (Prompt 2)**: Comprehensive `[data-theme="light"]` token overrides in `tokens.css`, `panelSubtle` added, canonical card-radius standardized to `12px`, and parity tested via `tokens.test.ts`.
 ✅ **Component Reuse & Audit (Prompt 3)**: Shared UI components (`Button`, `Input`, `Dialog`, `Table`, `PageHeader`, `Tooltip`) audited and refactored to consume canonical design tokens without hardcoded hex values.
 ✅ **Responsive Application Shell (Prompt 4)**: `AppShell`, `Sidebar`, `AppSidebarNav`, `TitleBar`, and `TabContainer` optimized with proper `min-w-0`, `min-h-0`, three-state sidebar persistence, and single-scroll ownership.
-✅ **Regression Pass & Build Verification (Prompt 5)**: All test suites executed successfully, and workspace build (`pnpm build`) completed with **0 TypeScript or build errors**.
+✅ **Regression Pass & Build Verification**: All test suites executed successfully (all 41 test files / 194 tests passing), and desktop frontend build (`pnpm -F @40labs/core-desktop build`) completed with **0 TypeScript or build errors**.
+✅ **Pre-Merge CI Gate & Local Hook**: Added `.github/workflows/ci.yml` CI pipeline and root `"pre-push"` script to automatically enforce frontend build and unit test verification before merge.
+✅ **LAN Server Fix**: Fixed Tokio runtime lifecycle in Tauri setup (`tauri::async_runtime`) ensuring port 4040 remains active.
+✅ **Auth Flow Fix**: Fixed session `displayName` and `mustChangeCredentials` propagation in `auth_status` command.
 
 ## Next up (in order)
 1. Inventory feature enhancements & sales/POS implementation.
