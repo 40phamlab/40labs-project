@@ -94,7 +94,7 @@ export const LabResultsTab: React.FC<LabResultsTabProps> = ({ customer }) => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-text-muted font-mono">{formatDate(ord.created_at)}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ord.status === 'completed' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ord.status === 'report_ready' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
                     {ord.status}
                   </span>
                 </div>

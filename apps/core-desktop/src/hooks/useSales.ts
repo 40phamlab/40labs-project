@@ -262,6 +262,9 @@ export function useSales() {
     isError: isSalesError,
     error: salesError,
     refetchSales,
+    isLoadingSales,
+    isSalesError,
+    salesError,
 
     // Cart state & setters
     cart,

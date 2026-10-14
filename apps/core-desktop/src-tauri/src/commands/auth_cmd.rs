@@ -10,13 +10,24 @@ pub async fn auth_status(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, AuthErrorResponse> {
     let session_guard = state.auth_state.session.read().await;
-    let session_info = session_guard.as_ref().map(|s| {
-        serde_json::json!({
+    let session_info = if let Some(ref s) = *session_guard {
+        let user = crate::repositories::user_repo::UserRepository::get_by_id(&state.pool, &s.user_id)
+            .await
+            .ok()
+            .flatten();
+        let display_name = user.as_ref().map(|u| u.full_name.clone()).unwrap_or_default();
+        let must_change = user.as_ref().map(|u| u.must_change_credentials != 0).unwrap_or(false);
+
+        Some(serde_json::json!({
             "userId": s.user_id,
+            "displayName": display_name,
             "role": s.role,
             "locked": s.locked,
-        })
-    });
+            "mustChangeCredentials": must_change,
+        }))
+    } else {
+        None
+    };
 
     let business = crate::repositories::business_repo::BusinessRepository::get(&state.pool)
         .await
@@ -271,3 +282,77 @@ pub async fn business_set_idle_lock(
         .await
         .map_err(|e| e.to_response())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::auth::session::{AuthState, RealClock};
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_auth_status_session_fields() {
+        let pool = crate::db::init_db_pool_with_url("sqlite::memory:")
+            .await
+            .unwrap();
+
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            r#"
+            INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile, idle_lock_minutes, created_at, updated_at)
+            VALUES ('bus_1', 'ws_1', 'br_1', 'AFYA-0001', 'Test Pharmacy', '+255712345678', 5, ?, ?)
+            "#,
+        )
+        .bind(&now)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            r#"
+            INSERT INTO app_user (id, workspace_id, branch_id, username, first_name, last_name, full_name, role, role_preset, active, must_change_credentials, created_at, updated_at)
+            VALUES ('user_1', 'ws_1', 'br_1', 'testuser', 'Test', 'User', 'Test User', 'staff', 'staff', 1, 1, ?, ?)
+            "#,
+        )
+        .bind(&now)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
+        {
+            let mut s = auth_state.session.write().await;
+            *s = Some(crate::auth::session::Session {
+                user_id: "user_1".to_string(),
+                workspace_id: "ws_1".to_string(),
+                branch_id: "br_1".to_string(),
+                role: "staff".to_string(),
+                started_at: 0,
+                last_activity: 0,
+                locked: false,
+            });
+        }
+
+        let lan_state = Arc::new(crate::services::lan::LanServerState::new(pool.clone(), 0));
+        let otp_client = Arc::new(crate::activation::HttpOtpClient::new("http://localhost".to_string()));
+        let activation_client = Arc::new(crate::activation::HttpActivationClient::new("http://localhost".to_string()));
+        let state = AppState {
+            pool,
+            lan_state,
+            auth_state,
+            keystore: Arc::new(crate::security::keystore::Keystore::init().unwrap()),
+            otp_client,
+            activation_client,
+        };
+
+        let result = auth_status(tauri::State::from(&state)).await;
+        assert!(result.is_ok());
+        let val = result.unwrap();
+        let session = &val["session"];
+        assert_eq!(session["userId"], "user_1");
+        assert_eq!(session["displayName"], "Test User");
+        assert_eq!(session["mustChangeCredentials"], true);
+    }
+}
+

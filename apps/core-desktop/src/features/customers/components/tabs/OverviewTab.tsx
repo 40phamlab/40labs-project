@@ -31,7 +31,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ customer }) => {
     return orders.filter(
       (o) =>
         o.customer_id === customer.id &&
-        o.status !== 'completed' &&
+        o.status !== 'report_ready' &&
         o.status !== 'cancelled'
     );
   }, [orders, customer.id]);

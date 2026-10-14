@@ -189,6 +189,10 @@ export function useLab() {
     isError,
     error,
     refetch,
+    isLoadingOrders,
+    isOrdersError: isErrorOrders,
+    errorOrders,
+    refetchOrders,
 
     // UI state
     selectedOrderId,

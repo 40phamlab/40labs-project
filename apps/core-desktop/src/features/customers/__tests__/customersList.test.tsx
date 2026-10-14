@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { CustomersScreen } from '../CustomersScreen';
 import { useCustomers } from '../../../hooks/useCustomers';
 import { useNavStore } from '../../../stores/useNavStore';
