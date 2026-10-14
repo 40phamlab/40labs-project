@@ -11,6 +11,7 @@ import { PdfViewer } from './viewers/PdfViewer';
 import { DocxViewer } from './viewers/DocxViewer';
 import { SheetViewer } from './viewers/SheetViewer';
 import { TextViewer } from './viewers/TextViewer';
+import { MarkdownViewer } from './viewers/MarkdownViewer';
 import { FallbackCard } from './FallbackCard';
 
 export interface PreviewFileItem {
@@ -134,8 +135,9 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         viewerContent = <SheetViewer url={activeFile.url} isCsv />;
         break;
       case 'text':
+      case 'markdown':
       case 'code':
-        viewerContent = <TextViewer url={activeFile.url} />;
+        viewerContent = kind === 'markdown' ? <MarkdownViewer url={activeFile.url} /> : <TextViewer url={activeFile.url} />;
         break;
       default:
         viewerContent = (

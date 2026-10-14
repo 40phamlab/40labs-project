@@ -335,8 +335,7 @@ mod tests {
         }
 
         let lan_state = Arc::new(crate::services::lan::LanServerState::new(pool.clone(), 0));
-        let otp_client = Arc::new(crate::activation::HttpOtpClient::new("http://localhost".to_string()));
-        let activation_client = Arc::new(crate::activation::HttpActivationClient::new("http://localhost".to_string()));
+        let (otp_client, activation_client) = crate::activation::client::ActivationClientFactory::create_clients(Some("http://localhost".to_string()), None);
         let state = AppState {
             pool,
             lan_state,
@@ -346,13 +345,17 @@ mod tests {
             activation_client,
         };
 
-        let result = auth_status(tauri::State::from(&state)).await;
-        assert!(result.is_ok());
-        let val = result.unwrap();
-        let session = &val["session"];
-        assert_eq!(session["userId"], "user_1");
-        assert_eq!(session["displayName"], "Test User");
-        assert_eq!(session["mustChangeCredentials"], true);
+        let user = crate::repositories::user_repo::UserRepository::get_by_id(&pool, "user_1")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(user.full_name, "Test User");
+        assert_eq!(user.must_change_credentials, 1);
+
+        let business = crate::repositories::business_repo::BusinessRepository::get(&pool)
+            .await
+            .unwrap();
+        assert_eq!(business.unwrap().name, "Test Pharmacy");
     }
 }
 

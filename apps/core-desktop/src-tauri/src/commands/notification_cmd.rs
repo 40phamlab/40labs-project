@@ -398,6 +398,12 @@ pub async fn save_attachment(
         }
     } else if let Some(source_path_str) = &payload.source_path {
         let src_path = std::path::Path::new(source_path_str);
+        if src_path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+            return Err(crate::auth::AuthError::PolicyViolation(
+                "Path traversal detected in source path".to_string(),
+            )
+            .to_response());
+        }
         if !src_path.is_absolute() || !src_path.is_file() {
             return Err(crate::auth::AuthError::PolicyViolation(
                 "Source path must be an absolute file".to_string(),
@@ -463,7 +469,13 @@ pub async fn save_attachment(
         Ok(bytes) => bytes,
         Err(e) => { let _ = tokio::fs::remove_file(&full_storage_path).await; return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response()); }
     };
-    if let Err(reason) = validate_attachment_content(&content, &payload.kind, &payload.file_name, &payload.mime_type) {
+    let sanitized_file_name = std::path::Path::new(&payload.file_name)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unnamed_file")
+        .to_string();
+
+    if let Err(reason) = validate_attachment_content(&content, &payload.kind, &sanitized_file_name, &payload.mime_type) {
         let _ = tokio::fs::remove_file(&full_storage_path).await;
         return Err(crate::auth::AuthError::PolicyViolation(reason).to_response());
     }
@@ -477,7 +489,7 @@ pub async fn save_attachment(
         branch_id: ctx.branch_id.clone(),
         message_id: None,
         kind: payload.kind,
-        file_name: payload.file_name,
+        file_name: sanitized_file_name,
         mime_type: payload.mime_type,
         size_bytes,
         storage_path: storage_path_relative,

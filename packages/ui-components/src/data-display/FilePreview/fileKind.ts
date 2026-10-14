@@ -7,6 +7,7 @@ export type FileKind =
   | 'sheet'
   | 'csv'
   | 'text'
+  | 'markdown'
   | 'code'
   | 'archive'
   | 'slides'
@@ -69,9 +70,10 @@ export function resolveFileKind(fileName: string, mimeType?: string): FileKind {
     case 'csv':
       return 'csv';
     case 'txt':
-    case 'md':
     case 'log':
       return 'text';
+    case 'md':
+      return 'markdown';
     case 'json':
     case 'js':
     case 'ts':
@@ -107,6 +109,7 @@ export function isPreviewable(kind: FileKind): boolean {
     kind === 'sheet' ||
     kind === 'csv' ||
     kind === 'text' ||
+    kind === 'markdown' ||
     kind === 'code'
   );
 }

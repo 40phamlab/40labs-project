@@ -488,6 +488,7 @@ mod attachment_tests {
         }
         let message = |id: &str| NotificationMessage {
             id: id.into(), workspace_id: "ws1".into(), branch_id: "b".into(), notification_id: "n1".into(),
+            thread_id: None,
             direction: "outgoing".into(), content_type: "text".into(), body: "reply".into(), html_content: None,
             status: "queued".into(), sent_at: "t".into(), created_at: "t".into(), updated_at: "t".into(), attachments: None,
         };

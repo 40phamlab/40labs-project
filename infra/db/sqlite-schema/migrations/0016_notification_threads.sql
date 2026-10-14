@@ -14,6 +14,3 @@ CREATE TABLE thread (
 );
 
 CREATE INDEX idx_thread_workspace ON thread(workspace_id, branch_id);
-
-ALTER TABLE notifications ADD COLUMN thread_id TEXT REFERENCES thread(id);
-CREATE INDEX idx_notification_thread ON notifications(thread_id);

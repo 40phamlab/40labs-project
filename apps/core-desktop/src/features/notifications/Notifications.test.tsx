@@ -2,6 +2,11 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { ComposerInput } from './components/composer/ComposerInput';
 import { MessageStatusIcon } from './components/renderers/MessageStatusIcon';
+import { Composer } from './components/composer/Composer';
+import { AttachmentTray } from './components/composer/AttachmentTray';
+import { MessageBubble } from './components/MessageBubble';
+import { FilePreviewProvider } from '../../providers/FilePreviewProvider';
+import type { MessageAttachment, NotificationMessage } from '@40labs/types';
 
 describe('Notifications Feature Unit Tests', () => {
   afterEach(() => {
@@ -65,5 +70,65 @@ describe('Notifications Feature Unit Tests', () => {
 
     fireEvent.click(retryButton);
     expect(handleRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('Read-only thread shows read-only bar and no input', () => {
+    const handleSend = vi.fn();
+    render(<Composer onSend={handleSend} isReadOnly={true} />);
+    expect(screen.getByText(/Read-only conversation/i)).toBeDefined();
+    expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('AttachmentTray renders attachments and allows removal', () => {
+    const handleRemove = vi.fn();
+    const mockAttachments: MessageAttachment[] = [
+      {
+        id: 'att_1',
+        workspace_id: 'ws_1',
+        branch_id: 'b_1',
+        message_id: null,
+        kind: 'file',
+        file_name: 'report.pdf',
+        mime_type: 'application/pdf',
+        size_bytes: 10240,
+        storage_path: 'attachments/ws_1/att_1',
+        sha256: 'abc',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+    ];
+
+    render(<AttachmentTray attachments={mockAttachments} onRemove={handleRemove} />);
+    expect(screen.getByText('report.pdf')).toBeDefined();
+
+    const removeButton = screen.getByTitle('Remove attachment');
+    fireEvent.click(removeButton);
+    expect(handleRemove).toHaveBeenCalledWith('att_1');
+  });
+
+  it('MessageBubble renders queued status correctly', () => {
+    const msg: NotificationMessage = {
+      id: 'msg_1',
+      workspace_id: 'ws_1',
+      branch_id: 'b_1',
+      notification_id: 'notif_1',
+      thread_id: 'thread_1',
+      direction: 'outgoing',
+      content_type: 'text',
+      body: 'Queued message',
+      html_content: null,
+      status: 'queued',
+      sent_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    render(
+      <FilePreviewProvider>
+        <MessageBubble message={msg} />
+      </FilePreviewProvider>
+    );
+    expect(screen.getByText('Queued message')).toBeDefined();
+    expect(screen.getByText('🕒')).toBeDefined();
   });
 });

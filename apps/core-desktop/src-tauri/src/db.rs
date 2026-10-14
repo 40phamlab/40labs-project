@@ -187,7 +187,7 @@ async fn init_db_pool_with_path(path: &std::path::Path) -> Result<SqlitePool, Bo
         .create_if_missing(true)
         .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true);
-    init_db_pool_with_options(options).await
+    init_db_pool_with_options_and_path(options, Some(path)).await
 }
 
 pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn std::error::Error>> {
@@ -196,13 +196,21 @@ pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn s
         .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true);
 
-    init_db_pool_with_options(connect_options).await
+    init_db_pool_with_options_and_path(connect_options, None).await
 }
 
+#[allow(dead_code)]
 async fn init_db_pool_with_options(connect_options: SqliteConnectOptions) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+    init_db_pool_with_options_and_path(connect_options, None).await
+}
+
+async fn init_db_pool_with_options_and_path(
+    connect_options: SqliteConnectOptions,
+    db_path: Option<&std::path::Path>,
+) -> Result<SqlitePool, Box<dyn std::error::Error>> {
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
-        .connect_with(connect_options)
+        .connect_with(connect_options.clone())
         .await?;
 
     let migrate_res: Result<(), Box<dyn std::error::Error>> = async {
@@ -218,6 +226,39 @@ async fn init_db_pool_with_options(connect_options: SqliteConnectOptions) -> Res
             || err_str.contains("migration")
             || err_str.contains("VersionMismatch")
         {
+            if cfg!(debug_assertions) {
+                if let Some(path) = db_path {
+                    tracing::warn!("SQLite migration version/checksum mismatch detected in development mode. Automatically resetting development database at {}", path.display());
+                    pool.close().await;
+                    let _ = fs::remove_file(path);
+                    let wal_path = PathBuf::from(format!("{}-wal", path.display()));
+                    let _ = fs::remove_file(&wal_path);
+                    let shm_path = PathBuf::from(format!("{}-shm", path.display()));
+                    let _ = fs::remove_file(&shm_path);
+
+                    let retry_res: Result<SqlitePool, Box<dyn std::error::Error>> = async {
+                        let pool2 = SqlitePoolOptions::new()
+                            .max_connections(5)
+                            .connect_with(connect_options)
+                            .await?;
+                        reconcile_registration_migration(&pool2).await?;
+                        SQLITE_MIGRATOR.run(&pool2).await?;
+                        Ok(pool2)
+                    }.await;
+
+                    match retry_res {
+                        Ok(p) => {
+                            tracing::info!("Successfully reset and migrated development database.");
+                            return Ok(p);
+                        }
+                        Err(retry_err) => {
+                            tracing::error!("Failed to migrate reset development database: {retry_err}");
+                            return Err(retry_err);
+                        }
+                    }
+                }
+            }
+
             tracing::error!("SQLite migration version/checksum mismatch; database contents were left untouched");
             if cfg!(debug_assertions) {
                 tracing::error!("Development migration mismatch: inspect migration history and schema; database was not reset");
