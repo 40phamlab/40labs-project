@@ -131,6 +131,7 @@ pub async fn create_notification(
         received_at: now.clone(),
         created_at: now.clone(),
         updated_at: now.clone(),
+        thread_id: None,
     };
 
     NotificationRepository::create(&state.pool, &notif)
