@@ -51,6 +51,17 @@ export function formatRelative(d: string | Date | number, lang: Language = 'sw-T
   }
 }
 
+export function formatMoney(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) {
+    return '0';
+  }
+  const num = Number(amount);
+  if (!Number.isFinite(num)) {
+    return '0';
+  }
+  return Math.round(num).toLocaleString('en-US');
+}
+
 export function formatMoneyOrUnknown(amount: number | null | undefined, currency: string = 'TZS'): string {
   if (amount === null || amount === undefined || Number.isNaN(Number(amount))) {
     return '—';
