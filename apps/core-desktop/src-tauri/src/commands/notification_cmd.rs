@@ -1,8 +1,11 @@
 use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
 use crate::models::notification::{
-    MessageAttachment, Notification, NotificationMessage, SaveAttachmentPayload, SendMessagePayload,
+    AppendThreadMessagePayload, FindOrCreateThreadPayload, MessageAttachment, Notification,
+    NotificationMessage, SaveAttachmentPayload, SendMessagePayload, Thread,
 };
+use crate::models::audit::AuditLogEntry;
+use crate::repositories::audit_repo::AuditRepository;
 use crate::repositories::notification_repo::NotificationRepository;
 use crate::services::documents::{ensure_layout, sanitize_file_name, unique_path, ExportCategory};
 use sha2::{Digest, Sha256};
@@ -742,6 +745,176 @@ pub async fn export_attachment_to_path(
         .map_err(|e| crate::auth::AuthError::InternalError(e.to_string()).to_response())?;
 
     Ok(final_dest.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn get_threads(
+    state: State<'_, AppState>,
+    include_archived: Option<bool>,
+) -> Result<Vec<Thread>, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+    NotificationRepository::list_threads(&state.pool, &ctx.workspace_id, include_archived.unwrap_or(false))
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+}
+
+#[tauri::command]
+pub async fn get_thread_messages(
+    state: State<'_, AppState>,
+    thread_id: String,
+) -> Result<Vec<NotificationMessage>, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+    NotificationRepository::list_messages_by_thread(&state.pool, &ctx.workspace_id, &thread_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+}
+
+#[tauri::command]
+pub async fn find_or_create_thread(
+    state: State<'_, AppState>,
+    payload: FindOrCreateThreadPayload,
+) -> Result<Thread, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+    NotificationRepository::find_or_create_thread(
+        &state.pool,
+        &ctx.workspace_id,
+        &ctx.branch_id,
+        &payload.counterparty_type,
+        &payload.counterparty_key,
+        payload.counterparty_id.as_deref(),
+        &payload.display_name,
+    )
+    .await
+    .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+}
+
+#[tauri::command]
+pub async fn append_thread_message(
+    _app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    payload: AppendThreadMessagePayload,
+) -> Result<NotificationMessage, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let msg_id = format!("msg_{}", uuid::Uuid::new_v4());
+    let msg = NotificationMessage {
+        id: msg_id,
+        workspace_id: ctx.workspace_id.clone(),
+        branch_id: ctx.branch_id.clone(),
+        notification_id: format!("notif_gen_{}", uuid::Uuid::new_v4()),
+        thread_id: Some(payload.thread_id.clone()),
+        direction: payload.direction,
+        content_type: payload.content_type.unwrap_or_else(|| "text".to_string()),
+        body: payload.body,
+        html_content: payload.html_content,
+        status: "read".to_string(),
+        sent_at: now.clone(),
+        created_at: now.clone(),
+        updated_at: now.clone(),
+        attachments: None,
+    };
+
+    let attachment_ids = payload.attachment_ids.unwrap_or_default();
+    NotificationRepository::append_thread_message(
+        &state.pool,
+        &ctx.workspace_id,
+        &ctx.branch_id,
+        &payload.thread_id,
+        &msg,
+        &attachment_ids,
+    )
+    .await
+    .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    Ok(msg)
+}
+
+#[tauri::command]
+pub async fn mark_thread_read(
+    state: State<'_, AppState>,
+    thread_id: String,
+) -> Result<(), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+    NotificationRepository::mark_thread_read(&state.pool, &ctx.workspace_id, &thread_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+}
+
+#[tauri::command]
+pub async fn archive_thread(
+    state: State<'_, AppState>,
+    thread_id: String,
+) -> Result<(), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+
+    // AUDIT FIRST (before mutating)
+    let audit_entry = AuditLogEntry {
+        id: format!("audit_{}", uuid::Uuid::new_v4()),
+        workspace_id: ctx.workspace_id.clone(),
+        branch_id: ctx.branch_id.clone(),
+        action: "THREAD_ARCHIVE".to_string(),
+        performed_by_user_id: ctx.user_id.clone(),
+        target_entity_type: "thread".to_string(),
+        target_entity_id: thread_id.clone(),
+        metadata: Some(serde_json::json!({ "thread_id": thread_id }).to_string()),
+        created_at: chrono::Utc::now().to_rfc3339(),
+    };
+    AuditRepository::create(&state.pool, &audit_entry)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    NotificationRepository::archive_thread(&state.pool, &ctx.workspace_id, &thread_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
 }
 
 #[cfg(test)]

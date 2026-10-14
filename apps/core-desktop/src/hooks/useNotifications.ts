@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Notification, NotificationMessage } from '@40labs/types';
-import { notificationsApi, CreateNotificationPayload, SendMessagePayload, SaveAttachmentPayload } from '../api';
+import type { Notification, NotificationMessage, ThreadSummary } from '@40labs/types';
+import { notificationsApi, CreateNotificationPayload, SendMessagePayload, SaveAttachmentPayload, FindOrCreateThreadPayload, AppendThreadMessagePayload } from '../api';
 import { notificationKeys } from './queryKeys';
 import { useNotificationsStore } from '../stores/useNotificationsStore';
 import { authApi, AuthStatusResponse } from '../api/authApi';
 import { parseAuthError } from '../api/authErrors';
 
-export type { CreateNotificationPayload, SendMessagePayload, SaveAttachmentPayload };
+export type { CreateNotificationPayload, SendMessagePayload, SaveAttachmentPayload, FindOrCreateThreadPayload, AppendThreadMessagePayload };
 
 export function useNotifications() {
   const queryClient = useQueryClient();
@@ -47,9 +47,8 @@ export function useNotifications() {
     mutationFn: async (payload: CreateNotificationPayload) => {
       return notificationsApi.create(payload);
     },
-    onSuccess: (newNotif) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
-      setSelectedNotificationId(newNotif.id);
     },
   });
 
@@ -73,7 +72,7 @@ export function useNotifications() {
 
   const deleteNotificationMutation = useMutation({
     mutationFn: async (id: string) => {
-      return notificationsApi.delete(id); // soft-delete
+      return notificationsApi.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notificationKeys.all });
@@ -102,7 +101,36 @@ export function useNotifications() {
   };
 }
 
-export function useNotificationMessages(notificationId: string | null) {
+export function useThreads(includeArchived = false) {
+  const { data: authStatus } = useQuery<AuthStatusResponse>({
+    queryKey: ['auth_status'],
+    queryFn: () => authApi.status(),
+    staleTime: 10000,
+  });
+
+  const isAuthenticated = Boolean(authStatus?.session);
+  const isLocked = Boolean(authStatus?.session?.locked);
+  const isEnabled = isAuthenticated && !isLocked;
+
+  const {
+    data: threads = [],
+    isLoading,
+    refetch,
+  } = useQuery<ThreadSummary[]>({
+    queryKey: ['threads', includeArchived],
+    queryFn: async () => notificationsApi.getThreads(includeArchived),
+    enabled: isEnabled,
+    refetchInterval: isEnabled ? 3000 : false,
+  });
+
+  return {
+    threads,
+    isLoading,
+    refetch,
+  };
+}
+
+export function useThreadMessages(threadId: string | null) {
   const queryClient = useQueryClient();
 
   const {
@@ -110,49 +138,22 @@ export function useNotificationMessages(notificationId: string | null) {
     isLoading,
     refetch,
   } = useQuery<NotificationMessage[]>({
-    queryKey: notificationKeys.messages(notificationId || 'none'),
+    queryKey: ['thread_messages', threadId || 'none'],
     queryFn: async () => {
-      if (!notificationId) return [];
-      return notificationsApi.getMessages(notificationId);
+      if (!threadId) return [];
+      return notificationsApi.getThreadMessages(threadId);
     },
-    enabled: Boolean(notificationId),
+    enabled: Boolean(threadId),
+    refetchInterval: 3000,
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (payload: SendMessagePayload) => {
-      return notificationsApi.sendMessage(payload);
+    mutationFn: async (payload: AppendThreadMessagePayload) => {
+      return notificationsApi.appendThreadMessage(payload);
     },
-    onMutate: async (newMsgPayload) => {
-      await queryClient.cancelQueries({ queryKey: notificationKeys.messages(newMsgPayload.notificationId) });
-      const previousMessages = queryClient.getQueryData<NotificationMessage[]>(notificationKeys.messages(newMsgPayload.notificationId)) || [];
-
-      const optimisticMsg: NotificationMessage = {
-        id: `opt_${Date.now()}`,
-        workspace_id: previousMessages[0]?.workspace_id || 'ws_010101',
-        branch_id: previousMessages[0]?.branch_id || 'br_010101',
-        notification_id: newMsgPayload.notificationId,
-        direction: 'outgoing',
-        content_type: newMsgPayload.contentType || 'text',
-        body: newMsgPayload.body,
-        html_content: newMsgPayload.htmlContent || null,
-        status: 'queued',
-        sent_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        attachments: [],
-      };
-
-      queryClient.setQueryData(notificationKeys.messages(newMsgPayload.notificationId), [...previousMessages, optimisticMsg]);
-      return { previousMessages };
-    },
-    onError: (_err, newMsgPayload, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(notificationKeys.messages(newMsgPayload.notificationId), context.previousMessages);
-      }
-    },
-    onSettled: (_data, _error, newMsgPayload) => {
-      queryClient.invalidateQueries({ queryKey: notificationKeys.messages(newMsgPayload.notificationId) });
-      queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['thread_messages', variables.threadId] });
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
     },
   });
 
@@ -166,8 +167,75 @@ export function useNotificationMessages(notificationId: string | null) {
     messages,
     isLoading,
     refetch,
-    sendMessage: (payload: SendMessagePayload) => sendMessageMutation.mutateAsync(payload),
+    sendMessage: (payload: AppendThreadMessagePayload) => sendMessageMutation.mutateAsync(payload),
     saveAttachment: (payload: SaveAttachmentPayload) => saveAttachmentMutation.mutateAsync(payload),
     isSending: sendMessageMutation.isPending,
   };
+}
+
+export function useSendThreadMessage() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (payload: AppendThreadMessagePayload) => {
+      return notificationsApi.appendThreadMessage(payload);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['thread_messages', variables.threadId] });
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+    },
+  });
+  return {
+    sendMessage: (payload: AppendThreadMessagePayload) => mutation.mutateAsync(payload),
+    isSending: mutation.isPending,
+  };
+}
+
+export function useMarkThreadRead() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (threadId: string) => {
+      return notificationsApi.markThreadRead(threadId);
+    },
+    onSuccess: (_data, threadId) => {
+      queryClient.invalidateQueries({ queryKey: ['thread_messages', threadId] });
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+    },
+  });
+  return {
+    markThreadRead: (threadId: string) => mutation.mutateAsync(threadId),
+  };
+}
+
+export function useArchiveThread() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (threadId: string) => {
+      return notificationsApi.archiveThread(threadId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+    },
+  });
+  return {
+    archiveThread: (threadId: string) => mutation.mutateAsync(threadId),
+  };
+}
+
+export function useFindOrCreateThread() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (payload: FindOrCreateThreadPayload) => {
+      return notificationsApi.findOrCreateThread(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['threads'] });
+    },
+  });
+  return {
+    findOrCreateThread: (payload: FindOrCreateThreadPayload) => mutation.mutateAsync(payload),
+  };
+}
+
+export function useNotificationMessages(notificationId: string | null) {
+  return useThreadMessages(notificationId);
 }

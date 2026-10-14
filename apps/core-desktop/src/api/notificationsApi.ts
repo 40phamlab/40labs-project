@@ -1,4 +1,4 @@
-import type { Notification, NotificationMessage, MessageAttachment, MessageChannel } from '@40labs/types';
+import type { Notification, NotificationMessage, MessageAttachment, MessageChannel, Thread, CounterpartyType } from '@40labs/types';
 import { initialNotifications, initialMessages, initialAttachments, WORKSPACE_ID, BRANCH_ID } from '../devData';
 import { isUsingTauriIpc, invokeCommand } from './client';
 
@@ -15,6 +15,22 @@ export interface SendMessagePayload {
   notificationId: string;
   body: string;
   contentType?: string;
+  htmlContent?: string;
+  attachmentIds?: string[];
+}
+
+export interface FindOrCreateThreadPayload {
+  counterpartyType: CounterpartyType;
+  counterpartyKey: string;
+  counterpartyId?: string | null;
+  displayName: string;
+}
+
+export interface AppendThreadMessagePayload {
+  threadId: string;
+  direction?: 'incoming' | 'outgoing';
+  contentType?: string;
+  body: string;
   htmlContent?: string;
   attachmentIds?: string[];
 }
@@ -38,6 +54,9 @@ export interface ExportResult {
 let notificationsStore: Notification[] = [...initialNotifications];
 let messagesStore: NotificationMessage[] = [...initialMessages];
 let attachmentsStore: MessageAttachment[] = [...initialAttachments];
+let threadsStore: Thread[] = [];
+let threadMessagesStore: Map<string, NotificationMessage[]> = new Map();
+
 const attachmentPreviewUrls = new Map<string, string>();
 
 export async function resolveAttachmentPreviewUrl(attachmentId: string): Promise<string> {
@@ -72,14 +91,171 @@ export const notificationsApi = {
     return messagesStore.filter((m) => m.notification_id === notificationId);
   },
 
-  create: async (payload: CreateNotificationPayload): Promise<Notification> => {
+  getThreads: async (includeArchived = false): Promise<Thread[]> => {
     if (isUsingTauriIpc()) {
-      return invokeCommand<Notification>('create_notification', { payload });
+      return invokeCommand<Thread[]>('get_threads', { includeArchived });
+    }
+    return threadsStore
+      .filter((t) => includeArchived || !t.archived)
+      .map((t) => {
+        const msgs = threadMessagesStore.get(t.id) || [];
+        const unread_count = msgs.filter((m) => m.direction === 'incoming' && m.status !== 'read').length;
+        return { ...t, unread_count };
+      })
+      .sort((a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime());
+  },
+
+  getThreadMessages: async (threadId: string): Promise<NotificationMessage[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<NotificationMessage[]>('get_thread_messages', { threadId });
+    }
+    const msgs = threadMessagesStore.get(threadId) || [];
+    return [...msgs].sort((a, b) => new Date(a.sent_at).getTime() - new Date(b.sent_at).getTime());
+  },
+
+  findOrCreateThread: async (payload: FindOrCreateThreadPayload): Promise<Thread> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Thread>('find_or_create_thread', { payload: {
+        counterparty_type: payload.counterpartyType,
+        counterparty_key: payload.counterpartyKey,
+        counterparty_id: payload.counterpartyId || null,
+        display_name: payload.displayName,
+      }});
+    }
+    let existing = threadsStore.find((t) => t.workspace_id === WORKSPACE_ID && t.counterparty_key === payload.counterpartyKey);
+    if (existing) {
+      existing.display_name = payload.displayName;
+      return existing;
     }
     const now = new Date().toISOString();
-    const notifId = `notif_${Date.now()}`;
-    const newNotif: Notification = {
-      id: notifId,
+    const newThread: Thread = {
+      id: `thread_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      workspace_id: WORKSPACE_ID,
+      branch_id: BRANCH_ID,
+      counterparty_type: payload.counterpartyType,
+      counterparty_key: payload.counterpartyKey,
+      counterparty_id: payload.counterpartyId || null,
+      display_name: payload.displayName,
+      last_message_at: now,
+      last_message_preview: null,
+      archived: false,
+      unread_count: 0,
+      created_at: now,
+      updated_at: now,
+    };
+    threadsStore.push(newThread);
+    threadMessagesStore.set(newThread.id, []);
+    return newThread;
+  },
+
+  appendThreadMessage: async (payload: AppendThreadMessagePayload): Promise<NotificationMessage> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<NotificationMessage>('append_thread_message', { payload: {
+        thread_id: payload.threadId,
+        direction: payload.direction || 'outgoing',
+        content_type: payload.contentType || 'text',
+        body: payload.body,
+        html_content: payload.htmlContent || null,
+        attachment_ids: payload.attachmentIds || null,
+      }});
+    }
+    const now = new Date().toISOString();
+    const msg: NotificationMessage = {
+      id: `msg_${Date.now()}`,
+      workspace_id: WORKSPACE_ID,
+      branch_id: BRANCH_ID,
+      notification_id: `notif_${Date.now()}`,
+      thread_id: payload.threadId,
+      direction: payload.direction || 'outgoing',
+      content_type: (payload.contentType as any) || 'text',
+      body: payload.body,
+      html_content: payload.htmlContent || null,
+      status: 'read',
+      sent_at: now,
+      created_at: now,
+      updated_at: now,
+      attachments: attachmentsStore.filter((a) => payload.attachmentIds?.includes(a.id)),
+    };
+    const list = threadMessagesStore.get(payload.threadId) || [];
+    threadMessagesStore.set(payload.threadId, [...list, msg]);
+
+    const thread = threadsStore.find((t) => t.id === payload.threadId);
+    if (thread) {
+      thread.last_message_at = now;
+      thread.last_message_preview = payload.body;
+      thread.archived = false;
+      thread.updated_at = now;
+    }
+    return msg;
+  },
+
+  markThreadRead: async (threadId: string): Promise<void> => {
+    if (isUsingTauriIpc()) {
+      await invokeCommand<void>('mark_thread_read', { threadId });
+      return;
+    }
+    const list = threadMessagesStore.get(threadId) || [];
+    for (const m of list) {
+      if (m.direction === 'incoming') m.status = 'read';
+    }
+  },
+
+  archiveThread: async (threadId: string): Promise<void> => {
+    if (isUsingTauriIpc()) {
+      await invokeCommand<void>('archive_thread', { threadId });
+      return;
+    }
+    const t = threadsStore.find((th) => th.id === threadId);
+    if (t) {
+      t.archived = true;
+      t.updated_at = new Date().toISOString();
+    }
+  },
+
+  create: async (payload: CreateNotificationPayload): Promise<Notification> => {
+    // Stable key mapping per requirement 5
+    let cType: CounterpartyType = 'customer';
+    let cKey = '';
+    let cId: string | null = null;
+    let dispName = payload.sender_name;
+
+    if (payload.recipient_customer_id) {
+      cType = 'customer';
+      cKey = `customer:${payload.recipient_customer_id}`;
+      cId = payload.recipient_customer_id;
+    } else if (payload.category === 'gov') {
+      cType = 'gov';
+      const upper = payload.sender_name.toUpperCase();
+      if (upper.includes('TMDA')) cKey = 'gov:TMDA';
+      else if (upper.includes('TRA')) cKey = 'gov:TRA';
+      else cKey = `gov:${lowerTrim(payload.sender_name)}`;
+    } else if (payload.category === 'business') {
+      cType = 'business';
+      cKey = `business:${lowerTrim(payload.sender_name)}`;
+    } else if (payload.category === 'marketing') {
+      cType = 'marketing';
+      cKey = `marketing:${lowerTrim(payload.sender_name)}`;
+    } else {
+      cType = 'customer';
+      cKey = `customer:walk_in_${lowerTrim(payload.sender_name)}`;
+    }
+
+    const thread = await notificationsApi.findOrCreateThread({
+      counterpartyType: cType,
+      counterpartyKey: cKey,
+      counterpartyId: cId,
+      displayName: dispName,
+    });
+
+    await notificationsApi.appendThreadMessage({
+      threadId: thread.id,
+      direction: 'incoming',
+      body: payload.body,
+    });
+
+    const now = new Date().toISOString();
+    const notif: Notification = {
+      id: `notif_${Date.now()}`,
       workspace_id: WORKSPACE_ID,
       branch_id: BRANCH_ID,
       created_at: now,
@@ -95,75 +271,32 @@ export const notificationsApi = {
       related_entity_type: payload.recipient_customer_id ? 'customer' : null,
       related_entity_id: payload.recipient_customer_id || null,
       received_at: now,
+      thread_id: thread.id,
     };
-
-    const newMsg: NotificationMessage = {
-      id: `msg_${Date.now()}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      notification_id: notifId,
-      direction: 'incoming',
-      content_type: 'text',
-      body: payload.body,
-      status: 'read',
-      sent_at: now,
-      created_at: now,
-      updated_at: now,
-      attachments: [],
-    };
-
-    notificationsStore = [newNotif, ...notificationsStore];
-    if (payload.body.trim()) messagesStore = [...messagesStore, newMsg];
-    return newNotif;
+    notificationsStore = [notif, ...notificationsStore];
+    return notif;
   },
 
   sendMessage: async (payload: SendMessagePayload): Promise<NotificationMessage> => {
-    if (isUsingTauriIpc()) {
-      return invokeCommand<NotificationMessage>('send_notification_message', {
-        payload: {
-          notification_id: payload.notificationId,
-          body: payload.body,
-          content_type: payload.contentType || 'text',
-          html_content: payload.htmlContent || null,
-          attachment_ids: payload.attachmentIds || null,
-        },
-      });
-    }
-
-    const now = new Date().toISOString();
-    const newMsg: NotificationMessage = {
-      id: `msg_${Date.now()}`,
-      workspace_id: WORKSPACE_ID,
-      branch_id: BRANCH_ID,
-      notification_id: payload.notificationId,
+    // Backward compatibility helper
+    // Find thread associated with notification or create fallback
+    const notif = notificationsStore.find((n) => n.id === payload.notificationId);
+    const threadId = notif?.thread_id || 'thread_default';
+    return notificationsApi.appendThreadMessage({
+      threadId,
       direction: 'outgoing',
-      content_type: payload.contentType || 'text',
       body: payload.body,
-      html_content: payload.htmlContent || null,
-      status: 'queued',
-      sent_at: now,
-      created_at: now,
-      updated_at: now,
-      attachments: attachmentsStore.filter((a) => payload.attachmentIds?.includes(a.id)).map((a) => ({ ...a, message_id: newMsg.id, updated_at: now })),
-    };
-
-    attachmentsStore = attachmentsStore.map((a) => payload.attachmentIds?.includes(a.id) ? { ...a, message_id: newMsg.id, updated_at: now } : a);
-
-    messagesStore = [...messagesStore, newMsg];
-
-    // Update notification body preview / status
-    const target = notificationsStore.find((n) => n.id === payload.notificationId);
-    if (target) {
-      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      target.body = `${target.body}\n\n--- You replied (${timeStr}) ---\n${payload.body}`;
-      target.updated_at = now;
-      target.status = 'read';
-    }
-
-    return newMsg;
+      contentType: payload.contentType,
+      htmlContent: payload.htmlContent,
+      attachmentIds: payload.attachmentIds,
+    });
   },
 
   markAsRead: async (id: string): Promise<Notification | null> => {
+    const notif = notificationsStore.find((n) => n.id === id);
+    if (notif?.thread_id) {
+      await notificationsApi.markThreadRead(notif.thread_id);
+    }
     if (isUsingTauriIpc()) {
       return invokeCommand<Notification>('mark_notification_read', { id });
     }
@@ -178,6 +311,10 @@ export const notificationsApi = {
   },
 
   archive: async (id: string): Promise<Notification | null> => {
+    const notif = notificationsStore.find((n) => n.id === id);
+    if (notif?.thread_id) {
+      await notificationsApi.archiveThread(notif.thread_id);
+    }
     if (isUsingTauriIpc()) {
       return invokeCommand<Notification>('archive_notification', { id });
     }
@@ -192,7 +329,6 @@ export const notificationsApi = {
   },
 
   delete: async (id: string): Promise<boolean> => {
-    // Soft-delete: mark as archived
     const res = await notificationsApi.archive(id);
     return res !== null;
   },
@@ -259,9 +395,12 @@ export const notificationsApi = {
     return destPath;
   },
 
-  // Aliases
   getNotifications: (): Promise<Notification[]> => notificationsApi.list(),
   archiveNotification: (id: string): Promise<Notification | null> => notificationsApi.archive(id),
 };
+
+function lowerTrim(s: string): string {
+  return s.trim().toLowerCase();
+}
 
 export const notifications = notificationsApi;

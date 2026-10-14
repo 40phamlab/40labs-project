@@ -2,6 +2,23 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
 #[derive(Serialize, Deserialize, FromRow, Clone, Debug)]
+pub struct Thread {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub counterparty_type: String,
+    pub counterparty_key: String,
+    pub counterparty_id: Option<String>,
+    pub display_name: String,
+    pub last_message_at: String,
+    pub last_message_preview: Option<String>,
+    pub archived: bool,
+    pub unread_count: i64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Serialize, Deserialize, FromRow, Clone, Debug)]
 pub struct Notification {
     pub id: String,
     pub workspace_id: String,
@@ -30,6 +47,7 @@ pub struct NotificationMessage {
     pub workspace_id: String,
     pub branch_id: String,
     pub notification_id: String,
+    pub thread_id: Option<String>,
     pub direction: String,
     pub content_type: String,
     pub body: String,
@@ -73,6 +91,24 @@ pub struct SendMessagePayload {
     pub notification_id: String,
     pub body: String,
     pub content_type: Option<String>,
+    pub html_content: Option<String>,
+    pub attachment_ids: Option<Vec<String>>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FindOrCreateThreadPayload {
+    pub counterparty_type: String,
+    pub counterparty_key: String,
+    pub counterparty_id: Option<String>,
+    pub display_name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AppendThreadMessagePayload {
+    pub thread_id: String,
+    pub direction: String,
+    pub content_type: Option<String>,
+    pub body: String,
     pub html_content: Option<String>,
     pub attachment_ids: Option<Vec<String>>,
 }

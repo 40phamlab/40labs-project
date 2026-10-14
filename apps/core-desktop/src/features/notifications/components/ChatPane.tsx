@@ -4,6 +4,7 @@ import { MessageBubble } from './MessageBubble';
 import { Composer } from './composer/Composer';
 import { getInitials } from './ThreadListItem';
 import { Archive, Trash2 } from 'lucide-react';
+import { canReplyToThread } from '../replyPolicy';
 
 export interface ChatPaneProps {
   thread: Thread | null;
@@ -34,7 +35,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     );
   }
 
-  const isReadOnly = thread.counterparty_type === 'gov' || thread.display_name.toUpperCase().includes('TMDA') || thread.display_name.toUpperCase().includes('TRA');
+  const isReadOnly = !canReplyToThread(thread.counterparty_type);
 
   return (
     <div className="flex-1 h-full flex flex-col bg-surface-secondary/20 overflow-hidden">
@@ -47,7 +48,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-bold text-text-primary">{thread.display_name}</h3>
-              {isReadOnly && <span className="px-1.5 py-0.5 rounded bg-warning/20 text-warning text-[9px] font-bold">Gov Read-Only</span>}
+              {isReadOnly && <span className="px-1.5 py-0.5 rounded bg-warning/20 text-warning text-[9px] font-bold">Read-Only</span>}
             </div>
             <span className="text-[10px] font-mono text-text-muted capitalize">{thread.counterparty_type} channel</span>
           </div>

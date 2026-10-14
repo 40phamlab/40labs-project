@@ -138,6 +138,12 @@ pub fn run() {
             commands::notification_cmd::resolve_attachment_path,
             commands::notification_cmd::save_bytes_to_documents,
             commands::notification_cmd::export_attachment_to_path,
+            commands::notification_cmd::get_threads,
+            commands::notification_cmd::get_thread_messages,
+            commands::notification_cmd::find_or_create_thread,
+            commands::notification_cmd::append_thread_message,
+            commands::notification_cmd::mark_thread_read,
+            commands::notification_cmd::archive_thread,
             // Devices & Pairing
             commands::devices_cmd::get_paired_devices,
             commands::devices_cmd::initiate_pairing_session,

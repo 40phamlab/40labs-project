@@ -30,4 +30,5 @@ export interface Notification extends BaseEntity {
   related_entity_type: string | null; // optional deep link, e.g. "PurchaseOrder"
   related_entity_id: string | null;
   received_at: ISODateString;
+  thread_id?: string | null;
 }

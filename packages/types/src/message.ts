@@ -6,6 +6,7 @@ export type AttachmentKind = 'image' | 'file' | 'audio';
 
 export interface NotificationMessage extends BaseEntity {
   notification_id: string;
+  thread_id?: string | null;
   direction: MessageDirection;
   content_type: string;
   body: string;

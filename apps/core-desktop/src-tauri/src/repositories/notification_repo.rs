@@ -1,4 +1,4 @@
-use crate::models::notification::{MessageAttachment, Notification, NotificationMessage};
+use crate::models::notification::{MessageAttachment, Notification, NotificationMessage, Thread};
 use sqlx::SqlitePool;
 
 pub struct NotificationRepository;
@@ -239,6 +239,232 @@ impl NotificationRepository {
         .execute(pool)
         .await?;
 
+        Ok(())
+    }
+
+    pub async fn list_threads(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        include_archived: bool,
+    ) -> Result<Vec<Thread>, sqlx::Error> {
+        let archived_filter = if include_archived { 1 } else { 0 };
+        sqlx::query_as::<_, Thread>(
+            r#"
+            SELECT
+              t.*,
+              (SELECT COUNT(*) FROM notification_messages m WHERE m.thread_id = t.id AND m.direction = 'incoming' AND m.status != 'read') AS unread_count
+            FROM threads t
+            WHERE t.workspace_id = ?
+            AND (? = 1 OR t.archived = 0)
+            ORDER BY t.last_message_at DESC
+            "#,
+        )
+        .bind(workspace_id)
+        .bind(archived_filter)
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn get_thread_by_id(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        thread_id: &str,
+    ) -> Result<Option<Thread>, sqlx::Error> {
+        sqlx::query_as::<_, Thread>(
+            r#"
+            SELECT
+              t.*,
+              (SELECT COUNT(*) FROM notification_messages m WHERE m.thread_id = t.id AND m.direction = 'incoming' AND m.status != 'read') AS unread_count
+            FROM threads t
+            WHERE t.workspace_id = ? AND t.id = ?
+            "#,
+        )
+        .bind(workspace_id)
+        .bind(thread_id)
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn find_or_create_thread(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        counterparty_type: &str,
+        counterparty_key: &str,
+        counterparty_id: Option<&str>,
+        display_name: &str,
+    ) -> Result<Thread, sqlx::Error> {
+        if let Some(existing) = sqlx::query_as::<_, Thread>(
+            r#"
+            SELECT
+              t.*,
+              (SELECT COUNT(*) FROM notification_messages m WHERE m.thread_id = t.id AND m.direction = 'incoming' AND m.status != 'read') AS unread_count
+            FROM threads t
+            WHERE t.workspace_id = ? AND t.counterparty_key = ?
+            "#,
+        )
+        .bind(workspace_id)
+        .bind(counterparty_key)
+        .fetch_optional(pool)
+        .await? {
+            return Ok(existing);
+        }
+
+        let now = chrono::Utc::now().to_rfc3339();
+        let thread_id = format!("thread_{}", uuid::Uuid::new_v4());
+        sqlx::query(
+            r#"
+            INSERT INTO threads (
+                id, workspace_id, branch_id, counterparty_type, counterparty_key,
+                counterparty_id, display_name, last_message_at, last_message_preview,
+                archived, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, ?, ?)
+            "#,
+        )
+        .bind(&thread_id)
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(counterparty_type)
+        .bind(counterparty_key)
+        .bind(counterparty_id)
+        .bind(display_name)
+        .bind(&now)
+        .bind(&now)
+        .bind(&now)
+        .execute(pool)
+        .await?;
+
+        Self::get_thread_by_id(pool, workspace_id, &thread_id)
+            .await?
+            .ok_or_else(|| sqlx::Error::RowNotFound)
+    }
+
+    pub async fn append_thread_message(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        thread_id: &str,
+        msg: &NotificationMessage,
+        attachment_ids: &[String],
+    ) -> Result<(), sqlx::Error> {
+        let mut tx = pool.begin().await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO notification_messages (
+                id, workspace_id, branch_id, notification_id, thread_id, direction,
+                content_type, body, html_content, status, sent_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&msg.id)
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(&msg.notification_id)
+        .bind(thread_id)
+        .bind(&msg.direction)
+        .bind(&msg.content_type)
+        .bind(&msg.body)
+        .bind(&msg.html_content)
+        .bind(&msg.status)
+        .bind(&msg.sent_at)
+        .bind(&msg.created_at)
+        .bind(&msg.updated_at)
+        .execute(&mut *tx)
+        .await?;
+
+        for att_id in attachment_ids {
+            sqlx::query(
+                "UPDATE message_attachments SET message_id = ?, updated_at = ? WHERE id = ? AND workspace_id = ? AND message_id IS NULL",
+            )
+            .bind(&msg.id)
+            .bind(&msg.updated_at)
+            .bind(att_id)
+            .bind(workspace_id)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        sqlx::query(
+            r#"
+            UPDATE threads
+            SET last_message_at = ?, last_message_preview = ?, archived = 0, updated_at = ?
+            WHERE workspace_id = ? AND id = ?
+            "#,
+        )
+        .bind(&msg.sent_at)
+        .bind(&msg.body)
+        .bind(&msg.updated_at)
+        .bind(workspace_id)
+        .bind(thread_id)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await
+    }
+
+    pub async fn list_messages_by_thread(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        thread_id: &str,
+    ) -> Result<Vec<NotificationMessage>, sqlx::Error> {
+        let mut messages = sqlx::query_as::<_, NotificationMessage>(
+            "SELECT * FROM notification_messages WHERE workspace_id = ? AND thread_id = ? ORDER BY sent_at ASC",
+        )
+        .bind(workspace_id)
+        .bind(thread_id)
+        .fetch_all(pool)
+        .await?;
+
+        for msg in &mut messages {
+            let attachments = sqlx::query_as::<_, MessageAttachment>(
+                "SELECT * FROM message_attachments WHERE workspace_id = ? AND message_id = ?",
+            )
+            .bind(workspace_id)
+            .bind(&msg.id)
+            .fetch_all(pool)
+            .await?;
+            msg.attachments = Some(attachments);
+        }
+
+        Ok(messages)
+    }
+
+    pub async fn mark_thread_read(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        thread_id: &str,
+    ) -> Result<(), sqlx::Error> {
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            r#"
+            UPDATE notification_messages
+            SET status = 'read', updated_at = ?
+            WHERE workspace_id = ? AND thread_id = ? AND direction = 'incoming' AND status != 'read'
+            "#,
+        )
+        .bind(now)
+        .bind(workspace_id)
+        .bind(thread_id)
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn archive_thread(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        thread_id: &str,
+    ) -> Result<(), sqlx::Error> {
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            "UPDATE threads SET archived = 1, updated_at = ? WHERE workspace_id = ? AND id = ?",
+        )
+        .bind(now)
+        .bind(workspace_id)
+        .bind(thread_id)
+        .execute(pool)
+        .await?;
         Ok(())
     }
 }

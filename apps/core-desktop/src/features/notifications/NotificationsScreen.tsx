@@ -1,78 +1,16 @@
 import * as React from 'react';
 import { ConfirmDialog } from '@40labs/ui-components';
 import { Mail } from 'lucide-react';
-import type { MessageChannel, Thread } from '@40labs/types';
+import type { MessageChannel } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
 import { ThreadList } from './components/ThreadList';
 import { ChatPane } from './components/ChatPane';
 import { NewConversationModal, ContactOption } from './components/NewConversationModal';
-import { useNotifications, useNotificationMessages } from '../../hooks/useNotifications';
+import { useThreads, useThreadMessages, useSendThreadMessage, useMarkThreadRead, useArchiveThread, useFindOrCreateThread } from '../../hooks/useNotifications';
 import { useToast } from '../../hooks/useToast';
 
-export function useThreads(notifications: any[]) {
-  return React.useMemo(() => {
-    const threadMap = new Map<string, Thread & { notificationIds: string[] }>();
-
-    for (const n of notifications) {
-      const key = `${n.category}_${n.sender_name}`;
-      if (!threadMap.has(key)) {
-        let cType: any = 'customer';
-        if (n.category === 'gov' || n.sender_name.toUpperCase().includes('TMDA') || n.sender_name.toUpperCase().includes('TRA')) {
-          cType = 'gov';
-        } else if (n.category === 'business') {
-          cType = 'business';
-        } else if (n.category === 'marketing') {
-          cType = 'marketing';
-        } else {
-          cType = 'customer';
-        }
-
-        threadMap.set(key, {
-          id: key,
-          workspace_id: n.workspace_id,
-          branch_id: n.branch_id,
-          counterparty_type: cType,
-          counterparty_id: n.sender_business_id,
-          display_name: n.sender_name,
-          last_message_at: n.received_at || n.created_at,
-          unread_count: n.status === 'unread' ? 1 : 0,
-          archived: n.status === 'archived',
-          last_message_preview: n.body,
-          created_at: n.created_at || new Date().toISOString(),
-          updated_at: n.updated_at || new Date().toISOString(),
-          notificationIds: [n.id],
-        });
-      } else {
-        const t = threadMap.get(key)!;
-        t.notificationIds.push(n.id);
-        if (n.status === 'unread') {
-          t.unread_count += 1;
-        }
-        if (new Date(n.received_at || n.created_at) > new Date(t.last_message_at)) {
-          t.last_message_at = n.received_at || n.created_at;
-          t.last_message_preview = n.body;
-        }
-      }
-    }
-
-    return Array.from(threadMap.values()).sort(
-      (a, b) => new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
-    );
-  }, [notifications]);
-}
-
 export const NotificationsScreen: React.FC = () => {
-  const {
-    notifications,
-    isLoading,
-    refetch,
-    markAsRead,
-    archiveNotification,
-    deleteNotification,
-    createNotification,
-  } = useNotifications();
-
-  const threads = useThreads(notifications);
+  const { threads, isLoading, refetch } = useThreads(false);
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
 
   const selectedThread = React.useMemo(() => {
@@ -80,8 +18,11 @@ export const NotificationsScreen: React.FC = () => {
     return threads.find((t) => t.id === selectedThreadId) || null;
   }, [threads, selectedThreadId]);
 
-  const activeNotificationId = selectedThread?.notificationIds[0] || null;
-  const { messages, sendMessage } = useNotificationMessages(activeNotificationId);
+  const { messages, refetch: refetchMessages } = useThreadMessages(selectedThreadId);
+  const { sendMessage } = useSendThreadMessage();
+  const { markThreadRead } = useMarkThreadRead();
+  const { archiveThread } = useArchiveThread();
+  const { findOrCreateThread } = useFindOrCreateThread();
   const { toast } = useToast();
 
   const [deleteTargetThreadId, setDeleteTargetThreadId] = React.useState<string | null>(null);
@@ -101,78 +42,75 @@ export const NotificationsScreen: React.FC = () => {
   const handleSelectThread = React.useCallback(
     async (threadId: string) => {
       setSelectedThreadId(threadId);
-      const t = threads.find((th) => th.id === threadId);
-      if (t) {
-        for (const notifId of t.notificationIds) {
-          await markAsRead(notifId);
-        }
-      }
+      await markThreadRead(threadId);
+      refetchMessages();
     },
-    [threads, markAsRead]
+    [markThreadRead, refetchMessages]
   );
 
   const handleConfirmArchive = React.useCallback(async () => {
     if (archiveTargetThreadId) {
-      const t = threads.find((th) => th.id === archiveTargetThreadId);
-      if (t) {
-        for (const notifId of t.notificationIds) {
-          await archiveNotification(notifId);
-        }
-      }
+      await archiveThread(archiveTargetThreadId);
       if (selectedThreadId === archiveTargetThreadId) {
         setSelectedThreadId(null);
       }
+      refetch();
     }
     setArchiveTargetThreadId(null);
-  }, [archiveTargetThreadId, threads, archiveNotification, selectedThreadId]);
+  }, [archiveTargetThreadId, archiveThread, selectedThreadId, refetch]);
 
   const handleConfirmDelete = React.useCallback(async () => {
     if (deleteTargetThreadId) {
-      const t = threads.find((th) => th.id === deleteTargetThreadId);
-      if (t) {
-        for (const notifId of t.notificationIds) {
-          await deleteNotification(notifId);
-        }
-      }
+      await archiveThread(deleteTargetThreadId); // soft archive/delete
       if (selectedThreadId === deleteTargetThreadId) {
         setSelectedThreadId(null);
       }
+      refetch();
     }
     setDeleteTargetThreadId(null);
-  }, [deleteTargetThreadId, threads, deleteNotification, selectedThreadId]);
+  }, [deleteTargetThreadId, archiveThread, selectedThreadId, refetch]);
 
   const handleSendReply = React.useCallback(
     async (replyText: string, attachmentIds: string[] = []) => {
-      if (!activeNotificationId) return;
+      if (!selectedThreadId) return;
       try {
-        await sendMessage({ notificationId: activeNotificationId, body: replyText, attachmentIds });
+        await sendMessage({
+          threadId: selectedThreadId,
+          direction: 'outgoing',
+          body: replyText,
+          attachmentIds,
+        });
+        refetchMessages();
       } catch (err) {
         console.error('Failed to send message:', err);
         toast.error('Message was not sent.');
         throw err;
       }
     },
-    [activeNotificationId, sendMessage, toast]
+    [selectedThreadId, sendMessage, refetchMessages, toast]
   );
 
   const handleStartNewConversation = React.useCallback(
-    async (contacts: ContactOption[], channel: MessageChannel) => {
-      const results = await Promise.allSettled(contacts.map((contact) => createNotification({
-        sender_name: contact.name,
-        sender_address: contact.identifier,
-        body: '',
-        category: 'customers',
-        channel,
-        recipient_customer_id: contact.id,
-      })));
-      const created = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : []);
-      if (created[0]?.id) {
-        const firstKey = `customers_${created[0].sender_name}`;
-        setSelectedThreadId(firstKey);
+    async (contacts: ContactOption[], _channel: MessageChannel) => {
+      let firstId: string | null = null;
+      let createdCount = 0;
+      for (const contact of contacts) {
+        const thread = await findOrCreateThread({
+          counterpartyType: 'customer',
+          counterpartyKey: `customer:${contact.id}`,
+          counterpartyId: contact.id,
+          displayName: contact.name,
+        });
+        if (!firstId) firstId = thread.id;
+        createdCount++;
       }
-      return { failedContactIds: [], createdCount: created.length };
+      if (firstId) {
+        setSelectedThreadId(firstId);
+      }
+      refetch();
+      return { failedContactIds: [], createdCount };
     },
-    [createNotification]
+    [findOrCreateThread, refetch]
   );
 
   return (
