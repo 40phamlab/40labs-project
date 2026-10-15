@@ -55,7 +55,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   if (!thread) {
     return (
-      <div className="flex-1 h-full flex flex-col items-center justify-center bg-panel text-text-muted p-8 text-center">
+      <div className="flex-1 h-full flex flex-col items-center justify-center bg-tab-panel text-text-muted p-8 text-center">
         <p className="text-sm">No Conversation Selected</p>
       </div>
     );
@@ -147,8 +147,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       }}
     >
       {isDragging && (
-        /* overlay-highlight */
-        <div className="absolute inset-0 z-50 bg-primary/20 backdrop-blur-xs flex flex-col items-center justify-center border-2 border-dashed border-primary">
+        <div className="absolute inset-0 z-50 bg-primary/20 backdrop-blur-xs flex flex-col items-center justify-center border-2 border-dashed border-primary" role="status"> {/* overlay-highlight */}
           <Upload size={40} className="text-primary animate-bounce mb-2" />
           <span className="text-sm font-bold text-text-primary">Drop files here to attach</span>
         </div>
@@ -166,7 +165,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 bg-panel overflow-y-auto custom-scrollbar p-4 space-y-1 relative"
+        className="flex-1 bg-tab-panel overflow-y-auto custom-scrollbar p-4 space-y-1 relative"
       >
         {messages.map((msg, idx) => {
           const prevMsg = idx > 0 ? messages[idx - 1] : undefined;

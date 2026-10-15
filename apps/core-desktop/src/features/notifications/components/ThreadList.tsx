@@ -87,9 +87,9 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   ];
 
   return (
-    <div className={`flex flex-col h-full bg-panel rounded-card elevation-raised border border-border/50 overflow-hidden ${className || 'w-80 shrink-0'}`}>
+    <div className={`flex flex-col h-full bg-tab-panel rounded-card elevation-tab-panel border border-border/50 overflow-hidden ${className || 'w-80 shrink-0'}`}>
       {/* Header */}
-      <div className="p-3 bg-panel-strong border-b border-border/40 space-y-3">
+      <div className="p-3 bg-tab-panel-strong border-b border-border/40 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-text-primary">Chats</h2>
           <div className="flex items-center gap-1">

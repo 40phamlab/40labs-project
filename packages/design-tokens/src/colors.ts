@@ -16,6 +16,9 @@ export const colors = {
   textOnDarkMuted: 'rgba(248, 250, 251, 0.6)',
 
   // Solid Surfaces
+  tabContainer: '#1A221E',
+  tabPanel: '#222C27',
+  tabPanelStrong: '#2A3630',
   surfacePrimary: '#1A221E',
   surfaceSecondary: '#222C27',
   surfaceElevated: '#2A3630',
@@ -89,6 +92,9 @@ export const lightColors = {
   topChrome: '#EDF1F3',
   sidebar: '#EDF1F3',
 
+  tabContainer: '#E4E9EC',
+  tabPanel: '#F3F6F8',
+  tabPanelStrong: '#F7F9FA',
   surfacePrimary: '#F3F6F8',
   surfaceSecondary: '#F7F9FA',
   surfaceElevated: '#FFFFFF',

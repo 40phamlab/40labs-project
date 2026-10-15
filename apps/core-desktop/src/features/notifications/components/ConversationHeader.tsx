@@ -31,7 +31,7 @@ export const ConversationHeader: React.FC<ConversationHeaderProps> = ({
   const resolvedCounterpartyType = counterpartyType || (notification as any).counterparty_type || notification.category;
 
   return (
-    <div className={`h-[60px] bg-panel-strong flex items-center justify-between px-4 border-b border-border/40 shrink-0 ${className}`}>
+    <div className={`h-[60px] bg-tab-panel-strong flex items-center justify-between px-4 border-b border-border/40 shrink-0 ${className}`}>
       <div className="flex items-center gap-3 min-w-0">
         {onBack && (
           <IconButton

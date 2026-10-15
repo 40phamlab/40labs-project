@@ -21,6 +21,9 @@
   --sidebar-rail-width: 56px;
 
   /* Solid Surfaces */
+  --color-tab-container: #1A221E;
+  --color-tab-panel: #222C27;
+  --color-tab-panel-strong: #2A3630;
   --color-surface-primary: #1A221E;
   --color-surface-secondary: #222C27;
   --color-surface-elevated: #2A3630;
@@ -112,6 +115,7 @@
   --shadow-elevation-inset: inset 0 1px 3px rgba(0,0,0,0.6);
   --shadow-surface-pop: 0 4px 16px rgba(0,0,0,0.7);
   --shadow-inner-soft: inset 0 2px 4px rgba(0,0,0,0.6);
+  --shadow-tab-panel: 0 2px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
 }
 
 :root[data-theme="light"], [data-theme="light"] {
@@ -119,6 +123,10 @@
   --color-app-bg: #E4E9EC;
   --color-top-chrome: #EDF1F3;
   --color-sidebar: #EDF1F3;
+  --color-tab-container: #E4E9EC;
+  --color-tab-panel: #F3F6F8;
+  --color-tab-panel-strong: #F7F9FA;
+  --shadow-tab-panel: 0 2px 8px rgba(0,0,0,0.5);
   --color-surface-dark-bg: #0B0F0D;
   --color-surface-dark-raised: #14532D;
   --color-surface-dark-highlight: #16A34A;

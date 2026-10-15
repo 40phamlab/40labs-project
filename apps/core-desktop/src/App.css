@@ -8,6 +8,7 @@
   .elevation-hover { box-shadow: var(--shadow-elevation-hover); }
   .elevation-pressed { box-shadow: var(--shadow-elevation-pressed); }
   .elevation-inset { box-shadow: var(--shadow-elevation-inset); }
+  .elevation-tab-panel { box-shadow: var(--shadow-tab-panel); }
   .shadow-surface-pop { box-shadow: var(--shadow-surface-pop); }
   .shadow-inner-soft { box-shadow: var(--shadow-inner-soft); }
   .drag-region { -webkit-app-region: drag; app-region: drag; }

@@ -26,7 +26,7 @@ export const MessageStatusIcon: React.FC<MessageStatusIconProps> = ({
         <button
           type="button"
           onClick={onRetry}
-          className="flex items-center gap-1 text-danger hover:underline cursor-pointer bg-danger/10 px-1.5 py-0.5 rounded text-[11px]"
+          className="flex items-center gap-1 text-danger hover:underline cursor-pointer bg-danger/10 px-1.5 py-0.5 rounded text-[11px]" role="status"
         >
           <RefreshCw size={11} className="shrink-0 animate-spin" />
           <span>Retry</span>

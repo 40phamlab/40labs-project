@@ -44,7 +44,7 @@ export function KPITile({
     : value;
 
   return (
-    <div className={`bg-panel rounded-card p-3.5 elevation-raised border border-border-default flex flex-col gap-1 text-text-primary relative overflow-hidden group ${className}`}>
+    <div className={`bg-tab-panel-strong rounded-card p-3.5 elevation-raised border border-border-default flex flex-col gap-1 text-text-primary relative overflow-hidden group ${className}`}>
       <div className="flex items-center justify-between mb-0.5">
         <span className="font-ui text-[10px] font-bold uppercase tracking-widest text-text-muted">{title}</span>
         {icon && (

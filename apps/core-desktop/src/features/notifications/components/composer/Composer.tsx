@@ -38,7 +38,7 @@ export const Composer: React.FC<ComposerProps> = ({
 
   if (isReadOnly) {
     return (
-      <div className="p-3 bg-panel border-t border-border/40 text-center text-xs text-text-muted font-ui">
+      <div className="p-3 bg-tab-panel-strong border-t border-border/40 text-center text-xs text-text-muted font-ui">
         Read-only conversation.
       </div>
     );
@@ -70,7 +70,7 @@ export const Composer: React.FC<ComposerProps> = ({
   };
 
   return (
-    <div className="flex flex-col bg-panel border-t border-border/40 shrink-0 relative">
+    <div className="flex flex-col bg-tab-panel-strong border-t border-border/40 shrink-0 relative">
       <AttachmentTray attachments={attachments} onRemove={handleRemoveAttachment} className="mx-3 mt-2" />
       {showVoiceRecorder && (
         <div className="mx-3 my-2">

@@ -128,7 +128,7 @@ export const NotificationsListPanel: React.FC<NotificationsListPanelProps> = ({
 
   return (
     <div
-      className={`flex flex-col h-full bg-panel border border-border/40 rounded-card p-3 overflow-hidden gap-2.5 w-[340px] lg:w-[400px] shrink-0 ${className}`}
+      className={`flex flex-col h-full bg-tab-panel rounded-card elevation-tab-panel border border-border/50 p-3 overflow-hidden gap-2.5 w-[340px] lg:w-[400px] shrink-0 ${className}`}
     >
       {/* Header row: "Inbox" with unread count, then + New, Refresh IconButton, and Mark all read button */}
       <div className="flex items-center justify-between shrink-0 pb-2 border-b border-border/30">

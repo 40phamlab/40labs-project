@@ -152,7 +152,7 @@ export const NotificationsScreen: React.FC = () => {
         {isNarrowScreen ? (
           <div className="w-full h-full overflow-hidden">
             {selectedThread ? (
-              <div className="w-full h-full rounded-card elevation-raised bg-panel border border-border/50 overflow-hidden">
+              <div className="w-full h-full bg-tab-panel rounded-card elevation-tab-panel border border-border/50 overflow-hidden">
                 <ChatPane
                   thread={selectedThread}
                   messages={messages}
@@ -189,7 +189,7 @@ export const NotificationsScreen: React.FC = () => {
               className="w-80 shrink-0 h-full"
             />
 
-            <div className="flex-1 h-full min-h-0 rounded-card elevation-raised bg-panel border border-border/50 overflow-hidden">
+            <div className="flex-1 h-full min-h-0 bg-tab-panel rounded-card elevation-tab-panel border border-border/50 overflow-hidden">
               {selectedThread ? (
                 <ChatPane
                   thread={selectedThread}

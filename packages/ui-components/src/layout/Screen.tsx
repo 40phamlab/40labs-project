@@ -53,7 +53,7 @@ export function Screen({
 
   return (
     <main
-      className={`flex-1 w-full h-full min-h-0 min-w-0 bg-app-bg text-text-primary flex flex-col p-3 gap-3 overflow-hidden relative ${className}`}
+      className={`flex-1 w-full h-full min-h-0 min-w-0 bg-tab-container text-text-primary flex flex-col p-3 gap-3 overflow-hidden relative ${className}`}
     >
       {loading ? (
         <div className="flex-1 flex items-center justify-center min-h-[300px]">

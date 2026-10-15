@@ -217,7 +217,7 @@ export function AppShell({
 
           <main className={`flex-1 min-w-0 min-h-0 h-full overflow-hidden relative ${isFloating ? 'p-[var(--shell-inset)] bg-app-bg' : ''}`} data-testid="app-shell-main-workspace">
             {isFloating ? (
-              <div className="h-full w-full bg-surface-primary rounded-[var(--radius-card-md)] shadow-md overflow-hidden flex flex-col">
+              <div className="h-full w-full bg-tab-container border border-border/60 rounded-[var(--radius-card-md)] shadow-md overflow-hidden flex flex-col">
                 {/* TODO: [light palette missing, dark palette still open] [Phase: design-tokens] */}
                 {children}
               </div>

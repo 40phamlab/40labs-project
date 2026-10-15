@@ -161,20 +161,22 @@ describe('Notifications Feature Unit Tests', () => {
     expect(formattedLink).not.toContain('javascript:');
   });
 
-  it('Guard: no bg-*/(10|20|30) on pane/area wrappers and pane roots have rounded-card & elevation-raised', () => {
+  it('Guard: no bg-*/(10|20|30) on pane/area wrappers and pane roots have rounded-card & elevation-tab-panel', () => {
     const modules = import.meta.glob<string>('./**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true });
 
     // Check ThreadList.tsx content
     const threadListCode = modules['./components/ThreadList.tsx'];
     expect(threadListCode).toBeDefined();
     expect(threadListCode).toContain('rounded-card');
-    expect(threadListCode).toContain('elevation-raised');
+    expect(threadListCode).toContain('elevation-tab-panel');
+    expect(threadListCode).toContain('bg-tab-panel');
 
     // Check NotificationsScreen.tsx content for right pane wrapper
     const screenCode = modules['./NotificationsScreen.tsx'];
     expect(screenCode).toBeDefined();
     expect(screenCode).toContain('rounded-card');
-    expect(screenCode).toContain('elevation-raised');
+    expect(screenCode).toContain('elevation-tab-panel');
+    expect(screenCode).toContain('bg-tab-panel');
 
     // Check no bg-*/(10|20|30) on pane/area wrappers across features/notifications/**
     const alphaBgRegex = /bg-[a-z-]+\/(10|20|30)\b/;
