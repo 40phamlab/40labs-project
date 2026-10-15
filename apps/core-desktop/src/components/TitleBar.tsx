@@ -6,12 +6,14 @@ import { BranchControl } from './BranchControl';
 import { OpenFileTabs } from './OpenFileTabs';
 import { ConnectivityIndicator } from './ConnectivityIndicator';
 import { ThemeLogo } from './brand';
+import { useNavStore } from '../stores/useNavStore';
 
 export interface TitleBarProps {
   brandName?: string;
   onHelpClick?: () => void;
   onUpdateClick?: () => void;
   onSettingsClick?: () => void;
+  onExplorerClick?: () => void;
   onToggleSidebar?: () => void;
   hasUpdateAvailable?: boolean;
 }
@@ -21,17 +23,28 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onHelpClick,
   onUpdateClick,
   onSettingsClick,
+  onExplorerClick,
   onToggleSidebar,
   hasUpdateAvailable = false,
 }) => {
   const shell = useAppShell();
   const isNavClosed = shell.navState === 'closed';
 
+  const setActiveScreen = useNavStore((s) => s.setActiveScreen);
+
   const handleToggle = () => {
     if (onToggleSidebar) {
       onToggleSidebar();
     } else {
       shell.toggleSidebar();
+    }
+  };
+
+  const handleExplorerClick = () => {
+    if (onExplorerClick) {
+      onExplorerClick();
+    } else {
+      setActiveScreen('explorer');
     }
   };
 
@@ -66,7 +79,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
     <div
       className="h-10 w-full flex items-center justify-between px-2 bg-app-bg select-none shrink-0 z-[110]"
     >
-      {/* Left side: Sidebar Toggle, Logo, Hamburger, Branch */}
+      {/* Left side: Sidebar Toggle, Logo, Hamburger Menu (App Shell Menu), File Tabs, Branch Control */}
       <div className="flex items-center gap-1.5 h-full min-w-0 no-drag shrink-0" data-tauri-drag-region="false">
         {/* Sidebar Toggle Button */}
         <button
@@ -88,15 +101,16 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           </span>
         </div>
 
-        {/* Hamburger Menu */}
+        {/* Hamburger Menu (App Shell Menu) - Opens File Explorer */}
         <HamburgerMenu
           onHelpClick={onHelpClick}
           onUpdateClick={onUpdateClick}
           onSettingsClick={onSettingsClick}
+          onExplorerClick={handleExplorerClick}
           hasUpdateAvailable={hasUpdateAvailable}
         />
 
-        {/* Opened File Tabs (In front of Branches) */}
+        {/* Opened File Tabs */}
         <OpenFileTabs />
 
         {/* Branch Control */}

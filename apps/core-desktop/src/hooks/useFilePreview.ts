@@ -47,6 +47,10 @@ export function useFilePreview() {
   const closeFileTab = (index: number, e?: React.MouseEvent) => {
     e?.stopPropagation();
     setFiles((prev) => {
+      const itemToClose = prev[index];
+      if (itemToClose && itemToClose.url && itemToClose.url.startsWith('blob:')) {
+        URL.revokeObjectURL(itemToClose.url);
+      }
       const next = prev.filter((_, i) => i !== index);
       if (next.length === 0) {
         setIsOpen(false);
@@ -97,6 +101,49 @@ export function useFilePreview() {
     });
   };
 
+  const handleDownload = async () => {
+    if (!activeFile) return;
+    try {
+      if (isUsingTauriIpc()) {
+        const { save: saveDialog } = await import('@tauri-apps/plugin-dialog');
+        const dest = await saveDialog({ defaultPath: activeFile.fileName });
+        if (dest) {
+          const resp = await fetch(activeFile.url);
+          const buffer = await resp.arrayBuffer();
+          const bytes = Array.from(new Uint8Array(buffer));
+          await invokeCommand('export_attachment_to_path', {
+            bytes,
+            destPath: dest,
+          });
+          toast.success(`Exported ${activeFile.fileName}`);
+        }
+      } else {
+        const a = document.createElement('a');
+        a.href = activeFile.url;
+        a.download = activeFile.fileName;
+        a.click();
+      }
+    } catch (err) {
+      console.warn('Download error:', err);
+      toast.error('Failed to export file.');
+    }
+  };
+
+  const handleOpenExternal = async () => {
+    if (!activeFile) return;
+    try {
+      if (isUsingTauriIpc()) {
+        const { openPath } = await import('@tauri-apps/plugin-opener');
+        await openPath(activeFile.url);
+      } else {
+        window.open(activeFile.url, '_blank');
+      }
+    } catch (err) {
+      console.warn('Open external error:', err);
+      toast.error('Failed to open file externally.');
+    }
+  };
+
   const closeModal = () => {
     setIsOpen(false);
   };
@@ -106,6 +153,9 @@ export function useFilePreview() {
     files,
     currentIndex,
     file: activeFile,
+    onDownload: handleDownload,
+    onSaveAs: handleDownload,
+    onOpenExternal: handleOpenExternal,
     onClose: closeModal,
   };
 

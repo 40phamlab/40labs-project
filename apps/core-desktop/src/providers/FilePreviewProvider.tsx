@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useFilePreview } from '../hooks/useFilePreview';
-import { FilePreview } from '@40labs/ui-components';
+import { FilePreviewModal } from '@40labs/ui-components';
 
 const FilePreviewContext = React.createContext<ReturnType<typeof useFilePreview> | null>(null);
 
@@ -12,17 +12,16 @@ export const FilePreviewProvider: React.FC<{ children: React.ReactNode }> = ({ c
     <FilePreviewContext.Provider value={preview}>
       {children}
       {previewState.isOpen && previewState.files.length > 0 && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="w-full max-w-5xl h-[85vh] flex flex-col">
-            <FilePreview
-              files={previewState.files}
-              index={previewState.currentIndex}
-              onIndexChange={selectFileTab}
-              onClose={closeModal}
-              variant="modal"
-            />
-          </div>
-        </div>
+        <FilePreviewModal
+          isOpen={previewState.isOpen}
+          files={previewState.files}
+          index={previewState.currentIndex}
+          onIndexChange={selectFileTab}
+          onClose={closeModal}
+          onDownload={previewState.onDownload}
+          onSaveAs={previewState.onSaveAs}
+          onOpenExternal={previewState.onOpenExternal}
+        />
       )}
     </FilePreviewContext.Provider>
   );

@@ -27,6 +27,7 @@ import { SchedulingScreen } from './features/scheduling/SchedulingScreen';
 import { ReportsScreen } from './features/reports/ReportsScreen';
 import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
+import { ExplorerScreen } from './features/explorer/ExplorerScreen';
 import { ToastProvider } from './hooks/useToast';
 import { useNotifications } from './hooks/useNotifications';
 import { useNotificationSound } from './hooks/useNotificationSound';
@@ -56,12 +57,15 @@ export default function App() {
     prevUnreadRef.current = unreadCount;
   }, [unreadCount, playNotificationSound]);
 
-  // Global keyboard shortcuts (Ctrl+N for sales, Ctrl+, for settings, Ctrl+K for search)
+  // Global keyboard shortcuts (Ctrl+N for sales, Ctrl+E for file explorer, Ctrl+, for settings, Ctrl+K for search)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault();
         setActiveScreen('sales');
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        setActiveScreen('explorer');
       } else if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
         setActiveScreen('settings');
@@ -96,6 +100,8 @@ export default function App() {
     switch (activeScreen) {
       case 'dashboard':
         return <DashboardScreen />;
+      case 'explorer':
+        return <ExplorerScreen />;
       case 'inventory':
         return <InventoryScreen />;
       case 'sales':
@@ -132,6 +138,7 @@ export default function App() {
       onHelpClick={() => console.log('Help clicked')}
       onUpdateClick={() => console.log('Update clicked')}
       onSettingsClick={() => setActiveScreen('settings')}
+      onExplorerClick={() => setActiveScreen('explorer')}
     />
   );
 

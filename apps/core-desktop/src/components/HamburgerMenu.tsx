@@ -6,7 +6,7 @@ import {
   RefreshCw,
   FilePlus,
   FileText,
-  FolderOpen,
+  FolderTree,
   Upload,
   ExternalLink,
   Command,
@@ -21,15 +21,15 @@ import { useConnectivityStore } from '../stores/useConnectivityStore';
 import { useBusiness } from '../hooks/useBusiness';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
-import { openPath } from '@tauri-apps/plugin-opener';
-import { documentDir } from '@tauri-apps/api/path';
-import { useFilePreview } from '../hooks/useFilePreview';
+import { useFilePreviewContext } from '../providers/FilePreviewProvider';
+import { useNavStore } from '../stores/useNavStore';
 import { convertFileSrc } from '@tauri-apps/api/core';
 
 export interface HamburgerMenuProps {
   onHelpClick?: () => void;
   onUpdateClick?: () => void;
   onSettingsClick?: () => void;
+  onExplorerClick?: () => void;
   hasUpdateAvailable?: boolean;
 }
 
@@ -37,6 +37,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
   onHelpClick,
   onUpdateClick: _onUpdateClick,
   onSettingsClick,
+  onExplorerClick,
   hasUpdateAvailable = false,
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -49,7 +50,8 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
 
   const isOnline = useConnectivityStore((s) => s.status === 'online');
   const { business } = useBusiness();
-  const { openBlob } = useFilePreview();
+  const { openBlob } = useFilePreviewContext();
+  const setActiveScreen = useNavStore((s) => s.setActiveScreen);
 
   const handleClose = () => {
     setIsOpen(false);
@@ -82,7 +84,7 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
     try {
       const selected = await openDialog({
         multiple: false,
-        filters: [{ name: 'Supported Files', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'txt', 'csv'] }],
+        filters: [{ name: 'Supported Files', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'txt', 'csv', 'docx', 'xlsx'] }],
       });
       if (selected && typeof selected === 'string') {
         const fileName = selected.split(/[\\/]/).pop() || 'file';
@@ -100,14 +102,12 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
     }
   };
 
-  const handleOpenFolder = async () => {
+  const handleOpenExplorer = () => {
     handleClose();
-    try {
-      const docDir = await documentDir();
-      const targetFolder = `${docDir}/40Labs`;
-      await openPath(targetFolder);
-    } catch (err) {
-      console.warn('Failed to open folder', err);
+    if (onExplorerClick) {
+      onExplorerClick();
+    } else {
+      setActiveScreen('explorer');
     }
   };
 
@@ -194,20 +194,20 @@ export const HamburgerMenu: React.FC<HamburgerMenuProps> = ({
               onClick={handleNewWindow}
             />
             <DropdownMenuItem
+              label={<span className="text-xs font-medium text-text-primary">File Explorer</span>}
+              icon={<FolderTree size={14} />}
+              onClick={handleOpenExplorer}
+            />
+            <DropdownMenuItem
               label={<span className="text-xs font-medium text-text-primary">Open File...</span>}
               icon={<FileText size={14} />}
               onClick={handleOpenFile}
             />
             <DropdownMenuItem
-              label={<span className="text-xs font-medium text-text-primary">Open Folder...</span>}
-              icon={<FolderOpen size={14} />}
-              onClick={handleOpenFolder}
-            />
-            <DropdownMenuItem
               label={<span className="text-xs font-medium text-text-primary">Import Data (CSV)</span>}
               icon={<Upload size={14} />}
               onClick={() => {
-                handleClose();
+                handleOpenFile();
               }}
             />
 

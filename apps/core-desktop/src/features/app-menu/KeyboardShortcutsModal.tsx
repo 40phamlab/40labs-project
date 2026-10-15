@@ -9,6 +9,7 @@ interface KeyboardShortcutsModalProps {
 const SHORTCUTS = [
   { key: 'Ctrl + K', desc: 'Global Search / Quick Navigation' },
   { key: 'Ctrl + B', desc: 'Toggle / Cycle Sidebar Navigation' },
+  { key: 'Ctrl + E', desc: 'File Explorer Workspace' },
   { key: 'Ctrl + N', desc: 'New Sale (POS)' },
   { key: 'Ctrl + ,', desc: 'Settings' },
 ];

@@ -4,6 +4,22 @@ import userEvent from '@testing-library/user-event';
 import { TitleBar } from '../TitleBar';
 import { AppShell } from '@40labs/ui-components';
 
+vi.mock('../../hooks/useBusiness', () => ({
+  useBusiness: () => ({ business: { business_id: 'b1', name: '40Labs Workspace' } }),
+}));
+
+vi.mock('../../providers/FilePreviewProvider', () => ({
+  useFilePreviewContext: () => ({
+    previewState: { files: [], currentIndex: 0, isOpen: false },
+    openFile: vi.fn(),
+    closeFileTab: vi.fn(),
+    selectFileTab: vi.fn(),
+    openAttachment: vi.fn(),
+    openBlob: vi.fn(),
+    closeModal: vi.fn(),
+  }),
+}));
+
 describe('TitleBar & Floating App Shell Integration', () => {
   afterEach(() => {
     cleanup();
@@ -19,6 +35,20 @@ describe('TitleBar & Floating App Shell Integration', () => {
     expect(screen.getByRole('button', { name: /minimize window/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /maximize window/i })).toBeDefined();
     expect(screen.getByRole('button', { name: /close window/i })).toBeDefined();
+  });
+
+  test('hamburger menu contains File Explorer option and triggers onExplorerClick when selected', async () => {
+    const handleExplorer = vi.fn();
+    render(<TitleBar onExplorerClick={handleExplorer} />);
+
+    const hamburgerBtn = screen.getByRole('button', { name: /application menu/i });
+    await userEvent.click(hamburgerBtn);
+
+    const explorerItem = screen.getByText('File Explorer');
+    expect(explorerItem).toBeDefined();
+
+    await userEvent.click(explorerItem);
+    expect(handleExplorer).toHaveBeenCalledTimes(1);
   });
 
   test('renders sidebar toggle button at leftmost position with accessible label and working click handler', async () => {
@@ -37,7 +67,7 @@ describe('TitleBar & Floating App Shell Integration', () => {
     expect(handleToggle).toHaveBeenCalledTimes(1);
   });
 
-  test('hamburger menu opens and closes, showing items like Workspace Settings and Check for Updates', async () => {
+  test('hamburger menu opens and closes, showing items like Workspace Settings and File Explorer', async () => {
     render(<TitleBar hasUpdateAvailable={true} />);
 
     const hamburgerBtn = screen.getByRole('button', { name: /application menu/i });
@@ -45,6 +75,7 @@ describe('TitleBar & Floating App Shell Integration', () => {
     // Open menu
     await userEvent.click(hamburgerBtn);
     expect(screen.getByText('Workspace Settings')).toBeDefined();
+    expect(screen.getByText('File Explorer')).toBeDefined();
     expect(screen.getByText('Check for Updates...')).toBeDefined();
   });
 
