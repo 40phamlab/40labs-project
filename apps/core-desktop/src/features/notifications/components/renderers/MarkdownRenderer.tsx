@@ -34,7 +34,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
             return (
               <blockquote
                 key={idx}
-                className="border-l-2 border-primary/60 pl-3 py-1 my-1 text-text-muted italic bg-panel-strong/30 rounded-r"
+                className="border-l-2 border-primary/60 pl-3 py-1 my-1 text-text-muted italic bg-panel-strong rounded-r"
                 dangerouslySetInnerHTML={{ __html: formatInlineText(token.content) }}
               />
             );
@@ -54,7 +54,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
               <div key={idx} className="overflow-x-auto my-2 border border-border/40 rounded-card bg-panel">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-panel-strong/60 border-b border-border/40">
+                    <tr className="bg-panel-strong border-b border-border/40">
                       {token.headers?.map((h, i) => (
                         <th
                           key={i}
@@ -66,7 +66,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, cla
                   </thead>
                   <tbody>
                     {token.rows?.map((row, r) => (
-                      <tr key={r} className="border-b border-border/20 hover:bg-panel-strong/30">
+                      <tr key={r} className="border-b border-border/20 hover:bg-panel-strong">
                         {row.map((cell, c) => (
                           <td
                             key={c}

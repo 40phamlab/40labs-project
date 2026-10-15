@@ -67,7 +67,7 @@ export const FileMessage: React.FC<FileMessageProps> = ({
   return (
     <div
       onClick={handleClick}
-      className={`group flex items-center justify-between gap-3 p-3 bg-panel-strong/40 border border-border/30 rounded-card hover:bg-panel-strong/75 transition-colors cursor-pointer max-w-sm shadow-2xs ${className}`}
+      className={`group flex items-center justify-between gap-3 p-3 bg-panel-strong border border-border/30 rounded-card hover:bg-panel-strong transition-colors cursor-pointer max-w-sm shadow-2xs ${className}`}
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-9 h-9 rounded bg-primary/15 text-primary flex items-center justify-center shrink-0">

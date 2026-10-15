@@ -152,13 +152,15 @@ export const NotificationsScreen: React.FC = () => {
         {isNarrowScreen ? (
           <div className="w-full h-full overflow-hidden">
             {selectedThread ? (
-              <ChatPane
-                thread={selectedThread}
-                messages={messages}
-                onSendReply={handleSendReply}
-                onArchive={(id) => setArchiveTargetThreadId(id)}
-                onDelete={(id) => setDeleteTargetThreadId(id)}
-              />
+              <div className="w-full h-full rounded-card elevation-raised bg-panel border border-border/50 overflow-hidden">
+                <ChatPane
+                  thread={selectedThread}
+                  messages={messages}
+                  onSendReply={handleSendReply}
+                  onArchive={(id) => setArchiveTargetThreadId(id)}
+                  onDelete={(id) => setDeleteTargetThreadId(id)}
+                />
+              </div>
             ) : (
               <ThreadList
                 threads={threads}
@@ -169,25 +171,25 @@ export const NotificationsScreen: React.FC = () => {
                 onNewConversation={() => setIsNewConversationOpen(true)}
                 isLoading={isLoading}
                 onRefresh={() => refetch()}
+                className="w-full h-full"
               />
             )}
           </div>
         ) : (
           <>
-            <div className="h-full overflow-hidden shrink-0">
-              <ThreadList
-                threads={threads}
-                selectedId={selectedThreadId}
-                onSelectThread={handleSelectThread}
-                onArchiveThread={(id) => setArchiveTargetThreadId(id)}
-                onDeleteThread={(id) => setDeleteTargetThreadId(id)}
-                onNewConversation={() => setIsNewConversationOpen(true)}
-                isLoading={isLoading}
-                onRefresh={() => refetch()}
-              />
-            </div>
+            <ThreadList
+              threads={threads}
+              selectedId={selectedThreadId}
+              onSelectThread={handleSelectThread}
+              onArchiveThread={(id) => setArchiveTargetThreadId(id)}
+              onDeleteThread={(id) => setDeleteTargetThreadId(id)}
+              onNewConversation={() => setIsNewConversationOpen(true)}
+              isLoading={isLoading}
+              onRefresh={() => refetch()}
+              className="w-80 shrink-0 h-full"
+            />
 
-            <div className="flex-1 h-full overflow-hidden">
+            <div className="flex-1 h-full min-h-0 rounded-card elevation-raised bg-panel border border-border/50 overflow-hidden">
               {selectedThread ? (
                 <ChatPane
                   thread={selectedThread}
@@ -197,7 +199,7 @@ export const NotificationsScreen: React.FC = () => {
                   onDelete={(id) => setDeleteTargetThreadId(id)}
                 />
               ) : (
-                <div className="w-full h-full flex flex-col p-6 overflow-y-auto bg-surface-secondary/20">
+                <div className="w-full h-full flex flex-col p-6 overflow-y-auto">
                   <NotificationsOverviewPanel notifications={notifications} />
                 </div>
               )}

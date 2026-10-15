@@ -28,7 +28,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, previousM
         className={`max-w-[65%] ${roundingClass} px-4 py-2.5 shadow-xs text-xs space-y-1.5 ${
           isOutgoing
             ? 'bg-primary text-white'
-            : 'bg-panel-strong text-text-primary border border-border/40'
+            : 'bg-surface-elevated text-text-primary border border-border/40'
         }`}
       >
         <MessageRenderer

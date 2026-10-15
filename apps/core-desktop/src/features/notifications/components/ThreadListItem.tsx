@@ -2,6 +2,9 @@ import * as React from 'react';
 import type { Thread } from '@40labs/types';
 import { Archive, Trash2, MailOpen, Flag, Share2, Mic, Paperclip } from 'lucide-react';
 import { Tooltip } from '@40labs/ui-components';
+import { NotificationAvatar, getInitials } from './NotificationAvatar';
+
+export { getInitials };
 
 export interface ThreadListItemProps {
   thread: Thread;
@@ -11,16 +14,6 @@ export interface ThreadListItemProps {
   onUnarchive?: () => void;
   onDelete: () => void;
   onMarkUnread?: () => void;
-}
-
-export function getInitials(name: string): string {
-  if (!name) return '??';
-  const trimmed = name.trim();
-  const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) {
-    return trimmed.substring(0, 2).toUpperCase();
-  }
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export const ThreadListItem: React.FC<ThreadListItemProps> = ({
@@ -59,14 +52,16 @@ export const ThreadListItem: React.FC<ThreadListItemProps> = ({
       onContextMenu={handleContextMenu}
       className={`relative group flex items-start gap-3 p-3 rounded-card cursor-pointer transition-colors border ${
         isSelected
-          ? 'bg-panel-strong border-border shadow-xs'
+          ? 'bg-surface-selected border-border-selected shadow-xs'
           : 'bg-panel border-border/40 hover:bg-surface-hover hover:border-border'
       }`}
     >
       {/* Avatar */}
-      <div className="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0 select-none">
-        {getInitials(thread.display_name)}
-      </div>
+      <NotificationAvatar
+        name={thread.display_name}
+        counterpartyType={thread.counterparty_type}
+        size="md"
+      />
 
       {/* Content */}
       <div className="flex-1 min-w-0">

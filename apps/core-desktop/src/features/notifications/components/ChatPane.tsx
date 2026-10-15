@@ -70,6 +70,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     created_at: thread.created_at,
     updated_at: thread.updated_at,
     category: 'business' as const,
+    counterparty_type: thread.counterparty_type,
     source_type: 'local' as const,
     sender_name: thread.display_name,
     sender_business_id: thread.counterparty_key,
@@ -98,7 +99,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
   return (
     <div
-      className="flex-1 h-full flex flex-col bg-surface-secondary/20 overflow-hidden relative"
+      className="flex flex-col h-full min-h-0 overflow-hidden relative"
       onDragOver={(e) => { e.preventDefault(); if (!isReadOnly) setIsDragging(true); }}
       onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
       onDrop={async (e) => {
@@ -146,6 +147,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       }}
     >
       {isDragging && (
+        /* overlay-highlight */
         <div className="absolute inset-0 z-50 bg-primary/20 backdrop-blur-xs flex flex-col items-center justify-center border-2 border-dashed border-primary">
           <Upload size={40} className="text-primary animate-bounce mb-2" />
           <span className="text-sm font-bold text-text-primary">Drop files here to attach</span>
@@ -155,6 +157,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       {/* Header */}
       <ConversationHeader
         notification={syntheticNotification as any}
+        counterpartyType={thread.counterparty_type}
         onArchive={onArchive}
         onDelete={onDelete}
       />
@@ -163,7 +166,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-1 relative"
+        className="flex-1 bg-panel overflow-y-auto custom-scrollbar p-4 space-y-1 relative"
       >
         {messages.map((msg, idx) => {
           const prevMsg = idx > 0 ? messages[idx - 1] : undefined;

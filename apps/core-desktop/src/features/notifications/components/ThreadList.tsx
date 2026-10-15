@@ -13,6 +13,7 @@ export interface ThreadListProps {
   onNewConversation: () => void;
   isLoading: boolean;
   onRefresh: () => void;
+  className?: string;
 }
 
 export const ThreadList: React.FC<ThreadListProps> = ({
@@ -24,6 +25,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   onNewConversation,
   isLoading,
   onRefresh,
+  className = '',
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [filter, setFilter] = React.useState<string>('all');
@@ -85,9 +87,9 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   ];
 
   return (
-    <div className="flex flex-col w-80 h-full bg-panel border-r border-border/40 overflow-hidden shrink-0">
+    <div className={`flex flex-col h-full bg-panel rounded-card elevation-raised border border-border/50 overflow-hidden ${className || 'w-80 shrink-0'}`}>
       {/* Header */}
-      <div className="p-3 border-b border-border/40 space-y-3">
+      <div className="p-3 bg-panel-strong border-b border-border/40 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-text-primary">Chats</h2>
           <div className="flex items-center gap-1">
@@ -121,7 +123,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
         </div>
 
         {/* Filter Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
           {chips.map((chip) => (
             <button
               key={chip.key}

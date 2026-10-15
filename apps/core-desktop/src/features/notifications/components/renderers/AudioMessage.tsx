@@ -66,7 +66,7 @@ export const AudioMessage: React.FC<AudioMessageProps> = ({
   };
 
   return (
-    <div className={`flex items-center gap-3 p-3 bg-panel-strong/40 border border-border/30 rounded-card max-w-xs shadow-2xs ${className}`}>
+    <div className={`flex items-center gap-3 p-3 bg-panel-strong border border-border/30 rounded-card max-w-xs shadow-2xs ${className}`}>
       {resolvedUrl && <audio ref={audioRef} src={resolvedUrl} onTimeUpdate={handleTimeUpdate} onLoadedMetadata={handleLoadedMetadata} onEnded={() => setIsPlaying(false)} />}
       <IconButton
         icon={isPlaying ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white ml-0.5" />}

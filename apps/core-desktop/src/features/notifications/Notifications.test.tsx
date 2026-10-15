@@ -160,4 +160,45 @@ describe('Notifications Feature Unit Tests', () => {
     const formattedLink = formatInlineText(unsafeLink);
     expect(formattedLink).not.toContain('javascript:');
   });
+
+  it('Guard: no bg-*/(10|20|30) on pane/area wrappers and pane roots have rounded-card & elevation-raised', () => {
+    const modules = import.meta.glob<string>('./**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true });
+
+    // Check ThreadList.tsx content
+    const threadListCode = modules['./components/ThreadList.tsx'];
+    expect(threadListCode).toBeDefined();
+    expect(threadListCode).toContain('rounded-card');
+    expect(threadListCode).toContain('elevation-raised');
+
+    // Check NotificationsScreen.tsx content for right pane wrapper
+    const screenCode = modules['./NotificationsScreen.tsx'];
+    expect(screenCode).toBeDefined();
+    expect(screenCode).toContain('rounded-card');
+    expect(screenCode).toContain('elevation-raised');
+
+    // Check no bg-*/(10|20|30) on pane/area wrappers across features/notifications/**
+    const alphaBgRegex = /bg-[a-z-]+\/(10|20|30)\b/;
+
+    for (const [filePath, content] of Object.entries(modules)) {
+      if (filePath.includes('.test.')) continue;
+
+      const lines = content.split('\n');
+      lines.forEach((line, idx) => {
+        if (alphaBgRegex.test(line)) {
+          // Check if it's explicitly allowed via comment or small inline element
+          const isAllowed =
+            line.includes('overlay-highlight') ||
+            line.includes('/* overlay-highlight */') ||
+            line.includes('role="alert"') ||
+            line.includes('role="status"') ||
+            line.includes('rounded-full') ||
+            line.includes('selected');
+
+          if (!isAllowed) {
+            throw new Error(`Forbidden alpha background on area wrapper in ${filePath}:${idx + 1}: ${line.trim()}`);
+          }
+        }
+      });
+    }
+  });
 });

@@ -44,7 +44,7 @@ export const ImageMessage: React.FC<ImageMessageProps> = ({
 
   if (hasError) {
     return (
-      <div className={`flex items-center gap-2 p-3 bg-panel-strong/40 border border-border/30 rounded-card text-xs text-text-muted ${className}`}>
+      <div className={`flex items-center gap-2 p-3 bg-panel-strong border border-border/30 rounded-card text-xs text-text-muted ${className}`}>
         <ImageIcon size={16} className="text-text-muted" />
         <span>Image unavailable: {name}</span>
       </div>
@@ -52,17 +52,17 @@ export const ImageMessage: React.FC<ImageMessageProps> = ({
   }
 
   if (!imageUrl) {
-    return <div className={`w-64 h-40 rounded-card bg-panel-strong/50 animate-pulse ${className}`} aria-label={`Loading ${name}`} />;
+    return <div className={`w-64 h-40 rounded-card bg-panel-strong animate-pulse ${className}`} aria-label={`Loading ${name}`} />;
   }
 
   return (
     <>
       <div
-        className={`relative group overflow-hidden rounded-card border border-border/30 bg-panel-strong/20 max-w-sm cursor-pointer shadow-2xs ${className}`}
+        className={`relative group overflow-hidden rounded-card border border-border/30 bg-panel-strong max-w-sm cursor-pointer shadow-2xs ${className}`}
         onClick={() => setIsExpanded(true)}
       >
         {isLoading && (
-          <div className="w-full h-40 bg-panel-strong/50 animate-pulse flex items-center justify-center text-text-muted text-xs">
+          <div className="w-full h-40 bg-panel-strong animate-pulse flex items-center justify-center text-text-muted text-xs">
             Loading image...
           </div>
         )}
