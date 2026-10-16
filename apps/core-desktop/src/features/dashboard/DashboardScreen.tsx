@@ -8,10 +8,12 @@ import { BusinessHealthPanel } from './components/BusinessHealthPanel';
 import { PatientsInTrackPanel } from './components/PatientsInTrackPanel';
 import { PendingPanel } from './components/PendingPanel';
 import { QuickActionsPanel } from './components/QuickActionsPanel';
+import type { DashboardMetric } from './utils/chartData';
 
 export const DashboardScreen: React.FC = () => {
   const { summary, isLoading, isError, error, refetch } = useDashboard();
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [chartMetric, setChartMetric] = React.useState<DashboardMetric>('sales');
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   // Global search hotkey (Ctrl+K or Cmd+K)
@@ -25,6 +27,14 @@ export const DashboardScreen: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleSelectMetric = (kpiId: string) => {
+    if (kpiId === 'sales') setChartMetric('sales');
+    else if (kpiId === 'profit') setChartMetric('profit');
+    else if (kpiId === 'purchases') setChartMetric('purchases');
+    else if (kpiId === 'stock' || kpiId === 'expiry') setChartMetric('stock_value');
+    else setChartMetric('sales');
+  };
 
   if (isLoading || !summary) {
     return (
@@ -69,10 +79,14 @@ export const DashboardScreen: React.FC = () => {
         {/* Main Column (~9 cols) */}
         <DashboardSection colSpan={9} className="space-y-6">
           {/* KPI Rows */}
-          <KPIRows summary={summary} />
+          <KPIRows summary={summary} onSelectMetric={handleSelectMetric} />
 
           {/* Overview Chart Panel */}
-          <OverviewChartPanel summary={summary} />
+          <OverviewChartPanel
+            summary={summary}
+            selectedMetric={chartMetric}
+            onMetricChange={setChartMetric}
+          />
 
           {/* Bottom Row: Business Health + Patients in Track */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

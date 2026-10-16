@@ -33,6 +33,8 @@ interface OverviewChartPanelProps {
   summary: DashboardSummary;
   loading?: boolean;
   error?: string;
+  selectedMetric?: DashboardMetric;
+  onMetricChange?: (metric: DashboardMetric) => void;
 }
 
 const ringColors = defaultChartColors.filter((c) => c !== colors.danger);
@@ -41,12 +43,24 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
   summary,
   loading = false,
   error,
+  selectedMetric,
+  onMetricChange,
 }) => {
-  // TODO: [reason: no per-user UI-preference store defined; persisting chart choice per workspace needs a settings schema decision] [phase: post-MVP]
-  const [metric, setMetric] = React.useState<DashboardMetric>('sales');
+  const [metric, setMetric] = React.useState<DashboardMetric>(selectedMetric || 'sales');
   const [breakdown, setBreakdown] = React.useState<DashboardBreakdown>('time');
   const [period, setPeriod] = React.useState<DashboardPeriod>('30d');
   const [chartType, setChartType] = React.useState<DashboardChartType>('line');
+
+  React.useEffect(() => {
+    if (selectedMetric) {
+      setMetric(selectedMetric);
+    }
+  }, [selectedMetric]);
+
+  const handleMetricChange = (newMetric: DashboardMetric) => {
+    setMetric(newMetric);
+    if (onMetricChange) onMetricChange(newMetric);
+  };
 
   const effectiveBreakdown = metric === 'stock_value' ? 'category' : breakdown;
   const validTypes = chartCompatibilityMap[effectiveBreakdown];
@@ -141,7 +155,7 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
             <Select
               size="sm"
               value={metric}
-              onChange={(e) => setMetric(e.target.value as DashboardMetric)}
+              onChange={(e) => handleMetricChange(e.target.value as DashboardMetric)}
               aria-label="Select metric"
             >
               <option value="sales">{t('dashboard.metricSales')}</option>
