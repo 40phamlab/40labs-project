@@ -1,10 +1,11 @@
 import * as React from 'react';
 import { Button, Input, PasswordInput, Card } from '@40labs/ui-components';
-import { Store, AlertTriangle } from 'lucide-react';
+import { Store, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
 import { authApi } from '../../../api/authApi';
 import { resolveLogoUrl } from '../../../api/businessApi';
 import { parseAuthError } from '../../../api/authErrors';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
+import { ThemeLogo } from '../../../components/brand';
 
 interface LoginScreenProps {
   businessName?: string;
@@ -71,80 +72,125 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 select-none">
-      <Card className="w-full max-w-md p-8 space-y-6 shadow-lg border border-border rounded-xl">
-        <div className="flex flex-col items-center text-center space-y-4">
-          <div className="w-20 h-20 rounded-full border border-border flex items-center justify-center overflow-hidden bg-muted shadow-sm">
-            {resolvedLogo && !logoError ? (
-              <img
-                src={resolvedLogo}
-                alt="Business Logo"
-                className="w-full h-full object-cover"
-                onError={() => setLogoError(true)}
-              />
-            ) : (
-              <Store size={36} className="text-muted-foreground" />
-            )}
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row select-none">
+      {/* Left Info Panel (Split screen on wide screens) */}
+      <div className="hidden lg:flex lg:w-1/2 bg-surface border-r border-border p-12 flex-col justify-between relative overflow-hidden">
+        <div className="space-y-6">
+          <ThemeLogo variant="full" height={44} />
+          <div className="space-y-3 pt-6">
+            <h2 className="text-2xl font-bold font-sora text-foreground">
+              {businessName ? `Karibu ${businessName}` : 'Usimamizi Salama wa Biashara'}
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Ingia kwenye mfumo wako kudhibiti mauzo, stoo, na huduma kwa wateja kwa usalama wa hali ya juu na kasi isiyo na kifani.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold font-sora text-foreground">
-            Karibu {businessName || '40Labs'}
-          </h1>
         </div>
 
-        {isHardLocked && (
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-4 rounded-lg flex items-start space-x-3">
-            <AlertTriangle size={20} className="shrink-0 mt-0.5" />
-            <span>Akaunti imefungwa kabisa baada ya majaribio mengi yaliyoshindwa. Tafadhali wasiliana na msimamizi (SUDO) kuweka upya siri yako au tumia msimbo wa kurejesha.</span>
-          </div>
-        )}
-
-        {errorCode && !isHardLocked && (
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-lg text-center">
-            {errorCode === 'LOCKED' && retryAfterSecs
-              ? `Akaunti imefungwa kwa muda. Jaribu tena baada ya sekunde ${retryAfterSecs}.`
-              : 'Jina la mtumiaji au nenosiri si sahihi.'}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1">Jina la mtumiaji</label>
-            <Input
-              autoComplete="username"
-              value={username}
-              onChange={(e: any) => setUsername(e.target.value)}
-              placeholder="Username"
-              disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
-            />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium text-foreground">Nenosiri</label>
-              <button
-                type="button"
-                className="text-xs text-primary hover:underline font-medium"
-                onClick={() => setForgotModalOpen(true)}
-              >
-                Umesahau nenosiri?
-              </button>
+        <div className="space-y-4 pt-8">
+          <div className="flex items-center space-x-3 text-xs text-muted-foreground">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <ShieldCheck size={16} className="text-primary" />
             </div>
-            <PasswordInput
-              autoComplete="current-password"
-              value={password}
-              onChange={(e: any) => setPassword(e.target.value)}
-              placeholder="Password"
-              disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
-            />
+            <span>Ulinzi thabiti wa data na uthibitishaji salama wa mtumiaji.</span>
           </div>
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={loading || !username || !password || isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
-          >
-            {loading ? 'Inaingia...' : retryAfterSecs ? `Subiri (${retryAfterSecs}s)` : 'Ingia'}
-          </Button>
-        </form>
-      </Card>
+          <div className="flex items-center space-x-3 text-xs text-muted-foreground">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <Zap size={16} className="text-primary" />
+            </div>
+            <span>Utendaji wa haraka na uwezo wa kufanya kazi hata bila mtandao.</span>
+          </div>
+        </div>
+
+        <div className="text-[11px] text-muted-foreground font-mono">
+          © 40Labs Core • Enterprise Health & Business Suite
+        </div>
+      </div>
+
+      {/* Right Form Panel */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-background">
+        <Card className="w-full max-w-md p-8 space-y-6 shadow-lg border border-border rounded-xl bg-surface">
+          <div className="flex flex-col items-center text-center space-y-3 lg:hidden">
+            <ThemeLogo variant="full" height={36} />
+            <h1 className="text-xl font-bold font-sora text-foreground">
+              {businessName || '40Labs Core'}
+            </h1>
+          </div>
+
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className="w-16 h-16 rounded-full border border-border flex items-center justify-center overflow-hidden bg-muted shadow-sm">
+              {resolvedLogo && !logoError ? (
+                <img
+                  src={resolvedLogo}
+                  alt="Business Logo"
+                  className="w-full h-full object-cover"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <Store size={30} className="text-muted-foreground" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-lg font-bold font-sora text-foreground">Ingia kwenye Akaunti</h2>
+              <p className="text-xs text-muted-foreground">Weka jina la mtumiaji na nenosiri lako</p>
+            </div>
+          </div>
+
+          {isHardLocked && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg flex items-start space-x-2">
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+              <span>Akaunti imefungwa kabisa baada ya majaribio mengi. Wasiliana na msimamizi (SUDO).</span>
+            </div>
+          )}
+
+          {errorCode && !isHardLocked && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-2.5 rounded-lg text-center">
+              {errorCode === 'LOCKED' && retryAfterSecs
+                ? `Akaunti imefungwa kwa muda. Jaribu tena baada ya sekunde ${retryAfterSecs}.`
+                : 'Jina la mtumiaji au nenosiri si sahihi.'}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-foreground block mb-1">Jina la mtumiaji</label>
+              <Input
+                autoComplete="username"
+                value={username}
+                onChange={(e: any) => setUsername(e.target.value)}
+                placeholder="Username"
+                disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-foreground">Nenosiri</label>
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:underline font-medium"
+                  onClick={() => setForgotModalOpen(true)}
+                >
+                  Umesahau nenosiri?
+                </button>
+              </div>
+              <PasswordInput
+                autoComplete="current-password"
+                value={password}
+                onChange={(e: any) => setPassword(e.target.value)}
+                placeholder="Password"
+                disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full py-2.5"
+              disabled={loading || !username || !password || isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+            >
+              {loading ? 'Inaingia...' : retryAfterSecs ? `Subiri (${retryAfterSecs}s)` : 'Ingia'}
+            </Button>
+          </form>
+        </Card>
+      </div>
 
       <ForgotPasswordModal
         isOpen={forgotModalOpen}

@@ -1,73 +1,120 @@
 import * as React from 'react';
 import { Button, Card } from '@40labs/ui-components';
 import { ThemeLogo } from '../../../components/brand';
+import { Store, Package, ShoppingCart, TestTube, BarChart3, ShieldCheck, ArrowRight, LogIn } from 'lucide-react';
 
 interface LandingScreenProps {
   onGetStarted: () => void;
+  onLogin?: () => void;
 }
 
-export const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted }) => {
-  const [carouselIndex, setCarouselIndex] = React.useState(0);
+export const LandingScreen: React.FC<LandingScreenProps> = ({ onGetStarted, onLogin }) => {
   const [lang, setLang] = React.useState<'sw-TZ' | 'en'>('sw-TZ');
 
-  const features = [
-    { title: 'Mauzo ya Mtandaoni', titleEn: 'Online Selling', desc: 'Simamia mauzo na POS kwa urahisi', descEn: 'Manage sales and POS with ease' },
-    { title: 'Ripoti za Kila Siku', titleEn: 'Daily Reports', desc: 'Fuatilia mwenendo wa biashara kila siku', descEn: 'Track business performance daily' },
-    { title: 'Ununuzi Ndani ya Mfumo', titleEn: 'In-app Purchasing', desc: 'Agiza bidhaa moja kwa moja kutoka kwa wasambazaji', descEn: 'Order products directly from suppliers' },
-    { title: 'Wateja Zaidi', titleEn: 'More Customers', desc: 'Boresha uhusiano na wateja wako', descEn: 'Improve customer relations' },
-    { title: 'Wasiliana na Ushirikiane', titleEn: 'Reach Out & Collaborate', desc: 'Fanya kazi pamoja na wafanyakazi na wataalamu', descEn: 'Collaborate with staff and specialists' },
+  const capabilities = [
+    {
+      icon: <Store className="w-5 h-5 text-primary" />,
+      title: { sw: 'Mauzo na POS', en: 'Sales & POS' },
+      desc: { sw: 'Simamia mauzo ya dukani na stakabadhi za wateja kwa urahisi.', en: 'Manage storefront POS and customer receipts effortlessly.' }
+    },
+    {
+      icon: <Package className="w-5 h-5 text-primary" />,
+      title: { sw: 'Usimamizi wa Stoo', en: 'Inventory Control' },
+      desc: { sw: 'Fuatilia dawa, vifaa tiba, na bidhaa bila kupitiliza au kupungukiwa.', en: 'Track pharmaceuticals and medical supplies in real time.' }
+    },
+    {
+      icon: <ShoppingCart className="w-5 h-5 text-primary" />,
+      title: { sw: 'Ununuzi wa Ndani', en: 'In-App Purchasing' },
+      desc: { sw: 'Agiza bidhaa moja kwa moja kutoka kwa wasambazaji waliothibitishwa.', en: 'Order products directly from certified medical suppliers.' }
+    },
+    {
+      icon: <TestTube className="w-5 h-5 text-primary" />,
+      title: { sw: 'Maabara na Uchunguzi', en: 'Laboratory & Diagnostics' },
+      desc: { sw: 'Simamia maombi ya vipimo, matokeo, na rekodi za wagonjwa.', en: 'Manage test requests, diagnostic results, and patient logs.' }
+    },
+    {
+      icon: <BarChart3 className="w-5 h-5 text-primary" />,
+      title: { sw: 'Ripoti za Kila Siku', en: 'Daily Financial Reports' },
+      desc: { sw: 'Tazama mapato, matumizi, na mwenendo wa biashara yako kwa usahihi.', en: 'Monitor revenues, expenses, and business performance accurately.' }
+    },
+    {
+      icon: <ShieldCheck className="w-5 h-5 text-primary" />,
+      title: { sw: 'Usalama na Faragha', en: 'Secure & Offline-First' },
+      desc: { sw: 'Data zako zinalindwa ndani ya kifaa chako kwa viwango vya juu.', en: 'Your business data is securely stored and protected locally.' }
+    }
   ];
 
-  const currentFeature = features[carouselIndex];
-
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 select-none">
-      <div className="absolute top-4 right-4 flex items-center space-x-2">
-        <Button
-          intent="neutral"
-          size="sm"
-          onClick={() => setLang(lang === 'sw-TZ' ? 'en' : 'sw-TZ')}
-        >
-          {lang === 'sw-TZ' ? 'English' : 'Kiswahili'}
-        </Button>
+    <div className="min-h-screen bg-background flex flex-col select-none">
+      {/* Top Bar */}
+      <div className="w-full px-6 py-4 flex items-center justify-between border-b border-border bg-surface">
+        <div className="flex items-center space-x-3">
+          <ThemeLogo variant="full" height={36} />
+          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Core v1.0</span>
+        </div>
+        <div className="flex items-center space-x-3">
+          <Button
+            intent="neutral"
+            size="sm"
+            onClick={() => setLang(lang === 'sw-TZ' ? 'en' : 'sw-TZ')}
+          >
+            {lang === 'sw-TZ' ? 'English' : 'Kiswahili'}
+          </Button>
+          {onLogin && (
+            <Button
+              intent="neutral"
+              size="sm"
+              onClick={onLogin}
+              className="flex items-center space-x-1"
+            >
+              <LogIn size={14} className="mr-1" />
+              <span>{lang === 'sw-TZ' ? 'Ingia' : 'Login'}</span>
+            </Button>
+          )}
+        </div>
       </div>
 
-      <Card className="w-full max-w-lg p-8 space-y-8 shadow-xl border border-border rounded-xl text-center">
-        <div className="space-y-2 flex flex-col items-center">
-          <h1 className="sr-only">40Labs</h1>
-          <ThemeLogo variant="full" height={56} />
-          <p className="text-sm text-muted-foreground">
-            {lang === 'sw-TZ' ? 'Mfumo wa Kisasa wa Biashara na Afya' : 'Modern Business & Health Platform'}
+      {/* Main Hero & Content */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 max-w-6xl mx-auto w-full space-y-12">
+        <div className="text-center space-y-4 max-w-2xl">
+          <h1 className="text-3xl lg:text-5xl font-bold font-sora text-foreground tracking-tight">
+            {lang === 'sw-TZ'
+              ? 'Mfumo wa Kisasa wa Biashara na Huduma za Afya'
+              : 'Modern Business & Healthcare Platform'}
+          </h1>
+          <p className="text-sm lg:text-base text-muted-foreground leading-relaxed">
+            {lang === 'sw-TZ'
+              ? 'Suluhisho thabiti kwa maduka ya dawa, maabara, na vituo vya afya nchini Tanzania. Simamia mauzo, stoo, ununuzi, na ripoti mahali pamoja.'
+              : 'Robust enterprise solution for pharmacies, laboratories, and clinics in Tanzania. Manage sales, inventory, procurement, and reports seamlessly.'}
           </p>
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button
+              className="w-full sm:w-auto px-8 py-3 text-base font-semibold flex items-center justify-center space-x-2"
+              onClick={onGetStarted}
+            >
+              <span>{lang === 'sw-TZ' ? 'Anza Kusajili Biashara' : 'Get Started'}</span>
+              <ArrowRight size={18} className="ml-1" />
+            </Button>
+          </div>
         </div>
 
-        <div className="min-h-[100px] p-4 bg-muted/50 rounded-lg flex flex-col justify-center items-center space-y-1">
-          <h3 className="font-semibold text-foreground">
-            {lang === 'sw-TZ' ? currentFeature.title : currentFeature.titleEn}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {lang === 'sw-TZ' ? currentFeature.desc : currentFeature.descEn}
-          </p>
-        </div>
-
-        <div className="flex justify-center items-center gap-1.5">
-          {features.map((_, idx) => (
-            <button
-              type="button"
-              key={idx}
-              onClick={() => setCarouselIndex(idx)}
-              aria-label={`Go to slide ${idx + 1}`}
-              className={`h-1.5 rounded-full transition-all cursor-pointer ${
-                idx === carouselIndex ? 'w-6 bg-primary' : 'w-1.5 bg-border hover:bg-text-muted'
-              }`}
-            />
+        {/* Capabilities Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pt-4">
+          {capabilities.map((cap, idx) => (
+            <Card key={idx} className="p-6 space-y-3 bg-surface border border-border rounded-xl shadow-sm hover:shadow-md transition-shadow">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                {cap.icon}
+              </div>
+              <h3 className="font-semibold text-foreground text-sm lg:text-base">
+                {lang === 'sw-TZ' ? cap.title.sw : cap.title.en}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === 'sw-TZ' ? cap.desc.sw : cap.desc.en}
+              </p>
+            </Card>
           ))}
         </div>
-
-        <Button className="w-full py-3 text-base font-semibold" onClick={onGetStarted}>
-          {lang === 'sw-TZ' ? 'Anza' : 'Get Started'}
-        </Button>
-      </Card>
+      </div>
     </div>
   );
 };

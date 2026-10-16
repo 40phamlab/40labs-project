@@ -6,6 +6,7 @@ import { TermsModal } from './components/TermsModal';
 import { PinOtpInput } from './components/PinOtpInput';
 import { TZ_ADMIN_AREAS } from '../../lib/tzAdminAreas';
 import { normalizePhoneTZ } from '@40labs/i18n';
+import { ThemeLogo } from '../../components/brand';
 
 interface RegistrationWizardProps {
   onComplete: () => void;
@@ -49,6 +50,18 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
   const [successData, setSuccessData] = React.useState<{ businessId: string; username: string } | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const stepsMeta = [
+    { num: 1, title: 'Biashara', desc: 'Jina, aina, na mawasiliano ya biashara' },
+    { num: 2, title: 'Aina na Ukubwa', desc: 'Mtindo na ukubwa wa biashara' },
+    { num: 3, title: 'Eneo', desc: 'Nchi, mkoa, wilaya, na anuani' },
+    { num: 4, title: 'Malipo', desc: 'Matawi na namba za malipo' },
+    { num: 5, title: 'Mmiliki', desc: 'Taarifa za mmiliki na mawasiliano' },
+    { num: 6, title: 'Akaunti', desc: 'Jina la mtumiaji na nenosiri' },
+    { num: 7, title: 'Masharti', desc: 'Vigezo na masharti ya 40Labs' },
+    { num: 8, title: 'Uthibitisho', desc: 'Msimbo wa OTP kupitia simu' },
+    { num: 9, title: 'Kukamilika', desc: 'Hongera! Usajili umekamilika' },
+  ];
 
   // OTP Countdown timer
   React.useEffect(() => {
@@ -227,407 +240,459 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
   const currentRegionObj = TZ_ADMIN_AREAS.find((r) => r.name === formData.region) || TZ_ADMIN_AREAS[0];
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 select-none">
-      <Card className="w-full max-w-xl p-8 space-y-6 shadow-lg border border-border rounded-xl">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold font-sora text-foreground">
-            {step === 1 && 'Biashara'}
-            {step === 2 && 'Aina na Ukubwa'}
-            {step === 3 && 'Eneo'}
-            {step === 4 && 'Malipo'}
-            {step === 5 && 'Mmiliki'}
-            {step === 6 && 'Akaunti'}
-            {step === 7 && 'Masharti'}
-            {step === 8 && 'Thibitisha Simu (OTP)'}
-            {step === 9 && 'Mafanikio'}
-          </h1>
-          <p className="text-xs text-muted-foreground font-mono">{step < 9 ? `Hatua ${step} ya 8` : 'Usajili umekamilika'}</p>
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row select-none">
+      {/* Left Guidance & Progress Panel */}
+      <div className="hidden lg:flex lg:w-5/12 bg-surface border-r border-border p-10 flex-col justify-between">
+        <div className="space-y-6">
+          <ThemeLogo variant="full" height={40} />
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold font-sora text-foreground">Usajili wa Biashara</h2>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Sanidi mfumo wako wa 40Labs Core kwa hatua chache rahisi ili uanze kutumia huduma za mauzo, stoo, na maabara.
+            </p>
+          </div>
+
+          <div className="space-y-2.5 pt-4">
+            {stepsMeta.map((s) => {
+              const isDone = step > s.num;
+              const isCurrent = step === s.num;
+              return (
+                <div
+                  key={s.num}
+                  className={`flex items-start space-x-3 p-2.5 rounded-lg transition-colors ${
+                    isCurrent
+                      ? 'bg-primary/10 border border-primary/25 text-foreground'
+                      : isDone
+                      ? 'text-muted-foreground opacity-80'
+                      : 'text-muted-foreground/40'
+                  }`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono font-bold shrink-0 mt-0.5 ${
+                      isCurrent
+                        ? 'bg-primary text-primary-foreground'
+                        : isDone
+                        ? 'bg-primary/20 text-primary'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {isDone ? '✓' : s.num}
+                  </div>
+                  <div>
+                    <h4 className={`text-xs font-semibold ${isCurrent ? 'text-foreground' : ''}`}>{s.title}</h4>
+                    <p className="text-[11px] text-muted-foreground">{s.desc}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {error && (
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-lg text-center">
-            {error}
-          </div>
-        )}
+        <div className="text-[11px] text-muted-foreground font-mono pt-6 border-t border-border">
+          Hatua {step} ya 9 • 40Labs Core Onboarding
+        </div>
+      </div>
 
-        {/* Step 1: Business */}
-        {step === 1 && (
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 rounded-full border border-dashed border-border flex items-center justify-center overflow-hidden bg-muted">
-                {logoPreview ? (
-                  <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs text-muted-foreground">Logo</span>
+      {/* Right Form Panel */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-background overflow-y-auto">
+        <Card className="w-full max-w-xl p-8 space-y-6 shadow-lg border border-border rounded-xl bg-surface">
+          <div className="text-center space-y-1 lg:hidden">
+            <h1 className="text-xl font-bold font-sora text-foreground">
+              {stepsMeta[step - 1]?.title}
+            </h1>
+            <p className="text-xs text-muted-foreground font-mono">Hatua {step} ya 9</p>
+          </div>
+
+          <div className="text-center space-y-1 hidden lg:block">
+            <h1 className="text-2xl font-bold font-sora text-foreground">
+              {stepsMeta[step - 1]?.title}
+            </h1>
+            <p className="text-xs text-muted-foreground">{stepsMeta[step - 1]?.desc}</p>
+          </div>
+
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg text-center">
+              {error}
+            </div>
+          )}
+
+          {/* Step 1: Business */}
+          {step === 1 && (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 rounded-full border border-dashed border-border flex items-center justify-center overflow-hidden bg-muted">
+                  {logoPreview ? (
+                    <img src={logoPreview} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">Logo</span>
+                  )}
+                </div>
+                <input type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="text-xs" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Jina la Biashara</label>
+                <Input
+                  value={formData.name}
+                  onChange={(e: any) => updateField('name', e.target.value)}
+                  placeholder="Jina la biashara"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Aina ya Biashara</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => updateField('type', e.target.value)}
+                  className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2.5 text-text-primary"
+                >
+                  <option value="Pharmacy">Duka la Dawa</option>
+                  <option value="Laboratory">Maabara</option>
+                  <option value="Hospital">Hospitali / Kituo cha Afya</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Barua pepe</label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e: any) => updateField('email', e.target.value)}
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Namba ya Simu</label>
+                <PhoneInput
+                  value={formData.phone}
+                  onChange={(val: any) => updateField('phone', typeof val === 'string' ? val : val?.target?.value || '')}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Mode / Scale */}
+          {step === 2 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Mtindo (Role Scopes)</label>
+                <select
+                  value={formData.role_scopes}
+                  onChange={(e) => updateField('role_scopes', e.target.value)}
+                  className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2.5 text-text-primary"
+                >
+                  <option value="pharmacy">Duka la Dawa (Pharmacy)</option>
+                  <option value="lab">Maabara (Lab)</option>
+                  <option value="both">Vyote (Both)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Ukubwa (Scale)</label>
+                <select
+                  value={formData.scale}
+                  onChange={(e) => updateField('scale', e.target.value)}
+                  className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2.5 text-text-primary"
+                >
+                  <option value="small">Mdogo (Small)</option>
+                  <option value="medium">Wastani (Medium)</option>
+                  <option value="large">Kubwa (Large)</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Location */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Nchi</label>
+                <Input value="Tanzania" disabled />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Mkoa</label>
+                <select
+                  value={formData.region}
+                  onChange={(e) => updateField('region', e.target.value)}
+                  className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2.5 text-text-primary"
+                >
+                  {TZ_ADMIN_AREAS.map((r) => (
+                    <option key={r.name} value={r.name}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Wilaya</label>
+                <select
+                  value={formData.district}
+                  onChange={(e) => updateField('district', e.target.value)}
+                  className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2.5 text-text-primary"
+                >
+                  {currentRegionObj.districts.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Mtaa</label>
+                <Input
+                  value={formData.mtaa}
+                  onChange={(e: any) => updateField('mtaa', e.target.value)}
+                  placeholder="Mtaa"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Kata</label>
+                <Input
+                  value={formData.kata}
+                  onChange={(e: any) => updateField('kata', e.target.value)}
+                  placeholder="Kata"
+                />
+              </div>
+              <div className="pt-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={gpsEnabled}
+                    onChange={(e) => handleGpsToggle(e.target.checked)}
+                    className="w-4 h-4 rounded border-border text-primary accent-primary"
+                  />
+                  <span className="text-xs text-foreground font-medium">Wezesha GPS (Nasa eneo la sasa)</span>
+                </label>
+                {latLng.lat && latLng.lng && (
+                  <p className="text-[10px] font-mono text-muted-foreground mt-1">
+                    Lat: {latLng.lat.toFixed(4)}, Lng: {latLng.lng.toFixed(4)}
+                  </p>
                 )}
               </div>
-              <input type="file" accept="image/png, image/jpeg" onChange={handleLogoUpload} className="text-sm" />
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Jina la Biashara</label>
-              <Input
-                value={formData.name}
-                onChange={(e: any) => updateField('name', e.target.value)}
-                placeholder="Jina la biashara"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Aina ya Biashara</label>
-              <select
-                value={formData.type}
-                onChange={(e) => updateField('type', e.target.value)}
-                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
-              >
-                <option value="Pharmacy">Duka la Dawa</option>
-                <option value="Laboratory">Maabara</option>
-                <option value="Hospital">Hospitali / Kituo cha Afya</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Barua pepe</label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e: any) => updateField('email', e.target.value)}
-                placeholder="email@example.com"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Namba ya Simu</label>
-              <PhoneInput
-                value={formData.phone}
-                onChange={(val: any) => updateField('phone', typeof val === 'string' ? val : val?.target?.value || '')}
-              />
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Step 2: Mode / Scale */}
-        {step === 2 && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Mtindo (Role Scopes)</label>
-              <select
-                value={formData.role_scopes}
-                onChange={(e) => updateField('role_scopes', e.target.value)}
-                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
-              >
-                <option value="pharmacy">Duka la Dawa (Pharmacy)</option>
-                <option value="lab">Maabara (Lab)</option>
-                <option value="both">Vyote (Both)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Ukubwa (Scale)</label>
-              <select
-                value={formData.scale}
-                onChange={(e) => updateField('scale', e.target.value)}
-                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
-              >
-                <option value="small">Mdogo (Small)</option>
-                <option value="medium">Wastani (Medium)</option>
-                <option value="large">Kubwa (Large)</option>
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* Step 3: Location */}
-        {step === 3 && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Nchi</label>
-              <Input value="Tanzania" disabled />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Mkoa</label>
-              <select
-                value={formData.region}
-                onChange={(e) => updateField('region', e.target.value)}
-                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
-              >
-                {TZ_ADMIN_AREAS.map((r) => (
-                  <option key={r.name} value={r.name}>{r.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Wilaya</label>
-              <select
-                value={formData.district}
-                onChange={(e) => updateField('district', e.target.value)}
-                className="w-full text-xs bg-panel-subtle border border-border rounded-input p-2 text-text-primary"
-              >
-                {currentRegionObj.districts.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Mtaa</label>
-              <Input
-                value={formData.mtaa}
-                onChange={(e: any) => updateField('mtaa', e.target.value)}
-                placeholder="Mtaa"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Kata</label>
-              <Input
-                value={formData.kata}
-                onChange={(e: any) => updateField('kata', e.target.value)}
-                placeholder="Kata"
-              />
-            </div>
-            <div className="pt-2">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={gpsEnabled}
-                  onChange={(e) => handleGpsToggle(e.target.checked)}
-                  className="w-4 h-4 rounded border-border text-primary accent-primary"
+          {/* Step 4: Payments */}
+          {step === 4 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Idadi ya Matawi</label>
+                <Input
+                  value={formData.matawi}
+                  onChange={(e: any) => updateField('matawi', e.target.value)}
+                  placeholder="1"
                 />
-                <span className="text-xs text-foreground font-medium">Wezesha GPS (Nasa eneo la sasa)</span>
-              </label>
-              {latLng.lat && latLng.lng && (
-                <p className="text-[10px] font-mono text-muted-foreground mt-1">
-                  Lat: {latLng.lat.toFixed(4)}, Lng: {latLng.lng.toFixed(4)}
-                </p>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Lipa Namba</label>
+                <Input
+                  value={formData.lipaNamba}
+                  onChange={(e: any) => updateField('lipaNamba', e.target.value)}
+                  placeholder="Namba ya biashara"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Namba ya Malipo (Simu)</label>
+                <Input
+                  value={formData.paymentNumber}
+                  onChange={(e: any) => updateField('paymentNumber', e.target.value)}
+                  placeholder="+255..."
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Owner details */}
+          {step === 5 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Jina la Kwanza la Mmiliki</label>
+                <Input
+                  value={formData.ownerFirstName}
+                  onChange={(e: any) => updateField('ownerFirstName', e.target.value)}
+                  placeholder="Jina la kwanza"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Jina la Mwisho la Mmiliki</label>
+                <Input
+                  value={formData.ownerLastName}
+                  onChange={(e: any) => updateField('ownerLastName', e.target.value)}
+                  placeholder="Jina la mwisho"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Namba ya Simu ya Mmiliki</label>
+                <PhoneInput
+                  value={formData.ownerPhone}
+                  onChange={(val: any) => updateField('ownerPhone', typeof val === 'string' ? val : val?.target?.value || '')}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Barua pepe ya Mmiliki</label>
+                <Input
+                  type="email"
+                  value={formData.ownerEmail}
+                  onChange={(e: any) => updateField('ownerEmail', e.target.value)}
+                  placeholder="owner@example.com"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 6: Account */}
+          {step === 6 && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Jina la Mtumiaji (Username)</label>
+                <Input
+                  autoComplete="username"
+                  value={formData.username}
+                  onChange={(e: any) => updateField('username', e.target.value.toLowerCase().trim())}
+                  placeholder="username (a-z, 0-9, ._-)"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Nenosiri (Password)</label>
+                <PasswordInput
+                  autoComplete="new-password"
+                  value={formData.password}
+                  onChange={(e: any) => updateField('password', e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Thibitisha Nenosiri</label>
+                <PasswordInput
+                  autoComplete="new-password"
+                  value={formData.confirmPassword}
+                  onChange={(e: any) => updateField('confirmPassword', e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 7: Terms */}
+          {step === 7 && (
+            <div className="space-y-6 text-center py-6">
+              <p className="text-sm text-foreground">
+                Tafadhali soma na ukubali{' '}
+                <button
+                  type="button"
+                  className="text-primary underline font-medium hover:opacity-80"
+                  onClick={() => setTermsOpen(true)}
+                >
+                  vigezo na masharti
+                </button>{' '}
+                ya 40Labs.
+              </p>
+              <div className="flex justify-center items-center pt-2">
+                <Checkbox
+                  checked={termsAccepted}
+                  onChange={(e: any) => setTermsAccepted(e.target?.checked ?? !termsAccepted)}
+                  label="Kubali masharti na sera ya faragha"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Step 8: Final phone verification */}
+          {step === 8 && (
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground">
+                Tuma msimbo kwa namba ya mmiliki kisha uweke tarakimu 6 ili kuthibitisha na kukamilisha usajili.
+              </p>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Namba ya Simu ya Mmiliki</label>
+                <Input value={normalizePhoneTZ(formData.ownerPhone) || formData.ownerPhone} readOnly />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs text-muted-foreground font-mono">
+                  {otpCountdown > 0 ? `Subiri sekunde ${otpCountdown} kutuma tena` : 'Tayari kutuma msimbo'}
+                </span>
+                <Button
+                  intent="neutral"
+                  size="sm"
+                  disabled={loading || !canResendOtp}
+                  onClick={async () => {
+                    setError(null);
+                    const phone = normalizePhoneTZ(formData.ownerPhone);
+                    if (!phone) {
+                      setError('Weka namba sahihi ya simu ya Tanzania (mfano 0712 345 678).');
+                      return;
+                    }
+                    setLoading(true);
+                    try {
+                      await authApi.otpRequest(phone);
+                      setOtpCountdown(60);
+                      setCanResendOtp(false);
+                      updateField('otpCode', '');
+                    } catch (err: any) {
+                      setError(err?.code || err?.message || 'Imeshindikana kutuma OTP.');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  {otpCountdown > 0 ? 'Tuma tena baadaye' : 'Tuma msimbo'}
+                </Button>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-1">Msimbo wa SMS (OTP)</label>
+                <PinOtpInput length={6} value={formData.otpCode} onChange={(val) => updateField('otpCode', val)} />
+              </div>
+            </div>
+          )}
+
+          {/* Step 9: Success */}
+          {step === 9 && successData && (
+            <div className="space-y-4 text-center">
+              <p className="text-sm font-semibold text-foreground">
+                Hongera {formData.ownerFirstName}! Biashara yako imesajiliwa kikamilifu.
+              </p>
+              <div className="p-4 bg-muted rounded-lg font-mono text-xs space-y-2 text-left">
+                <div className="flex justify-between items-center">
+                  <span><strong>Business ID:</strong> {successData.businessId}</span>
+                  <Button
+                    intent="neutral"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(successData.businessId)}
+                  >
+                    Nakili
+                  </Button>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span><strong>Username:</strong> {successData.username}</span>
+                  <Button
+                    intent="neutral"
+                    size="sm"
+                    onClick={() => navigator.clipboard.writeText(successData.username)}
+                  >
+                    Nakili
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-4 border-t border-border">
+            {step > 1 && step < 9 && (
+              <Button intent="neutral" onClick={handleBack}>
+                Rudi
+              </Button>
+            )}
+            <div className="ml-auto">
+              {step < 9 ? (
+                <Button
+                  disabled={loading || (step === 7 && !termsAccepted) || (step === 8 && !formData.otpCode)}
+                  onClick={handleNext}
+                >
+                  {loading ? 'Inasubiri...' : step === 8 ? 'Thibitisha na Sajili' : step === 7 ? 'Endelea' : 'Endelea'}
+                </Button>
+              ) : (
+                <Button
+                  disabled={!successData}
+                  onClick={onComplete}
+                >
+                  Anza
+                </Button>
               )}
             </div>
           </div>
-        )}
-
-        {/* Step 4: Payments */}
-        {step === 4 && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Idadi ya Matawi</label>
-              <Input
-                value={formData.matawi}
-                onChange={(e: any) => updateField('matawi', e.target.value)}
-                placeholder="1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Lipa Namba</label>
-              <Input
-                value={formData.lipaNamba}
-                onChange={(e: any) => updateField('lipaNamba', e.target.value)}
-                placeholder="Namba ya biashara"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Namba ya Malipo (Simu)</label>
-              <Input
-                value={formData.paymentNumber}
-                onChange={(e: any) => updateField('paymentNumber', e.target.value)}
-                placeholder="+255..."
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Owner details */}
-        {step === 5 && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Jina la Kwanza la Mmiliki</label>
-              <Input
-                value={formData.ownerFirstName}
-                onChange={(e: any) => updateField('ownerFirstName', e.target.value)}
-                placeholder="Jina la kwanza"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Jina la Mwisho la Mmiliki</label>
-              <Input
-                value={formData.ownerLastName}
-                onChange={(e: any) => updateField('ownerLastName', e.target.value)}
-                placeholder="Jina la mwisho"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Namba ya Simu ya Mmiliki</label>
-              <PhoneInput
-                value={formData.ownerPhone}
-                onChange={(val: any) => updateField('ownerPhone', typeof val === 'string' ? val : val?.target?.value || '')}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Barua pepe ya Mmiliki</label>
-              <Input
-                type="email"
-                value={formData.ownerEmail}
-                onChange={(e: any) => updateField('ownerEmail', e.target.value)}
-                placeholder="owner@example.com"
-              />
-            </div>
-
-          </div>
-        )}
-
-        {/* Step 6: Account */}
-        {step === 6 && (
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Jina la Mtumiaji (Username)</label>
-              <Input
-                autoComplete="username"
-                value={formData.username}
-                onChange={(e: any) => updateField('username', e.target.value.toLowerCase().trim())}
-                placeholder="username (a-z, 0-9, ._-)"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Nenosiri (Password)</label>
-              <PasswordInput
-                autoComplete="new-password"
-                value={formData.password}
-                onChange={(e: any) => updateField('password', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Thibitisha Nenosiri</label>
-              <PasswordInput
-                autoComplete="new-password"
-                value={formData.confirmPassword}
-                onChange={(e: any) => updateField('confirmPassword', e.target.value)}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Step 7: Terms */}
-        {step === 7 && (
-          <div className="space-y-6 text-center py-6">
-            <p className="text-sm text-foreground">
-              Tafadhali soma na ukubali{' '}
-              <button
-                type="button"
-                className="text-primary underline font-medium hover:opacity-80"
-                onClick={() => setTermsOpen(true)}
-              >
-                vigezo na masharti
-              </button>{' '}
-              ya 40Labs. (Soma zaidi…)
-            </p>
-            <div className="flex justify-center items-center pt-2">
-              <Checkbox
-                checked={termsAccepted}
-                onChange={(e: any) => setTermsAccepted(e.target?.checked ?? !termsAccepted)}
-                label="Kubali masharti na sera ya faragha"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Step 8: Final phone verification */}
-        {step === 8 && (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Tuma msimbo kwa namba ya mmiliki kisha uweke tarakimu 6 ili kuthibitisha na kukamilisha usajili.
-            </p>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Namba ya Simu ya Mmiliki</label>
-              <Input value={normalizePhoneTZ(formData.ownerPhone) || formData.ownerPhone} readOnly />
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs text-muted-foreground font-mono">
-                {otpCountdown > 0 ? `Subiri sekunde ${otpCountdown} kutuma tena` : 'Tayari kutuma msimbo'}
-              </span>
-              <Button
-                intent="neutral"
-                size="sm"
-                disabled={loading || !canResendOtp}
-                onClick={async () => {
-                  setError(null);
-                  const phone = normalizePhoneTZ(formData.ownerPhone);
-                  if (!phone) {
-                    setError('Weka namba sahihi ya simu ya Tanzania (mfano 0712 345 678).');
-                    return;
-                  }
-                  setLoading(true);
-                  try {
-                    await authApi.otpRequest(phone);
-                    setOtpCountdown(60);
-                    setCanResendOtp(false);
-                    updateField('otpCode', '');
-                  } catch (err: any) {
-                    setError(err?.code || err?.message || 'Imeshindikana kutuma OTP.');
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-              >
-                {otpCountdown > 0 ? 'Tuma tena baadaye' : 'Tuma msimbo'}
-              </Button>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Msimbo wa SMS (OTP)</label>
-              <PinOtpInput length={6} value={formData.otpCode} onChange={(val) => updateField('otpCode', val)} />
-            </div>
-          </div>
-        )}
-
-        {/* Step 8: Success */}
-        {step === 9 && successData && (
-          <div className="space-y-4 text-center">
-            <p className="text-sm font-semibold text-foreground">
-              Hongera {formData.ownerFirstName}! Biashara yako imesajiliwa kikamilifu.
-            </p>
-            <div className="p-4 bg-muted rounded-lg font-mono text-xs space-y-2 text-left">
-              <div className="flex justify-between items-center">
-                <span><strong>Business ID:</strong> {successData.businessId}</span>
-                <Button
-                  intent="neutral"
-                  size="sm"
-                  onClick={() => navigator.clipboard.writeText(successData.businessId)}
-                >
-                  Nakili
-                </Button>
-              </div>
-              <div className="flex justify-between items-center">
-                <span><strong>Username:</strong> {successData.username}</span>
-                <Button
-                  intent="neutral"
-                  size="sm"
-                  onClick={() => navigator.clipboard.writeText(successData.username)}
-                >
-                  Nakili
-                </Button>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* Navigation Buttons */}
-        <div className="flex justify-between pt-4 border-t border-border">
-          {step > 1 && step < 9 && (
-            <Button intent="neutral" onClick={handleBack}>
-              Rudi
-            </Button>
-          )}
-          <div className="ml-auto">
-            {step < 9 ? (
-              <Button
-                disabled={loading || (step === 7 && !termsAccepted) || (step === 8 && !formData.otpCode)}
-                onClick={handleNext}
-              >
-                {loading ? 'Inasubiri...' : step === 8 ? 'Thibitisha na Sajili' : step === 7 ? 'Endelea' : 'Endelea'}
-              </Button>
-            ) : (
-              <Button
-                disabled={!successData}
-                onClick={onComplete}
-              >
-                Anza
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       <TermsModal
         isOpen={termsOpen}
