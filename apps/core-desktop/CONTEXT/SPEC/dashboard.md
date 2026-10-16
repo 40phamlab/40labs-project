@@ -23,7 +23,7 @@ Pending (Purchase Orders/ePharmacy/40Labs — read-only status links).
 ## API deps
 All READ-ONLY aggregation endpoints. Do not create new write paths here —
 Dashboard only queries data already written by Inventory/Sales/Purchases/Lab.
-- GET /dashboard/summary (aggregates the above)
+- GET /dashboard/summary (aggregates summary including 8 domain KPIs [phase: 8D]: sales, profit, customers, stock, expiry, lab, balances, purchases. Each KPI includes value, period delta with polarity up-good/down-good, 7-day sparkline series, 5-day tooltip history, and breakdown items scoped by workspace_id and branch_id).
 
 ## Offline behavior
 Fully offline — all source data is local SQLite. No live network dependency

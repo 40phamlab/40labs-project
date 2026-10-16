@@ -371,4 +371,38 @@ describe('Dashboard Summary Calculations', () => {
     expect(summary.pending.labOrders.map((l) => l.id)).toEqual(['lo_1', 'lo_2', 'lo_3']);
     expect(summary.pending.total).toBe(5);
   });
+
+  test('computes all 8 domain KPIs [phase: 8D] with value, delta, spark, history, and breakdown', () => {
+    const summary = getInitialDashboardSummary();
+
+    expect(summary.kpiList).toHaveLength(8);
+    const kpiIds = summary.kpiList.map((k) => k.id);
+    expect(kpiIds).toEqual([
+      'sales',
+      'profit',
+      'customers',
+      'stock',
+      'expiry',
+      'lab',
+      'balances',
+      'purchases',
+    ]);
+
+    summary.kpiList.forEach((kpi) => {
+      expect(typeof kpi.value).toBe('number');
+      expect(Number.isNaN(kpi.value)).toBe(false);
+      expect(['money', 'count']).toContain(kpi.format);
+      expect(kpi.delta).toBeDefined();
+      expect(['up-good', 'down-good']).toContain(kpi.delta.polarity);
+      expect(['up', 'down', 'flat']).toContain(kpi.delta.direction);
+      expect(kpi.spark).toHaveLength(7);
+      expect(kpi.history).toHaveLength(5);
+      expect(Array.isArray(kpi.breakdown)).toBe(true);
+      expect(kpi.breakdown.length).toBeGreaterThan(0);
+    });
+
+    // Check polarity on expiry and balances
+    expect(summary.kpis.expiry.delta.polarity).toBe('down-good');
+    expect(summary.kpis.balances.delta.polarity).toBe('down-good');
+  });
 });
