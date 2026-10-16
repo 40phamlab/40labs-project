@@ -30,6 +30,8 @@ const METRIC_TITLES: Record<DashboardChartMetric, string> = {
   profit: 'FAIDA',
   customers: 'WATEJA',
   stock: 'AKIBA',
+  purchases: 'MANUNUZI',
+  stock_value: 'THAMANI YA AKIBA',
 };
 
 export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({

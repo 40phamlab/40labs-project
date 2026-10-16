@@ -247,11 +247,13 @@ export const notificationsApi = {
       displayName: dispName,
     });
 
-    await notificationsApi.appendThreadMessage({
-      threadId: thread.id,
-      direction: 'incoming',
-      body: payload.body,
-    });
+    if (thread?.id) {
+      await notificationsApi.appendThreadMessage({
+        threadId: thread.id,
+        direction: 'incoming',
+        body: payload.body,
+      });
+    }
 
     const now = new Date().toISOString();
     const notif: Notification = {

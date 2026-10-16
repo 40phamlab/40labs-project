@@ -297,7 +297,7 @@ export function getInitialDashboardSummary(
 
   customers.forEach((c) => {
     if (!c) return;
-    const rawGender = (c as Record<string, unknown>).gender ?? c.sex;
+    const rawGender = (c as unknown as Record<string, unknown>).gender ?? c.sex;
     if (rawGender === undefined || rawGender === null) {
       missingGenderFieldCount++;
     }

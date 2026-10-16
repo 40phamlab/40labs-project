@@ -1,18 +1,20 @@
-// [phase: 8D] Quick Actions Compact Panel
+// [phase: 8D] Quick Actions Compact Panel with PDF Sales Report action
 import * as React from 'react';
-import { ShoppingCart, UserPlus, PackagePlus, FileText } from 'lucide-react';
+import { ShoppingCart, UserPlus, PackagePlus, FileText, Share2 } from 'lucide-react';
 import { useNavStore } from '../../../stores/useNavStore';
 
 export interface QuickActionsPanelProps {
   onOpenAddCustomer?: () => void;
   onOpenAddStock?: () => void;
   onOpenAddPODraft?: () => void;
+  onOpenSalesReport?: () => void;
 }
 
 export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
   onOpenAddCustomer,
   onOpenAddStock,
   onOpenAddPODraft,
+  onOpenSalesReport,
 }) => {
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
 
@@ -45,9 +47,20 @@ export const QuickActionsPanel: React.FC<QuickActionsPanelProps> = ({
 
   return (
     <div className="bg-panel rounded-card border border-border/50 p-3 elevation-raised flex flex-col gap-2">
-      <h3 className="font-heading text-[11px] font-bold uppercase tracking-wider text-text border-b border-border/30 pb-1.5">
-        Hatua za Haraka
-      </h3>
+      <div className="flex items-center justify-between border-b border-border/30 pb-1.5">
+        <h3 className="font-heading text-[11px] font-bold uppercase tracking-wider text-text">
+          Hatua za Haraka
+        </h3>
+        {onOpenSalesReport && (
+          <button
+            type="button"
+            onClick={onOpenSalesReport}
+            className="text-[10px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <Share2 size={11} /> Ripoti ya Mauzo PDF
+          </button>
+        )}
+      </div>
 
       <div className="grid grid-cols-2 gap-2">
         {actions.map((action, idx) => (

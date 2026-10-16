@@ -1,9 +1,16 @@
 // [phase: 8D] Extended Chart Data Builder for 4 Domain Metrics
 import type { DashboardSummary } from '../../../devData/dashboard/summary';
 
-export type DashboardChartMetric = 'sales' | 'profit' | 'customers' | 'stock';
-export type DashboardChartType = 'bar' | 'line' | 'area' | 'ring';
+export type DashboardChartMetric = 'sales' | 'profit' | 'customers' | 'stock' | 'purchases' | 'stock_value';
+export type DashboardMetric = DashboardChartMetric;
+export type DashboardChartType = 'bar' | 'line' | 'area' | 'ring' | 'pie' | 'radar';
 export type DashboardPeriod = '7d' | '30d' | '90d';
+export type DashboardBreakdown = 'time' | 'category';
+
+export const chartCompatibilityMap: Record<DashboardBreakdown, DashboardChartType[]> = {
+  time: ['bar', 'line', 'area'],
+  category: ['bar', 'ring', 'pie'],
+};
 
 export interface ChartDataPoint {
   date: string;
@@ -21,17 +28,24 @@ export interface CategoryDataPoint {
 
 export interface BuildChartDataOptions {
   metric: DashboardChartMetric;
-  chartType: DashboardChartType;
-  period: DashboardPeriod;
+  chartType?: DashboardChartType;
+  breakdown?: DashboardBreakdown;
+  period?: DashboardPeriod;
   nowDate?: Date;
   multiSeries?: boolean; // When true, includes both Sales and Profit
+}
+
+export interface ChartSeriesItem {
+  dataKey: string;
+  name: string;
+  color?: string;
 }
 
 export interface ChartResult {
   data: (ChartDataPoint | CategoryDataPoint)[];
   xKey: string;
   isCategory: boolean;
-  series: { dataKey: string; name: string; color?: string }[];
+  series: ChartSeriesItem[];
   totalValue: number;
   hasCategoryData: boolean;
 }
@@ -40,14 +54,13 @@ export function buildChartData(
   summary: DashboardSummary,
   options: BuildChartDataOptions
 ): ChartResult {
-  const { metric, chartType, period, multiSeries = false } = options;
-  const isCategory = chartType === 'ring';
+  const { metric, chartType = 'bar', period = '30d', multiSeries = false } = options;
+  const isCategory = chartType === 'ring' || chartType === 'pie' || options.breakdown === 'category';
   const daysCount = period === '7d' ? 7 : period === '30d' ? 30 : 90;
 
   const allDates = [
     ...(summary.sales || []).map((s) => s.created_at),
     ...(summary.purchaseOrdersList || []).map((po) => po.created_at),
-    ...(summary.customers || []).map((c) => c.created_at).filter(Boolean),
   ]
     .map((d) => new Date(d!).getTime())
     .filter((t) => !isNaN(t));
@@ -85,7 +98,7 @@ export function buildChartData(
             catMap[cat] = (catMap[cat] || 0) + val;
           });
         });
-    } else if (metric === 'stock') {
+    } else if (metric === 'stock' || metric === 'stock_value') {
       (summary.inventoryItems || []).forEach((item) => {
         const med = summary.medicines.find((m) => m.id === item.medicine_id);
         const cat = med?.category || 'General';
@@ -93,7 +106,6 @@ export function buildChartData(
         catMap[cat] = (catMap[cat] || 0) + val;
       });
     }
-    // Note: 'customers' metric has no category data
 
     const totalVal = Object.values(catMap).reduce((acc, v) => acc + v, 0);
 
@@ -118,7 +130,6 @@ export function buildChartData(
 
   // Time-series view
   const dateMap: Record<string, { value: number; sales?: number; profit?: number }> = {};
-  const prevDateMap: Record<string, number> = {};
 
   for (let i = daysCount - 1; i >= 0; i--) {
     const d = new Date(now);
@@ -163,7 +174,6 @@ export function buildChartData(
   }
 
   if (metric === 'customers') {
-    // Count distinct customers who bought or were registered on each date
     (summary.sales || [])
       .filter((s) => s.created_at.slice(0, 10) >= startDateStr)
       .forEach((s) => {
@@ -174,8 +184,7 @@ export function buildChartData(
       });
   }
 
-  if (metric === 'stock') {
-    // Total active inventory stock value
+  if (metric === 'stock' || metric === 'stock_value') {
     const totalStockVal = (summary.inventoryItems || []).reduce(
       (sum, item) => sum + (item.sell_price ?? 0) * (item.quantity ?? 0),
       0
@@ -185,7 +194,6 @@ export function buildChartData(
     });
   }
 
-  // Compute point-over-point previous values
   const dateEntries = Object.entries(dateMap);
   let totalVal = 0;
 
@@ -210,7 +218,6 @@ export function buildChartData(
       ]
     : [{ dataKey: 'value', name: metric === 'sales' ? 'Mauzo' : metric === 'profit' ? 'Faida' : metric === 'customers' ? 'Wateja' : 'Akiba' }];
 
-  // Check category availability for Ring mode selection
   const hasCategory = metric !== 'customers' && (summary.inventoryItems?.length ?? 0) > 0;
 
   return {

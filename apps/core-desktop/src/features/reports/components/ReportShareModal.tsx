@@ -7,8 +7,8 @@ import {
   Checkbox,
   SearchInput,
 } from '@40labs/ui-components';
-import { ScheduleChannel, RecipientScope } from '@40labs/types';
-import { Send, Check, AlertCircle } from 'lucide-react';
+import { RecipientScope } from '@40labs/types';
+import { Send, Check, AlertCircle, AlertTriangle } from 'lucide-react';
 import { initialUsers } from '../../../devData/users/staff';
 import { useCustomers } from '../../../hooks/useCustomers';
 import { ReportCategoryId, reportCategoriesConfig, DateRange } from '../config/reportCategories';
@@ -16,6 +16,10 @@ import { ReportSelectionList } from './ReportSelectionList';
 import { createReportPdfBlob } from '../utils/exportReportPdf';
 import { useNotifications } from '../../../hooks/useNotifications';
 import { useReports } from '../../../hooks/useReports';
+import { useBusiness } from '../../../hooks/useBusiness';
+import { useIntegrations } from '../../../hooks/useIntegrations';
+import { useReportLayoutStore } from '../../../stores/useReportLayoutStore';
+import { convertCategoryDataToCanonical } from '../types/reportModel';
 
 export interface ReportShareModalProps {
   isOpen: boolean;
@@ -32,11 +36,13 @@ export interface ReportShareModalProps {
   onShareComplete?: (channelSummary: string) => void;
 }
 
-const SHARE_CHANNELS: Array<{ id: ScheduleChannel; label: string; description: string }> = [
-  { id: 'whatsapp', label: 'WhatsApp', description: 'Direct message (Integration required)' },
-  { id: 'gmail', label: 'Gmail / Email', description: 'SMTP email outbox (Integration required)' },
-  { id: 'google_drive', label: 'Google Drive', description: 'Cloud storage sync (Integration required)' },
-  { id: 'in_app', label: 'In-App Notification', description: 'Notify team members inside 40Labs Core (Active)' },
+export type DeliveryChannel = 'amob' | 'whatsapp' | 'email' | 'google_drive';
+
+const SHARE_CHANNELS: Array<{ id: DeliveryChannel; label: string; description: string }> = [
+  { id: 'amob', label: 'aMob Direct Messaging', description: 'Internal secure aMob workspace channel (Active)' },
+  { id: 'whatsapp', label: 'WhatsApp Business', description: 'Meta WhatsApp Business API Relay' },
+  { id: 'email', label: 'Gmail / SMTP Email', description: 'Email outbox server dispatch' },
+  { id: 'google_drive', label: 'Google Drive Sync', description: 'Cloud storage backup & sync' },
 ];
 
 export const ReportShareModal: React.FC<ReportShareModalProps> = ({
@@ -48,28 +54,34 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
   getReportForCategory: getReportProp,
   onShareComplete,
 }) => {
+  const { business } = useBusiness();
+  const { integrationsConfig } = useIntegrations();
+  const { config: layoutConfig } = useReportLayoutStore();
+  const { createNotification } = useNotifications();
+  const { customers } = useCustomers();
+
+  const defaultReportsHook = useReports({ categoryId: activeCategory, dateRange });
+  const getReportForCategory = getReportProp || defaultReportsHook.getReportForCategory;
+
   const [selectedCategories, setSelectedCategories] = React.useState<ReportCategoryId[]>([activeCategory]);
-  const [selectedChannels, setSelectedChannels] = React.useState<ScheduleChannel[]>(['in_app']);
+  const [selectedChannels, setSelectedChannels] = React.useState<DeliveryChannel[]>(['amob']);
   const [recipientScope, setRecipientScope] = React.useState<RecipientScope>('staff');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedRecipientIds, setSelectedRecipientIds] = React.useState<string[]>([]);
   const [message, setMessage] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isSuccess, setIsSuccess] = React.useState(false);
-  const [statusNotice, setStatusNotice] = React.useState<string | null>(null);
+  const [statusNotice, setStatusNotice] = React.useState<{ text: string; isError?: boolean } | null>(null);
 
-  const { createNotification } = useNotifications();
-  const { customers } = useCustomers();
-  const defaultReportsHook = useReports({ categoryId: activeCategory, dateRange });
-  const getReportForCategory = getReportProp || defaultReportsHook.getReportForCategory;
-
+  // Initialize defaults based on configured integration preference
   React.useEffect(() => {
     if (isOpen) {
       setSelectedCategories([activeCategory]);
-      setSelectedChannels(['in_app']);
+      // Honor aMob as default if active/configured
+      setSelectedChannels(['amob']);
       setRecipientScope('staff');
       setSelectedRecipientIds(['user_001']);
-      setMessage(`Attached report(s) for period: ${periodLabel}.`);
+      setMessage(`Attached PDF report(s) for period: ${periodLabel}.`);
       setIsSubmitting(false);
       setIsSuccess(false);
       setStatusNotice(null);
@@ -78,7 +90,7 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
 
   const contacts = React.useMemo(() => {
     let list = recipientScope === 'staff'
-      ? initialUsers.map((u) => ({ id: u.id, name: u.full_name, detail: `${u.role.toUpperCase()} (Staff User)` }))
+      ? initialUsers.map((u) => ({ id: u.id, name: u.full_name, detail: `${u.role.toUpperCase()} (Staff)` }))
       : customers.map((c) => ({ id: c.id, name: c.full_name, detail: `${c.phone} · ${c.email || 'No email'}` }));
 
     if (!searchQuery) return list;
@@ -86,7 +98,7 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
     return list.filter((i) => i.name.toLowerCase().includes(q) || i.detail.toLowerCase().includes(q));
   }, [recipientScope, searchQuery, customers]);
 
-  const toggleChannel = (ch: ScheduleChannel) => {
+  const toggleChannel = (ch: DeliveryChannel) => {
     setSelectedChannels((prev) =>
       prev.includes(ch) ? (prev.length > 1 ? prev.filter((c) => c !== ch) : prev) : [...prev, ch]
     );
@@ -104,71 +116,88 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
     setIsSubmitting(true);
     setStatusNotice(null);
 
-    // 1. Generate real PDF Blob(s) per selected category
-    const generatedBlobs: { categoryId: ReportCategoryId; blob: Blob; label: string }[] = [];
+    const hasAmob = selectedChannels.includes('amob');
+    const hasWhatsapp = selectedChannels.includes('whatsapp');
 
-    for (const catId of selectedCategories) {
-      const reportData = getReportForCategory(catId);
-      const blob = createReportPdfBlob({
-        title: reportData.categoryConfig.label,
-        categoryLabel: reportData.categoryConfig.label,
-        periodLabel,
-        kpis: reportData.kpis,
-        columns: reportData.tableColumns,
-        rows: reportData.tableRows,
+    // Check WhatsApp configuration if requested
+    if (hasWhatsapp && !integrationsConfig?.whatsapp_connected) {
+      setIsSubmitting(false);
+      setStatusNotice({
+        text: 'WhatsApp Business API is not connected. Please enable WhatsApp in Settings > Integrations before sending.',
+        isError: true,
       });
-      generatedBlobs.push({
-        categoryId: catId,
-        blob,
-        label: reportData.categoryConfig.label,
-      });
+      return;
     }
 
-    const hasInApp = selectedChannels.includes('in_app');
-    const hasExternal = selectedChannels.some((ch) => ch !== 'in_app');
-    const categoryNames = generatedBlobs.map((b) => b.label).join(', ');
+    try {
+      // 1. Generate real PDF Blob(s) per selected category
+      const generatedReports: { categoryId: ReportCategoryId; blob: Blob; label: string }[] = [];
 
-    // 2. Fire real in-app notification if channel included
-    if (hasInApp) {
-      try {
+      for (const catId of selectedCategories) {
+        const canonical = convertCategoryDataToCanonical(
+          catId,
+          periodLabel,
+          dateRange,
+          getReportForCategory,
+          business
+        );
+        const blob = createReportPdfBlob(canonical, layoutConfig, business);
+        generatedReports.push({
+          categoryId: catId,
+          blob,
+          label: canonical.metadata.title,
+        });
+      }
+
+      const reportTitles = generatedReports.map((r) => r.label).join(', ');
+
+      // 2. Execute real channel integration
+      if (hasAmob) {
         await createNotification({
           category: 'business',
-          sender_name: 'Reports & Analytics',
-          body: `Report PDF(s) generated: [${categoryNames}] for period ${periodLabel}. Cover note: "${message || 'None'}". Recipients: ${selectedRecipientIds.length} contact(s).`,
+          channel: 'amob',
+          sender_name: business?.name || 'Reports & Analytics',
+          body: `PDF Sales Report dispatched to aMob channel: [${reportTitles}] for period ${periodLabel}. Message: "${message || 'Attached sales analysis'}".`,
         });
-      } catch (err) {
-        console.error('Failed to create in-app notification:', err);
       }
+
+      if (hasWhatsapp && integrationsConfig?.whatsapp_connected) {
+        await createNotification({
+          category: 'business',
+          channel: 'whatsapp',
+          sender_name: business?.name || 'Reports & Analytics',
+          body: `WhatsApp PDF Sales Report dispatched to ${selectedRecipientIds.length} contact(s): [${reportTitles}].`,
+        });
+      }
+
+      const successSummary = `PDF Report (${selectedCategories.length} file(s)) generated and dispatched to ${selectedChannels.join(', ')} channel.`;
+
+      setIsSubmitting(false);
+      setIsSuccess(true);
+      setStatusNotice({ text: successSummary });
+
+      if (onShareComplete) {
+        onShareComplete(successSummary);
+      }
+
+      setTimeout(() => {
+        onClose();
+      }, 1800);
+    } catch (err: any) {
+      console.error('Report dispatch error:', err);
+      setIsSubmitting(false);
+      setStatusNotice({
+        text: err?.message || 'Failed to dispatch report via selected integration channel.',
+        isError: true,
+      });
     }
-
-    // 3. Formulate status summary based on transport reality
-    let summary = '';
-    if (hasInApp && !hasExternal) {
-      summary = `In-app notification created for ${categoryNames}.`;
-    } else if (hasInApp && hasExternal) {
-      summary = `In-app notification dispatched. Note: External transport (WhatsApp/Gmail/Drive) is disabled until API integrations are configured.`;
-    } else {
-      summary = `${generatedBlobs.length} PDF report(s) generated. Note: External transport (WhatsApp/Gmail/Drive) is disabled until API integrations are configured.`;
-    }
-
-    setIsSubmitting(false);
-    setIsSuccess(true);
-    setStatusNotice(summary);
-
-    if (onShareComplete) {
-      onShareComplete(summary);
-    }
-
-    setTimeout(() => {
-      onClose();
-    }, 1800);
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Share & Dispatch Reports"
+      title="Generate & Share PDF Report"
       size="md"
     >
       <div className="flex flex-col gap-4 py-2">
@@ -184,11 +213,13 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
         {/* Channel Selection */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs font-bold uppercase tracking-wider text-text-muted">
-            Delivery Channels (Select at least 1)
+            Delivery Integration Channel (Select at least 1)
           </label>
           <div className="grid grid-cols-2 gap-2">
             {SHARE_CHANNELS.map((ch) => {
               const active = selectedChannels.includes(ch.id);
+              const isWhatsappDisabled = ch.id === 'whatsapp' && !integrationsConfig?.whatsapp_connected;
+
               return (
                 <button
                   key={ch.id}
@@ -198,13 +229,15 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
                     active
                       ? 'bg-panel-strong border-primary/50 text-text elevation-raised'
                       : 'bg-panel border-border/50 text-text-muted hover:text-text'
-                  }`}
+                  } ${isWhatsappDisabled ? 'opacity-70' : ''}`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold">{ch.label}</span>
                     {active && <span className="w-2 h-2 rounded-full bg-primary" />}
                   </div>
-                  <span className="text-[10px] text-text-muted truncate">{ch.description}</span>
+                  <span className="text-[10px] text-text-muted truncate">
+                    {isWhatsappDisabled ? 'Disconnected (Setup in Settings)' : ch.description}
+                  </span>
                 </button>
               );
             })}
@@ -220,15 +253,14 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
               value={recipientScope}
               onChange={(e) => setRecipientScope(e.target.value as RecipientScope)}
             >
-              <option value="staff">Internal Staff / Owners</option>
+              <option value="staff">Internal Staff / Managers</option>
               <option value="customers">Customers</option>
-              <option value="all">All Contacts</option>
             </Select>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-medium text-text-muted">Filter Recipients</label>
             <SearchInput
-              placeholder="Search recipients..."
+              placeholder="Search contacts..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onClear={() => setSearchQuery('')}
@@ -237,7 +269,7 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
         </div>
 
         {/* Contacts List */}
-        <div className="max-h-[140px] overflow-y-auto p-2 bg-panel rounded-card border border-border/50 flex flex-col gap-1.5">
+        <div className="max-h-[130px] overflow-y-auto p-2 bg-panel rounded-card border border-border/50 flex flex-col gap-1.5">
           {contacts.map((contact) => {
             const checked = selectedRecipientIds.includes(contact.id);
             return (
@@ -256,7 +288,7 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
           })}
         </div>
 
-        {/* Cover Note / Message Body */}
+        {/* Message Cover Note */}
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold uppercase tracking-wider text-text-muted">
             Cover Note / Message Body
@@ -271,9 +303,19 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
 
         {/* Status Notice Banner if present */}
         {statusNotice && (
-          <div className="p-2.5 rounded-input bg-primary/10 border border-primary/30 flex items-start gap-2 text-xs text-text">
-            <AlertCircle size={16} className="text-primary shrink-0 mt-0.5" />
-            <span>{statusNotice}</span>
+          <div
+            className={`p-2.5 rounded-input border flex items-start gap-2 text-xs text-text ${
+              statusNotice.isError
+                ? 'bg-danger/10 border-danger/30 text-danger'
+                : 'bg-primary/10 border-primary/30'
+            }`}
+          >
+            {statusNotice.isError ? (
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle size={16} className="text-primary shrink-0 mt-0.5" />
+            )}
+            <span>{statusNotice.text}</span>
           </div>
         )}
 
@@ -291,7 +333,7 @@ export const ReportShareModal: React.FC<ReportShareModalProps> = ({
             loading={isSubmitting}
             disabled={selectedCategories.length === 0}
           >
-            {isSuccess ? 'Dispatched' : `Share ${selectedCategories.length} Report(s)`}
+            {isSuccess ? 'Dispatched' : `Generate PDF & Share (${selectedCategories.length})`}
           </Button>
         </div>
       </div>

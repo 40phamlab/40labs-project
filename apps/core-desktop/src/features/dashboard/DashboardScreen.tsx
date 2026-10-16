@@ -1,4 +1,4 @@
-// [phase: 8D] DashboardScreen with 3-Row Layout & Modal Wiring
+// [phase: 8D] DashboardScreen with 3-Row Layout, Modal Wiring & PDF Sales Report Generation
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchInput, Skeleton, Alert } from '@40labs/ui-components';
@@ -18,13 +18,14 @@ import { QuickActionsPanel } from './components/QuickActionsPanel';
 import { CustomerFormModal, type CustomerFormPayload } from '../customers/components/CustomerFormModal';
 import { NewStockModal } from '../inventory/components/NewStockModal';
 import { CreatePODraftModal } from '../purchases/components/CreatePODraftModal';
+import { ReportShareModal } from '../reports/components/ReportShareModal';
 import type { DashboardChartMetric } from './utils/chartData';
 
 export const DashboardScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const { summary, isLoading, isError, error, refetch } = useDashboard();
   const { toast } = useToast();
-  const { addStock } = useInventory();
+  const { addItem } = useInventory();
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [chartMetric, setChartMetric] = React.useState<DashboardChartMetric>('sales');
@@ -33,6 +34,7 @@ export const DashboardScreen: React.FC = () => {
   const [isAddCustomerOpen, setIsAddCustomerOpen] = React.useState(false);
   const [isAddStockOpen, setIsAddStockOpen] = React.useState(false);
   const [isAddPODraftOpen, setIsAddPODraftOpen] = React.useState(false);
+  const [isSalesReportModalOpen, setIsSalesReportModalOpen] = React.useState(false);
   const [isModalLoading, setIsModalLoading] = React.useState(false);
 
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -95,7 +97,7 @@ export const DashboardScreen: React.FC = () => {
   const handleSaveStock = async (payload: any) => {
     setIsModalLoading(true);
     try {
-      await addStock(payload);
+      await addItem(payload);
       toast.success('Bidhaa mpya imeongezwa kikamilifu');
       setIsAddStockOpen(false);
 
@@ -115,7 +117,14 @@ export const DashboardScreen: React.FC = () => {
   ) => {
     setIsModalLoading(true);
     try {
-      await purchasesApi.create(supplierId, lines);
+      await purchasesApi.create(
+        supplierId,
+        lines.map((l) => ({
+          medicine_id: l.medicineId,
+          quantity: l.quantity,
+          unit_cost: l.unitCost,
+        }))
+      );
       toast.success('Rasimu ya agizo imeundwa kikamilifu');
       setIsAddPODraftOpen(false);
 
@@ -197,6 +206,17 @@ export const DashboardScreen: React.FC = () => {
             onSave={handleSavePODraft}
             isLoading={isModalLoading}
           />
+
+          {/* PDF Sales Report Generation & Share Modal */}
+          <ReportShareModal
+            isOpen={isSalesReportModalOpen}
+            onClose={() => setIsSalesReportModalOpen(false)}
+            activeCategory="sales"
+            periodLabel="THIS MONTH"
+            onShareComplete={(summaryText) => {
+              toast.info(summaryText);
+            }}
+          />
         </>
       }
     >
@@ -228,11 +248,12 @@ export const DashboardScreen: React.FC = () => {
               />
             </div>
 
-            {/* QuickActions: 4 compact icon+label tiles */}
+            {/* QuickActions: 4 compact icon+label tiles + Sales Report Share action */}
             <QuickActionsPanel
               onOpenAddCustomer={() => setIsAddCustomerOpen(true)}
               onOpenAddStock={() => setIsAddStockOpen(true)}
               onOpenAddPODraft={() => setIsAddPODraftOpen(true)}
+              onOpenSalesReport={() => setIsSalesReportModalOpen(true)}
             />
 
             {/* Zinazosubiri: aggregate pending list */}

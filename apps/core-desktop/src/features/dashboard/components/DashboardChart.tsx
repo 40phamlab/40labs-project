@@ -28,7 +28,6 @@ import {
   formatCompactNumber,
   formatXAxisDate,
   calculateXAxisInterval,
-  formatMetricUnit,
   formatTooltipValue,
   calculatePointDelta,
 } from '../utils/chartFormat';

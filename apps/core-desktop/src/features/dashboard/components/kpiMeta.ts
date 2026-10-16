@@ -1,5 +1,4 @@
 // [phase: 8D] KPI Metadata & Color Mappings
-import * as React from 'react';
 import {
   DollarSign,
   TrendingUp,

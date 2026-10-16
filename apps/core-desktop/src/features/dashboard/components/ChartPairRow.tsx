@@ -267,7 +267,7 @@ const ChartSlot: React.FC<ChartSlotProps> = ({ slot, onChange, summary }) => {
           type={actualChartType as any}
           data={chartResult.data}
           xKey={chartResult.xKey}
-          series={[{ dataKey: 'value', name: chartResult.series }]}
+          series={Array.isArray(chartResult.series) ? chartResult.series : [{ dataKey: 'value', name: chartResult.series }]}
           innerRadius={slot.chartType === 'ring' ? '55%' : undefined}
           outerRadius={slot.chartType === 'ring' ? '85%' : undefined}
           colors={isPieOrRing ? ringColors : defaultChartColors}

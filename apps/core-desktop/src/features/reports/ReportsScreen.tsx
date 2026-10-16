@@ -6,9 +6,11 @@ import {
   IconButton,
   Popover,
 } from '@40labs/ui-components';
-import { Download, Share2, Eye } from 'lucide-react';
+import { Download, Share2, Eye, SlidersHorizontal } from 'lucide-react';
 import { TabContainer } from '../../components/TabContainer';
 import { useReports } from '../../hooks/useReports';
+import { useBusiness } from '../../hooks/useBusiness';
+import { useReportLayoutStore } from '../../stores/useReportLayoutStore';
 import { useToast } from '../../hooks/useToast';
 import {
   ReportCategoryId,
@@ -22,6 +24,7 @@ import { downloadReportPdf } from './utils/exportReportPdf';
 import { ReportShareModal } from './components/ReportShareModal';
 import { ReportSelectionList } from './components/ReportSelectionList';
 import { ReportPreviewModal } from './components/ReportPreviewModal';
+import { ReportEditorModal } from './components/ReportEditorModal';
 import { convertCategoryDataToCanonical, CanonicalReport } from './types/reportModel';
 
 const CATEGORY_TABS = Object.values(reportCategoriesConfig).map((cat) => ({
@@ -30,12 +33,16 @@ const CATEGORY_TABS = Object.values(reportCategoriesConfig).map((cat) => ({
 }));
 
 export const ReportsScreen: React.FC = () => {
+  const { business } = useBusiness();
+  const { config: layoutConfig } = useReportLayoutStore();
+
   const [activeCategory, setActiveCategory] = React.useState<ReportCategoryId>('sales');
   const [periodOption, setPeriodOption] = React.useState<PeriodOption>('last_month');
   const [dateRange, setDateRange] = React.useState(() => getPeriodDateRange('last_month'));
 
   const [isShareModalOpen, setIsShareModalOpen] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+  const [isEditorOpen, setIsEditorOpen] = React.useState(false);
   const [isDownloadPopoverOpen, setIsDownloadPopoverOpen] = React.useState(false);
   const [downloadCategories, setDownloadCategories] = React.useState<ReportCategoryId[]>([activeCategory]);
 
@@ -66,15 +73,16 @@ export const ReportsScreen: React.FC = () => {
     }
   }, [activeCategory, isDownloadPopoverOpen]);
 
-  // Construct canonical report for active category
+  // Construct canonical report for active category with real business profile
   const activeCanonicalReport: CanonicalReport = React.useMemo(() => {
     return convertCategoryDataToCanonical(
       activeCategory,
       periodOption.replace('_', ' ').toUpperCase(),
       dateRange,
-      (catId) => getReportForCategory(catId)
+      (catId) => getReportForCategory(catId),
+      business
     );
-  }, [activeCategory, periodOption, dateRange, getReportForCategory]);
+  }, [activeCategory, periodOption, dateRange, getReportForCategory, business]);
 
   const handleExecuteDownload = () => {
     if (downloadCategories.length === 0) return;
@@ -84,9 +92,10 @@ export const ReportsScreen: React.FC = () => {
         catId,
         periodOption.replace('_', ' ').toUpperCase(),
         dateRange,
-        (id) => getReportForCategory(id)
+        (id) => getReportForCategory(id),
+        business
       );
-      downloadReportPdf(canonical);
+      downloadReportPdf(canonical, layoutConfig, business);
     });
 
     toast.success(`Downloaded ${downloadCategories.length} report PDF(s) successfully.`);
@@ -111,6 +120,15 @@ export const ReportsScreen: React.FC = () => {
                 value={periodOption}
                 onChange={handlePeriodChange}
               />
+              <Button
+                type="button"
+                intent="neutral"
+                size="sm"
+                leftIcon={<SlidersHorizontal size={14} />}
+                onClick={() => setIsEditorOpen(true)}
+              >
+                Editor
+              </Button>
               <Button
                 type="button"
                 intent="neutral"
@@ -195,6 +213,14 @@ export const ReportsScreen: React.FC = () => {
           <ReportPreviewModal
             isOpen={isPreviewOpen}
             onClose={() => setIsPreviewOpen(false)}
+            report={activeCanonicalReport}
+            onExportComplete={(format) => {
+              toast.success(`Successfully exported report as ${format.toUpperCase()}`);
+            }}
+          />
+          <ReportEditorModal
+            isOpen={isEditorOpen}
+            onClose={() => setIsEditorOpen(false)}
             report={activeCanonicalReport}
             onExportComplete={(format) => {
               toast.success(`Successfully exported report as ${format.toUpperCase()}`);

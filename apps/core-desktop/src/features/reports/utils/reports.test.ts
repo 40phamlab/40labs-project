@@ -13,7 +13,10 @@ const mockReport: CanonicalReport = {
     periodLabel: 'LAST MONTH',
     dateRangeText: '2026-02-01 – 2026-02-28',
     generatedAt: '2026-03-01 12:00:00',
-    authorOrOrganization: '40Labs Core Desktop',
+    businessName: 'AfyaBora Pharmacy & Health',
+    businessAddress: 'Dar es Salaam, Tanzania',
+    businessPhone: '+255 712 345 678',
+    authorOrOrganization: 'AfyaBora Pharmacy & Health',
   },
   executiveSummary: 'This is a test summary for sales.',
   kpis: [
@@ -73,12 +76,39 @@ describe('Reporting & Multi-Format Export System', () => {
     expect(text).toContain('Executive Summary');
   });
 
-  it('should generate PDF document blob', async () => {
+  it('should generate PDF document blob with business branding and no 40Labs watermark', async () => {
     const blob = createReportPdfBlob(mockReport);
     expect(blob).toBeInstanceOf(Blob);
     expect(blob.type).toBe('application/pdf');
     const text = await blob.text();
     expect(text).toContain('%PDF-1.4');
-    expect(text).toContain('40LABS POS & PHARMACY MANAGEMENT REPORT');
+    expect(text).toContain('AFYABORA PHARMACY & HEALTH');
+    expect(text).not.toContain('40LABS POS & PHARMACY MANAGEMENT REPORT');
+  });
+
+  it('should render large multi-page datasets without clipping rows', async () => {
+    const largeRows = Array.from({ length: 80 }, (_, i) => ({
+      name: `Medicine Item #${i + 1}`,
+      qty: (i + 1) * 2,
+      revenue: `TZS ${(i + 1) * 5000}`,
+    }));
+
+    const multiPageReport: CanonicalReport = {
+      ...mockReport,
+      tables: [
+        {
+          title: 'Full Multi-Page Inventory Audit',
+          columns: mockReport.tables[0].columns,
+          rows: largeRows,
+        },
+      ],
+    };
+
+    const blob = createReportPdfBlob(multiPageReport);
+    expect(blob).toBeInstanceOf(Blob);
+    const text = await blob.text();
+    expect(text).toContain('Medicine Item #1');
+    expect(text).toContain('Medicine Item #80');
+    expect(text).toContain('Page 1 of');
   });
 });

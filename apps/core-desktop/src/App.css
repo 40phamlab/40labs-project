@@ -73,3 +73,48 @@ button { cursor: pointer; }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Dedicated Print Engine Rules: Exclude App Controls & Shell */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  /* Hide interactive app UI, navigation, sidebars, buttons, overlays */
+  #root > *:not(#report-print-container),
+  header,
+  nav,
+  aside,
+  .app-shell,
+  .sidebar,
+  .title-bar,
+  .page-toolbar,
+  .no-print,
+  button,
+  .modal-backdrop,
+  .popover-content {
+    display: none !important;
+  }
+
+  /* Show strictly the clean printable report paper canvas */
+  #report-print-container,
+  .report-print-layer {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  @page {
+    margin: 10mm;
+  }
+}

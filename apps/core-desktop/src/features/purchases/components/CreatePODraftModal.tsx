@@ -5,7 +5,6 @@ import {
   Button,
   Field,
   FieldLabel,
-  Input,
   Select,
   NumberInput,
   CurrencyInput,
@@ -84,7 +83,7 @@ export const CreatePODraftModal: React.FC<CreatePODraftModalProps> = ({
           <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
             {suppliers.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name || s.id}
+                {(s as any).name || s.id}
               </option>
             ))}
           </Select>

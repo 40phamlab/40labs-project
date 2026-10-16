@@ -75,6 +75,7 @@ export function isWithinRange(dateInput: string | Date | null | undefined, start
 }
 
 export function formatCurrency(amount: number, currency = 'TZS'): string {
+  if (isNaN(amount) || amount === null || amount === undefined) return `${currency} 0`;
   return `${currency} ${Math.round(amount).toLocaleString('en-US')}`;
 }
 
@@ -82,18 +83,19 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
   sales: {
     id: 'sales',
     label: 'Sales & Revenue',
-    description: 'Revenue, transaction volume, payment methods, and sales breakdown',
+    description: 'Revenue, transaction volume, payment methods, tax, discounts, and sales breakdown',
     buildKpis: ({ sales, dateRange }) => {
       const periodSales = sales.filter((s) => isWithinRange(s.created_at, dateRange.start, dateRange.end));
-      const totalRevenue = periodSales.reduce((acc, s) => acc + s.grand_total, 0);
+      const totalRevenue = periodSales.reduce((acc, s) => acc + (s.grand_total || 0), 0);
       const totalCount = periodSales.length;
       const avgValue = totalCount > 0 ? totalRevenue / totalCount : 0;
       const totalDiscounts = periodSales.reduce((acc, s) => acc + (s.discount_amount || 0), 0);
+      const totalTax = periodSales.reduce((acc, s) => acc + (s.tax_amount || 0), 0);
 
       return [
         {
           id: 'total_revenue',
-          label: 'Total Revenue',
+          label: 'Net Revenue',
           value: formatCurrency(totalRevenue),
           subtext: `${totalCount} transaction(s)`,
         },
@@ -113,7 +115,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
           id: 'total_discounts',
           label: 'Total Discounts',
           value: formatCurrency(totalDiscounts),
-          subtext: 'Authorized discounts',
+          subtext: `${formatCurrency(totalTax)} tax collected`,
         },
       ];
     },
@@ -125,7 +127,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
         const dateKey = new Date(s.created_at).toISOString().split('T')[0];
         const current = mapByDate.get(dateKey) || { revenue: 0, count: 0 };
         mapByDate.set(dateKey, {
-          revenue: current.revenue + s.grand_total,
+          revenue: current.revenue + (s.grand_total || 0),
           count: current.count + 1,
         });
       });
@@ -159,23 +161,34 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
 
       const columns: TableColumn[] = [
         { key: 'id', header: 'Sale ID' },
-        { key: 'date', header: 'Date' },
+        { key: 'date', header: 'Date & Time' },
         { key: 'customer', header: 'Customer' },
         { key: 'paymentMethod', header: 'Payment Method' },
         { key: 'itemsCount', header: 'Items', align: 'right' },
+        { key: 'subtotal', header: 'Subtotal', align: 'right' },
         { key: 'discount', header: 'Discount', align: 'right' },
-        { key: 'grandTotal', header: 'Total Amount', align: 'right' },
+        { key: 'tax', header: 'Tax', align: 'right' },
+        { key: 'grandTotal', header: 'Grand Total', align: 'right' },
       ];
 
-      const rows = periodSales.map((s) => ({
-        id: s.id,
-        date: new Date(s.created_at).toLocaleDateString() + ' ' + new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        customer: s.customer_id ? customerMap.get(s.customer_id) || s.customer_id : 'Walk-in Customer',
-        paymentMethod: s.payment_method.replace('_', ' ').toUpperCase(),
-        itemsCount: s.lines.reduce((acc, l) => acc + l.quantity, 0),
-        discount: formatCurrency(s.discount_amount),
-        grandTotal: formatCurrency(s.grand_total),
-      }));
+      const rows = periodSales.map((s) => {
+        const linesSubtotal = s.lines.reduce((acc, l) => acc + (l.subtotal || l.quantity * l.unit_price), 0);
+        const discountVal = s.discount_amount || 0;
+        const taxVal = s.tax_amount || 0;
+        const grandVal = s.grand_total || Math.max(0, linesSubtotal - discountVal + taxVal);
+
+        return {
+          id: s.id,
+          date: new Date(s.created_at).toLocaleDateString() + ' ' + new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          customer: s.customer_id ? customerMap.get(s.customer_id) || s.customer_id : 'Walk-in Customer',
+          paymentMethod: (s.payment_method || 'cash').replace('_', ' ').toUpperCase(),
+          itemsCount: s.lines.reduce((acc, l) => acc + (l.quantity || 0), 0),
+          subtotal: formatCurrency(linesSubtotal),
+          discount: formatCurrency(discountVal),
+          tax: formatCurrency(taxVal),
+          grandTotal: formatCurrency(grandVal),
+        };
+      });
 
       return { columns, rows };
     },
@@ -186,33 +199,34 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
     label: 'Inventory & Stock',
     description: 'Stock valuation, low stock alerts, category breakdowns, and batch status',
     buildKpis: ({ inventory }) => {
-      const totalValuation = inventory.reduce((acc, item) => acc + item.quantity * item.sell_price, 0);
-      const totalUnits = inventory.reduce((acc, item) => acc + item.quantity, 0);
-      const lowStockCount = inventory.filter((item) => item.quantity > 0 && item.quantity <= item.low_stock_threshold).length;
-      const outOfStockCount = inventory.filter((item) => item.quantity === 0).length;
+      const totalValuation = inventory.reduce((acc, item) => acc + (item.quantity || 0) * (item.sell_price || 0), 0);
+      const totalCostValuation = inventory.reduce((acc, item) => acc + (item.quantity || 0) * (item.buy_price || 0), 0);
+      const totalUnits = inventory.reduce((acc, item) => acc + (item.quantity || 0), 0);
+      const lowStockCount = inventory.filter((item) => (item.quantity || 0) > 0 && (item.quantity || 0) <= (item.low_stock_threshold || 5)).length;
+      const outOfStockCount = inventory.filter((item) => (item.quantity || 0) === 0).length;
 
       return [
         {
           id: 'total_valuation',
-          label: 'Stock Valuation',
+          label: 'Retail Stock Value',
           value: formatCurrency(totalValuation),
           subtext: `${inventory.length} total batch/items`,
+        },
+        {
+          id: 'total_cost_valuation',
+          label: 'Cost Basis Valuation',
+          value: formatCurrency(totalCostValuation),
+          subtext: 'Purchase cost basis',
         },
         {
           id: 'total_units',
           label: 'Total Units in Stock',
           value: totalUnits.toLocaleString(),
-          subtext: 'Across all active batches',
-        },
-        {
-          id: 'low_stock_count',
-          label: 'Low Stock Items',
-          value: lowStockCount,
-          subtext: 'At or below threshold',
+          subtext: `${lowStockCount} low stock · ${outOfStockCount} out of stock`,
         },
         {
           id: 'out_of_stock_count',
-          label: 'Out of Stock',
+          label: 'Out of Stock Batches',
           value: outOfStockCount,
           subtext: 'Zero quantity remaining',
         },
@@ -222,12 +236,12 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
       const categoryMap = new Map<string, { itemCount: number; totalUnits: number; totalValuation: number }>();
 
       inventory.forEach((item) => {
-        const cat = item.medicine.category || 'Uncategorized';
+        const cat = item.medicine?.category || 'Uncategorized';
         const current = categoryMap.get(cat) || { itemCount: 0, totalUnits: 0, totalValuation: 0 };
         categoryMap.set(cat, {
           itemCount: current.itemCount + 1,
-          totalUnits: current.totalUnits + item.quantity,
-          totalValuation: current.totalValuation + item.quantity * item.sell_price,
+          totalUnits: current.totalUnits + (item.quantity || 0),
+          totalValuation: current.totalValuation + (item.quantity || 0) * (item.sell_price || 0),
         });
       });
 
@@ -257,6 +271,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
         { key: 'batchNumber', header: 'Batch Number' },
         { key: 'category', header: 'Category' },
         { key: 'quantity', header: 'Quantity', align: 'right' },
+        { key: 'buyPrice', header: 'Cost Price', align: 'right' },
         { key: 'sellPrice', header: 'Sell Price', align: 'right' },
         { key: 'stockValue', header: 'Stock Value', align: 'right' },
         { key: 'expiryDate', header: 'Expiry Date' },
@@ -264,9 +279,11 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
       ];
 
       const rows = inventory.map((item) => {
-        const isExpired = new Date(item.expiry_date) < new Date();
-        const isLow = item.quantity > 0 && item.quantity <= item.low_stock_threshold;
-        const isOut = item.quantity === 0;
+        const qty = item.quantity || 0;
+        const lowThresh = item.low_stock_threshold || 5;
+        const isExpired = item.expiry_date ? new Date(item.expiry_date) < new Date() : false;
+        const isLow = qty > 0 && qty <= lowThresh;
+        const isOut = qty === 0;
 
         let status = 'Normal';
         if (isExpired) status = 'Expired';
@@ -274,13 +291,14 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
         else if (isLow) status = 'Low Stock';
 
         return {
-          medicineName: item.medicine.name,
-          batchNumber: item.batch_number,
-          category: item.medicine.category || 'N/A',
-          quantity: item.quantity,
-          sellPrice: formatCurrency(item.sell_price),
-          stockValue: formatCurrency(item.quantity * item.sell_price),
-          expiryDate: new Date(item.expiry_date).toLocaleDateString(),
+          medicineName: item.medicine?.name || 'Unknown Item',
+          batchNumber: item.batch_number || 'N/A',
+          category: item.medicine?.category || 'N/A',
+          quantity: qty,
+          buyPrice: formatCurrency(item.buy_price || 0),
+          sellPrice: formatCurrency(item.sell_price || 0),
+          stockValue: formatCurrency(qty * (item.sell_price || 0)),
+          expiryDate: item.expiry_date ? new Date(item.expiry_date).toLocaleDateString() : 'N/A',
           status,
         };
       });
@@ -298,7 +316,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
       const activeCustomerIds = new Set(periodSales.map((s) => s.customer_id).filter(Boolean));
 
       const totalOutstandingBalance = customers.reduce((acc, c) => acc + (c.outstanding_balance || 0), 0);
-      const periodRevenue = periodSales.reduce((acc, s) => acc + s.grand_total, 0);
+      const periodRevenue = periodSales.reduce((acc, s) => acc + (s.grand_total || 0), 0);
       const avgSpentPerActiveCustomer = activeCustomerIds.size > 0 ? periodRevenue / activeCustomerIds.size : 0;
 
       return [
@@ -336,7 +354,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
       periodSales.forEach((s) => {
         if (!s.customer_id) return;
         const name = customerMap.get(s.customer_id) || 'Unknown Customer';
-        spendByCustomer.set(name, (spendByCustomer.get(name) || 0) + s.grand_total);
+        spendByCustomer.set(name, (spendByCustomer.get(name) || 0) + (s.grand_total || 0));
       });
 
       const data: ChartDataPoint[] = Array.from(spendByCustomer.entries())
@@ -366,7 +384,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
         const current = salesByCustomer.get(s.customer_id) || { count: 0, totalSpent: 0 };
         salesByCustomer.set(s.customer_id, {
           count: current.count + 1,
-          totalSpent: current.totalSpent + s.grand_total,
+          totalSpent: current.totalSpent + (s.grand_total || 0),
         });
       });
 
@@ -387,7 +405,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
           salesCount: stats.count,
           totalSpent: formatCurrency(stats.totalSpent),
           creditBalance: formatCurrency(c.outstanding_balance || 0),
-          createdAt: new Date(c.created_at).toLocaleDateString(),
+          createdAt: c.created_at ? new Date(c.created_at).toLocaleDateString() : 'N/A',
         };
       });
 
@@ -401,7 +419,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
     description: 'Purchase order costs, supplier distribution, and approval metrics',
     buildKpis: ({ purchases, suppliers, dateRange }) => {
       const periodPOs = purchases.filter((po) => isWithinRange(po.created_at, dateRange.start, dateRange.end));
-      const totalSpend = periodPOs.reduce((acc, po) => acc + po.total_cost, 0);
+      const totalSpend = periodPOs.reduce((acc, po) => acc + (po.total_cost || 0), 0);
       const approvedCount = periodPOs.filter((po) => po.status === 'completed' || po.status === 'pending').length;
       const activeSupplierIds = new Set(periodPOs.map((po) => po.supplier_id));
 
@@ -410,7 +428,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
           id: 'total_po_spend',
           label: 'Total PO Spend',
           value: formatCurrency(totalSpend),
-          subtext: `${periodPOs.length} purchase orders`,
+          subtext: `${periodPOs.length} purchase order(s)`,
         },
         {
           id: 'total_pos_count',
@@ -439,7 +457,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
       const spendBySupplier = new Map<string, number>();
       periodPOs.forEach((po) => {
         const name = supplierMap.get(po.supplier_id) || 'Unknown Supplier';
-        spendBySupplier.set(name, (spendBySupplier.get(name) || 0) + po.total_cost);
+        spendBySupplier.set(name, (spendBySupplier.get(name) || 0) + (po.total_cost || 0));
       });
 
       const data: ChartDataPoint[] = Array.from(spendBySupplier.entries()).map(([name, spend]) => ({
@@ -473,10 +491,10 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
       const rows = periodPOs.map((po) => ({
         poNumber: po.id,
         supplierName: supplierMap.get(po.supplier_id) || po.supplier_id,
-        status: po.status.toUpperCase(),
-        linesCount: po.lines.length,
-        totalAmount: formatCurrency(po.total_cost),
-        createdAt: new Date(po.created_at).toLocaleDateString(),
+        status: (po.status || 'draft').toUpperCase(),
+        linesCount: po.lines?.length || 0,
+        totalAmount: formatCurrency(po.total_cost || 0),
+        createdAt: po.created_at ? new Date(po.created_at).toLocaleDateString() : 'N/A',
       }));
 
       return { columns, rows };
@@ -486,7 +504,7 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
   compliance: {
     id: 'compliance',
     label: 'Compliance & Audit',
-    description: 'Fiscal receipt submissions to TRA, offline queue status, and audit logs',
+    description: 'Fiscal receipt submissions to TRA, EFD offline queue status, and audit logs',
     buildKpis: ({ fiscalReceipts, auditLogs, dateRange }) => {
       const periodFiscal = fiscalReceipts.filter((fr) => isWithinRange(fr.queued_at || fr.created_at, dateRange.start, dateRange.end));
       const confirmedCount = periodFiscal.filter((fr) => fr.status === 'confirmed').length;
@@ -510,9 +528,9 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
         },
         {
           id: 'queued_receipts',
-          label: 'Queued / Pending',
+          label: 'Queued / Pending Sync',
           value: queuedCount,
-          subtext: 'Waiting for network sync',
+          subtext: 'Waiting for EFD network sync',
         },
         {
           id: 'total_audit_events',
@@ -569,18 +587,18 @@ export const reportCategoriesConfig: Record<ReportCategoryId, ReportCategoryConf
         type: 'FISCAL RECEIPT',
         reference: fr.tra_receipt_number || `Sale ID: ${fr.sale_id}`,
         entityOrDevice: fr.fiscal_device_id || 'Local EFD',
-        statusOrUser: fr.status.toUpperCase(),
+        statusOrUser: (fr.status || 'queued').toUpperCase(),
         signatureOrMeta: fr.local_signature || 'N/A',
-        timestamp: new Date(fr.queued_at || fr.created_at).toLocaleString(),
+        timestamp: fr.queued_at || fr.created_at ? new Date(fr.queued_at || fr.created_at).toLocaleString() : 'N/A',
       }));
 
       const auditRows = periodAudit.map((a) => ({
         type: 'AUDIT LOG',
-        reference: a.action.replace('_', ' ').toUpperCase(),
-        entityOrDevice: `${a.target_entity_type} (${a.target_entity_id})`,
-        statusOrUser: `User: ${a.performed_by_user_id}`,
+        reference: (a.action || 'ACTION').replace('_', ' ').toUpperCase(),
+        entityOrDevice: `${a.target_entity_type || 'System'} (${a.target_entity_id || 'ID'})`,
+        statusOrUser: `User: ${a.performed_by_user_id || 'System'}`,
         signatureOrMeta: JSON.stringify(a.metadata || {}),
-        timestamp: new Date(a.created_at).toLocaleString(),
+        timestamp: a.created_at ? new Date(a.created_at).toLocaleString() : 'N/A',
       }));
 
       const rows = [...fiscalRows, ...auditRows].sort(
