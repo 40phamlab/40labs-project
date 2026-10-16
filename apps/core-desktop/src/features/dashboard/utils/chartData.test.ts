@@ -1,27 +1,37 @@
 import { describe, test, expect } from 'vitest';
-import { buildChartData, chartCompatibilityMap } from './chartData';
+import { buildChartData } from './chartData';
 import { getInitialDashboardSummary } from '../../../devData/dashboard/summary';
 import type { Medicine, InventoryItem, Sale } from '@40labs/types';
 
-describe('Chart Data Utility & Compatibility Map', () => {
-  test('compatibility map matches specs', () => {
-    expect(chartCompatibilityMap.time).toEqual(['line', 'area', 'bar']);
-    expect(chartCompatibilityMap.category).toEqual(['pie', 'ring', 'bar', 'radar']);
-  });
-
-  test('stock_value metric forces category breakdown (no time series support)', () => {
+describe('Chart Data Utility [phase: 8D]', () => {
+  test('buildChartData creates time series for sales, profit, customers, stock', () => {
     const summary = getInitialDashboardSummary();
-    const resultTime = buildChartData(summary, {
-      metric: 'stock_value',
-      breakdown: 'time',
+
+    const sales7d = buildChartData(summary, {
+      metric: 'sales',
+      chartType: 'bar',
+      period: '7d',
+    });
+    expect(sales7d.data.length).toBe(7);
+    expect(sales7d.isCategory).toBe(false);
+
+    const profit30d = buildChartData(summary, {
+      metric: 'profit',
+      chartType: 'line',
       period: '30d',
     });
+    expect(profit30d.data.length).toBe(30);
 
-    // Should return category breakdown instead of time series
-    expect(resultTime.xKey).toBe('category');
+    const customers90d = buildChartData(summary, {
+      metric: 'customers',
+      chartType: 'area',
+      period: '90d',
+    });
+    expect(customers90d.data.length).toBe(90);
+    expect(customers90d.hasCategoryData).toBe(false); // customers has no category breakdown
   });
 
-  test('buildChartData handles category breakdown for sales, profit, purchases, stock_value', () => {
+  test('buildChartData handles ring/category breakdown for sales, profit, stock', () => {
     const medicines: Medicine[] = [
       {
         id: 'med_1',
@@ -96,27 +106,27 @@ describe('Chart Data Utility & Compatibility Map', () => {
       nowDate: new Date('2026-03-31T12:00:00Z'),
     });
 
-    const salesResult = buildChartData(summary, {
+    const salesRing = buildChartData(summary, {
       metric: 'sales',
-      breakdown: 'category',
+      chartType: 'ring',
       period: '30d',
     });
-    expect(salesResult.data).toEqual([{ category: 'Analgesics', value: 20000 }]);
+    expect(salesRing.data).toEqual([{ category: 'Analgesics', value: 20000, percentage: 100 }]);
 
-    const profitResult = buildChartData(summary, {
+    const profitRing = buildChartData(summary, {
       metric: 'profit',
-      breakdown: 'category',
+      chartType: 'ring',
       period: '30d',
     });
     // (2000 - 1000) * 10 = 10000
-    expect(profitResult.data).toEqual([{ category: 'Analgesics', value: 10000 }]);
+    expect(profitRing.data).toEqual([{ category: 'Analgesics', value: 10000, percentage: 100 }]);
 
-    const stockResult = buildChartData(summary, {
-      metric: 'stock_value',
-      breakdown: 'time',
+    const stockRing = buildChartData(summary, {
+      metric: 'stock',
+      chartType: 'ring',
       period: '30d',
     });
     // sell_price 2000 * quantity 50 = 100000
-    expect(stockResult.data).toEqual([{ category: 'Analgesics', value: 100000 }]);
+    expect(stockRing.data).toEqual([{ category: 'Analgesics', value: 100000, percentage: 100 }]);
   });
 });

@@ -1,6 +1,6 @@
 // [phase: 8D] Recharts-based 24px Sparkline
 import * as React from 'react';
-import { ResponsiveContainer, LineChart, Line } from '@40labs/ui-components';
+import { ResponsiveContainer, LineChart, Line } from 'recharts';
 
 export interface SparklineProps {
   data?: number[];

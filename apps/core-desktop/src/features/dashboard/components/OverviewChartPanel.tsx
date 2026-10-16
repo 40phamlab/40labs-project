@@ -1,221 +1,218 @@
+// [phase: 8D] Refactored Overview Chart Panel (~320px Fixed Height)
 import * as React from 'react';
 import {
   TrendingUp,
   AreaChart,
   BarChart3,
   CircleDot,
-  PieChart,
-  Radar,
 } from 'lucide-react';
-import {
-  Chart,
-  SegmentedControl,
-  Select,
-  Tooltip,
-  defaultChartColors,
-  SegmentedControlOption,
-} from '@40labs/ui-components';
-import { colors } from '@40labs/design-tokens';
-import { t } from '@40labs/i18n';
+import { SegmentedControl, Tooltip, Alert } from '@40labs/ui-components';
 import type { DashboardSummary } from '../../../devData/dashboard/summary';
 import {
   buildChartData,
-  chartCompatibilityMap,
-  DashboardMetric,
-  DashboardChartType,
-  DashboardPeriod,
-  DashboardBreakdown,
+  type DashboardChartMetric,
+  type DashboardChartType,
+  type DashboardPeriod,
 } from '../utils/chartData';
+import { formatMetricUnit } from '../utils/chartFormat';
+import { DashboardChart } from './DashboardChart';
 
-// GAP: ChartPanel component is not present in @40labs/ui-components package.
-
-interface OverviewChartPanelProps {
+export interface OverviewChartPanelProps {
   summary: DashboardSummary;
   loading?: boolean;
   error?: string;
-  selectedMetric?: DashboardMetric;
-  onMetricChange?: (metric: DashboardMetric) => void;
+  selectedMetric?: DashboardChartMetric;
+  onMetricChange?: (metric: DashboardChartMetric) => void;
 }
 
-const ringColors = defaultChartColors.filter((c) => c !== colors.danger);
+const METRIC_TITLES: Record<DashboardChartMetric, string> = {
+  sales: 'MAUZO',
+  profit: 'FAIDA',
+  customers: 'WATEJA',
+  stock: 'AKIBA',
+};
 
 export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
   summary,
   loading = false,
   error,
-  selectedMetric,
+  selectedMetric = 'sales',
   onMetricChange,
 }) => {
-  const [metric, setMetric] = React.useState<DashboardMetric>(selectedMetric || 'sales');
-  const [breakdown, setBreakdown] = React.useState<DashboardBreakdown>('time');
+  const [metric, setMetric] = React.useState<DashboardChartMetric>(selectedMetric);
   const [period, setPeriod] = React.useState<DashboardPeriod>('30d');
-  const [chartType, setChartType] = React.useState<DashboardChartType>('line');
+  const [chartType, setChartType] = React.useState<DashboardChartType>('bar');
 
+  // Sync external selectedMetric prop (e.g. from KPI card click)
   React.useEffect(() => {
-    if (selectedMetric) {
+    if (selectedMetric && selectedMetric !== metric) {
       setMetric(selectedMetric);
+      if (selectedMetric === 'customers' && chartType === 'ring') {
+        setChartType('bar');
+      }
     }
   }, [selectedMetric]);
 
-  const handleMetricChange = (newMetric: DashboardMetric) => {
+  const handleMetricChange = (newMetric: DashboardChartMetric) => {
     setMetric(newMetric);
+    if (newMetric === 'customers' && chartType === 'ring') {
+      setChartType('bar');
+    }
     if (onMetricChange) onMetricChange(newMetric);
   };
 
-  const effectiveBreakdown = metric === 'stock_value' ? 'category' : breakdown;
-  const validTypes = chartCompatibilityMap[effectiveBreakdown];
-
-  // Auto-switch to first valid type when breakdown becomes invalid
-  React.useEffect(() => {
-    if (!validTypes.includes(chartType)) {
-      setChartType(effectiveBreakdown === 'time' ? 'line' : 'ring');
+  const handlePeriodChange = (val: string) => {
+    const newPeriod = val as DashboardPeriod;
+    setPeriod(newPeriod);
+    // Default per range rule: bar for 7 and 30, area for 90
+    if (newPeriod === '90d' && chartType === 'bar') {
+      setChartType('area');
+    } else if ((newPeriod === '7d' || newPeriod === '30d') && chartType === 'area') {
+      setChartType('bar');
     }
-  }, [effectiveBreakdown, chartType, validTypes]);
+  };
 
   const chartResult = buildChartData(summary, {
     metric,
-    breakdown: effectiveBreakdown,
+    chartType,
     period,
   });
 
-  const isPieOrRing = chartType === 'pie' || chartType === 'ring';
-  const actualChartType = chartType === 'ring' ? 'pie' : chartType;
-
-  const tooltipNotAvailable = t('dashboard.notAvailableForView');
-
-  const typeOptions: SegmentedControlOption[] = [
-    {
-      value: 'line',
-      label: t('dashboard.typeLine'),
-      icon: <TrendingUp size={14} />,
-      disabled: !validTypes.includes('line'),
-    },
-    {
-      value: 'area',
-      label: t('dashboard.typeArea'),
-      icon: <AreaChart size={14} />,
-      disabled: !validTypes.includes('area'),
-    },
-    {
-      value: 'bar',
-      label: t('dashboard.typeBar'),
-      icon: <BarChart3 size={14} />,
-      disabled: !validTypes.includes('bar'),
-    },
-    {
-      value: 'ring',
-      label: t('dashboard.typeRing'),
-      icon: <CircleDot size={14} />,
-      disabled: !validTypes.includes('ring'),
-    },
-    {
-      value: 'pie',
-      label: t('dashboard.typePie'),
-      icon: <PieChart size={14} />,
-      disabled: !validTypes.includes('pie'),
-    },
-    {
-      value: 'radar',
-      label: t('dashboard.typeRadar'),
-      icon: <Radar size={14} />,
-      disabled: !validTypes.includes('radar'),
-    },
-  ].map((opt) => {
-    if (opt.disabled) {
-      return {
-        ...opt,
-        label: (
-          <Tooltip content={tooltipNotAvailable}>
-            <span className="inline-flex items-center gap-1">{opt.label}</span>
-          </Tooltip>
-        ),
-      };
-    }
-    return opt;
-  });
-
-  const currencyFormatter = (val: number, name: string): [string, string] => [
-    `TZS ${new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(Math.abs(val))}`,
-    name,
-  ];
+  const unitStr = formatMetricUnit(metric);
+  const metricTitle = METRIC_TITLES[metric] || 'MUHTASARI';
 
   return (
-    <div className="bg-panel rounded-card border border-border/50 p-4 elevation-raised flex flex-col gap-3">
-      {/* Header & Controls Toolbar */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between border-b border-border/30 pb-3 gap-3">
-        <div>
-          <h3 className="font-heading text-sm font-bold text-text uppercase tracking-wider">
-            {t('dashboard.overview')}
+    <div className="bg-panel rounded-card border border-border/50 p-4 elevation-raised flex flex-col gap-3 h-[320px] min-h-[320px] max-h-[320px] overflow-hidden">
+      {/* Controls Toolbar on ONE Row */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/30 pb-2 shrink-0">
+        {/* Panel Title with Unit */}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <h3 className="font-heading text-xs font-bold text-text uppercase tracking-wider truncate">
+            {metricTitle} <span className="text-text-muted font-mono font-normal">{unitStr}</span>
           </h3>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {/* Metric Select */}
-          <div className="w-32">
-            <Select
-              size="sm"
-              value={metric}
-              onChange={(e) => handleMetricChange(e.target.value as DashboardMetric)}
-              aria-label="Select metric"
-            >
-              <option value="sales">{t('dashboard.metricSales')}</option>
-              <option value="profit">{t('dashboard.metricProfit')}</option>
-              <option value="purchases">{t('dashboard.metricPurchases')}</option>
-              <option value="stock_value">{t('dashboard.metricStockValue')}</option>
-            </Select>
-          </div>
-
-          {/* Group By Segmented Control */}
+        {/* Controls Toolbar (One Row) */}
+        <div className="flex items-center gap-2 text-xs shrink-0">
+          {/* Metric Tabs: Mauzo | Faida | Wateja | Hifadhi */}
           <SegmentedControl
             size="sm"
-            value={effectiveBreakdown}
-            onChange={(val) => setBreakdown(val as DashboardBreakdown)}
-            disabled={metric === 'stock_value'}
+            value={metric}
+            onChange={(val) => handleMetricChange(val as DashboardChartMetric)}
             options={[
-              { value: 'time', label: t('dashboard.groupByTime') },
-              { value: 'category', label: t('dashboard.groupByCategory') },
+              { value: 'sales', label: 'Mauzo' },
+              { value: 'profit', label: 'Faida' },
+              { value: 'customers', label: 'Wateja' },
+              { value: 'stock', label: 'Hifadhi' },
             ]}
           />
 
-          {/* Type Segmented Control */}
+          {/* Range Segmented: Siku 7 | 30 | 90 */}
           <SegmentedControl
             size="sm"
-            value={chartType}
-            onChange={(val) => setChartType(val as DashboardChartType)}
-            options={typeOptions}
+            value={period}
+            onChange={handlePeriodChange}
+            options={[
+              { value: '7d', label: 'Siku 7' },
+              { value: '30d', label: '30' },
+              { value: '90d', label: '90' },
+            ]}
           />
 
-          {/* Period Segmented Control (hidden if stock_value or breakdown='category') */}
-          {metric !== 'stock_value' && effectiveBreakdown !== 'category' && (
-            <SegmentedControl
-              size="sm"
-              value={period}
-              onChange={(val) => setPeriod(val as DashboardPeriod)}
-              options={[
-                { value: '7d', label: t('dashboard.period7d') },
-                { value: '30d', label: t('dashboard.period30d') },
-                { value: '90d', label: t('dashboard.period90d') },
-              ]}
-            />
-          )}
+          {/* Icon-Only Chart-Type Switcher: Bar | Line | Area | Ring */}
+          <div className="flex items-center bg-surface-secondary rounded-[6px] p-0.5 border border-border/40">
+            <button
+              type="button"
+              onClick={() => setChartType('bar')}
+              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                chartType === 'bar'
+                  ? 'bg-surface-elevated text-primary font-bold shadow-xs'
+                  : 'text-text-muted hover:text-text'
+              }`}
+              title="Bar chart"
+              aria-label="Bar chart"
+            >
+              <BarChart3 size={13} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setChartType('line')}
+              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                chartType === 'line'
+                  ? 'bg-surface-elevated text-primary font-bold shadow-xs'
+                  : 'text-text-muted hover:text-text'
+              }`}
+              title="Line chart"
+              aria-label="Line chart"
+            >
+              <TrendingUp size={13} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setChartType('area')}
+              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                chartType === 'area'
+                  ? 'bg-surface-elevated text-primary font-bold shadow-xs'
+                  : 'text-text-muted hover:text-text'
+              }`}
+              title="Area chart"
+              aria-label="Area chart"
+            >
+              <AreaChart size={13} />
+            </button>
+
+            {/* Ring Chart Button (disabled if customers) */}
+            {metric === 'customers' ? (
+              <Tooltip content="Hakuna data ya kategoria">
+                <button
+                  type="button"
+                  disabled
+                  className="p-1 rounded text-xs text-text-disabled cursor-not-allowed opacity-40"
+                  aria-label="Ring chart disabled"
+                >
+                  <CircleDot size={13} />
+                </button>
+              </Tooltip>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setChartType('ring')}
+                className={`p-1 rounded text-xs transition-colors cursor-pointer ${
+                  chartType === 'ring'
+                    ? 'bg-surface-elevated text-primary font-bold shadow-xs'
+                    : 'text-text-muted hover:text-text'
+                }`}
+                title="Ring chart (kategoria)"
+                aria-label="Ring chart"
+              >
+                <CircleDot size={13} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Chart Canvas */}
-      <Chart
-        type={actualChartType as any}
-        data={chartResult.data}
-        xKey={chartResult.xKey}
-        series={[{ dataKey: 'value', name: chartResult.series }]}
-        innerRadius={chartType === 'ring' ? '60%' : undefined}
-        outerRadius={chartType === 'ring' ? '90%' : undefined}
-        colors={isPieOrRing ? ringColors : defaultChartColors}
-        tooltipFormatter={currencyFormatter}
-        height={260}
-        emptyMessage={t('dashboard.noData')}
-        loading={loading}
-        error={error}
-      />
+      {/* Chart Canvas Container */}
+      <div className="flex-1 w-full min-h-0 relative">
+        {loading ? (
+          <div className="h-full w-full flex items-center justify-center text-text-muted text-xs font-ui">
+            Inapakia chati...
+          </div>
+        ) : error ? (
+          <Alert intent="danger" title="Itilafu ya Chati">
+            {error}
+          </Alert>
+        ) : (
+          <DashboardChart
+            chartResult={chartResult}
+            metric={metric}
+            chartType={chartType}
+            period={period}
+          />
+        )}
+      </div>
     </div>
   );
 };
