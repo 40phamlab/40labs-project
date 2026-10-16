@@ -21,6 +21,27 @@ export interface UpdateBusinessPayload {
   language?: 'sw-TZ' | 'en' | string;
 }
 
+export async function resolveLogoUrl(logoUrl?: string | null): Promise<string | null> {
+  if (!logoUrl) return null;
+  if (
+    logoUrl.startsWith('data:') ||
+    logoUrl.startsWith('http:') ||
+    logoUrl.startsWith('https:') ||
+    logoUrl.startsWith('blob:')
+  ) {
+    return logoUrl;
+  }
+  if (isUsingTauriIpc()) {
+    try {
+      const { convertFileSrc } = await import('@tauri-apps/api/core');
+      return convertFileSrc(logoUrl);
+    } catch {
+      return logoUrl;
+    }
+  }
+  return logoUrl;
+}
+
 let businessStore: Business = { ...initialBusiness };
 
 export const businessApi = {
@@ -44,6 +65,26 @@ export const businessApi = {
       updated_at: now,
     };
     return { ...businessStore };
+  },
+
+  uploadLogo: async (file: File): Promise<string> => {
+    if (file.size > 512 * 1024) {
+      throw new Error('Logo lazima iwe chini ya KB 512');
+    }
+    if (isUsingTauriIpc()) {
+      const buffer = await file.arrayBuffer();
+      const bytes = Array.from(new Uint8Array(buffer));
+      return invokeCommand<string>('upload_business_logo', {
+        bytes,
+        fileName: file.name,
+      });
+    }
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   },
 };
 

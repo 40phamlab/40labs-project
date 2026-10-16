@@ -79,6 +79,7 @@ pub fn run() {
             // Business & Integrations
             commands::business_cmd::get_business,
             commands::business_cmd::update_business,
+            commands::business_cmd::upload_business_logo,
             commands::integrations_cmd::get_integrations_config,
             commands::integrations_cmd::update_integrations_config,
             // Recovery & Registration & Onboarding

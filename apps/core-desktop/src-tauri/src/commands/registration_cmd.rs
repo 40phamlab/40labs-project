@@ -177,10 +177,16 @@ pub async fn registration_commit(
         .and_then(|v| v.as_str())
         .map(str::trim)
         .filter(|s| !s.is_empty());
-    let logo_data_url = payload
-        .get("logo_data_url")
+    let logo_url = payload
+        .get("logo_url")
         .and_then(|v| v.as_str())
-        .filter(|s| !s.is_empty());
+        .filter(|s| !s.is_empty())
+        .or_else(|| {
+            payload
+                .get("logo_data_url")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+        });
     let declared_branch_count = match payload.get("declared_branch_count") {
         Some(value) if !value.is_null() => {
             let count = value
@@ -319,7 +325,7 @@ pub async fn registration_commit(
     .bind(if region.is_empty() { None } else { Some(region) })
     .bind(if district.is_empty() { None } else { Some(district) })
     .bind(if !mtaa.is_empty() { Some(mtaa) } else if !kata.is_empty() { Some(kata) } else { None })
-    .bind(logo_data_url)
+    .bind(logo_url)
     .bind(&owner_id)
     .bind(business_type)
     .bind(if kata.is_empty() { None } else { Some(kata) })

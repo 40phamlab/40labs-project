@@ -172,6 +172,7 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     return renderTitleBarWrapper(
       <LoginScreen
         businessName={status.business.name}
+        businessLogo={status.business.logo_url}
         onLoginSuccess={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })}
       />
     );

@@ -126,6 +126,7 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("export_attachment_to_path", CommandPolicy::SessionOnly);
 
     map.insert("get_business", CommandPolicy::SessionOnly);
+    map.insert("upload_business_logo", CommandPolicy::SessionOnly);
     map.insert(
         "update_business",
         CommandPolicy::Permission("settings.manage"),

@@ -48,6 +48,7 @@ mod tests {
             "onboarding_advance",
             "business_set_idle_lock",
             "get_business",
+            "upload_business_logo",
             "update_business",
             "get_integrations_config",
             "update_integrations_config",

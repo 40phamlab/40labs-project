@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Button, Input, PasswordInput, PhoneInput, Checkbox, Card } from '@40labs/ui-components';
 import { authApi } from '../../api/authApi';
+import { businessApi } from '../../api/businessApi';
 import { TermsModal } from './components/TermsModal';
 import { PinOtpInput } from './components/PinOtpInput';
 import { TZ_ADMIN_AREAS } from '../../lib/tzAdminAreas';
@@ -37,6 +38,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
   });
 
   const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
+  const [logoPath, setLogoPath] = React.useState<string | null>(null);
   const [gpsEnabled, setGpsEnabled] = React.useState(false);
   const [latLng, setLatLng] = React.useState<{ lat?: number; lng?: number }>({});
   const [otpCountdown, setOtpCountdown] = React.useState(0);
@@ -71,18 +73,24 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
     });
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 512 * 1024) {
         setError('Logo lazima iwe chini ya KB 512');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setLogoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const path = await businessApi.uploadLogo(file);
+        setLogoPath(path);
+        const reader = new FileReader();
+        reader.onload = () => {
+          setLogoPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } catch (err: any) {
+        setError(err?.message || 'Imeshindikana kupakia logo');
+      }
     }
   };
 
@@ -178,6 +186,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
           declared_branch_count: Number(formData.matawi || 1),
           lipa_namba: formData.lipaNamba.trim() || null,
           payment_number: formData.paymentNumber.trim() || null,
+          logo_url: logoPath || logoPreview,
           logo_data_url: logoPreview,
           owner_first_name: formData.ownerFirstName.trim(),
           owner_last_name: formData.ownerLastName.trim(),

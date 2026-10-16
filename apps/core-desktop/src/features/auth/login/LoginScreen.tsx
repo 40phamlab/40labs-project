@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Button, Input, PasswordInput, Card } from '@40labs/ui-components';
 import { Store, AlertTriangle } from 'lucide-react';
 import { authApi } from '../../../api/authApi';
+import { resolveLogoUrl } from '../../../api/businessApi';
 import { parseAuthError } from '../../../api/authErrors';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 
@@ -19,6 +20,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
   const [retryAfterSecs, setRetryAfterSecs] = React.useState<number | null>(null);
   const [isHardLocked, setIsHardLocked] = React.useState(false);
   const [forgotModalOpen, setForgotModalOpen] = React.useState(false);
+
+  const [resolvedLogo, setResolvedLogo] = React.useState<string | null>(null);
+  const [logoError, setLogoError] = React.useState(false);
+
+  React.useEffect(() => {
+    let active = true;
+    resolveLogoUrl(businessLogo).then((url) => {
+      if (active) setResolvedLogo(url);
+    });
+    return () => {
+      active = false;
+    };
+  }, [businessLogo]);
 
   // Countdown timer for LOCKED error
   React.useEffect(() => {
@@ -61,8 +75,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
       <Card className="w-full max-w-md p-8 space-y-6 shadow-lg border border-border rounded-xl">
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="w-20 h-20 rounded-full border border-border flex items-center justify-center overflow-hidden bg-muted shadow-sm">
-            {businessLogo ? (
-              <img src={businessLogo} alt="Business Logo" className="w-full h-full object-cover" />
+            {resolvedLogo && !logoError ? (
+              <img
+                src={resolvedLogo}
+                alt="Business Logo"
+                className="w-full h-full object-cover"
+                onError={() => setLogoError(true)}
+              />
             ) : (
               <Store size={36} className="text-muted-foreground" />
             )}

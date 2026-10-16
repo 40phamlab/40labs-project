@@ -7,8 +7,10 @@ import {
   Input,
   PhoneInput,
 } from '@40labs/ui-components';
+import { Store, Upload, Trash2 } from 'lucide-react';
 import type { Business } from '@40labs/types';
 import type { UpdateBusinessPayload } from '../../../hooks/useBusiness';
+import { businessApi, resolveLogoUrl } from '../../../api/businessApi';
 import { useStepUp } from '../../auth/stepup/StepUpProvider';
 import { auditApi } from '../../../api';
 
@@ -40,6 +42,11 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
     payment_number: business?.payment_number || '',
   });
 
+  const [resolvedLogo, setResolvedLogo] = React.useState<string | null>(null);
+  const [logoError, setLogoError] = React.useState(false);
+  const [uploadingLogo, setUploadingLogo] = React.useState(false);
+  const [logoUploadError, setLogoUploadError] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     if (business) {
       setFormData({
@@ -58,6 +65,19 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
       });
     }
   }, [business]);
+
+  React.useEffect(() => {
+    let active = true;
+    resolveLogoUrl(formData.logo_url).then((url) => {
+      if (active) {
+        setResolvedLogo(url);
+        setLogoError(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [formData.logo_url]);
 
   const isDirty = React.useMemo(() => {
     if (!business) return false;
@@ -82,6 +102,30 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploadError(null);
+    if (file.size > 512 * 1024) {
+      setLogoUploadError('Logo lazima iwe chini ya KB 512');
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const storedPath = await businessApi.uploadLogo(file);
+      setFormData((prev) => ({ ...prev, logo_url: storedPath }));
+    } catch (err: any) {
+      setLogoUploadError(err?.message || 'Imeshindikana kupakia logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setFormData((prev) => ({ ...prev, logo_url: '' }));
+    setLogoUploadError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,6 +205,51 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
           />
         </Field>
 
+        <Field className="md:col-span-2">
+          <FieldLabel>Business Logo</FieldLabel>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full border border-border flex items-center justify-center overflow-hidden bg-muted shadow-sm shrink-0">
+              {resolvedLogo && !logoError ? (
+                <img
+                  src={resolvedLogo}
+                  alt="Business Logo"
+                  className="w-full h-full object-cover"
+                  onError={() => setLogoError(true)}
+                />
+              ) : (
+                <Store size={28} className="text-muted-foreground" />
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-elevated border border-border rounded-md text-xs font-medium text-foreground hover:bg-surface-hover transition-colors">
+                  <Upload size={14} />
+                  {uploadingLogo ? 'Inapakia...' : 'Pakia Logo Mpya'}
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                    onChange={handleLogoFileChange}
+                    disabled={uploadingLogo}
+                    className="hidden"
+                  />
+                </label>
+                {formData.logo_url && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                  >
+                    <Trash2 size={14} />
+                    Ondoa
+                  </button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">Inakubali PNG, JPEG, WebP, SVG chini ya KB 512.</p>
+              {logoUploadError && <p className="text-xs text-destructive">{logoUploadError}</p>}
+            </div>
+          </div>
+        </Field>
+
         <Field>
           <FieldLabel>TIN</FieldLabel>
           <Input
@@ -208,15 +297,6 @@ export const BusinessProfileForm: React.FC<BusinessProfileFormProps> = ({
             onChange={handleChange}
             countryCode="+255"
             placeholder="0XXXXXXXXX"
-          />
-        </Field>
-
-        <Field>
-          <FieldLabel>Logo URL</FieldLabel>
-          <Input
-            name="logo_url"
-            value={formData.logo_url}
-            onChange={handleChange}
           />
         </Field>
 
