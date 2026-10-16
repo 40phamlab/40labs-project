@@ -168,7 +168,7 @@ pub async fn init_db_pool() -> Result<SqlitePool, Box<dyn std::error::Error>> {
     Err("Release database initialization requires a Tauri AppHandle".into())
 }
 
-pub async fn init_db_pool_for_app(app: &tauri::AppHandle) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+pub async fn init_db_pool_for_app<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<SqlitePool, Box<dyn std::error::Error>> {
     let path = if cfg!(debug_assertions) {
         resolve_dev_database_path()?
     } else {
@@ -213,15 +213,14 @@ async fn init_db_pool_with_options_and_path(
         .connect_with(connect_options.clone())
         .await?;
 
-    let migrate_res: Result<(), Box<dyn std::error::Error>> = async {
-        reconcile_registration_migration(&pool).await?;
-        SQLITE_MIGRATOR.run(&pool).await?;
+    let migrate_res: Result<(), String> = async {
+        reconcile_registration_migration(&pool).await.map_err(|e| e.to_string())?;
+        SQLITE_MIGRATOR.run(&pool).await.map_err(|e| e.to_string())?;
         Ok(())
     }
     .await;
 
-    if let Err(err) = migrate_res {
-        let err_str = err.to_string();
+    if let Err(err_str) = migrate_res {
         if err_str.contains("mismatch")
             || err_str.contains("migration")
             || err_str.contains("VersionMismatch")
@@ -236,15 +235,22 @@ async fn init_db_pool_with_options_and_path(
                     let shm_path = PathBuf::from(format!("{}-shm", path.display()));
                     let _ = fs::remove_file(&shm_path);
 
-                    let retry_res: Result<SqlitePool, Box<dyn std::error::Error>> = async {
+                    let retry_res: Result<SqlitePool, String> = async {
                         let pool2 = SqlitePoolOptions::new()
                             .max_connections(5)
                             .connect_with(connect_options)
-                            .await?;
-                        reconcile_registration_migration(&pool2).await?;
-                        SQLITE_MIGRATOR.run(&pool2).await?;
+                            .await
+                            .map_err(|e| e.to_string())?;
+                        reconcile_registration_migration(&pool2)
+                            .await
+                            .map_err(|e| e.to_string())?;
+                        SQLITE_MIGRATOR
+                            .run(&pool2)
+                            .await
+                            .map_err(|e| e.to_string())?;
                         Ok(pool2)
-                    }.await;
+                    }
+                    .await;
 
                     match retry_res {
                         Ok(p) => {
@@ -253,7 +259,7 @@ async fn init_db_pool_with_options_and_path(
                         }
                         Err(retry_err) => {
                             tracing::error!("Failed to migrate reset development database: {retry_err}");
-                            return Err(retry_err);
+                            return Err(retry_err.into());
                         }
                     }
                 }
@@ -266,7 +272,7 @@ async fn init_db_pool_with_options_and_path(
                 tracing::error!("Release migration mismatch: refusing to start; database was not reset");
             }
         }
-        return Err(err);
+        return Err(err_str.into());
     }
 
     Ok(pool)

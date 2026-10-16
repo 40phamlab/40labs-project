@@ -1,4 +1,5 @@
 pub mod customer_service;
+pub mod disaster_recovery;
 pub mod documents;
 pub mod explorer_service;
 pub mod inventory_service;

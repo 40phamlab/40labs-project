@@ -1,5 +1,6 @@
 pub mod audit_cmd;
 pub mod auth_cmd;
+pub mod backup_cmd;
 pub mod business_cmd;
 pub mod customer_cmd;
 pub mod devices_cmd;
@@ -109,6 +110,9 @@ mod tests {
             "explorer_copy_file",
             "explorer_delete_path",
             "explorer_reveal_in_file_manager",
+            "export_disaster_recovery_pack",
+            "preview_disaster_recovery_pack",
+            "restore_disaster_recovery_pack",
         ];
 
         let policy_map = crate::auth::policy::get_command_policy_map();

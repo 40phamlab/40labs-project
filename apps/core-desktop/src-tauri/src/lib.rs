@@ -165,6 +165,10 @@ pub fn run() {
             commands::explorer_cmd::explorer_copy_file,
             commands::explorer_cmd::explorer_delete_path,
             commands::explorer_cmd::explorer_reveal_in_file_manager,
+            // Disaster Recovery
+            commands::backup_cmd::export_disaster_recovery_pack,
+            commands::backup_cmd::preview_disaster_recovery_pack,
+            commands::backup_cmd::restore_disaster_recovery_pack,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

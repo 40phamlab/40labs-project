@@ -21,13 +21,13 @@ impl ExportCategory {
     }
 }
 
-pub fn documents_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub fn documents_root<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String> {
     use tauri::Manager;
     let doc_dir = app.path().document_dir().map_err(|e| e.to_string())?;
     Ok(doc_dir.join("40Labs"))
 }
 
-pub fn ensure_layout(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub fn ensure_layout<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String> {
     let root = documents_root(app)?;
     std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
     for cat in &[

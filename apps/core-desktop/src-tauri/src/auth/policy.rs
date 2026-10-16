@@ -181,5 +181,9 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("explorer_delete_path", CommandPolicy::SessionOnly);
     map.insert("explorer_reveal_in_file_manager", CommandPolicy::SessionOnly);
 
+    map.insert("export_disaster_recovery_pack", CommandPolicy::SessionOnly);
+    map.insert("preview_disaster_recovery_pack", CommandPolicy::SessionOnly);
+    map.insert("restore_disaster_recovery_pack", CommandPolicy::SessionOnly);
+
     map
 }
