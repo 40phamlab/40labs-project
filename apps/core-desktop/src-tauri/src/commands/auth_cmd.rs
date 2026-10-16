@@ -336,8 +336,8 @@ mod tests {
 
         let lan_state = Arc::new(crate::services::lan::LanServerState::new(pool.clone(), 0));
         let (otp_client, activation_client) = crate::activation::client::ActivationClientFactory::create_clients(Some("http://localhost".to_string()), None);
-        let state = AppState {
-            pool,
+        let _state = AppState {
+            pool: pool.clone(),
             lan_state,
             auth_state,
             keystore: Arc::new(crate::security::keystore::Keystore::init().unwrap()),

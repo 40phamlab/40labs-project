@@ -3,6 +3,7 @@ pub mod auth_cmd;
 pub mod business_cmd;
 pub mod customer_cmd;
 pub mod devices_cmd;
+pub mod explorer_cmd;
 pub mod integrations_cmd;
 pub mod inventory_cmd;
 pub mod lab_cmd;
@@ -100,6 +101,14 @@ mod tests {
             "partner_facility_create",
             "partner_facility_update_status",
             "partner_facility_delete",
+            "explorer_get_default_dir",
+            "explorer_read_dir",
+            "explorer_read_file_text",
+            "explorer_create_dir",
+            "explorer_rename_path",
+            "explorer_copy_file",
+            "explorer_delete_path",
+            "explorer_reveal_in_file_manager",
         ];
 
         let policy_map = crate::auth::policy::get_command_policy_map();

@@ -156,6 +156,15 @@ pub fn run() {
             commands::partner_facility_cmd::partner_facility_create,
             commands::partner_facility_cmd::partner_facility_update_status,
             commands::partner_facility_cmd::partner_facility_delete,
+            // File Explorer
+            commands::explorer_cmd::explorer_get_default_dir,
+            commands::explorer_cmd::explorer_read_dir,
+            commands::explorer_cmd::explorer_read_file_text,
+            commands::explorer_cmd::explorer_create_dir,
+            commands::explorer_cmd::explorer_rename_path,
+            commands::explorer_cmd::explorer_copy_file,
+            commands::explorer_cmd::explorer_delete_path,
+            commands::explorer_cmd::explorer_reveal_in_file_manager,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

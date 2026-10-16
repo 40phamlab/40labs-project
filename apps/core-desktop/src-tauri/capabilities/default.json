@@ -10,14 +10,16 @@
       "identifier": "opener:allow-open-path",
       "allow": [
         { "path": "$DOCUMENT/40Labs/**" },
-        { "path": "$APPDATA/attachments/**" }
+        { "path": "$APPDATA/attachments/**" },
+        { "path": "**" }
       ]
     },
     {
       "identifier": "opener:allow-reveal-item-in-dir",
       "allow": [
         { "path": "$DOCUMENT/40Labs/**" },
-        { "path": "$APPDATA/attachments/**" }
+        { "path": "$APPDATA/attachments/**" },
+        { "path": "**" }
       ]
     },
     "dialog:allow-open",

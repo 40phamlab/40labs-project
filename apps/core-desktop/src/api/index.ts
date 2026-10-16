@@ -13,3 +13,4 @@ export * from './branchesApi';
 export * from './integrationsApi';
 export * from './devicesApi';
 export * from './backupApi';
+export * from './explorerApi';

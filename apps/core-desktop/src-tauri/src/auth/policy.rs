@@ -172,5 +172,14 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("partner_facility_update_status", CommandPolicy::Permission("settings.manage"));
     map.insert("partner_facility_delete", CommandPolicy::Permission("settings.manage"));
 
+    map.insert("explorer_get_default_dir", CommandPolicy::SessionOnly);
+    map.insert("explorer_read_dir", CommandPolicy::SessionOnly);
+    map.insert("explorer_read_file_text", CommandPolicy::SessionOnly);
+    map.insert("explorer_create_dir", CommandPolicy::SessionOnly);
+    map.insert("explorer_rename_path", CommandPolicy::SessionOnly);
+    map.insert("explorer_copy_file", CommandPolicy::SessionOnly);
+    map.insert("explorer_delete_path", CommandPolicy::SessionOnly);
+    map.insert("explorer_reveal_in_file_manager", CommandPolicy::SessionOnly);
+
     map
 }
