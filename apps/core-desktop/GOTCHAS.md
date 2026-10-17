@@ -14,3 +14,4 @@ Things that look obviously right but aren't. Add to this file whenever you encou
 10. **Tailwind v4 `@source` directive**: Any package under `packages/*` containing `className` strings needs an explicit `@source` directive in `apps/core-desktop/src/App.css` so Tailwind compiles the classes correctly.
 11. **Theme Initialization**: Theme is initialized immediately at boot in `main.tsx` from `localStorage` (`40labs_theme`) to prevent any visible flash of incorrect theme.
 12. **Flex Shrink / Min-width Constraints**: Always ensure flex container children include `min-w-0` and `min-h-0` to prevent table and panel blowouts in responsive viewports.
+13. **Landing Animations**: Landing animations must pause on document.hidden; only transform/opacity animate.

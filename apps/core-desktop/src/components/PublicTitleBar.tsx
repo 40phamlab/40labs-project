@@ -4,9 +4,10 @@ import { ThemeLogo } from './brand';
 
 export interface PublicTitleBarProps {
   brandName?: string;
+  transparent?: boolean;
 }
 
-export const PublicTitleBar: React.FC<PublicTitleBarProps> = ({ brandName = '40Labs' }) => {
+export const PublicTitleBar: React.FC<PublicTitleBarProps> = ({ brandName = '40Labs', transparent = false }) => {
   const handleMinimize = async () => {
     try {
       const { getCurrentWindow } = await import('@tauri-apps/api/window');
@@ -36,7 +37,9 @@ export const PublicTitleBar: React.FC<PublicTitleBarProps> = ({ brandName = '40L
 
   return (
     <div
-      className="h-10 w-full flex items-center justify-between px-2 bg-app-bg select-none shrink-0 z-[110]"
+      className={`h-10 w-full flex items-center justify-between px-2 select-none shrink-0 z-[110] ${
+        transparent ? 'bg-transparent' : 'bg-app-bg'
+      }`}
       data-tauri-drag-region
     >
       {/* Left side: Logo & Brand */}

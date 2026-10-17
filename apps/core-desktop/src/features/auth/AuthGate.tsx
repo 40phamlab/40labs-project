@@ -129,9 +129,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     );
   }
 
-  const renderTitleBarWrapper = (content: React.ReactNode) => (
+  const renderTitleBarWrapper = (content: React.ReactNode, transparent = false) => (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-background">
-      <PublicTitleBar />
+      <PublicTitleBar transparent={transparent} />
       <div className="flex-1 overflow-y-auto">{content}</div>
     </div>
   );
@@ -162,9 +162,9 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   // 2. No business / device unbound -> LandingScreen -> Registration Wizard
   if (!status.deviceBound || !status.business) {
     if (!showWizard) {
-      return renderTitleBarWrapper(<LandingScreen onGetStarted={() => setShowWizard(true)} />);
+      return renderTitleBarWrapper(<LandingScreen onGetStarted={() => setShowWizard(true)} />, true);
     }
-    return renderTitleBarWrapper(<RegistrationWizard onComplete={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />);
+    return renderTitleBarWrapper(<RegistrationWizard onComplete={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />, true);
   }
 
   // 3. No session -> Login

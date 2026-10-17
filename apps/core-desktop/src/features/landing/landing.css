@@ -1,0 +1,168 @@
+/* Aurora Mesh and Stage Animations */
+:root {
+  --landing-bg-light: #F8FAFB;
+  --landing-bg-dark: #0F172A;
+  --color-green: #16A34A;
+  --color-orange: #F97316;
+  --color-deep-green: color-mix(in srgb, var(--color-green) 65%, black 35%);
+}
+
+[data-theme="dark"] .landing-backdrop,
+.dark .landing-backdrop {
+  background-color: var(--landing-bg-dark);
+}
+
+[data-theme="light"] .landing-backdrop,
+:not([data-theme="dark"]) .landing-backdrop {
+  background-color: var(--landing-bg-light);
+}
+
+@keyframes auroraDrift1 {
+  0% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(60px, -80px) scale(1.15); }
+  100% { transform: translate(-40px, 50px) scale(0.9); }
+}
+
+@keyframes auroraDrift2 {
+  0% { transform: translate(0px, 0px) scale(1); }
+  50% { transform: translate(-70px, 60px) scale(1.1); }
+  100% { transform: translate(50px, -50px) scale(0.95); }
+}
+
+@keyframes floatDot {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-16px) translateX(12px); }
+}
+
+@keyframes hexPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.04); }
+}
+
+@keyframes brandEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes panelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes backdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes itemRise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.animate-backdrop-fade {
+  animation: backdropFade 400ms ease-out forwards;
+}
+
+.animate-item-rise {
+  animation: itemRise 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-brand { animation-delay: 200ms; }
+.delay-carousel { animation-delay: 350ms; }
+.delay-panel { animation-delay: 500ms; }
+.delay-photos { animation-delay: 600ms; }
+.delay-controls { animation-delay: 700ms; }
+
+::selection {
+  background-color: rgba(249, 115, 22, 0.3);
+  color: inherit;
+}
+
+.animate-brand-enter {
+  animation: brandEnter 500ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.aurora-orb-1 {
+  animation: auroraDrift1 48s ease-in-out infinite alternate;
+}
+
+.aurora-orb-2 {
+  animation: auroraDrift2 58s ease-in-out infinite alternate;
+}
+
+.floating-dot {
+  animation: floatDot 11s ease-in-out infinite;
+}
+.floating-dot-delayed {
+  animation: floatDot 14s ease-in-out infinite 3s;
+}
+
+.hex-pulse {
+  animation: hexPulse 4s ease-in-out infinite;
+}
+
+/* Pointer glow with mask-image */
+.pointer-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    240px circle at var(--mx, 50%) var(--my, 50%),
+    rgba(249, 115, 22, 0.35),
+    transparent 80%
+  );
+  mask-image: url("data:image/svg+xml,%3Csvg width='40' height='46.188' viewBox='0 0 40 46.188' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 0 L40 11.547 L40 34.641 L20 46.188 L0 34.641 L0 11.547 Z' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+  mask-size: 40px 46.188px;
+}
+
+/* Lattice mask fading out toward center */
+.lattice-mask {
+  mask-image: radial-gradient(circle at 50% 50%, transparent 20%, rgba(0, 0, 0, 1) 85%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 20%, rgba(0, 0, 0, 1) 85%);
+}
+
+/* HexPhoto clip-path and gradient border */
+.hex-clip {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.hex-border-wrapper {
+  position: relative;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  padding: 2px;
+  background: linear-gradient(135deg, var(--color-green), var(--color-orange));
+}
+
+.hex-border-inner {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.motion-paused *,
+.motion-paused {
+  animation: none !important;
+  transition: none !important;
+}

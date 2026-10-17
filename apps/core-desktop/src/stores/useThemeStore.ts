@@ -6,8 +6,12 @@ const STORAGE_KEY_THEME = '40labs_theme';
 
 const getInitialTheme = (): ThemeMode => {
   if (typeof window === 'undefined') return 'system';
-  const saved = localStorage.getItem(STORAGE_KEY_THEME);
-  if (saved === 'dark' || saved === 'light' || saved === 'system') return saved;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_THEME);
+    if (saved === 'dark' || saved === 'light' || saved === 'system') return saved;
+  } catch {
+    // ignore
+  }
   return 'system';
 };
 
@@ -35,13 +39,23 @@ export const useThemeStore = create<ThemeState>((set, get) => {
     document.documentElement.setAttribute('data-theme', resolved);
     document.documentElement.style.colorScheme = resolved;
 
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (get().theme === 'system') {
-        const sysResolved = e.matches ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-theme', sysResolved);
-        document.documentElement.style.colorScheme = sysResolved;
+    try {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+        if (get().theme === 'system') {
+          const sysResolved = e.matches ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', sysResolved);
+          document.documentElement.style.colorScheme = sysResolved;
+        }
+      };
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleChange);
+      } else if (mediaQuery.addListener) {
+        mediaQuery.addListener(handleChange);
       }
-    });
+    } catch {
+      // ignore
+    }
   }
 
   return {
@@ -49,7 +63,11 @@ export const useThemeStore = create<ThemeState>((set, get) => {
     setTheme: (theme: ThemeMode) => {
       set({ theme });
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_KEY_THEME, theme);
+        try {
+          localStorage.setItem(STORAGE_KEY_THEME, theme);
+        } catch {
+          // ignore
+        }
         const res = resolveTheme(theme);
         document.documentElement.setAttribute('data-theme', res);
         document.documentElement.style.colorScheme = res;
