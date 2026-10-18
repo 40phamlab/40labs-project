@@ -21,7 +21,7 @@ export const FallbackCard: React.FC<FallbackCardProps> = ({
   onOpenExternal,
 }) => {
   return (
-    <div className="flex flex-col items-center justify-center w-full h-[60vh] bg-surface-secondary/50 p-8 gap-6">
+    <div className="flex flex-col items-center justify-center w-full h-full bg-surface-secondary/50 p-8 gap-6 overflow-auto">
       <div className="flex items-center justify-center w-24 h-24 rounded-full bg-surface-elevated border border-border shadow-sm">
         <FileTypeIcon fileName={fileName} mimeType={mimeType} size={48} />
       </div>

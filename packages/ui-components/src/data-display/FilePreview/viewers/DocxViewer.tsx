@@ -39,7 +39,7 @@ export const DocxViewer: React.FC<DocxViewerProps> = ({ url }) => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center w-full h-[60vh] gap-3">
+      <div className="flex flex-col items-center justify-center w-full h-full min-h-[200px] gap-3">
         <Spinner size="md" />
       </div>
     );
@@ -56,9 +56,9 @@ export const DocxViewer: React.FC<DocxViewerProps> = ({ url }) => {
   }
 
   return (
-    <div className="w-full h-[75vh] overflow-auto bg-surface-elevated border border-border rounded-card p-8 shadow-sm">
+    <div className="w-full h-full flex flex-col p-8 bg-surface-elevated overflow-hidden">
       <div
-        className="prose max-w-none text-text-primary"
+        className="flex-1 min-h-0 overflow-auto prose max-w-none text-text-primary"
         dangerouslySetInnerHTML={{ __html: html || '' }}
       />
     </div>

@@ -41,7 +41,7 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({ url, isCsv = false }) 
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center w-full h-[60vh]">
+      <div className="flex flex-col items-center justify-center w-full h-full min-h-[200px]">
         <Spinner size="md" />
       </div>
     );
@@ -59,7 +59,7 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({ url, isCsv = false }) 
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center w-full h-[60vh] text-text-muted">
+      <div className="flex items-center justify-center w-full h-full min-h-[200px] text-text-muted text-xs">
         Empty spreadsheet
       </div>
     );
@@ -69,13 +69,13 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({ url, isCsv = false }) 
   const dataRows = rows.slice(1);
 
   return (
-    <div className="w-full h-[75vh] overflow-auto bg-surface-elevated border border-border rounded-card p-4 shadow-sm flex flex-col gap-4">
-      <div className="flex items-center justify-between border-b border-border pb-2">
+    <div className="w-full h-full flex flex-col gap-4 p-4 bg-surface-elevated overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border pb-2 shrink-0">
         <span className="text-xs font-bold text-text-muted uppercase tracking-wider font-ui">
           {isCsv ? 'CSV Preview (Max 500 rows)' : 'Spreadsheet Preview (Max 500 rows)'}
         </span>
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-h-0 overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>

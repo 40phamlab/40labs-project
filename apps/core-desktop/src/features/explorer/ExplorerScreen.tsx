@@ -2,11 +2,6 @@ import * as React from 'react';
 import {
   Folder,
   FolderPlus,
-  FileText,
-  Image as ImageIcon,
-  FileCode,
-  FileSpreadsheet,
-  File,
   Search,
   ArrowLeft,
   ArrowRight,
@@ -25,7 +20,7 @@ import {
   AlertTriangle,
   X
 } from 'lucide-react';
-import { Dialog, Button } from '@40labs/ui-components';
+import { Dialog, Button, FileTypeIcon } from '@40labs/ui-components';
 import { explorerApi, type ExplorerItemMetadata, type ExplorerDirectoryContent } from '../../api/explorerApi';
 import { useFilePreviewContext } from '../../providers/FilePreviewProvider';
 import { useToast } from '../../hooks/useToast';
@@ -84,39 +79,8 @@ export function getFileTypeLabel(item: ExplorerItemMetadata): string {
 }
 
 export function getFileIcon(item: ExplorerItemMetadata) {
-  if (item.is_dir) return <Folder className="text-amber-400 shrink-0" size={18} />;
-  const ext = item.extension.toLowerCase();
-  switch (ext) {
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'gif':
-    case 'svg':
-    case 'webp':
-      return <ImageIcon className="text-blue-400 shrink-0" size={18} />;
-    case 'txt':
-    case 'md':
-    case 'log':
-      return <FileText className="text-emerald-400 shrink-0" size={18} />;
-    case 'json':
-    case 'ts':
-    case 'tsx':
-    case 'js':
-    case 'jsx':
-    case 'rs':
-    case 'py':
-    case 'html':
-    case 'css':
-      return <FileCode className="text-purple-400 shrink-0" size={18} />;
-    case 'csv':
-    case 'xls':
-    case 'xlsx':
-      return <FileSpreadsheet className="text-green-400 shrink-0" size={18} />;
-    case 'pdf':
-      return <FileText className="text-rose-400 shrink-0" size={18} />;
-    default:
-      return <File className="text-text-muted shrink-0" size={18} />;
-  }
+  if (item.is_dir) return <Folder className="text-warning shrink-0" size={18} />;
+  return <FileTypeIcon fileName={item.name} size={18} />;
 }
 
 export function getMimeTypeFromExtension(filename: string): string {
@@ -588,7 +552,7 @@ export const ExplorerScreen: React.FC = () => {
                 currentPath.endsWith('40Labs') ? 'bg-action-primary/15 text-action-primary font-medium' : 'hover:bg-surface-hover text-text-muted hover:text-text-primary'
               }`}
             >
-              <Folder size={15} className="text-amber-400 shrink-0" />
+              <Folder size={15} className="text-warning shrink-0" />
               <span className="truncate">40Labs Root</span>
             </div>
 
@@ -620,7 +584,7 @@ export const ExplorerScreen: React.FC = () => {
                           >
                             {isExp ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
                           </button>
-                          <Folder size={14} className="text-amber-400 shrink-0" />
+                          <Folder size={14} className="text-warning shrink-0" />
                           <span className="truncate">{sub.name}</span>
                         </div>
 
@@ -635,7 +599,7 @@ export const ExplorerScreen: React.FC = () => {
                                   currentPath === child.path ? 'bg-action-primary/15 text-action-primary font-bold' : 'hover:bg-surface-hover text-text-muted hover:text-text-primary'
                                 }`}
                               >
-                                <Folder size={12} className="text-amber-400/80 shrink-0" />
+                                <Folder size={12} className="text-warning/80 shrink-0" />
                                 <span className="truncate">{child.name}</span>
                               </div>
                             ))}
@@ -664,7 +628,7 @@ export const ExplorerScreen: React.FC = () => {
                 }}
                 className="h-7 text-xs flex items-center gap-1.5"
               >
-                <FolderPlus size={14} className="text-amber-400" />
+                <FolderPlus size={14} className="text-warning" />
                 <span>New Folder</span>
               </Button>
 
@@ -886,7 +850,7 @@ export const ExplorerScreen: React.FC = () => {
                         </td>
                         <td className="px-2">
                           <div className="flex items-center gap-2">
-                            {getFileIcon(item)}
+                            {item.is_dir ? <Folder className="text-warning shrink-0" size={18} /> : <FileTypeIcon fileName={item.name} size={18} />}
                             <span className="truncate">{item.name}</span>
                           </div>
                         </td>
@@ -921,9 +885,9 @@ export const ExplorerScreen: React.FC = () => {
                     >
                       <div className="p-2 rounded bg-app-bg/50">
                         {item.is_dir ? (
-                          <Folder size={32} className="text-amber-400" />
+                          <Folder size={32} className="text-warning" />
                         ) : (
-                          getFileIcon(item)
+                          <FileTypeIcon fileName={item.name} size={32} />
                         )}
                       </div>
                       <span className="text-xs font-medium truncate w-full px-1">{item.name}</span>
@@ -1007,7 +971,7 @@ export const ExplorerScreen: React.FC = () => {
                 }}
                 className="w-full text-left px-3 py-1.5 hover:bg-surface-hover flex items-center gap-2 cursor-pointer"
               >
-                <FolderPlus size={14} className="text-amber-400" />
+                <FolderPlus size={14} className="text-warning" />
                 <span>New Folder</span>
               </button>
               <button

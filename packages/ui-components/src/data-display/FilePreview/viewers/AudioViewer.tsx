@@ -10,7 +10,7 @@ export interface AudioViewerProps {
 
 export const AudioViewer: React.FC<AudioViewerProps> = ({ url, fileName, mimeType, sizeBytes }) => {
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full bg-surface-secondary/50 p-8 gap-6">
+    <div className="flex flex-col items-center justify-center w-full h-full bg-surface-secondary/50 p-8 gap-6 overflow-auto">
       <div className="flex items-center justify-center w-20 h-20 rounded-full bg-surface-elevated border border-border shadow-sm">
         <FileTypeIcon fileName={fileName} mimeType={mimeType} size={40} />
       </div>

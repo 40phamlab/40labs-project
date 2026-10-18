@@ -1,4 +1,6 @@
 import * as React from 'react';
+import { Spinner } from '../../../feedback/Spinner';
+import { Alert } from '../../../feedback/Alert';
 
 export interface MarkdownViewerProps {
   url: string;
@@ -34,16 +36,26 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({ url }) => {
   }, [url]);
 
   if (loading) {
-    return <div className="p-8 text-center text-xs text-text-muted">Loading Markdown...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center w-full h-full min-h-[200px]">
+        <Spinner size="md" />
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="p-6 text-xs text-danger">Error: {error}</div>;
+    return (
+      <div className="p-6">
+        <Alert intent="danger" title="Error">
+          {error}
+        </Alert>
+      </div>
+    );
   }
 
   return (
-    <div className="w-full h-[75vh] overflow-auto bg-surface-elevated border border-border rounded-card p-6 shadow-sm flex flex-col gap-3 font-ui text-text">
-      <div className="prose prose-sm max-w-none whitespace-pre-wrap break-words leading-relaxed">
+    <div className="w-full h-full flex flex-col p-6 bg-surface-elevated overflow-hidden font-ui text-text-primary">
+      <div className="flex-1 min-h-0 overflow-auto prose prose-sm max-w-none whitespace-pre-wrap break-words leading-relaxed">
         {content}
       </div>
     </div>

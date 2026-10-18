@@ -158,7 +158,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
       className={`flex flex-col w-full h-full bg-surface-elevated rounded-[12px] border border-border shadow-lg overflow-hidden ${className}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-elevated">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-surface-elevated shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <FileTypeIcon fileName={activeFile.fileName} mimeType={activeFile.mimeType} size={24} />
           <div className="flex flex-col min-w-0">
@@ -249,7 +249,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-auto bg-surface-secondary/20">{viewerContent}</div>
+      <div className="flex-1 min-h-0 overflow-hidden bg-surface-secondary/20 flex flex-col">{viewerContent}</div>
     </div>
   );
 };

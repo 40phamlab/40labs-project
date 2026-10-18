@@ -46,7 +46,7 @@ export const TextViewer: React.FC<TextViewerProps> = ({ url }) => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center w-full h-[60vh]">
+      <div className="flex flex-col items-center justify-center w-full h-full min-h-[200px]">
         <Spinner size="md" />
       </div>
     );
@@ -63,13 +63,13 @@ export const TextViewer: React.FC<TextViewerProps> = ({ url }) => {
   }
 
   return (
-    <div className="w-full h-[75vh] overflow-auto bg-surface-elevated border border-border rounded-card p-6 shadow-sm flex flex-col gap-3">
+    <div className="w-full h-full flex flex-col gap-3 p-4 bg-surface-elevated overflow-hidden">
       {truncated && (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end shrink-0">
           <Badge variant="warning" size="sm">Truncated</Badge>
         </div>
       )}
-      <pre className="flex-1 font-mono text-xs text-text-primary whitespace-pre-wrap break-all bg-surface-secondary/30 p-4 rounded-input overflow-auto">
+      <pre className="flex-1 min-h-0 font-mono text-xs text-text-primary whitespace-pre-wrap break-all bg-surface-secondary/30 p-4 rounded-input overflow-auto border border-border/50">
         {content}
       </pre>
     </div>
