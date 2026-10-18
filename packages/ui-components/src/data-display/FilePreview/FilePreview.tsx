@@ -12,6 +12,7 @@ import { DocxViewer } from './viewers/DocxViewer';
 import { SheetViewer } from './viewers/SheetViewer';
 import { TextViewer } from './viewers/TextViewer';
 import { MarkdownViewer } from './viewers/MarkdownViewer';
+import { CoreBackupViewer } from './viewers/CoreBackupViewer';
 import { FallbackCard } from './FallbackCard';
 
 export interface PreviewFileItem {
@@ -133,6 +134,9 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         break;
       case 'csv':
         viewerContent = <SheetViewer url={activeFile.url} isCsv fileName={activeFile.fileName} sizeBytes={activeFile.sizeBytes} />;
+        break;
+      case 'core':
+        viewerContent = <CoreBackupViewer url={activeFile.url} fileName={activeFile.fileName} sizeBytes={activeFile.sizeBytes} />;
         break;
       case 'text':
       case 'markdown':

@@ -12,9 +12,14 @@ export type FileKind =
   | 'archive'
   | 'slides'
   | 'legacy-office'
+  | 'core'
   | 'unknown';
 
 export function resolveFileKind(fileName: string, mimeType?: string): FileKind {
+  if (fileName.toLowerCase().endsWith('.core')) {
+    return 'core';
+  }
+
   if (mimeType) {
     const mime = mimeType.toLowerCase().trim();
     if (mime.startsWith('image/')) return 'image';
@@ -36,6 +41,8 @@ export function resolveFileKind(fileName: string, mimeType?: string): FileKind {
   const ext = fileName.slice(lastDot + 1).toLowerCase();
 
   switch (ext) {
+    case 'core':
+      return 'core';
     case 'png':
     case 'jpg':
     case 'jpeg':
@@ -110,6 +117,7 @@ export function isPreviewable(kind: FileKind): boolean {
     kind === 'csv' ||
     kind === 'text' ||
     kind === 'markdown' ||
-    kind === 'code'
+    kind === 'code' ||
+    kind === 'core'
   );
 }
