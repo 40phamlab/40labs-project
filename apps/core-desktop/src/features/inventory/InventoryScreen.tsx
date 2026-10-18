@@ -5,13 +5,15 @@ import {
   Button,
   IconButton,
 } from '@40labs/ui-components';
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Plus, TrendingUp, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Plus, TrendingUp, RefreshCw, Upload } from 'lucide-react';
 import { TabContainer } from '../../components/TabContainer';
 import { InventoryTable } from './components/InventoryTable';
 import { InventorySidebar } from './components/InventorySidebar';
 import { NewStockModal } from './components/NewStockModal';
 import { StockActionModal } from './components/StockActionModal';
+import { DataImportModal } from '../../components/DataImportModal';
 import { useInventory } from '../../hooks/useInventory';
+import { inventoryApi } from '../../api/inventoryApi';
 
 export const InventoryScreen: React.FC = () => {
   const {
@@ -47,6 +49,8 @@ export const InventoryScreen: React.FC = () => {
     isRecordingAction,
   } = useInventory();
 
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
+
   const categories = React.useMemo(() => {
     return Array.from(new Set(medicines.map((m) => m.category))).filter(Boolean);
   }, [medicines]);
@@ -58,6 +62,65 @@ export const InventoryScreen: React.FC = () => {
     setFilterOutOfStock(false);
     setSelectedCategory(null);
   }, [setSearchTerm, setFilterExpired, setFilterLowStock, setFilterOutOfStock, setSelectedCategory]);
+
+  const existingStockRecords = React.useMemo(() => {
+    return filteredData.map((d) => ({
+      name: d.medicine.name,
+      batchNumber: d.batch_number,
+    }));
+  }, [filteredData]);
+
+  const handleExecuteImport = async (rows: Array<Record<string, any>>, duplicateStrategy: 'skip' | 'update' | 'new') => {
+    let imported = 0;
+    let skipped = 0;
+    let updated = 0;
+    let rejected = 0;
+
+    for (const row of rows) {
+      try {
+        const existing = filteredData.find(
+          (d) => d.batch_number === row.batchNumber || d.medicine.name.toLowerCase() === row.medicineName.toLowerCase()
+        );
+
+        if (existing) {
+          if (duplicateStrategy === 'skip') {
+            skipped++;
+            continue;
+          } else if (duplicateStrategy === 'update') {
+            await inventoryApi.update(existing.id, {
+              batchNumber: row.batchNumber,
+              expiryDate: row.expiryDate,
+              buyPrice: row.buyPrice,
+              sellPrice: row.sellPrice,
+              quantity: row.quantity,
+              lowStockThreshold: row.lowStockThreshold || 10,
+            });
+            updated++;
+            continue;
+          }
+        }
+
+        await inventoryApi.create({
+          medicineName: row.medicineName,
+          genericName: row.genericName || undefined,
+          category: row.category,
+          unit: row.unit,
+          batchNumber: row.batchNumber,
+          expiryDate: row.expiryDate,
+          buyPrice: row.buyPrice,
+          sellPrice: row.sellPrice,
+          quantity: row.quantity,
+          lowStockThreshold: row.lowStockThreshold || 10,
+        });
+        imported++;
+      } catch {
+        rejected++;
+      }
+    }
+
+    await refetch();
+    return { imported, skipped, updated, rejected };
+  };
 
   return (
     <TabContainer
@@ -79,6 +142,15 @@ export const InventoryScreen: React.FC = () => {
           }
           right={
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                intent="secondary"
+                size="sm"
+                leftIcon={<Upload size={14} />}
+                onClick={() => setIsImportModalOpen(true)}
+              >
+                Import Stock
+              </Button>
               <Button
                 type="button"
                 intent="primary"
@@ -128,6 +200,18 @@ export const InventoryScreen: React.FC = () => {
               await recordStockAction(payload);
             }}
             isLoading={isRecordingAction}
+          />
+
+          {/* Data Import Modal */}
+          <DataImportModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            moduleType="stock"
+            existingRecords={existingStockRecords}
+            onExecuteImport={handleExecuteImport}
+            onImportComplete={() => {
+              refetch();
+            }}
           />
         </>
       }

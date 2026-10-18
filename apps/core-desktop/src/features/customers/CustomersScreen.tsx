@@ -5,7 +5,7 @@ import {
   SearchInput,
   IconButton,
 } from '@40labs/ui-components';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, Upload } from 'lucide-react';
 import type { Customer } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
 import { useNavStore } from '../../stores/useNavStore';
@@ -13,8 +13,10 @@ import { CustomerStatsBar } from './components/CustomerStatsBar';
 import { CustomerFilterBar } from './components/CustomerFilterBar';
 import { CustomerList } from './components/CustomerList';
 import { CustomerFormModal, CustomerFormPayload } from './components/CustomerFormModal';
+import { DataImportModal } from '../../components/DataImportModal';
 import { PatientRecordScreen } from './PatientRecordScreen';
 import { useCustomers } from '../../hooks/useCustomers';
+import { customersApi } from '../../api/customersApi';
 
 export const CustomersScreen: React.FC = () => {
   const patientDetailId = useNavStore((s) => s.patientDetailId);
@@ -37,6 +39,7 @@ export const CustomersScreen: React.FC = () => {
   } = useCustomers();
 
   const [editingCustomer, setEditingCustomer] = React.useState<Customer | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [timeRange, setTimeRange] = React.useState('all');
   const [balanceFilter, setBalanceFilter] = React.useState('all');
 
@@ -138,6 +141,65 @@ export const CustomersScreen: React.FC = () => {
     });
   };
 
+  const existingPatientRecords = React.useMemo(() => {
+    return customers.map((c) => ({
+      fullName: c.full_name,
+      phone: c.phone,
+    }));
+  }, [customers]);
+
+  const handleExecuteImport = async (rows: Array<Record<string, any>>, duplicateStrategy: 'skip' | 'update' | 'new') => {
+    let imported = 0;
+    let skipped = 0;
+    let updated = 0;
+    let rejected = 0;
+
+    for (const row of rows) {
+      try {
+        const existing = customers.find(
+          (c) => c.phone === row.phone || c.full_name.toLowerCase() === row.fullName.toLowerCase()
+        );
+
+        if (existing) {
+          if (duplicateStrategy === 'skip') {
+            skipped++;
+            continue;
+          } else if (duplicateStrategy === 'update') {
+            await customersApi.update(existing.id, {
+              fullName: row.fullName,
+              phone: row.phone,
+              email: row.email || undefined,
+              dob: row.dob || undefined,
+              sex: row.sex || undefined,
+              bloodGroup: row.bloodGroup || undefined,
+              wardDistrict: row.wardDistrict || undefined,
+              notes: row.notes || undefined,
+            });
+            updated++;
+            continue;
+          }
+        }
+
+        await customersApi.create({
+          fullName: row.fullName,
+          phone: row.phone,
+          email: row.email || undefined,
+          dob: row.dob || undefined,
+          sex: row.sex || undefined,
+          bloodGroup: row.bloodGroup || undefined,
+          wardDistrict: row.wardDistrict || undefined,
+          notes: row.notes || undefined,
+        });
+        imported++;
+      } catch {
+        rejected++;
+      }
+    }
+
+    await refetch();
+    return { imported, skipped, updated, rejected };
+  };
+
   if (patientDetailId) {
     return <PatientRecordScreen customerId={patientDetailId} />;
   }
@@ -159,6 +221,15 @@ export const CustomersScreen: React.FC = () => {
           }
           right={
             <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                intent="secondary"
+                size="sm"
+                leftIcon={<Upload size={14} />}
+                onClick={() => setIsImportModalOpen(true)}
+              >
+                Import Patients
+              </Button>
               <Button
                 type="button"
                 intent="primary"
@@ -190,18 +261,31 @@ export const CustomersScreen: React.FC = () => {
         />
       }
       overlays={
-        <CustomerFormModal
-          isOpen={isAddModalOpen || Boolean(editingCustomer)}
-          onClose={() => {
-            setAddModalOpen(false);
-            setEditingCustomer(null);
-          }}
-          onSave={handleSaveCustomer}
-          editCustomer={editingCustomer}
-          isLoading={isAdding || isUpdating}
-          allCustomers={customers}
-          onOpenCustomerProfile={(id) => setPatientDetailId(id)}
-        />
+        <>
+          <CustomerFormModal
+            isOpen={isAddModalOpen || Boolean(editingCustomer)}
+            onClose={() => {
+              setAddModalOpen(false);
+              setEditingCustomer(null);
+            }}
+            onSave={handleSaveCustomer}
+            editCustomer={editingCustomer}
+            isLoading={isAdding || isUpdating}
+            allCustomers={customers}
+            onOpenCustomerProfile={(id) => setPatientDetailId(id)}
+          />
+
+          <DataImportModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            moduleType="patients"
+            existingRecords={existingPatientRecords}
+            onExecuteImport={handleExecuteImport}
+            onImportComplete={() => {
+              refetch();
+            }}
+          />
+        </>
       }
     >
       <div className="flex flex-col gap-3 flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar">
