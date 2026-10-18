@@ -129,15 +129,19 @@ export const FilePreview: React.FC<FilePreviewProps> = ({
         viewerContent = <DocxViewer url={activeFile.url} />;
         break;
       case 'sheet':
-        viewerContent = <SheetViewer url={activeFile.url} />;
+        viewerContent = <SheetViewer url={activeFile.url} fileName={activeFile.fileName} sizeBytes={activeFile.sizeBytes} />;
         break;
       case 'csv':
-        viewerContent = <SheetViewer url={activeFile.url} isCsv />;
+        viewerContent = <SheetViewer url={activeFile.url} isCsv fileName={activeFile.fileName} sizeBytes={activeFile.sizeBytes} />;
         break;
       case 'text':
       case 'markdown':
       case 'code':
-        viewerContent = kind === 'markdown' ? <MarkdownViewer url={activeFile.url} /> : <TextViewer url={activeFile.url} />;
+        if (activeFile.fileName.toLowerCase().endsWith('.json')) {
+          viewerContent = <SheetViewer url={activeFile.url} isJson fileName={activeFile.fileName} sizeBytes={activeFile.sizeBytes} />;
+        } else {
+          viewerContent = kind === 'markdown' ? <MarkdownViewer url={activeFile.url} /> : <TextViewer url={activeFile.url} />;
+        }
         break;
       default:
         viewerContent = (
