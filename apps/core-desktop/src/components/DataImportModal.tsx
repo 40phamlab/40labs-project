@@ -2,7 +2,6 @@ import * as React from 'react';
 import { Dialog, Button, Badge, Alert } from '@40labs/ui-components';
 import { Table, TableHeader, TableBody, TableRow, TableCell } from '@40labs/ui-components';
 import { Upload, Download, FileSpreadsheet, CheckCircle2, ArrowRight } from 'lucide-react';
-import { parseCsv } from '../features/explorer/ExplorerScreen';
 
 export interface ColumnMapping {
   fieldKey: string;
@@ -18,6 +17,29 @@ export interface DataImportModalProps {
   onImportComplete: (importedCount: number) => void;
   existingRecords?: Array<{ name?: string; fullName?: string; phone?: string; batchNumber?: string }>;
   onExecuteImport: (rows: Array<Record<string, any>>, duplicateStrategy: 'skip' | 'update' | 'new') => Promise<{ imported: number; skipped: number; updated: number; rejected: number }>;
+}
+
+export function parseCsv(text: string): any[][] {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return [];
+  return lines.map((line) => {
+    const row: string[] = [];
+    let inQuote = false;
+    let currentVal = '';
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        inQuote = !inQuote;
+      } else if (char === ',' && !inQuote) {
+        row.push(currentVal.trim());
+        currentVal = '';
+      } else {
+        currentVal += char;
+      }
+    }
+    row.push(currentVal.trim());
+    return row;
+  });
 }
 
 const STOCK_FIELDS: ColumnMapping[] = [
@@ -105,7 +127,6 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
           const parsed = await readXlsxFile(file);
           handleFileLoaded(name, parsed);
         } catch {
-          // Fallback if module loader fails in test environment
           const text = await file.text();
           const parsed = parseCsv(text);
           handleFileLoaded(name, parsed);
@@ -191,13 +212,13 @@ export const DataImportModal: React.FC<DataImportModalProps> = ({
       const rowsToImport = validatedRows.filter((r) => r.errors.length === 0).map((r) => r.record);
       const report = await onExecuteImport(rowsToImport, duplicateStrategy);
 
-      setImporting(false);
       setSummaryReport(report);
       setStep(4);
       onImportComplete(report.imported);
     } catch (err: any) {
-      setImporting(false);
       setError(err?.message || 'Import execution failed.');
+    } finally {
+      setImporting(false);
     }
   };
 

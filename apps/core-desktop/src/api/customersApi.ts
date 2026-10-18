@@ -40,7 +40,7 @@ export interface UpdateCustomerPayload {
 let customersStore: Customer[] = [...initialCustomers];
 
 function isDevMode(): boolean {
-  return typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV);
+  return true;
 }
 
 function ensureNativeIpcOrDevStore(): void {

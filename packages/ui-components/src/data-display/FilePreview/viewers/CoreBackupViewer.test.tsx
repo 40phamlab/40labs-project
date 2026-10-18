@@ -41,6 +41,7 @@ describe('CoreBackupViewer Component', () => {
   });
 
   test('successfully previews backup when correct password is entered', async () => {
+    const user = userEvent.setup();
     const mockOnPreview = vi.fn(async () => mockPreviewData);
 
     render(
@@ -53,10 +54,10 @@ describe('CoreBackupViewer Component', () => {
     );
 
     const passwordInput = screen.getByPlaceholderText('Enter password...');
-    await userEvent.type(passwordInput, 'CorrectPassword123!');
+    await user.type(passwordInput, 'CorrectPassword123!');
 
     const previewBtn = screen.getByRole('button', { name: /preview backup safely/i });
-    await userEvent.click(previewBtn);
+    await user.click(previewBtn);
 
     await waitFor(() => {
       expect(mockOnPreview).toHaveBeenCalledWith('CorrectPassword123!');
@@ -67,6 +68,7 @@ describe('CoreBackupViewer Component', () => {
   });
 
   test('shows error when incorrect password is provided', async () => {
+    const user = userEvent.setup();
     const mockOnPreview = vi.fn(async () => {
       throw new Error('Incorrect password or corrupted backup file.');
     });
@@ -81,10 +83,10 @@ describe('CoreBackupViewer Component', () => {
     );
 
     const passwordInput = screen.getByPlaceholderText('Enter password...');
-    await userEvent.type(passwordInput, 'WrongPassword');
+    await user.type(passwordInput, 'WrongPassword');
 
     const previewBtn = screen.getByRole('button', { name: /preview backup safely/i });
-    await userEvent.click(previewBtn);
+    await user.click(previewBtn);
 
     await waitFor(() => {
       expect(screen.getByText('Incorrect password or corrupted backup file.')).toBeDefined();
@@ -92,6 +94,7 @@ describe('CoreBackupViewer Component', () => {
   });
 
   test('opens restore confirmation modal and executes restore successfully', async () => {
+    const user = userEvent.setup();
     const mockOnPreview = vi.fn(async () => mockPreviewData);
     const mockOnRestore = vi.fn(async () => mockRestoreResult);
 
@@ -107,8 +110,8 @@ describe('CoreBackupViewer Component', () => {
 
     // Preview first
     const passwordInput = screen.getByPlaceholderText('Enter password...');
-    await userEvent.type(passwordInput, 'Password123!');
-    await userEvent.click(screen.getByRole('button', { name: /preview backup safely/i }));
+    await user.type(passwordInput, 'Password123!');
+    await user.click(screen.getByRole('button', { name: /preview backup safely/i }));
 
     await waitFor(() => {
       expect(screen.getByText('40Labs Nairobi Pharmacy')).toBeDefined();
@@ -116,16 +119,16 @@ describe('CoreBackupViewer Component', () => {
 
     // Click Restore Backup
     const restoreOpenBtn = screen.getByRole('button', { name: /restore backup.../i });
-    await userEvent.click(restoreOpenBtn);
+    await user.click(restoreOpenBtn);
 
     expect(screen.getByText('Confirm Disaster Recovery Restoration')).toBeDefined();
 
     // Fill password in modal and confirm
     const modalPasswordInput = screen.getByPlaceholderText('Confirm backup password...');
-    await userEvent.type(modalPasswordInput, 'Password123!');
+    await user.type(modalPasswordInput, 'Password123!');
 
     const confirmRestoreBtn = screen.getByRole('button', { name: /proceed with restore/i });
-    await userEvent.click(confirmRestoreBtn);
+    await user.click(confirmRestoreBtn);
 
     await waitFor(() => {
       expect(mockOnRestore).toHaveBeenCalledWith('Password123!');
