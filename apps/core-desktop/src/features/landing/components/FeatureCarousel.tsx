@@ -3,6 +3,7 @@ import { useLanguageStore } from '../../../stores/useLanguageStore';
 import { t } from '@40labs/i18n';
 import { LANDING_SLIDES } from '../lib/slides';
 import { useLandingMotion } from '../hooks/useLandingMotion';
+import { Check } from 'lucide-react';
 
 export const FeatureCarousel: React.FC = () => {
   const { language } = useLanguageStore();
@@ -44,14 +45,14 @@ export const FeatureCarousel: React.FC = () => {
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
       onKeyDown={handleKeyDown}
-      className="relative w-full outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-[20px] animate-item-rise delay-carousel"
+      className="relative outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-[20px] animate-item-rise delay-carousel select-none"
       style={{
         marginLeft: 'clamp(24px, 6vw, 120px)',
-        width: 'clamp(380px, 38vw, 580px)',
+        width: 'clamp(440px, 38vw, 600px)',
         animationFillMode: 'forwards',
       }}
     >
-      <div className="relative min-h-[clamp(190px,28vh,270px)] h-auto w-full">
+      <div className="relative min-h-[clamp(360px,54vh,500px)] h-auto w-full">
         {LANDING_SLIDES.map((slide, idx) => {
           const offset = (idx - currentIndex + totalSlides) % totalSlides;
 
@@ -65,39 +66,80 @@ export const FeatureCarousel: React.FC = () => {
             transformStyle = 'translate-y-0 scale-100';
             opacityStyle = 'opacity-100 z-30';
           } else if (offset === 1) {
-            transformStyle = 'translate-y-3 scale-[0.94]';
+            transformStyle = 'translate-y-[14px] scale-[0.96]';
             opacityStyle = 'opacity-70 z-20';
           } else if (offset === 2) {
-            transformStyle = 'translate-y-6 scale-[0.88]';
+            transformStyle = 'translate-y-[28px] scale-[0.92]';
             opacityStyle = 'opacity-40 z-10';
           }
+
+          const isFront = offset === 0;
 
           return (
             <div
               key={slide.id}
-              className={`absolute inset-0 bg-surface/85 backdrop-blur-[16px] border border-border/80 rounded-[20px] shadow-xl p-6 lg:p-7 flex flex-col justify-between transition-all duration-450 ease-out select-none min-h-[clamp(190px,28vh,270px)] ${transformStyle} ${opacityStyle}`}
+              className={`absolute inset-0 bg-white/74 dark:bg-surface/85 backdrop-blur-[16px] border border-border/85 rounded-[20px] shadow-2xl flex flex-col justify-between transition-all duration-450 ease-out ${transformStyle} ${opacityStyle}`}
               style={{
-                /* Note: 20px radius is intentionally used on this hero FeatureCarousel card (deviating from standard 12px token) for dramatic visual polish */
                 zIndex,
+                padding: 'clamp(24px, 4vh, 40px)',
+                minHeight: 'clamp(360px, 54vh, 500px)',
+                height: 'auto',
               }}
             >
-              <div className="flex items-center space-x-4">
-                <div className="hex-clip w-12 h-12 bg-primary/15 flex items-center justify-center text-primary shrink-0 shadow-sm">
-                  {slide.icon}
+              {isFront ? (
+                <div className="flex flex-col h-full justify-between">
+                  <div className="flex items-center justify-between">
+                    <div
+                      className="hex-clip bg-primary/15 flex items-center justify-center text-primary shrink-0 shadow-sm"
+                      style={{ width: 'clamp(48px, 5.5vh, 56px)', height: 'clamp(48px, 5.5vh, 56px)' }}
+                    >
+                      {slide.icon}
+                    </div>
+                    {slide.soon && (
+                      <span className="px-3 py-1 rounded-full border border-amber-500/50 bg-amber-500/10 text-amber-500 text-xs font-semibold uppercase tracking-wider">
+                        {t('landing.badge.soon', language)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col" style={{ gap: '12px', marginTop: '18px', marginBottom: '18px' }}>
+                    <h2
+                      className="font-sora font-bold text-foreground tracking-tight"
+                      style={{ fontSize: 'clamp(24px, 2.2vw, 32px)' }}
+                    >
+                      {t(slide.titleKey, language)}
+                    </h2>
+                    <p
+                      className="text-muted-foreground leading-[1.55] line-clamp-4"
+                      style={{ fontSize: 'clamp(15px, 1.2vw, 17px)' }}
+                    >
+                      {t(slide.messageKey, language)}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col" style={{ gap: '10px', marginBottom: 'auto' }}>
+                    {[slide.p1Key, slide.p2Key, slide.p3Key].map((pKey, pIdx) => (
+                      <div key={pIdx} className="flex items-center space-x-2.5 text-sm text-foreground/90">
+                        <div className="w-5 h-5 rounded-full bg-green-500/15 flex items-center justify-center text-green-600 shrink-0">
+                          <Check size={12} strokeWidth={3} />
+                        </div>
+                        <span>{t(pKey, language)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-border/50 text-xs font-mono text-muted-foreground" style={{ marginTop: '24px' }}>
+                    <span>0{idx + 1} / 0{totalSlides}</span>
+                    {slide.soon ? (
+                      <span className="px-2 py-0.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-500 font-semibold uppercase text-[10px]">
+                        {t('landing.badge.soon', language)}
+                      </span>
+                    ) : <span />}
+                  </div>
                 </div>
-                <h3 className="font-sora font-bold text-lg lg:text-xl text-foreground tracking-tight">
-                  {t(slide.titleKey, language)}
-                </h3>
-              </div>
-
-              <p className="text-sm lg:text-base text-muted-foreground leading-relaxed py-2">
-                {t(slide.descKey, language)}
-              </p>
-
-              <div className="flex items-center justify-between pt-3 border-t border-border/50 text-xs font-mono text-muted-foreground mt-auto">
-                <span>0{idx + 1} / 0{totalSlides}</span>
-                <span className="text-primary font-semibold">40Labs Core</span>
-              </div>
+              ) : (
+                <div className="w-full h-full" />
+              )}
             </div>
           );
         })}
@@ -106,7 +148,7 @@ export const FeatureCarousel: React.FC = () => {
       <div
         role="tablist"
         aria-label="Carousel slides"
-        className="flex items-center justify-center space-x-2 pt-4"
+        className="flex items-center justify-center space-x-2 pt-6"
       >
         {LANDING_SLIDES.map((_, idx) => {
           const isActive = idx === currentIndex;

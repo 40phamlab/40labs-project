@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { generateHoneycombCluster } from '../lib/hexGrid';
+import { buildGrid, litCells } from '../lib/hexGrid';
 import { useLanguageStore } from '../../../stores/useLanguageStore';
 import { useThemeStore } from '../../../stores/useThemeStore';
 import { ActionPanel } from '../components/ActionPanel';
@@ -9,11 +9,11 @@ import { ThemeMenu } from '../components/ThemeMenu';
 import { LangMenu } from '../components/LangMenu';
 
 describe('Landing Quality Gates & Unit Tests', () => {
-  it('hexGrid generates valid honeycomb clusters with stable opacity and lit cells', () => {
-    const cluster = generateHoneycombCluster('bottom-left', 3, 3, 99);
-    expect(cluster.length).toBe(9);
-    expect(cluster[0].opacity).toBeGreaterThanOrEqual(0.55);
-    expect(cluster[0].opacity).toBeLessThanOrEqual(1.0);
+  it('hexGrid builds valid grid and lit cells', () => {
+    const grid = buildGrid(800, 600, 30, 3);
+    expect(grid.length).toBeGreaterThan(0);
+    const lit = litCells(grid, 800, 600, 42);
+    expect(lit.length).toBeGreaterThan(0);
   });
 
   it('language detection defaults correctly and supports sw and en switching', () => {

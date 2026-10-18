@@ -11,7 +11,8 @@ import {
   Calendar,
   GraduationCap,
   Bell,
-  Settings
+  Settings,
+  ShieldCheck
 } from 'lucide-react';
 import { AppShell, AppSidebarNav, type NavItem } from '@40labs/ui-components';
 import { TitleBar } from './components/TitleBar';
@@ -28,6 +29,7 @@ import { ReportsScreen } from './features/reports/ReportsScreen';
 import { DashboardScreen } from './features/dashboard/DashboardScreen';
 import { SettingsScreen } from './features/settings/SettingsScreen';
 import { ExplorerScreen } from './features/explorer/ExplorerScreen';
+import { AuthDevScreen } from './features/auth/shell/AuthDevScreen';
 import { ToastProvider } from './hooks/useToast';
 import { useNotifications } from './hooks/useNotifications';
 import { useNotificationSound } from './hooks/useNotificationSound';
@@ -93,6 +95,7 @@ export default function App() {
   ];
 
   const PINNED_BOTTOM_ITEMS: Array<NavItem<ScreenId>> = [
+    { id: 'auth-dev', labelKey: 'nav.home', route: 'auth-dev', icon: <ShieldCheck size={18} /> },
     { id: 'settings', labelKey: 'nav.settings', route: 'settings', icon: <Settings size={18} /> },
   ];
 
@@ -120,6 +123,8 @@ export default function App() {
         return <ReportsScreen />;
       case 'settings':
         return <SettingsScreen />;
+      case 'auth-dev':
+        return <AuthDevScreen />;
       default: {
         const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
         return (

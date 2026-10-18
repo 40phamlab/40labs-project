@@ -3,7 +3,7 @@ import { Panel } from '@40labs/ui-components';
 import type { Business } from '@40labs/types';
 import type { UpdateBusinessPayload } from '../../../hooks/useBusiness';
 import { useThemeStore, type ThemeMode } from '../../../stores/useThemeStore';
-import { useLanguageStore } from '../../../stores/useLanguageStore';
+import { useLanguageStore, type Lang } from '../../../stores/useLanguageStore';
 import type { Language } from '@40labs/i18n';
 
 interface AppearancePanelProps {
@@ -28,7 +28,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   };
 
   const handleLanguageChange = async (newLang: Language) => {
-    setLanguage(newLang);
+    setLanguage(newLang === 'sw-TZ' ? 'sw' : (newLang as Lang));
     if (onToggle) {
       await onToggle({ language: newLang });
     }

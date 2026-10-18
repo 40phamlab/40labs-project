@@ -17,7 +17,8 @@ export type ScreenId =
   | 'reports'
   | 'education'
   | 'notifications'
-  | 'explorer';
+  | 'explorer'
+  | 'auth-dev';
 
 export const VALID_SCREENS: readonly ScreenId[] = [
   'dashboard',
@@ -33,6 +34,7 @@ export const VALID_SCREENS: readonly ScreenId[] = [
   'education',
   'notifications',
   'explorer',
+  'auth-dev',
 ] as const;
 
 const DEFAULT_SCREEN: ScreenId = 'dashboard';
