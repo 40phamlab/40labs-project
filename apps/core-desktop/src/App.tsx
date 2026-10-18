@@ -14,7 +14,7 @@ import {
   Settings,
   ShieldCheck
 } from 'lucide-react';
-import { AppShell, AppSidebarNav, type NavItem } from '@40labs/ui-components';
+import { AppShell, AppSidebarNav, type NavItem, FilePreview } from '@40labs/ui-components';
 import { TitleBar } from './components/TitleBar';
 import { TabContainer } from './components/TabContainer';
 import { useNavStore, type ScreenId } from './stores/useNavStore';
@@ -34,8 +34,73 @@ import { ToastProvider } from './hooks/useToast';
 import { useNotifications } from './hooks/useNotifications';
 import { useNotificationSound } from './hooks/useNotificationSound';
 import { AuthGate } from './features/auth/AuthGate';
-import { FilePreviewProvider } from './providers/FilePreviewProvider';
+import { FilePreviewProvider, useFilePreviewContext } from './providers/FilePreviewProvider';
 import './App.css';
+
+function MainWorkspaceContent() {
+  const activeScreen = useNavStore((s) => s.activeScreen);
+  const { previewState, selectFileTab, closeFileTab } = useFilePreviewContext();
+  const hasOpenFiles = previewState.isOpen && previewState.files.length > 0;
+
+  const renderContent = () => {
+    switch (activeScreen) {
+      case 'dashboard':
+        return <DashboardScreen />;
+      case 'explorer':
+        return <ExplorerScreen />;
+      case 'inventory':
+        return <InventoryScreen />;
+      case 'sales':
+        return <SalesScreen />;
+      case 'customers':
+        return <CustomersScreen />;
+      case 'purchases':
+        return <PurchasesScreen />;
+      case 'lab':
+        return <LabScreen />;
+      case 'notifications':
+        return <NotificationsScreen />;
+      case 'scheduling':
+        return <SchedulingScreen />;
+      case 'reports':
+        return <ReportsScreen />;
+      case 'settings':
+        return <SettingsScreen />;
+      case 'auth-dev':
+        return <AuthDevScreen />;
+      default: {
+        const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
+        return (
+          <TabContainer
+            isEmpty
+            emptyTitle={`${label.replace('-', ' ')} Module`}
+          />
+        );
+      }
+    }
+  };
+
+  return (
+    <div key={hasOpenFiles ? 'workspace-file' : activeScreen} className="h-full w-full animate-screen-enter motion-reduce:transition-none">
+      {hasOpenFiles ? (
+        <FilePreview
+          file={previewState.file}
+          files={previewState.files}
+          index={previewState.currentIndex}
+          onIndexChange={selectFileTab}
+          onClose={(e) => closeFileTab(previewState.currentIndex, e)}
+          onDownload={previewState.onDownload}
+          onSaveAs={previewState.onSaveAs}
+          onOpenExternal={previewState.onOpenExternal}
+          variant="inline"
+          className="h-full w-full border-0 rounded-none shadow-none bg-surface-elevated"
+        />
+      ) : (
+        renderContent()
+      )}
+    </div>
+  );
+}
 
 export default function App() {
   const activeScreen = useNavStore((s) => s.activeScreen);
@@ -99,44 +164,6 @@ export default function App() {
     { id: 'settings', labelKey: 'nav.settings', route: 'settings', icon: <Settings size={18} /> },
   ];
 
-  const renderContent = () => {
-    switch (activeScreen) {
-      case 'dashboard':
-        return <DashboardScreen />;
-      case 'explorer':
-        return <ExplorerScreen />;
-      case 'inventory':
-        return <InventoryScreen />;
-      case 'sales':
-        return <SalesScreen />;
-      case 'customers':
-        return <CustomersScreen />;
-      case 'purchases':
-        return <PurchasesScreen />;
-      case 'lab':
-        return <LabScreen />;
-      case 'notifications':
-        return <NotificationsScreen />;
-      case 'scheduling':
-        return <SchedulingScreen />;
-      case 'reports':
-        return <ReportsScreen />;
-      case 'settings':
-        return <SettingsScreen />;
-      case 'auth-dev':
-        return <AuthDevScreen />;
-      default: {
-        const label = activeScreen.charAt(0).toUpperCase() + activeScreen.slice(1);
-        return (
-          <TabContainer
-            isEmpty
-            emptyTitle={`${label.replace('-', ' ')} Module`}
-          />
-        );
-      }
-    }
-  };
-
   const topBarElement = (
     <TitleBar
       brandName="40Labs"
@@ -173,9 +200,7 @@ export default function App() {
             lastNonClosedState={lastNonClosedState}
             onNavStateChange={setSidebarState}
           >
-            <div key={activeScreen} className="h-full w-full animate-screen-enter motion-reduce:transition-none">
-              {renderContent()}
-            </div>
+            <MainWorkspaceContent />
           </AppShell>
         </AuthGate>
       </FilePreviewProvider>
