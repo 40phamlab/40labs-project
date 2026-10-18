@@ -5,7 +5,7 @@ import {
   Button,
   IconButton,
 } from '@40labs/ui-components';
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Plus, TrendingUp, RefreshCw, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, EyeOff, Plus, TrendingUp, RefreshCw, ArrowDownToLine } from 'lucide-react';
 import { TabContainer } from '../../components/TabContainer';
 import { InventoryTable } from './components/InventoryTable';
 import { InventorySidebar } from './components/InventorySidebar';
@@ -17,6 +17,7 @@ import { inventoryApi } from '../../api/inventoryApi';
 
 export const InventoryScreen: React.FC = () => {
   const {
+    items,
     medicines,
     filteredData,
     isLoading,
@@ -64,11 +65,11 @@ export const InventoryScreen: React.FC = () => {
   }, [setSearchTerm, setFilterExpired, setFilterLowStock, setFilterOutOfStock, setSelectedCategory]);
 
   const existingStockRecords = React.useMemo(() => {
-    return filteredData.map((d) => ({
+    return items.map((d) => ({
       name: d.medicine.name,
       batchNumber: d.batch_number,
     }));
-  }, [filteredData]);
+  }, [items]);
 
   const handleExecuteImport = async (rows: Array<Record<string, any>>, duplicateStrategy: 'skip' | 'update' | 'new') => {
     let imported = 0;
@@ -78,7 +79,7 @@ export const InventoryScreen: React.FC = () => {
 
     for (const row of rows) {
       try {
-        const existing = filteredData.find(
+        const existing = items.find(
           (d) => d.batch_number === row.batchNumber || d.medicine.name.toLowerCase() === row.medicineName.toLowerCase()
         );
 
@@ -146,7 +147,7 @@ export const InventoryScreen: React.FC = () => {
                 type="button"
                 intent="secondary"
                 size="sm"
-                leftIcon={<Upload size={14} />}
+                leftIcon={<ArrowDownToLine size={14} />}
                 onClick={() => setIsImportModalOpen(true)}
               >
                 Import Stock

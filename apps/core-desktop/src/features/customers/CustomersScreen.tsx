@@ -5,7 +5,7 @@ import {
   SearchInput,
   IconButton,
 } from '@40labs/ui-components';
-import { Plus, RefreshCw, Upload } from 'lucide-react';
+import { Plus, RefreshCw, ArrowDownToLine } from 'lucide-react';
 import type { Customer } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
 import { useNavStore } from '../../stores/useNavStore';
@@ -225,7 +225,7 @@ export const CustomersScreen: React.FC = () => {
                 type="button"
                 intent="secondary"
                 size="sm"
-                leftIcon={<Upload size={14} />}
+                leftIcon={<ArrowDownToLine size={14} />}
                 onClick={() => setIsImportModalOpen(true)}
               >
                 Import Patients
