@@ -249,6 +249,28 @@ const swTzData = {
   'auth.reg.terms.accept': 'Kubali',
   'auth.reg.success.saved': 'Nimehifadhi namba zangu za urejeshaji',
   'value.notProvided': 'Haikutolewa',
+
+  // Inventory Analytics
+  'inventory.analytics.title': 'Mwelekeo wa Stoo na Uchambuzi wa Kategoria',
+  'inventory.analytics.overview': 'Muhtasari',
+  'inventory.analytics.movement': 'Mwenendo',
+  'inventory.analytics.performance': 'Utendaji',
+  'inventory.analytics.expiry': 'Kuisha Muda',
+  'inventory.analytics.stockValueSell': 'Thamani ya Mauzo (Sell)',
+  'inventory.analytics.lowOut': 'Chini / Kwisha',
+  'inventory.analytics.expiring30': 'Inaisha Siku 30',
+  'inventory.analytics.totalSkus': 'Jumla ya SKUs',
+  'inventory.analytics.categoryDistribution': 'Usambazaji kwa Kategoria',
+  'inventory.analytics.stockHealth': 'Afya ya Akiba',
+  'inventory.analytics.stockInVsOut': 'Bidhaa Zinazoingia na Kutoka',
+  'inventory.analytics.mostUsed': 'Bidhaa Zinazotumika Zaidi',
+  'inventory.analytics.bestPerformers': 'Bidhaa Zinazofanya Vizuri Zaidi',
+  'inventory.analytics.slowMovers': 'Bidhaa Zinazosonga Polepole',
+  'inventory.analytics.expiryBuckets': 'Madaraja ya Kuisha Muda',
+  'inventory.analytics.daysOfCover': 'Siku za Akiba (Cover)',
+  'inventory.visualization': 'Taswira ya Mwelekeo wa Stoo',
+  'inventory.hideGraph': 'Ficha grafu',
+  'inventory.showGraph': 'Onyesha grafu',
 };
 
 export const translations = {
@@ -472,6 +494,28 @@ export const translations = {
     'dashboard.metricProfit': 'Profit',
     'dashboard.metricPurchases': 'Purchases',
     'dashboard.metricStockValue': 'Stock Value',
+
+    // Inventory Analytics
+    'inventory.analytics.title': 'Stock Trends & Category Analytics',
+    'inventory.analytics.overview': 'Overview',
+    'inventory.analytics.movement': 'Movement',
+    'inventory.analytics.performance': 'Performance',
+    'inventory.analytics.expiry': 'Expiry',
+    'inventory.analytics.stockValueSell': 'Stock Value (Sell)',
+    'inventory.analytics.lowOut': 'Low / Out',
+    'inventory.analytics.expiring30': 'Expiring ≤30d',
+    'inventory.analytics.totalSkus': 'Total SKUs',
+    'inventory.analytics.categoryDistribution': 'Category Distribution',
+    'inventory.analytics.stockHealth': 'Stock Health',
+    'inventory.analytics.stockInVsOut': 'Stock In vs Out',
+    'inventory.analytics.mostUsed': 'Most Used',
+    'inventory.analytics.bestPerformers': 'Best Performers',
+    'inventory.analytics.slowMovers': 'Slow Movers',
+    'inventory.analytics.expiryBuckets': 'Expiry Buckets',
+    'inventory.analytics.daysOfCover': 'Days of Cover',
+    'inventory.visualization': 'Stock Trends Visualization',
+    'inventory.hideGraph': 'Hide graph',
+    'inventory.showGraph': 'Show graph',
 
     // Group By
     'dashboard.groupBy': 'Group By',

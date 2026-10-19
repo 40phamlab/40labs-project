@@ -1,17 +1,17 @@
 import * as React from 'react';
 import {
   PageToolbar,
-  Panel,
   Button,
   IconButton,
 } from '@40labs/ui-components';
-import { ChevronLeft, ChevronRight, Eye, EyeOff, Plus, TrendingUp, RefreshCw, ArrowDownToLine } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, ArrowDownToLine } from 'lucide-react';
 import { TabContainer } from '../../components/TabContainer';
 import { InventoryTable } from './components/InventoryTable';
 import { InventorySidebar } from './components/InventorySidebar';
 import { NewStockModal } from './components/NewStockModal';
 import { StockActionModal } from './components/StockActionModal';
 import { DataImportModal } from '../../components/DataImportModal';
+import { StockAnalyticsPanel } from './components/StockAnalyticsPanel';
 import { useInventory } from '../../hooks/useInventory';
 import { inventoryApi } from '../../api/inventoryApi';
 
@@ -127,20 +127,7 @@ export const InventoryScreen: React.FC = () => {
     <TabContainer
       toolbar={
         <PageToolbar
-          left={
-            <div className="flex items-center gap-3">
-              <IconButton
-                icon={graphVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-                label={graphVisible ? 'Hide graph' : 'Show graph'}
-                intent="ghost"
-                size="sm"
-                onClick={() => setGraphVisible(!graphVisible)}
-              />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted flex items-center gap-1.5">
-                <TrendingUp size={12} /> Stock Trends Visualization
-              </span>
-            </div>
-          }
+          left={<div className="font-heading text-xs font-bold uppercase tracking-wider text-text">AKIBA (INVENTORY)</div>}
           right={
             <div className="flex items-center gap-2">
               <Button
@@ -181,7 +168,6 @@ export const InventoryScreen: React.FC = () => {
       }
       overlays={
         <>
-          {/* New Stock Modal */}
           <NewStockModal
             isOpen={isModalOpen}
             onClose={() => setModalOpen(false)}
@@ -190,8 +176,6 @@ export const InventoryScreen: React.FC = () => {
             }}
             isLoading={isAdding}
           />
-
-          {/* Semantic Stock Action Modal */}
           <StockActionModal
             item={selectedActionItem}
             actionType={actionModalType}
@@ -202,8 +186,6 @@ export const InventoryScreen: React.FC = () => {
             }}
             isLoading={isRecordingAction}
           />
-
-          {/* Data Import Modal */}
           <DataImportModal
             isOpen={isImportModalOpen}
             onClose={() => setIsImportModalOpen(false)}
@@ -220,19 +202,23 @@ export const InventoryScreen: React.FC = () => {
       <div className="flex gap-3.5 flex-1 min-h-0 w-full overflow-hidden">
         {/* Main Column */}
         <div className="flex-1 min-w-0 flex flex-col gap-3 h-full overflow-hidden">
-          {/* Graph / Stats Section */}
-          {graphVisible && (
-            <Panel variant="inset" className="shrink-0 h-28 p-3 flex items-center justify-center border border-dashed border-border/40">
-              <div className="text-center space-y-1">
-                <p className="text-xs font-semibold text-text">
-                  Stock Trends & Category Analytics
-                </p>
-                <p className="max-w-md text-center text-xs leading-relaxed text-text-muted">
-                  Real-time visualization of inventory turnover, category distribution, and stock re-order notifications.
-                </p>
-              </div>
-            </Panel>
-          )}
+          {/* Stock Analytics Panel */}
+          <StockAnalyticsPanel
+            graphVisible={graphVisible}
+            onToggleGraph={() => setGraphVisible(!graphVisible)}
+            onSelectCategory={(category) => setSelectedCategory(category)}
+            onSelectStatus={(status) => {
+              setFilterExpired(status === 'expired');
+              setFilterLowStock(status === 'low');
+              setFilterOutOfStock(status === 'out');
+            }}
+            onSelectItemSearch={(itemId) => {
+              const found = items.find((i) => i.id === itemId);
+              if (found) {
+                setSearchTerm(found.batch_number);
+              }
+            }}
+          />
 
           {/* Table Region - ONE controlled scroll region */}
           <div className="flex-1 min-h-0 bg-panel rounded-card border border-border/50 p-3 elevation-inset overflow-y-auto custom-scrollbar">
