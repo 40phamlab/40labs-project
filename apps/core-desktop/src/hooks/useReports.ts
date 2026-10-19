@@ -160,5 +160,6 @@ export function useReports({ categoryId, dateRange }: UseReportsOptions) {
     isError,
     refetch: refetchAll,
     getReportForCategory,
+    contextData,
   };
 }

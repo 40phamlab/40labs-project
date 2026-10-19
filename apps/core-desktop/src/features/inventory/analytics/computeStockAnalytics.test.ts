@@ -142,4 +142,89 @@ describe('computeStockAnalytics [phase: StockAnalytics]', () => {
     expect(dayWithSale).toBeDefined();
     expect(dayWithSale?.units_out).toBe(10);
   });
+
+  test('performance: 2000 SKUs × 90 days computes in <150ms', () => {
+    const perfMeds: Medicine[] = [];
+    const perfItems: InventoryItem[] = [];
+    const perfSales: Sale[] = [];
+
+    for (let i = 0; i < 2000; i++) {
+      const medId = `med_p_${i}`;
+      const invId = `inv_p_${i}`;
+      perfMeds.push({
+        id: medId,
+        workspace_id: WORKSPACE_ID,
+        branch_id: BRANCH_ID,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        name: `Medicine ${i}`,
+        generic_name: `Gen ${i}`,
+        category: i % 3 === 0 ? 'Analgesic' : i % 3 === 1 ? 'Antibiotic' : 'Rehydration',
+        unit: 'tablet',
+        is_controlled_substance: false,
+        requires_prescription: false,
+      });
+      perfItems.push({
+        id: invId,
+        workspace_id: WORKSPACE_ID,
+        branch_id: BRANCH_ID,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-03-30T00:00:00Z',
+        medicine_id: medId,
+        batch_number: `BATCH-${i}`,
+        expiry_date: '2026-12-31T00:00:00Z',
+        buy_price: 1000,
+        sell_price: 1500,
+        quantity: 100,
+        low_stock_threshold: 10,
+        cold_chain_required: false,
+      });
+    }
+
+    for (let day = 0; day < 90; day++) {
+      perfSales.push({
+        id: `sale_p_${day}`,
+        workspace_id: WORKSPACE_ID,
+        branch_id: BRANCH_ID,
+        created_at: new Date(new Date('2026-03-31T12:00:00Z').getTime() - day * 86400000).toISOString(),
+        updated_at: '2026-03-31T12:00:00Z',
+        customer_id: null,
+        lines: [
+          {
+            id: `line_p_${day}`,
+            inventory_item_id: 'inv_p_0',
+            medicine_id: 'med_p_0',
+            quantity: 5,
+            unit_price: 1500,
+            subtotal: 7500,
+            dispensed_by_user_id: 'user_1',
+            is_prescription_dispense: false,
+          },
+        ],
+        payment_method: 'cash',
+        discount_amount: 0,
+        discount_authorized_by_user_id: null,
+        tax_amount: 0,
+        grand_total: 7500,
+        currency: 'TZS',
+        synced_at: null,
+      });
+    }
+
+    const start = performance.now();
+    const result = computeStockAnalytics(
+      perfItems,
+      perfMeds,
+      perfSales,
+      [],
+      [],
+      '90d',
+      new Date('2026-03-31T12:00:00Z')
+    );
+    const duration = performance.now() - start;
+    console.log(`[PERF REPORT] 2,000 SKUs × 90 days computation took ${duration.toFixed(2)}ms`);
+
+    expect(result.kpis.total_skus).toBe(2000);
+    expect(duration).toBeLessThan(150);
+  });
 });

@@ -1,12 +1,4 @@
 import * as React from 'react';
-import {
-  PageToolbar,
-  FilterTabs,
-  Button,
-  IconButton,
-  Popover,
-} from '@40labs/ui-components';
-import { Download, Share2, Eye, SlidersHorizontal } from 'lucide-react';
 import { TabContainer } from '../../components/TabContainer';
 import { useReports } from '../../hooks/useReports';
 import { useBusiness } from '../../hooks/useBusiness';
@@ -14,23 +6,20 @@ import { useReportLayoutStore } from '../../stores/useReportLayoutStore';
 import { useToast } from '../../hooks/useToast';
 import {
   ReportCategoryId,
-  reportCategoriesConfig,
 } from './config/reportCategories';
-import { PeriodSelector, PeriodOption, getPeriodDateRange } from './components/PeriodSelector';
-import { ReportChartRow } from './components/ReportChartRow';
-import { ReportSummaryStrip } from './components/ReportSummaryStrip';
+import { PeriodOption, getPeriodDateRange } from './components/PeriodSelector';
+import { ReportsHeader } from './components/ReportsHeader';
+import { ReportsFilterBar } from './components/ReportsFilterBar';
+import { ReportsKpiRow } from './components/ReportsKpiRow';
+import { UnifiedChart } from './components/UnifiedChart';
 import { ReportTable } from './components/ReportTable';
 import { downloadReportPdf } from './utils/exportReportPdf';
 import { ReportShareModal } from './components/ReportShareModal';
-import { ReportSelectionList } from './components/ReportSelectionList';
 import { ReportPreviewModal } from './components/ReportPreviewModal';
 import { ReportEditorModal } from './components/ReportEditorModal';
 import { convertCategoryDataToCanonical, CanonicalReport } from './types/reportModel';
-
-const CATEGORY_TABS = Object.values(reportCategoriesConfig).map((cat) => ({
-  id: cat.id,
-  label: cat.label,
-}));
+import { useReportChartState } from './state/useReportChartState';
+import { getUnifiedChartDataForTab } from './config/seriesData';
 
 export const ReportsScreen: React.FC = () => {
   const { business } = useBusiness();
@@ -48,6 +37,23 @@ export const ReportsScreen: React.FC = () => {
 
   const { toast } = useToast();
 
+  const {
+    chartType,
+    granularity,
+    seriesVisibility,
+    compare,
+    setActiveTab,
+    setChartType,
+    setGranularity,
+    toggleSeries,
+    setCompare,
+    resetToDefault,
+  } = useReportChartState();
+
+  React.useEffect(() => {
+    setActiveTab(activeCategory);
+  }, [activeCategory, setActiveTab]);
+
   const handlePeriodChange = (option: PeriodOption, range: { start: Date; end: Date }) => {
     setPeriodOption(option);
     setDateRange(range);
@@ -56,16 +62,37 @@ export const ReportsScreen: React.FC = () => {
   const {
     categoryConfig,
     kpis,
-    chartConfig,
-    chartData,
     tableColumns,
     tableRows,
     isLoading,
     getReportForCategory,
+    contextData,
   } = useReports({
     categoryId: activeCategory,
     dateRange,
   });
+
+  const prevDateRange = React.useMemo(() => {
+    const duration = dateRange.end.getTime() - dateRange.start.getTime();
+    return {
+      start: new Date(dateRange.start.getTime() - duration - 1),
+      end: new Date(dateRange.start.getTime() - 1),
+    };
+  }, [dateRange]);
+
+  const { contextData: prevContextData } = useReports({
+    categoryId: activeCategory,
+    dateRange: prevDateRange,
+  });
+
+  const primaryChartData = React.useMemo(() => {
+    return getUnifiedChartDataForTab(activeCategory, contextData);
+  }, [activeCategory, contextData]);
+
+  const previousChartData = React.useMemo(() => {
+    if (!compare) return [];
+    return getUnifiedChartDataForTab(activeCategory, prevContextData);
+  }, [activeCategory, prevContextData, compare]);
 
   React.useEffect(() => {
     if (!isDownloadPopoverOpen) {
@@ -73,7 +100,6 @@ export const ReportsScreen: React.FC = () => {
     }
   }, [activeCategory, isDownloadPopoverOpen]);
 
-  // Construct canonical report for active category with real business profile
   const activeCanonicalReport: CanonicalReport = React.useMemo(() => {
     return convertCategoryDataToCanonical(
       activeCategory,
@@ -106,97 +132,21 @@ export const ReportsScreen: React.FC = () => {
     <TabContainer
       scroll
       toolbar={
-        <PageToolbar
-          left={
-            <FilterTabs
-              tabs={CATEGORY_TABS}
-              activeTabId={activeCategory}
-              onChange={(id) => setActiveCategory(id as ReportCategoryId)}
-            />
-          }
-          right={
-            <div className="flex items-center gap-2">
-              <PeriodSelector
-                value={periodOption}
-                onChange={handlePeriodChange}
-              />
-              <Button
-                type="button"
-                intent="neutral"
-                size="sm"
-                leftIcon={<SlidersHorizontal size={14} />}
-                onClick={() => setIsEditorOpen(true)}
-              >
-                Editor
-              </Button>
-              <Button
-                type="button"
-                intent="neutral"
-                size="sm"
-                leftIcon={<Eye size={14} />}
-                onClick={() => setIsPreviewOpen(true)}
-              >
-                Preview
-              </Button>
-              <Popover
-                isOpen={isDownloadPopoverOpen}
-                onClose={() => setIsDownloadPopoverOpen(false)}
-                title="Download PDF Reports"
-                position="bottom-end"
-                content={
-                  <div className="flex flex-col gap-3 w-[300px]">
-                    <ReportSelectionList
-                      selectedCategories={downloadCategories}
-                      onChange={setDownloadCategories}
-                      periodLabel={periodOption.replace('_', ' ').toUpperCase()}
-                      dateRange={dateRange}
-                      getReportForCategory={getReportForCategory}
-                    />
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-                      <Button
-                        type="button"
-                        intent="neutral"
-                        size="sm"
-                        onClick={() => setIsDownloadPopoverOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="button"
-                        intent="primary"
-                        size="sm"
-                        leftIcon={<Download size={14} />}
-                        disabled={downloadCategories.length === 0}
-                        onClick={handleExecuteDownload}
-                      >
-                        Download ({downloadCategories.length})
-                      </Button>
-                    </div>
-                  </div>
-                }
-              >
-                <IconButton
-                  icon={<Download size={14} />}
-                  label="Download PDF report"
-                  intent="ghost"
-                  size="sm"
-                  onClick={() => setIsDownloadPopoverOpen(true)}
-                />
-              </Popover>
-              <Button
-                type="button"
-                intent="primary"
-                size="sm"
-                leftIcon={<Share2 size={14} />}
-                onClick={() => setIsShareModalOpen(true)}
-              >
-                Share Report
-              </Button>
-            </div>
-          }
+        <ReportsHeader
+          activeCategory={activeCategory}
+          onChangeCategory={setActiveCategory}
+          periodLabel={periodOption.replace('_', ' ').toUpperCase()}
+          dateRange={dateRange}
+          getReportForCategory={getReportForCategory}
+          onShareClick={() => setIsShareModalOpen(true)}
+          isDownloadPopoverOpen={isDownloadPopoverOpen}
+          onToggleDownloadPopover={setIsDownloadPopoverOpen}
+          downloadCategories={downloadCategories}
+          onChangeDownloadCategories={setDownloadCategories}
+          onExecuteDownload={handleExecuteDownload}
         />
       }
-      bodyClassName="gap-6 p-6"
+      bodyClassName="flex flex-col gap-6 p-6 flex-1 min-h-0 overflow-y-auto"
       overlays={
         <>
           <ReportShareModal
@@ -229,15 +179,35 @@ export const ReportsScreen: React.FC = () => {
         </>
       }
     >
-      {/* 3× Chart Cards Row */}
-      <ReportChartRow
-        categoryId={activeCategory}
-        primaryConfig={chartConfig}
-        primaryData={chartData}
+      {/* Filter Bar directly above KPI row */}
+      <ReportsFilterBar
+        periodValue={periodOption}
+        onPeriodChange={handlePeriodChange}
+        compare={compare}
+        onCompareChange={setCompare}
+        onOpenEditor={() => setIsEditorOpen(true)}
+        onOpenPreview={() => setIsPreviewOpen(true)}
       />
 
-      {/* Metric Summary Strip */}
-      <ReportSummaryStrip kpis={kpis} />
+      {/* KPI Row */}
+      <ReportsKpiRow kpis={kpis} />
+
+      {/* Unified Chart */}
+      <UnifiedChart
+        categoryId={activeCategory}
+        chartType={chartType}
+        granularity={granularity}
+        seriesVisibility={seriesVisibility}
+        compare={compare}
+        onSelectChartType={setChartType}
+        onSelectGranularity={setGranularity}
+        onToggleSeries={toggleSeries}
+        onToggleCompare={setCompare}
+        onReset={() => resetToDefault(activeCategory)}
+        primaryData={primaryChartData}
+        previousData={previousChartData}
+        hasTimestamps={activeCategory === 'sales'}
+      />
 
       {/* Detailed Data Table */}
       <div className="flex flex-col gap-2">
