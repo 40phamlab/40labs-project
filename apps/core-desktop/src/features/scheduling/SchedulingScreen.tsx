@@ -1,17 +1,19 @@
-// [PHASE: MVP]
+// [PHASE: 6D & 6D-1]
 import * as React from 'react';
-import { PageToolbar, Button, IconButton } from '@40labs/ui-components';
-import { Plus, RefreshCw, CheckCircle2, Clock, AlertTriangle, Send } from 'lucide-react';
 import type { Schedule } from '@40labs/types';
 import { mockSchedules } from '../../lib/mockData';
 import { TabContainer } from '../../components/TabContainer';
-import { ScheduleListPanel } from './ScheduleListPanel';
-import { ScheduleDetailPanel } from './ScheduleDetailPanel';
+import { SchedulingHeader, StatusFilterTab } from './components/SchedulingHeader';
+import { ScheduleListPane } from './components/ScheduleListPane';
+import { ScheduleDetailPane } from './components/ScheduleDetailPane';
 import { NewScheduleModal } from './NewScheduleModal';
 
 export const SchedulingScreen: React.FC = () => {
-  const [schedules, setSchedules] = React.useState<Schedule[]>(mockSchedules);
+  const [schedules, setSchedules] = React.useState<Schedule[]>(() =>
+    mockSchedules.map((s) => ({ ...s, enabled: (s as any).enabled !== false }))
+  );
   const [selectedId, setSelectedId] = React.useState<string | null>(mockSchedules[0]?.id || null);
+  const [activeTab, setActiveTab] = React.useState<StatusFilterTab>('all');
   const [isLoading, setIsLoading] = React.useState(false);
 
   // Modal states
@@ -33,7 +35,7 @@ export const SchedulingScreen: React.FC = () => {
   const handleRefresh = React.useCallback(() => {
     setIsLoading(true);
     setTimeout(() => {
-      setSchedules([...mockSchedules]);
+      setSchedules([...mockSchedules.map((s) => ({ ...s, enabled: (s as any).enabled !== false }))]);
       setIsLoading(false);
     }, 400);
   }, []);
@@ -43,12 +45,34 @@ export const SchedulingScreen: React.FC = () => {
     return schedules.find((s) => s.id === selectedId) || null;
   }, [schedules, selectedId]);
 
-  const stats = React.useMemo(() => {
-    const active = schedules.filter((s) => s.status === 'pending').length;
-    const pending = active;
-    const sentToday = schedules.filter((s) => s.status === 'sent').length;
-    const failed = schedules.filter((s) => s.status === 'failed').length;
-    return { active, pending, sentToday, failed };
+  const counts = React.useMemo(() => {
+    let all = schedules.length;
+    let active = 0;
+    let paused = 0;
+    let sent = 0;
+    let failed = 0;
+
+    for (const s of schedules) {
+      const isEnabled = s.enabled !== false;
+      const isSent = s.status === 'sent';
+      const isFailed = s.status === 'failed';
+      const isPendingOrQueued = s.status === 'pending' || s.status === 'queued_offline';
+
+      if (isEnabled && isPendingOrQueued) {
+        active++;
+      }
+      if (!isEnabled && !isSent) {
+        paused++;
+      }
+      if (isSent) {
+        sent++;
+      }
+      if (isFailed) {
+        failed++;
+      }
+    }
+
+    return { all, active, paused, sent, failed };
   }, [schedules]);
 
   const handleSaveSchedule = React.useCallback((saved: Schedule) => {
@@ -69,52 +93,25 @@ export const SchedulingScreen: React.FC = () => {
     }
   }, [selectedId]);
 
+  const handleToggleEnabled = React.useCallback((id: string, enabled: boolean) => {
+    setSchedules((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, enabled, updated_at: new Date().toISOString() } : s))
+    );
+  }, []);
+
   return (
     <TabContainer
       toolbar={
-        <PageToolbar
-          left={
-            <div className="flex items-center gap-4">
-              <h2 className="text-base font-heading font-bold text-text">Scheduling & Campaigns</h2>
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-panel-strong/40 border border-border/40 text-[11px] font-mono">
-                  <Clock size={12} className="text-accent" /> Active: <strong>{stats.active}</strong>
-                </span>
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-panel-strong/40 border border-border/40 text-[11px] font-mono">
-                  <Send size={12} className="text-warning" /> Pending: <strong>{stats.pending}</strong>
-                </span>
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-panel-strong/40 border border-border/40 text-[11px] font-mono">
-                  <CheckCircle2 size={12} className="text-success" /> Sent Today: <strong>{stats.sentToday}</strong>
-                </span>
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-panel-strong/40 border border-border/40 text-[11px] font-mono">
-                  <AlertTriangle size={12} className="text-danger" /> Failed: <strong>{stats.failed}</strong>
-                </span>
-              </div>
-            </div>
-          }
-          right={
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                intent="primary"
-                size="sm"
-                leftIcon={<Plus size={14} />}
-                onClick={() => {
-                  setEditingSchedule(null);
-                  setIsNewModalOpen(true);
-                }}
-              >
-                + New Schedule
-              </Button>
-              <IconButton
-                icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-                label="Refresh schedules"
-                intent="ghost"
-                size="sm"
-                onClick={handleRefresh}
-              />
-            </div>
-          }
+        <SchedulingHeader
+          activeTab={activeTab}
+          onSelectTab={setActiveTab}
+          counts={counts}
+          onNewSchedule={() => {
+            setEditingSchedule(null);
+            setIsNewModalOpen(true);
+          }}
+          onRefresh={handleRefresh}
+          isLoading={isLoading}
         />
       }
       overlays={
@@ -134,10 +131,11 @@ export const SchedulingScreen: React.FC = () => {
         {isNarrow ? (
           mobileDetailActive && selectedSchedule ? (
             <div className="flex-1 h-full overflow-hidden bg-surface-primary">
-              <ScheduleDetailPanel
+              <ScheduleDetailPane
                 schedule={selectedSchedule}
                 onEdit={() => setEditingSchedule(selectedSchedule)}
                 onDelete={handleDeleteSchedule}
+                onToggleEnabled={handleToggleEnabled}
                 onSendNow={(id) => {
                   setSchedules((prev) =>
                     prev.map((s) => (s.id === id ? { ...s, status: 'sent', sent_count: s.sent_count + 1, updated_at: new Date().toISOString() } : s))
@@ -154,9 +152,10 @@ export const SchedulingScreen: React.FC = () => {
             </div>
           ) : (
             <div className="flex-1 h-full overflow-hidden bg-surface-primary">
-              <ScheduleListPanel
+              <ScheduleListPane
                 schedules={schedules}
                 selectedId={selectedId}
+                activeTab={activeTab}
                 onSelectSchedule={(id) => {
                   setSelectedId(id);
                   setMobileDetailActive(true);
@@ -166,21 +165,21 @@ export const SchedulingScreen: React.FC = () => {
           )
         ) : (
           <>
-            {/* List Column (380–420px) */}
-            <div className="w-[400px] shrink-0 h-full overflow-hidden border-r border-border/50 bg-surface-primary elevation-raised">
-              <ScheduleListPanel
-                schedules={schedules}
-                selectedId={selectedId}
-                onSelectSchedule={setSelectedId}
-              />
-            </div>
+            {/* List Pane */}
+            <ScheduleListPane
+              schedules={schedules}
+              selectedId={selectedId}
+              activeTab={activeTab}
+              onSelectSchedule={setSelectedId}
+            />
 
             {/* Detail Pane */}
             <div className="flex-1 h-full overflow-hidden bg-surface-primary">
-              <ScheduleDetailPanel
+              <ScheduleDetailPane
                 schedule={selectedSchedule}
                 onEdit={() => selectedSchedule && setEditingSchedule(selectedSchedule)}
                 onDelete={handleDeleteSchedule}
+                onToggleEnabled={handleToggleEnabled}
                 onSendNow={(id) => {
                   setSchedules((prev) =>
                     prev.map((s) => (s.id === id ? { ...s, status: 'sent', sent_count: s.sent_count + 1, updated_at: new Date().toISOString() } : s))
