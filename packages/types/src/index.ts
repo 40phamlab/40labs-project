@@ -4,6 +4,7 @@ export * from './user';
 export * from './customer';
 export * from './medicine-inventory';
 export * from './sales';
+export * from './dispensingInstruction';
 export * from './fiscal';
 export * from './lab';
 export * from './purchases';

@@ -1,10 +1,13 @@
 import * as React from 'react';
 import { Card, Button, Checkbox, IconButton, MoneyDisplay } from '@40labs/ui-components';
 import { CustomerPicker } from '../../customers/components/CustomerPicker';
-import { Customer } from '@40labs/types';
-import { ChevronDown, Printer, Send, CheckCircle2 } from 'lucide-react';
+import { Customer, SaleLine } from '@40labs/types';
+import { ChevronDown, Printer, Send, CheckCircle2, Edit3 } from 'lucide-react';
 import { pharmaciesApi, notificationsApi } from '../../../api';
 import { useToast } from '../../../hooks/useToast';
+import { useDispensingInstructions } from '../../../hooks/useDispensingInstructions';
+import { InstructionsPopover } from './InstructionsPopover';
+import { t } from '@40labs/i18n';
 
 export interface ConfirmedSaleData {
   saleId: string;
@@ -15,6 +18,7 @@ export interface ConfirmedSaleData {
   cost: number;
   description: string;
   date: string;
+  lines?: SaleLine[];
 }
 
 export interface CustomerReportPanelProps {
@@ -46,6 +50,10 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
 }) => {
   const { toast } = useToast();
   const [sending, setSending] = React.useState(false);
+  const [instructionsOpen, setInstructionsOpen] = React.useState(false);
+
+  const { instructions, saveInstructions } = useDispensingInstructions(confirmedSale?.saleId || null);
+  const hasInstructions = instructions.length > 0;
 
   const handleSend = async () => {
     if (!confirmedSale) return;
@@ -141,7 +149,22 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
                 </div>
 
                 <div>
-                  <p className="text-text-muted text-[9px] uppercase font-bold">Items</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-text-muted text-[9px] uppercase font-bold">Items</p>
+                    <div className="relative">
+                      <IconButton
+                        icon={<Edit3 size={14} className={hasInstructions ? 'text-[#16A34A]' : 'text-text-muted'} />}
+                        label={t('instructions.title')}
+                        intent="ghost"
+                        size="sm"
+                        onClick={() => setInstructionsOpen(true)}
+                        title={t('instructions.title')}
+                      />
+                      {hasInstructions && (
+                        <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#16A34A] rounded-full border border-surface-primary" />
+                      )}
+                    </div>
+                  </div>
                   <p className="line-clamp-2 italic text-text-muted text-[10px]">{confirmedSale.description}</p>
                 </div>
               </div>
@@ -171,6 +194,18 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
                 Send Customer Report
               </Button>
             </div>
+
+            {confirmedSale.lines && (
+              <InstructionsPopover
+                isOpen={instructionsOpen}
+                onClose={() => setInstructionsOpen(false)}
+                saleId={confirmedSale.saleId}
+                saleLines={confirmedSale.lines}
+                medicineNames={{}}
+                existingInstructions={instructions}
+                onSave={saveInstructions}
+              />
+            )}
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-border/30 rounded-card text-xs text-text-muted italic bg-surface-primary/10">

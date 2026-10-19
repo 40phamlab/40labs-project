@@ -13,10 +13,13 @@ core trust promise (PRD Goal 1).
 - MedicineSearch (queries InventoryItem, shows stock level inline)
 - PaymentMethodSelect
 - ReceiptPreview / FiscalReceiptStatus (sync dot, never blocking)
+- InstructionsPopover / InstructionRow (per-item dispensing instructions for customer report & print)
 
 ## API deps
 - POST /sales
 - GET /sales/:id
+- GET /sales/:sale_id/instructions
+- PUT /sales/:sale_id/instructions (body: `DispensingInstruction[]`, upsert by `sale_line_id`)
 - (fiscal) POST /sales/:id/fiscal-receipt — queues to outbox if offline
 
 ## Offline behavior
@@ -33,4 +36,4 @@ PIN-gated (threshold value TBD — flag in PROGRESS.md if not yet decided).
 `color-primary` confirm/complete actions, `font-mono` for all prices/totals.
 
 ## Data model reference
-`Sale`, `SaleLine`, `FiscalReceipt`, `Customer`, `Medicine`, `InventoryItem`
+`Sale`, `SaleLine`, `FiscalReceipt`, `Customer`, `Medicine`, `InventoryItem`, `DispensingInstruction`

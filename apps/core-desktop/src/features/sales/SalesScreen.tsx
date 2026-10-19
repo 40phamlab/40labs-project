@@ -149,6 +149,7 @@ export const SalesScreen: React.FC = () => {
       cost: grandTotal,
       description: itemSummary,
       date: saleDate,
+      lines: completed.lines,
     });
 
     setReceiptModalData({

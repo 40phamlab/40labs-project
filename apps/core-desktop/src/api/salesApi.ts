@@ -1,4 +1,4 @@
-import type { Sale, SaleLine, FiscalReceipt } from '@40labs/types';
+import type { Sale, SaleLine, FiscalReceipt, DispensingInstruction } from '@40labs/types';
 import { initialSales, initialFiscalReceipts, WORKSPACE_ID, BRANCH_ID } from '../devData';
 import { isUsingTauriIpc, invokeCommand } from './client';
 
@@ -18,6 +18,7 @@ export interface UpdateSalePayload {
 
 let salesStore: Sale[] = [...initialSales];
 let fiscalReceiptsStore: FiscalReceipt[] = [...initialFiscalReceipts];
+let instructionsStore: Map<string, DispensingInstruction[]> = new Map();
 
 export const salesApi = {
   list: async (): Promise<Sale[]> => {
@@ -109,6 +110,27 @@ export const salesApi = {
       return invokeCommand<FiscalReceipt[]>('get_fiscal_receipts');
     }
     return [...fiscalReceiptsStore];
+  },
+
+  getInstructions: async (saleId: string): Promise<DispensingInstruction[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<DispensingInstruction[]>('get_sale_instructions', { saleId });
+    }
+    return instructionsStore.get(saleId) || [];
+  },
+
+  updateInstructions: async (saleId: string, instructions: DispensingInstruction[]): Promise<DispensingInstruction[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<DispensingInstruction[]>('update_sale_instructions', { saleId, instructions });
+    }
+    const existing = instructionsStore.get(saleId) || [];
+    const map = new Map(existing.map((i) => [i.sale_line_id, i]));
+    for (const inst of instructions) {
+      map.set(inst.sale_line_id, inst);
+    }
+    const updated = Array.from(map.values());
+    instructionsStore.set(saleId, updated);
+    return updated;
   },
 
   // Backwards compatibility aliases
