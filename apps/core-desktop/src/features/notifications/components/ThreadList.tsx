@@ -3,6 +3,7 @@ import type { Thread } from '@40labs/types';
 import { ThreadListItem } from './ThreadListItem';
 import { Search, Plus, RefreshCw } from 'lucide-react';
 import { IconButton } from '@40labs/ui-components';
+import { useNotificationsStore } from '../../../stores/useNotificationsStore';
 
 export interface ThreadListProps {
   threads: Thread[];
@@ -28,7 +29,8 @@ export const ThreadList: React.FC<ThreadListProps> = ({
   className = '',
 }) => {
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [filter, setFilter] = React.useState<string>('all');
+  const activeCategory = useNotificationsStore((s) => s.activeCategory);
+  const setActiveCategory = useNotificationsStore((s) => s.setActiveCategory);
 
   const counts = React.useMemo(() => {
     let all = 0;
@@ -36,7 +38,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
     let customers = 0;
     let business = 0;
     let gov = 0;
-    let system = 0;
+    let marketing = 0;
     let archived = 0;
 
     for (const t of threads) {
@@ -49,23 +51,23 @@ export const ThreadList: React.FC<ThreadListProps> = ({
       if (t.counterparty_type === 'customer') customers++;
       if (t.counterparty_type === 'business') business++;
       if (t.counterparty_type === 'gov') gov++;
-      if (t.counterparty_type === 'marketing' || t.counterparty_type === 'system') system++;
+      if (t.counterparty_type === 'marketing' || t.counterparty_type === 'system') marketing++;
     }
 
-    return { all, unread, customers, business, gov, system, archived };
+    return { all, unread, customers, business, gov, marketing, archived };
   }, [threads]);
 
   const filteredThreads = React.useMemo(() => {
     return threads.filter((t) => {
-      if (filter === 'archived') {
+      if (activeCategory === 'archived') {
         if (!t.archived) return false;
       } else {
         if (t.archived) return false;
-        if (filter === 'unread' && t.unread_count === 0) return false;
-        if (filter === 'customers' && t.counterparty_type !== 'customer') return false;
-        if (filter === 'business' && t.counterparty_type !== 'business') return false;
-        if (filter === 'gov' && t.counterparty_type !== 'gov') return false;
-        if (filter === 'system' && t.counterparty_type !== 'marketing' && t.counterparty_type !== 'system') return false;
+        if (activeCategory === 'unread' && t.unread_count === 0) return false;
+        if (activeCategory === 'customers' && t.counterparty_type !== 'customer') return false;
+        if (activeCategory === 'business' && t.counterparty_type !== 'business') return false;
+        if (activeCategory === 'gov' && t.counterparty_type !== 'gov') return false;
+        if (activeCategory === 'marketing' && t.counterparty_type !== 'marketing' && t.counterparty_type !== 'system') return false;
       }
 
       if (searchQuery && !t.display_name.toLowerCase().includes(searchQuery.toLowerCase())) {
@@ -74,7 +76,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
 
       return true;
     });
-  }, [threads, searchQuery, filter]);
+  }, [threads, searchQuery, activeCategory]);
 
   const chips = [
     { key: 'all', label: 'All', count: counts.all },
@@ -82,7 +84,7 @@ export const ThreadList: React.FC<ThreadListProps> = ({
     { key: 'customers', label: 'Customers', count: counts.customers },
     { key: 'business', label: 'Business', count: counts.business },
     { key: 'gov', label: 'Gov', count: counts.gov },
-    { key: 'system', label: 'System', count: counts.system },
+    { key: 'marketing', label: 'Marketing', count: counts.marketing },
     { key: 'archived', label: 'Archived', count: counts.archived },
   ];
 
@@ -128,9 +130,9 @@ export const ThreadList: React.FC<ThreadListProps> = ({
             <button
               key={chip.key}
               type="button"
-              onClick={() => setFilter(chip.key)}
+              onClick={() => setActiveCategory(chip.key as any)}
               className={`px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 transition-colors cursor-pointer ${
-                filter === chip.key
+                activeCategory === chip.key
                   ? 'bg-primary text-white shadow-2xs'
                   : 'bg-panel-strong text-text-muted hover:text-text hover:bg-surface-hover'
               }`}

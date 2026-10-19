@@ -2,11 +2,11 @@ import { create } from 'zustand';
 
 interface NotificationsState {
   selectedNotificationId: string | null;
-  activeCategory: 'all' | 'customers' | 'gov' | 'marketing' | 'business';
+  activeCategory: 'all' | 'unread' | 'customers' | 'gov' | 'marketing' | 'business' | 'archived';
   drafts: Record<string, string>;
 
   setSelectedNotificationId: (id: string | null) => void;
-  setActiveCategory: (category: 'all' | 'customers' | 'gov' | 'marketing' | 'business') => void;
+  setActiveCategory: (category: 'all' | 'unread' | 'customers' | 'gov' | 'marketing' | 'business' | 'archived') => void;
   setDraft: (notificationId: string, text: string) => void;
   clearDraft: (notificationId: string) => void;
 }

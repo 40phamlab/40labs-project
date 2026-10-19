@@ -15,6 +15,8 @@ export interface ChatPaneProps {
   onSendReply: (body: string, attachmentIds?: string[]) => Promise<void>;
   onArchive: (id: string) => void;
   onDelete: (id: string) => void;
+  initialAttachments?: MessageAttachment[];
+  onClearInitialAttachments?: () => void;
 }
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
@@ -35,13 +37,22 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   onSendReply,
   onArchive,
   onDelete,
+  initialAttachments,
+  onClearInitialAttachments,
 }) => {
   const { toast } = useToast();
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = React.useState(false);
-  const [attachments, setAttachments] = React.useState<MessageAttachment[]>([]);
+  const [attachments, setAttachments] = React.useState<MessageAttachment[]>(initialAttachments || []);
   const [showScrollBottom, setShowScrollBottom] = React.useState(false);
+
+  React.useEffect(() => {
+    if (initialAttachments && initialAttachments.length > 0) {
+      setAttachments(initialAttachments);
+      onClearInitialAttachments?.();
+    }
+  }, [initialAttachments, onClearInitialAttachments]);
 
   // Auto-scroll only when near bottom
   React.useEffect(() => {

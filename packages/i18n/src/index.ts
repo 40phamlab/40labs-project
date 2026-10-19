@@ -350,6 +350,10 @@ const swTzData = {
   'inventory.visualization': 'Taswira ya Mwelekeo wa Stoo',
   'inventory.hideGraph': 'Ficha grafu',
   'inventory.showGraph': 'Onyesha grafu',
+  'notifications.launchpad.searchCustomer': 'Tafuta Mteja',
+  'notifications.launchpad.newChat': 'Mazungumzo Mapya',
+  'notifications.launchpad.attachMedia': 'Ambatisha',
+  'notifications.chat.noResults': 'Hakuna matokeo',
 };
 
 export const translations = {
@@ -705,6 +709,10 @@ export const translations = {
     'dashboard.statusReportReady': 'Report Ready',
     'dashboard.orderOrdinal': 'Order #{id}',
     'dashboard.labOrdinal': 'Test #{id}',
+    'notifications.launchpad.searchCustomer': 'Search customer',
+    'notifications.launchpad.newChat': 'New chat',
+    'notifications.launchpad.attachMedia': 'Attach media',
+    'notifications.chat.noResults': 'No results',
   },
 } as const;
 
