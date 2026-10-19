@@ -1,16 +1,16 @@
-// [phase: 8D] Unified Interactive Overview Chart Panel (~360px Height)
+// [phase: 8D] Unified Interactive Overview Chart Panel with Clean Toolbar & Compact Settings Menu
 import * as React from 'react';
 import {
-  TrendingUp,
-  AreaChart,
-  BarChart3,
+  SlidersHorizontal,
 } from 'lucide-react';
-import { SegmentedControl, Alert } from '@40labs/ui-components';
+import { Dropdown, Alert } from '@40labs/ui-components';
 import type { DashboardSummary } from '../../../devData/dashboard/summary';
 import {
-  buildUnifiedChartData,
+  buildAnalyticsChartData,
   type DashboardChartType,
-  type DashboardPeriod,
+  type AnalyticsPeriod,
+  type TimeGrouping,
+  type ChartScale,
 } from '../utils/chartData';
 import { DashboardChart } from './DashboardChart';
 
@@ -25,19 +25,18 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
   loading = false,
   error,
 }) => {
-  const [period, setPeriod] = React.useState<DashboardPeriod>('30d');
   const [chartType, setChartType] = React.useState<DashboardChartType>('bar');
+  const [period, setPeriod] = React.useState<AnalyticsPeriod>('30d');
+  const [grouping, setGrouping] = React.useState<TimeGrouping>('daily');
+  const [scale, setScale] = React.useState<ChartScale>('auto');
   const [hiddenSeries, setHiddenSeries] = React.useState<string[]>([]);
+  const [showGrid, setShowGrid] = React.useState<boolean>(true);
+  const [showLegend, setShowLegend] = React.useState<boolean>(false);
+  const [showMarkers, setShowMarkers] = React.useState<boolean>(true);
 
-  const handlePeriodChange = (val: string) => {
-    const newPeriod = val as DashboardPeriod;
-    setPeriod(newPeriod);
-    if (newPeriod === '90d' && chartType === 'bar') {
-      setChartType('area');
-    } else if ((newPeriod === '7d' || newPeriod === '30d') && chartType === 'area') {
-      setChartType('bar');
-    }
-  };
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState<boolean>(false);
+  const [customStartDate, setCustomStartDate] = React.useState<string>('');
+  const [customEndDate, setCustomEndDate] = React.useState<string>('');
 
   const toggleSeries = (dataKey: string) => {
     setHiddenSeries((prev) =>
@@ -45,11 +44,17 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
     );
   };
 
-  const { data, series, totalValues } = buildUnifiedChartData(summary, period);
+  const { data, pieData, series, totalValues, canUseLog } = buildAnalyticsChartData(summary, {
+    period,
+    grouping,
+    scale,
+    customStartDate,
+    customEndDate,
+  });
 
   return (
     <div className="bg-panel rounded-card border border-border/50 p-4 elevation-raised flex flex-col gap-3 min-h-[360px]">
-      {/* Controls Toolbar on ONE Row */}
+      {/* Controls Toolbar on ONE Row (Clean & Minimal) */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/30 pb-2 shrink-0">
         {/* Panel Title */}
         <div className="flex items-center gap-1.5 min-w-0">
@@ -58,64 +63,156 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
           </h3>
         </div>
 
-        {/* Controls Toolbar */}
+        {/* Controls Toolbar (Only Compact Settings Menu) */}
         <div className="flex items-center gap-2 text-xs shrink-0">
-          {/* Range Segmented: Siku 7 | 30 | 90 */}
-          <SegmentedControl
-            size="sm"
-            value={period}
-            onChange={handlePeriodChange}
-            options={[
-              { value: '7d', label: 'Siku 7' },
-              { value: '30d', label: '30' },
-              { value: '90d', label: '90' },
-            ]}
-          />
+          {/* Compact Chart Settings Menu Dropdown */}
+          <Dropdown
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            placement="bottom-end"
+            trigger={
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen((prev) => !prev)}
+                className={`p-1.5 rounded-md border text-xs transition-colors cursor-pointer inline-flex items-center gap-1 ${
+                  isSettingsOpen
+                    ? 'bg-primary/10 border-primary text-primary'
+                    : 'bg-surface-secondary border-border/40 text-text-muted hover:text-text hover:border-border'
+                }`}
+                title="Mipangilio ya Chati (Chart Settings)"
+                aria-label="Chart Settings"
+              >
+                <SlidersHorizontal size={14} />
+              </button>
+            }
+          >
+            <div className="w-[300px] p-3 bg-panel border border-border rounded-card elevation-raised space-y-3 text-xs max-h-[420px] overflow-y-auto">
+              <div className="font-bold uppercase tracking-wider text-text-muted border-b border-border/20 pb-1.5 flex justify-between items-center">
+                <span>Mipangilio ya Chati</span>
+                <span className="text-[10px] text-text-muted font-mono">Analytics</span>
+              </div>
 
-          {/* Icon-Only Chart-Type Switcher: Bar | Line | Area */}
-          <div className="flex items-center bg-surface-secondary rounded-[6px] p-0.5 border border-border/40">
-            <button
-              type="button"
-              onClick={() => setChartType('bar')}
-              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
-                chartType === 'bar'
-                  ? 'bg-surface-elevated text-primary font-bold shadow-xs'
-                  : 'text-text-muted hover:text-text'
-              }`}
-              title="Bar chart"
-              aria-label="Bar chart"
-            >
-              <BarChart3 size={13} />
-            </button>
+              {/* 1. Chart Type */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-text-muted">Aina ya Chati (Chart Type)</label>
+                <select
+                  value={chartType}
+                  onChange={(e) => setChartType(e.target.value as DashboardChartType)}
+                  className="w-full bg-surface-secondary border border-border/60 rounded px-2 py-1 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="bar">Bar Chart</option>
+                  <option value="line">Line Chart</option>
+                  <option value="area">Area Chart</option>
+                  <option value="stackedBar">Stacked Bar</option>
+                  <option value="stackedArea">Stacked Area</option>
+                  <option value="pie">Pie Chart</option>
+                  <option value="donut">Donut Chart</option>
+                </select>
+              </div>
 
-            <button
-              type="button"
-              onClick={() => setChartType('line')}
-              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
-                chartType === 'line'
-                  ? 'bg-surface-elevated text-primary font-bold shadow-xs'
-                  : 'text-text-muted hover:text-text'
-              }`}
-              title="Line chart"
-              aria-label="Line chart"
-            >
-              <TrendingUp size={13} />
-            </button>
+              {/* 2. Time Range */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-text-muted">Kipindi (Time Range)</label>
+                <select
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value as AnalyticsPeriod)}
+                  className="w-full bg-surface-secondary border border-border/60 rounded px-2 py-1 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="today">Leo (Today)</option>
+                  <option value="7d">Siku 7 zilizopita</option>
+                  <option value="30d">Siku 30 zilizopita</option>
+                  <option value="90d">Siku 90 zilizopita</option>
+                  <option value="thisMonth">Mwezi huu</option>
+                  <option value="lastMonth">Mwezi uliopita</option>
+                  <option value="thisYear">Mwaka huu</option>
+                  <option value="custom">Kipindi maalum (Custom)</option>
+                </select>
+                {period === 'custom' && (
+                  <div className="flex gap-2 pt-1">
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-1/2 bg-surface-secondary border border-border/60 rounded px-1.5 py-0.5 text-[10px] text-text"
+                    />
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-1/2 bg-surface-secondary border border-border/60 rounded px-1.5 py-0.5 text-[10px] text-text"
+                    />
+                  </div>
+                )}
+              </div>
 
-            <button
-              type="button"
-              onClick={() => setChartType('area')}
-              className={`p-1 rounded text-xs transition-colors cursor-pointer ${
-                chartType === 'area'
-                  ? 'bg-surface-elevated text-primary font-bold shadow-xs'
-                  : 'text-text-muted hover:text-text'
-              }`}
-              title="Area chart"
-              aria-label="Area chart"
-            >
-              <AreaChart size={13} />
-            </button>
-          </div>
+              {/* 3. Time Grouping */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-text-muted">Makundi ya Muda (Grouping)</label>
+                <select
+                  value={grouping}
+                  onChange={(e) => setGrouping(e.target.value as TimeGrouping)}
+                  className="w-full bg-surface-secondary border border-border/60 rounded px-2 py-1 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="hourly">Kila Saa (Hourly)</option>
+                  <option value="daily">Kila Siku (Daily)</option>
+                  <option value="weekly">Kila Wiki (Weekly)</option>
+                  <option value="monthly">Kila Mwezi (Monthly)</option>
+                  <option value="yearly">Kila Mwaka (Yearly)</option>
+                </select>
+              </div>
+
+              {/* 4. Scale */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase text-text-muted">Kiwango (Scale)</label>
+                <select
+                  value={scale}
+                  onChange={(e) => setScale(e.target.value as ChartScale)}
+                  className="w-full bg-surface-secondary border border-border/60 rounded px-2 py-1 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                >
+                  <option value="auto">Otomatiki (Auto)</option>
+                  <option value="linear">Linear</option>
+                  <option value="log" disabled={!canUseLog}>
+                    Logarithmic {canUseLog ? '' : '(Batilishi: Inahitaji maadili > 0)'}
+                  </option>
+                </select>
+              </div>
+
+              {/* 5. Display Options */}
+              <div className="space-y-1.5 pt-1 border-t border-border/20">
+                <label className="text-[10px] font-bold uppercase text-text-muted">Chaguzi za Onyesho (Display Options)</label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-text select-none">
+                  <input
+                    type="checkbox"
+                    checked={showGrid}
+                    onChange={(e) => setShowGrid(e.target.checked)}
+                    className="rounded border-border text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <span>Onyesha Mistari ya Gridi (Grid Lines)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-text select-none">
+                  <input
+                    type="checkbox"
+                    checked={showLegend}
+                    onChange={(e) => setShowLegend(e.target.checked)}
+                    className="rounded border-border text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <span>Onyesha Kielezo ndani ya Chati (Legend)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-text select-none">
+                  <input
+                    type="checkbox"
+                    checked={showMarkers}
+                    onChange={(e) => setShowMarkers(e.target.checked)}
+                    className="rounded border-border text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <span>Onyesha Vituo vya Pointi (Markers)</span>
+                </label>
+              </div>
+            </div>
+          </Dropdown>
         </div>
       </div>
 
@@ -132,10 +229,16 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
         ) : (
           <DashboardChart
             data={data}
+            pieData={pieData}
             series={series}
             chartType={chartType}
-            period={period}
+            period={period === 'custom' ? '30d' : period as any}
             hiddenSeries={hiddenSeries}
+            showGrid={showGrid}
+            showLegend={showLegend}
+            showMarkers={showMarkers}
+            scale={scale}
+            canUseLog={canUseLog}
           />
         )}
       </div>

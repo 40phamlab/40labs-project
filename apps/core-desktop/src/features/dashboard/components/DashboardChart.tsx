@@ -1,4 +1,4 @@
-// [phase: 8D] DashboardChart Component (Unified Multi-Series)
+// [phase: 8D] DashboardChart Component (Advanced Business Analytics)
 import * as React from 'react';
 import {
   ResponsiveContainer,
@@ -8,16 +8,21 @@ import {
   Line,
   AreaChart,
   Area,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
 } from 'recharts';
 import { colors } from '@40labs/design-tokens';
 import type {
   DashboardChartType,
   DashboardPeriod,
   ChartSeriesDefinition,
+  ChartScale,
 } from '../utils/chartData';
 import {
   formatCompactNumber,
@@ -27,17 +32,23 @@ import {
 
 export interface DashboardChartProps {
   data: any[];
+  pieData: { name: string; value: number; color: string }[];
   series: ChartSeriesDefinition[];
   chartType: DashboardChartType;
   period: DashboardPeriod;
   hiddenSeries?: string[];
+  showGrid?: boolean;
+  showLegend?: boolean;
+  showMarkers?: boolean;
+  scale?: ChartScale;
+  canUseLog?: boolean;
   className?: string;
 }
 
 const UnifiedCustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload || payload.length === 0) return null;
 
-  const formattedDate = formatXAxisDate(String(label));
+  const formattedDate = label ? formatXAxisDate(String(label)) : payload[0]?.name;
 
   return (
     <div className="bg-surface-elevated border border-border rounded-md p-2.5 shadow-xl text-xs font-ui min-w-[160px] space-y-1.5 z-50">
@@ -49,7 +60,7 @@ const UnifiedCustomTooltip = ({ active, payload, label }: any) => {
           const name = entry.name || entry.dataKey;
           const val = entry.value ?? 0;
           const color = entry.color || entry.stroke || entry.fill;
-          const isMoney = entry.dataKey !== 'customers' && entry.dataKey !== 'lab';
+          const isMoney = entry.dataKey !== 'customers' && entry.dataKey !== 'lab' && name !== 'Wateja' && name !== 'Maabara';
           const formattedVal = isMoney
             ? `TZS ${new Intl.NumberFormat('en-US').format(Math.round(val))}`
             : new Intl.NumberFormat('en-US').format(val);
@@ -71,18 +82,21 @@ const UnifiedCustomTooltip = ({ active, payload, label }: any) => {
 
 export const DashboardChart: React.FC<DashboardChartProps> = ({
   data,
+  pieData,
   series,
   chartType,
   period,
   hiddenSeries = [],
+  showGrid = true,
+  showLegend = false,
+  showMarkers = true,
+  scale = 'auto',
+  canUseLog = false,
   className = '',
 }) => {
   const isAllZero =
-    !data ||
-    data.length === 0 ||
-    data.every((d) =>
-      Object.values(d).every((v) => (typeof v === 'number' ? v === 0 : true))
-    );
+    (!data || data.length === 0 || data.every((d) => Object.values(d).every((v) => (typeof v === 'number' ? v === 0 : true)))) &&
+    (!pieData || pieData.length === 0 || pieData.every((d) => d.value === 0));
 
   if (isAllZero) {
     return (
@@ -95,23 +109,55 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
   }
 
   const xAxisInterval = calculateXAxisInterval(period);
-  const showDots = period === '7d';
-
   const visibleSeries = series.filter((s) => !hiddenSeries.includes(s.dataKey));
   const hasLeftAxis = visibleSeries.some((s) => s.yAxisId === 'left');
   const hasRightAxis = visibleSeries.some((s) => s.yAxisId === 'right');
+  const effectiveScale = scale === 'log' && canUseLog ? 'log' : 'auto';
+
+  if (chartType === 'pie' || chartType === 'donut') {
+    const innerRadius = chartType === 'donut' ? 65 : 0;
+    return (
+      <div className={`h-[240px] w-full flex items-center justify-center ${className}`}>
+        <ResponsiveContainer width="100%" height={240}>
+          <PieChart>
+            <Tooltip content={<UnifiedCustomTooltip />} />
+            {showLegend && <Legend wrapperStyle={{ fontSize: 11, fontFamily: 'Inter' }} />}
+            <Pie
+              data={pieData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={innerRadius}
+              outerRadius={95}
+              paddingAngle={2}
+            >
+              {pieData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  }
+
+  const isStacked = chartType === 'stackedBar' || chartType === 'stackedArea';
+  const baseChartType = chartType === 'stackedBar' ? 'bar' : chartType === 'stackedArea' ? 'area' : chartType;
 
   return (
     <div className={`h-[240px] w-full ${className}`}>
       <ResponsiveContainer width="100%" height={240}>
-        {chartType === 'bar' ? (
+        {baseChartType === 'bar' ? (
           <BarChart data={data} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={colors.borderSubtle}
-              opacity={0.5}
-              vertical={false}
-            />
+            {showGrid && (
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={colors.borderSubtle}
+                opacity={0.5}
+                vertical={false}
+              />
+            )}
             <XAxis
               dataKey="date"
               stroke={colors.textMuted}
@@ -128,6 +174,8 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
                 tick={{ fill: colors.textMuted, fontSize: 10, fontFamily: 'Inter' }}
                 tickLine={false}
                 axisLine={false}
+                scale={effectiveScale as any}
+                domain={effectiveScale === 'log' ? [1, 'auto'] : ['auto', 'auto']}
                 tickFormatter={formatCompactNumber}
               />
             )}
@@ -143,6 +191,7 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
               />
             )}
             <Tooltip content={<UnifiedCustomTooltip />} />
+            {showLegend && <Legend wrapperStyle={{ paddingTop: 8, fontSize: 11, fontFamily: 'Inter' }} />}
             {series.map((s) => (
               <Bar
                 key={s.dataKey}
@@ -150,19 +199,22 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
                 dataKey={s.dataKey}
                 name={s.name}
                 fill={s.color}
+                stackId={isStacked ? 'a' : undefined}
                 hide={hiddenSeries.includes(s.dataKey)}
-                radius={[4, 4, 0, 0]}
+                radius={isStacked ? undefined : [4, 4, 0, 0]}
               />
             ))}
           </BarChart>
-        ) : chartType === 'area' ? (
+        ) : baseChartType === 'area' ? (
           <AreaChart data={data} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={colors.borderSubtle}
-              opacity={0.5}
-              vertical={false}
-            />
+            {showGrid && (
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={colors.borderSubtle}
+                opacity={0.5}
+                vertical={false}
+              />
+            )}
             <XAxis
               dataKey="date"
               stroke={colors.textMuted}
@@ -179,6 +231,8 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
                 tick={{ fill: colors.textMuted, fontSize: 10, fontFamily: 'Inter' }}
                 tickLine={false}
                 axisLine={false}
+                scale={effectiveScale as any}
+                domain={effectiveScale === 'log' ? [1, 'auto'] : ['auto', 'auto']}
                 tickFormatter={formatCompactNumber}
               />
             )}
@@ -194,6 +248,7 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
               />
             )}
             <Tooltip content={<UnifiedCustomTooltip />} />
+            {showLegend && <Legend wrapperStyle={{ paddingTop: 8, fontSize: 11, fontFamily: 'Inter' }} />}
             {series.map((s) => (
               <Area
                 key={s.dataKey}
@@ -205,19 +260,22 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
                 fill={s.color}
                 fillOpacity={0.15}
                 strokeWidth={2}
+                stackId={isStacked ? 'a' : undefined}
                 hide={hiddenSeries.includes(s.dataKey)}
-                dot={showDots ? { r: 3, fill: s.color } : false}
+                dot={showMarkers ? { r: 3, fill: s.color } : false}
               />
             ))}
           </AreaChart>
         ) : (
           <LineChart data={data} margin={{ top: 10, right: 15, left: -10, bottom: 0 }}>
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={colors.borderSubtle}
-              opacity={0.5}
-              vertical={false}
-            />
+            {showGrid && (
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={colors.borderSubtle}
+                opacity={0.5}
+                vertical={false}
+              />
+            )}
             <XAxis
               dataKey="date"
               stroke={colors.textMuted}
@@ -234,6 +292,8 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
                 tick={{ fill: colors.textMuted, fontSize: 10, fontFamily: 'Inter' }}
                 tickLine={false}
                 axisLine={false}
+                scale={effectiveScale as any}
+                domain={effectiveScale === 'log' ? [1, 'auto'] : ['auto', 'auto']}
                 tickFormatter={formatCompactNumber}
               />
             )}
@@ -249,6 +309,7 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
               />
             )}
             <Tooltip content={<UnifiedCustomTooltip />} />
+            {showLegend && <Legend wrapperStyle={{ paddingTop: 8, fontSize: 11, fontFamily: 'Inter' }} />}
             {series.map((s) => (
               <Line
                 key={s.dataKey}
@@ -259,7 +320,7 @@ export const DashboardChart: React.FC<DashboardChartProps> = ({
                 stroke={s.color}
                 strokeWidth={2}
                 hide={hiddenSeries.includes(s.dataKey)}
-                dot={showDots ? { r: 3, fill: s.color } : false}
+                dot={showMarkers ? { r: 3, fill: s.color } : false}
                 activeDot={{ r: 5, stroke: colors.surfacePrimary, strokeWidth: 2 }}
               />
             ))}
