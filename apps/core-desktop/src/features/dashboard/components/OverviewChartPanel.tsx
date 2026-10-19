@@ -1,72 +1,37 @@
-// [phase: 8D] Refactored Overview Chart Panel (~320px Fixed Height)
+// [phase: 8D] Unified Interactive Overview Chart Panel (~360px Height)
 import * as React from 'react';
 import {
   TrendingUp,
   AreaChart,
   BarChart3,
-  CircleDot,
 } from 'lucide-react';
-import { SegmentedControl, Tooltip, Alert } from '@40labs/ui-components';
+import { SegmentedControl, Alert } from '@40labs/ui-components';
 import type { DashboardSummary } from '../../../devData/dashboard/summary';
 import {
-  buildChartData,
-  type DashboardChartMetric,
+  buildUnifiedChartData,
   type DashboardChartType,
   type DashboardPeriod,
 } from '../utils/chartData';
-import { formatMetricUnit } from '../utils/chartFormat';
 import { DashboardChart } from './DashboardChart';
 
 export interface OverviewChartPanelProps {
   summary: DashboardSummary;
   loading?: boolean;
   error?: string;
-  selectedMetric?: DashboardChartMetric;
-  onMetricChange?: (metric: DashboardChartMetric) => void;
 }
-
-const METRIC_TITLES: Record<DashboardChartMetric, string> = {
-  sales: 'MAUZO',
-  profit: 'FAIDA',
-  customers: 'WATEJA',
-  stock: 'AKIBA',
-  purchases: 'MANUNUZI',
-  stock_value: 'THAMANI YA AKIBA',
-};
 
 export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
   summary,
   loading = false,
   error,
-  selectedMetric = 'sales',
-  onMetricChange,
 }) => {
-  const [metric, setMetric] = React.useState<DashboardChartMetric>(selectedMetric);
   const [period, setPeriod] = React.useState<DashboardPeriod>('30d');
   const [chartType, setChartType] = React.useState<DashboardChartType>('bar');
-
-  // Sync external selectedMetric prop (e.g. from KPI card click)
-  React.useEffect(() => {
-    if (selectedMetric && selectedMetric !== metric) {
-      setMetric(selectedMetric);
-      if (selectedMetric === 'customers' && chartType === 'ring') {
-        setChartType('bar');
-      }
-    }
-  }, [selectedMetric]);
-
-  const handleMetricChange = (newMetric: DashboardChartMetric) => {
-    setMetric(newMetric);
-    if (newMetric === 'customers' && chartType === 'ring') {
-      setChartType('bar');
-    }
-    if (onMetricChange) onMetricChange(newMetric);
-  };
+  const [hiddenSeries, setHiddenSeries] = React.useState<string[]>([]);
 
   const handlePeriodChange = (val: string) => {
     const newPeriod = val as DashboardPeriod;
     setPeriod(newPeriod);
-    // Default per range rule: bar for 7 and 30, area for 90
     if (newPeriod === '90d' && chartType === 'bar') {
       setChartType('area');
     } else if ((newPeriod === '7d' || newPeriod === '30d') && chartType === 'area') {
@@ -74,41 +39,27 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
     }
   };
 
-  const chartResult = buildChartData(summary, {
-    metric,
-    chartType,
-    period,
-  });
+  const toggleSeries = (dataKey: string) => {
+    setHiddenSeries((prev) =>
+      prev.includes(dataKey) ? prev.filter((k) => k !== dataKey) : [...prev, dataKey]
+    );
+  };
 
-  const unitStr = formatMetricUnit(metric);
-  const metricTitle = METRIC_TITLES[metric] || 'MUHTASARI';
+  const { data, series, totalValues } = buildUnifiedChartData(summary, period);
 
   return (
-    <div className="bg-panel rounded-card border border-border/50 p-4 elevation-raised flex flex-col gap-3 h-[320px] min-h-[320px] max-h-[320px] overflow-hidden">
+    <div className="bg-panel rounded-card border border-border/50 p-4 elevation-raised flex flex-col gap-3 min-h-[360px]">
       {/* Controls Toolbar on ONE Row */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/30 pb-2 shrink-0">
-        {/* Panel Title with Unit */}
+        {/* Panel Title */}
         <div className="flex items-center gap-1.5 min-w-0">
           <h3 className="font-heading text-xs font-bold text-text uppercase tracking-wider truncate">
-            {metricTitle} <span className="text-text-muted font-mono font-normal">{unitStr}</span>
+            MUHTASARI WA BIASHARA <span className="text-text-muted font-mono font-normal">(TAKWIMU ZOTE)</span>
           </h3>
         </div>
 
-        {/* Controls Toolbar (One Row) */}
+        {/* Controls Toolbar */}
         <div className="flex items-center gap-2 text-xs shrink-0">
-          {/* Metric Tabs: Mauzo | Faida | Wateja | Hifadhi */}
-          <SegmentedControl
-            size="sm"
-            value={metric}
-            onChange={(val) => handleMetricChange(val as DashboardChartMetric)}
-            options={[
-              { value: 'sales', label: 'Mauzo' },
-              { value: 'profit', label: 'Faida' },
-              { value: 'customers', label: 'Wateja' },
-              { value: 'stock', label: 'Hifadhi' },
-            ]}
-          />
-
           {/* Range Segmented: Siku 7 | 30 | 90 */}
           <SegmentedControl
             size="sm"
@@ -121,7 +72,7 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
             ]}
           />
 
-          {/* Icon-Only Chart-Type Switcher: Bar | Line | Area | Ring */}
+          {/* Icon-Only Chart-Type Switcher: Bar | Line | Area */}
           <div className="flex items-center bg-surface-secondary rounded-[6px] p-0.5 border border-border/40">
             <button
               type="button"
@@ -164,42 +115,14 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
             >
               <AreaChart size={13} />
             </button>
-
-            {/* Ring Chart Button (disabled if customers) */}
-            {metric === 'customers' ? (
-              <Tooltip content="Hakuna data ya kategoria">
-                <button
-                  type="button"
-                  disabled
-                  className="p-1 rounded text-xs text-text-disabled cursor-not-allowed opacity-40"
-                  aria-label="Ring chart disabled"
-                >
-                  <CircleDot size={13} />
-                </button>
-              </Tooltip>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setChartType('ring')}
-                className={`p-1 rounded text-xs transition-colors cursor-pointer ${
-                  chartType === 'ring'
-                    ? 'bg-surface-elevated text-primary font-bold shadow-xs'
-                    : 'text-text-muted hover:text-text'
-                }`}
-                title="Ring chart (kategoria)"
-                aria-label="Ring chart"
-              >
-                <CircleDot size={13} />
-              </button>
-            )}
           </div>
         </div>
       </div>
 
       {/* Chart Canvas Container */}
-      <div className="flex-1 w-full min-h-0 relative">
+      <div className="w-full relative">
         {loading ? (
-          <div className="h-full w-full flex items-center justify-center text-text-muted text-xs font-ui">
+          <div className="h-[240px] w-full flex items-center justify-center text-text-muted text-xs font-ui">
             Inapakia chati...
           </div>
         ) : error ? (
@@ -208,12 +131,46 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
           </Alert>
         ) : (
           <DashboardChart
-            chartResult={chartResult}
-            metric={metric}
+            data={data}
+            series={series}
             chartType={chartType}
             period={period}
+            hiddenSeries={hiddenSeries}
           />
         )}
+      </div>
+
+      {/* Interactive Compact Legend beneath chart */}
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-border/30 text-xs">
+        {series.map((s) => {
+          const isHidden = hiddenSeries.includes(s.dataKey);
+          const totalVal = totalValues[s.dataKey] ?? 0;
+          const formattedTotal =
+            s.unit === 'money'
+              ? `TZS ${new Intl.NumberFormat('en-US').format(Math.round(totalVal))}`
+              : new Intl.NumberFormat('en-US').format(totalVal);
+
+          return (
+            <button
+              key={s.dataKey}
+              type="button"
+              onClick={() => toggleSeries(s.dataKey)}
+              className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-[11px] font-ui transition-all cursor-pointer ${
+                isHidden
+                  ? 'bg-surface-secondary/30 border-border/20 text-text-muted opacity-45 line-through'
+                  : 'bg-surface-elevated border-border/60 text-text shadow-xs hover:border-border'
+              }`}
+              title={isHidden ? `Onyesha ${s.name}` : `Ficha ${s.name}`}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+                style={{ backgroundColor: s.color }}
+              />
+              <span className="font-bold">{s.name}</span>
+              <span className="font-mono text-text-muted">({formattedTotal})</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

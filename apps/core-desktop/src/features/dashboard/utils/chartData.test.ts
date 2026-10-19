@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { buildChartData } from './chartData';
+import { buildChartData, buildUnifiedChartData } from './chartData';
 import { getInitialDashboardSummary } from '../../../devData/dashboard/summary';
 import type { Medicine, InventoryItem, Sale } from '@40labs/types';
 
@@ -128,5 +128,16 @@ describe('Chart Data Utility [phase: 8D]', () => {
     });
     // sell_price 2000 * quantity 50 = 100000
     expect(stockRing.data).toEqual([{ category: 'Analgesics', value: 100000, percentage: 100 }]);
+  });
+
+  test('buildUnifiedChartData builds multi-series datasets for unified chart', () => {
+    const summary = getInitialDashboardSummary();
+    const unified = buildUnifiedChartData(summary, '30d');
+
+    expect(unified.data.length).toBe(30);
+    expect(unified.series.length).toBeGreaterThanOrEqual(4);
+    expect(unified.totalValues).toBeDefined();
+    expect(typeof unified.totalValues.sales).toBe('number');
+    expect(typeof unified.totalValues.profit).toBe('number');
   });
 });

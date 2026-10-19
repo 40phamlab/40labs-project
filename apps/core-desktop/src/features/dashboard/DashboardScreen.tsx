@@ -28,7 +28,6 @@ export const DashboardScreen: React.FC = () => {
   const { addItem } = useInventory();
 
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [chartMetric, setChartMetric] = React.useState<DashboardChartMetric>('sales');
 
   // Modals state
   const [isAddCustomerOpen, setIsAddCustomerOpen] = React.useState(false);
@@ -50,14 +49,6 @@ export const DashboardScreen: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
-
-  const handleSelectMetric = (kpiId: string) => {
-    if (kpiId === 'sales') setChartMetric('sales');
-    else if (kpiId === 'profit') setChartMetric('profit');
-    else if (kpiId === 'customers') setChartMetric('customers');
-    else if (kpiId === 'stock' || kpiId === 'expiry') setChartMetric('stock');
-    else setChartMetric('sales');
-  };
 
   // Add Customer Handler
   const handleSaveCustomer = async (payload: CustomerFormPayload) => {
@@ -222,17 +213,13 @@ export const DashboardScreen: React.FC = () => {
     >
       <div className="flex flex-col gap-5 w-full max-w-[1600px] mx-auto p-4 min-h-0">
         {/* Row 1: 8 KpiCards (4×2) */}
-        <KPIRows summary={summary} onSelectMetric={handleSelectMetric} />
+        <KPIRows summary={summary} />
 
         {/* Row 2: DashboardChart (2/3) | Right Rail (1/3) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Main Chart Panel (~2/3 width) */}
           <div className="lg:col-span-8 min-w-0">
-            <OverviewChartPanel
-              summary={summary}
-              selectedMetric={chartMetric}
-              onMetricChange={setChartMetric}
-            />
+            <OverviewChartPanel summary={summary} />
           </div>
 
           {/* Right Rail (~1/3 width) */}
