@@ -250,6 +250,11 @@ const swTzData = {
   'auth.reg.success.saved': 'Nimehifadhi namba zangu za urejeshaji',
   'value.notProvided': 'Haikutolewa',
 
+  // Sales action buttons
+  'sales.hold': 'Shikilia',
+  'sales.confirm': 'Thibitisha',
+  'sales.clear': 'Futa',
+
   // Inventory Analytics
   'inventory.analytics.title': 'Mwelekeo wa Stoo na Uchambuzi wa Kategoria',
   'inventory.analytics.overview': 'Muhtasari',
@@ -357,6 +362,11 @@ export const translations = {
     'settings.system': 'System',
     'settings.kiswahili': 'Kiswahili',
     'settings.english': 'English',
+
+    // Sales action buttons
+    'sales.hold': 'Hold',
+    'sales.confirm': 'Confirm',
+    'sales.clear': 'Clear',
 
     // Auth Errors
     'auth.error.invalidCredentials': 'Invalid username or password',
