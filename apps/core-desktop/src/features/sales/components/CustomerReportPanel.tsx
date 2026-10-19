@@ -1,12 +1,15 @@
 import * as React from 'react';
 import { Card, Button, Checkbox, IconButton, MoneyDisplay } from '@40labs/ui-components';
 import { CustomerPicker } from '../../customers/components/CustomerPicker';
-import { Customer, SaleLine } from '@40labs/types';
+import { Customer, SaleLine, Sale } from '@40labs/types';
 import { ChevronDown, Printer, Send, CheckCircle2, Edit3 } from 'lucide-react';
 import { pharmaciesApi, notificationsApi } from '../../../api';
+import { salesApi } from '../../../api/salesApi';
 import { useToast } from '../../../hooks/useToast';
 import { useDispensingInstructions } from '../../../hooks/useDispensingInstructions';
 import { InstructionsPopover } from './InstructionsPopover';
+import { saveReceiptPdf } from '../documents/generateReceiptPdf';
+import { saveCustomerReportPdf } from '../documents/generateCustomerReportPdf';
 import { t } from '@40labs/i18n';
 
 export interface ConfirmedSaleData {
@@ -19,6 +22,7 @@ export interface ConfirmedSaleData {
   description: string;
   date: string;
   lines?: SaleLine[];
+  sale?: Sale;
 }
 
 export interface CustomerReportPanelProps {
@@ -43,7 +47,6 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
   onManualEntryChange,
   confirmedSale,
   onSendReport,
-  onPrintReceipt,
   saveCustomer,
   onSaveCustomerChange,
   onToggleCollapse,
@@ -55,16 +58,41 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
   const { instructions, saveInstructions } = useDispensingInstructions(confirmedSale?.saleId || null);
   const hasInstructions = instructions.length > 0;
 
+  const handlePrintReceipt = async () => {
+    if (!confirmedSale || !confirmedSale.sale) return;
+    try {
+      const receipts = await salesApi.listFiscalReceipts();
+      const fiscalReceipt = receipts.find((r) => r.sale_id === confirmedSale.saleId) || null;
+      await saveReceiptPdf({
+        sale: confirmedSale.sale,
+        customerLabel: confirmedSale.customerLabel,
+        phone: confirmedSale.phone,
+        servedBy: confirmedSale.service,
+        fiscalReceipt,
+      });
+      toast.success('Receipt PDF generated and saved successfully.');
+    } catch {
+      toast.error('Failed to generate receipt PDF.');
+    }
+  };
+
   const handleSend = async () => {
-    if (!confirmedSale) return;
+    if (!confirmedSale || !confirmedSale.sale) return;
     setSending(true);
     try {
       await notificationsApi.create({
         category: 'customers',
         sender_name: confirmedSale.customerLabel || 'Pharmacy POS',
-        body: `Receipt & Transaction Summary for Sale #${confirmedSale.saleId.substring(0, 8)}: Total TZS ${confirmedSale.cost.toLocaleString()}. Items: ${confirmedSale.description}`,
+        body: `Receipt & Patient Report Summary for Sale #${confirmedSale.saleId.substring(0, 8)}: Total TZS ${confirmedSale.cost.toLocaleString()}.`,
       });
-      toast.success(`Customer report logged and dispatched for ${confirmedSale.customerLabel || 'customer'}`);
+      await saveCustomerReportPdf({
+        sale: confirmedSale.sale,
+        customerLabel: confirmedSale.customerLabel,
+        phone: confirmedSale.phone,
+        servedBy: confirmedSale.service,
+        instructions,
+      });
+      toast.success(`Customer report & instructions dispatched for ${confirmedSale.customerLabel || 'customer'}`);
       onSendReport();
     } catch {
       toast.error('Failed to dispatch customer report notification.');
@@ -171,17 +199,15 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
             </Card>
 
             <div className="flex flex-col gap-2 shrink-0">
-              {onPrintReceipt && (
-                <Button
-                  type="button"
-                  intent="primary"
-                  fullWidth
-                  leftIcon={<Printer size={14} />}
-                  onClick={onPrintReceipt}
-                >
-                  Print Receipt
-                </Button>
-              )}
+              <Button
+                type="button"
+                intent="primary"
+                fullWidth
+                leftIcon={<Printer size={14} />}
+                onClick={handlePrintReceipt}
+              >
+                Print Receipt
+              </Button>
 
               <Button
                 type="button"

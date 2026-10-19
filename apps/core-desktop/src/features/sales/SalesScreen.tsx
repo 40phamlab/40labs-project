@@ -150,6 +150,7 @@ export const SalesScreen: React.FC = () => {
       description: itemSummary,
       date: saleDate,
       lines: completed.lines,
+      sale: completed,
     });
 
     setReceiptModalData({
