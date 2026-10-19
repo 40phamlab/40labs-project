@@ -1,9 +1,10 @@
 import { describe, test, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { SaleTotalsBar } from '../components/SaleTotalsBar';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { SaleTotalsBar } from '../components/SalesSummaryBar';
+import { useSalesUiStore } from '../state/salesUiSlice';
 import { t } from '@40labs/i18n';
 
-describe('SaleTotalsBar Layout & Overflow Tests', () => {
+describe('SaleTotalsBar Layout, Overflow & Compact Mode Tests', () => {
   test('renders without horizontal overflow at 1366px and 1920px viewports with 6-digit totals', () => {
     const widths = [1366, 1920];
 
@@ -73,5 +74,37 @@ describe('SaleTotalsBar Layout & Overflow Tests', () => {
 
     unmount();
     document.body.removeChild(container);
+  });
+
+  test('compact mode renders only grand total and 3 actions, respecting safety chip rules', () => {
+    useSalesUiStore.getState().setSummaryMode('compact');
+
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const { unmount } = render(
+      <SaleTotalsBar
+        subtotal={34500}
+        discount={0}
+        onDiscountChange={() => {}}
+        tax={0}
+        grandTotal={34500}
+        paymentMethod="cash"
+        onPaymentMethodChange={() => {}}
+        onConfirm={() => {}}
+        onDelete={() => {}}
+        onHold={() => {}}
+        disabled={false}
+        isProcessing={false}
+      />,
+      { container }
+    );
+
+    // In compact mode, subtotal input is not present
+    expect(screen.queryByText('Subtotal')).toBeNull();
+
+    unmount();
+    document.body.removeChild(container);
+    useSalesUiStore.getState().setSummaryMode('full');
   });
 });

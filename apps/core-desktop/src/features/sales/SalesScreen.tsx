@@ -11,7 +11,7 @@ import { TabContainer } from '../../components/TabContainer';
 import { MedicineSearchPanel } from './components/MedicineSearchPanel';
 import { SaleCartList } from './components/SaleCartList';
 import { CustomerReportPanel, ConfirmedSaleData } from './components/CustomerReportPanel';
-import { SaleTotalsBar } from './components/SaleTotalsBar';
+import { SalesSummaryBar } from './components/SalesSummaryBar';
 import { ReceiptModal } from './components/ReceiptModal';
 import { HoldSalesModal } from './components/HoldSalesModal';
 import { Numpad } from './components/Numpad';
@@ -376,7 +376,7 @@ export const SalesScreen: React.FC = () => {
 
           {/* Totals & Checkout Bar */}
           <div className="shrink-0">
-            <SaleTotalsBar
+            <SalesSummaryBar
               subtotal={subtotal}
               discount={discountAmount}
               onDiscountChange={setDiscountAmount}
@@ -389,6 +389,7 @@ export const SalesScreen: React.FC = () => {
               onHold={cart.length > 0 ? handleHoldSale : undefined}
               disabled={!canConfirm}
               isProcessing={isCreatingSale}
+              hasCustomer={!!selectedCustomer}
             />
           </div>
         </div>
