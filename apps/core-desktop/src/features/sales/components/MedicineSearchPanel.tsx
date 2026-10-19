@@ -1,8 +1,9 @@
 import * as React from 'react';
-import { ChevronRight, RefreshCw } from 'lucide-react';
+import { Pill, RefreshCw } from 'lucide-react';
 import { SearchInput, IconButton } from '@40labs/ui-components';
 import { ProductRow } from './ProductRow';
 import { MedicineWithInventory, Sale } from '@40labs/types';
+import { t } from '@40labs/i18n';
 
 export interface MedicineSearchPanelProps {
   medicines: MedicineWithInventory[];
@@ -91,13 +92,17 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
           />
         </div>
         {onToggleCollapse && (
-          <IconButton
-            icon={<ChevronRight size={16} />}
-            label="Hide panel"
-            intent="ghost"
-            size="sm"
+          <button
+            type="button"
+            aria-pressed={true}
+            aria-expanded={true}
+            aria-label={t('sales.panel.medicines')}
+            title={t('sales.panel.medicines')}
             onClick={onToggleCollapse}
-          />
+            className="w-9 h-9 rounded-full bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/30 flex items-center justify-center transition-colors shadow-sm cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            <Pill size={20} />
+          </button>
         )}
       </div>
 

@@ -6,7 +6,7 @@ import {
   Button,
   Badge,
 } from '@40labs/ui-components';
-import { ChevronLeft, ChevronRight, PauseCircle, Calculator, RefreshCw, PlusCircle } from 'lucide-react';
+import { UserSearch, Pill, PauseCircle, Calculator, RefreshCw, PlusCircle } from 'lucide-react';
 import { TabContainer } from '../../components/TabContainer';
 import { MedicineSearchPanel } from './components/MedicineSearchPanel';
 import { SaleCartList } from './components/SaleCartList';
@@ -20,6 +20,7 @@ import { useSales } from '../../hooks/useSales';
 import { useInventory } from '../../hooks/useInventory';
 import { useCustomers } from '../../hooks/useCustomers';
 import { useToast } from '../../hooks/useToast';
+import { t } from '@40labs/i18n';
 
 /**
  * SalesScreen (POS)
@@ -294,14 +295,17 @@ export const SalesScreen: React.FC = () => {
         {/* Left Column Toggle when closed */}
         {!customerPanelOpen && (
           <div className="absolute left-0 top-0 z-20">
-            <IconButton
-              icon={<ChevronRight size={16} />}
-              label="Open customer panel"
-              intent="neutral"
-              size="sm"
-              className="shadow-surface-pop border border-border/50"
+            <button
+              type="button"
+              aria-pressed={false}
+              aria-expanded={false}
+              aria-label={t('sales.panel.customer')}
+              title={t('sales.panel.customer')}
               onClick={() => setCustomerPanelOpen(true)}
-            />
+              className="w-9 h-9 rounded-full bg-surface-secondary text-text-muted border border-border/50 shadow-surface-pop flex items-center justify-center hover:text-text transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              <UserSearch size={20} />
+            </button>
           </div>
         )}
 
@@ -336,14 +340,17 @@ export const SalesScreen: React.FC = () => {
         <div className="relative flex-1 min-w-0 flex flex-col gap-3 overflow-hidden">
           {!storePanelOpen && (
             <div className="absolute right-0 top-0 z-20">
-              <IconButton
-                icon={<ChevronLeft size={16} />}
-                label="Open store panel"
-                intent="neutral"
-                size="sm"
-                className="shadow-surface-pop border border-border/50"
+              <button
+                type="button"
+                aria-pressed={false}
+                aria-expanded={false}
+                aria-label={t('sales.panel.medicines')}
+                title={t('sales.panel.medicines')}
                 onClick={() => setStorePanelOpen(true)}
-              />
+                className="w-9 h-9 rounded-full bg-surface-secondary text-text-muted border border-border/50 shadow-surface-pop flex items-center justify-center hover:text-text transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              >
+                <Pill size={20} />
+              </button>
             </div>
           )}
 

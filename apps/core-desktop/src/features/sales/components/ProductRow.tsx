@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Plus } from 'lucide-react';
-import { Button, Badge } from '@40labs/ui-components';
+import { Button } from '@40labs/ui-components';
 
 export interface ProductRowProps {
   name: string;
@@ -33,14 +33,21 @@ export const ProductRow: React.FC<ProductRowProps> = ({
     >
       <div className="flex-1 min-w-0 flex flex-col justify-center">
         <div className="flex items-center gap-1.5 min-w-0">
-          <p className="text-xs font-bold text-text truncate">{name}</p>
+          <p className="text-xs font-bold text-text truncate" title={name}>
+            {name}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+          {sku && <p className="text-[10px] font-mono text-text-muted italic truncate">{sku}</p>}
           {isOutOfStock && (
-            <Badge variant="danger" className="shrink-0 text-[8px] px-1 py-0 h-3.5">
+            <span
+              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/20 shrink-0"
+              title="Out of stock"
+            >
               Out of stock
-            </Badge>
+            </span>
           )}
         </div>
-        {sku && <p className="text-[10px] font-mono text-text-muted italic truncate">{sku}</p>}
       </div>
 
       <div className="flex items-center gap-3 shrink-0 justify-end">

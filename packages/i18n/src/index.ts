@@ -254,6 +254,8 @@ const swTzData = {
   'sales.hold': 'Shikilia',
   'sales.confirm': 'Thibitisha',
   'sales.clear': 'Futa',
+  'sales.panel.customer': 'Mteja',
+  'sales.panel.medicines': 'Dawa',
 
   // Dispensing Instructions
   'instructions.title': 'Maelekezo',
@@ -395,6 +397,8 @@ export const translations = {
     'sales.hold': 'Hold',
     'sales.confirm': 'Confirm',
     'sales.clear': 'Clear',
+    'sales.panel.customer': 'Customer',
+    'sales.panel.medicines': 'Medicines',
 
     // Dispensing Instructions
     'instructions.title': 'Instructions',

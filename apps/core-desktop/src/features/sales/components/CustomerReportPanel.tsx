@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Card, Button, Checkbox, IconButton, MoneyDisplay } from '@40labs/ui-components';
 import { CustomerPicker } from '../../customers/components/CustomerPicker';
 import { Customer, SaleLine, Sale } from '@40labs/types';
-import { ChevronDown, Printer, Send, CheckCircle2, Edit3 } from 'lucide-react';
+import { UserSearch, Printer, Send, CheckCircle2, Edit3 } from 'lucide-react';
 import { pharmaciesApi, notificationsApi } from '../../../api';
 import { salesApi } from '../../../api/salesApi';
 import { useToast } from '../../../hooks/useToast';
@@ -109,13 +109,17 @@ export const CustomerReportPanel: React.FC<CustomerReportPanelProps> = ({
           Customer & Receipt
         </h2>
         {onToggleCollapse && (
-          <IconButton
-            icon={<ChevronDown size={16} />}
-            label="Hide panel"
-            intent="ghost"
-            size="sm"
+          <button
+            type="button"
+            aria-pressed={true}
+            aria-expanded={true}
+            aria-label={t('sales.panel.customer')}
+            title={t('sales.panel.customer')}
             onClick={onToggleCollapse}
-          />
+            className="w-9 h-9 rounded-full bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/30 flex items-center justify-center transition-colors shadow-sm cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          >
+            <UserSearch size={20} />
+          </button>
         )}
       </div>
 
