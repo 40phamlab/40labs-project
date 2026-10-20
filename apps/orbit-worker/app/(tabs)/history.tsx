@@ -1,6 +1,6 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#history]
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { Screen, AppHeader, Text, Skeleton, Banner } from '../../src/ui';
@@ -21,7 +21,7 @@ export default function HistoryScreen() {
   const { data: activities = [], isLoading, isError, error, refetch, isRefetching } = useActivity();
   const cacheMeta = getCachedMeta('history_activity');
 
-  const loadOutboxItems = () => {
+  const loadOutboxItems = useCallback(() => {
     try {
       const db = getDatabase();
       const rows = db.getAllSync(`SELECT * FROM outbox ORDER BY created_at DESC;`);
@@ -29,11 +29,11 @@ export default function HistoryScreen() {
     } catch {
       setOutboxItems([]);
     }
-  };
+  }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     loadOutboxItems();
-  }, [activities]);
+  }, [loadOutboxItems]);
 
   const pendingOrFailedRows = outboxItems.map((item) => ({
     id: item.id,

@@ -15,7 +15,12 @@ interface BottomSheetProps {
 
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
+  let insets = { top: 0, bottom: 0, left: 0, right: 0 };
+  try {
+    insets = useSafeAreaInsets();
+  } catch {
+    // fallback for test environments without SafeAreaProvider
+  }
   const maxHeight = Dimensions.get('window').height * 0.85;
 
   return (
