@@ -1,11 +1,12 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#notifications]
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, AppState, AppStateStatus } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, AppState, AppStateStatus, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../src/theme/ThemeProvider';
-import { Screen, AppHeader } from '../../src/ui';
+import { Screen, AppHeader, Banner } from '../../src/ui';
 import { useI18n } from '../../src/i18n/I18nProvider';
-import { Chip, EmptyState, Fab, InlineError } from '../../src/components';
+import { Chip, EmptyState, Fab } from '../../src/components';
 import { FabMenu, FabMenuItem } from '../../src/components/FabMenu';
 import { useConnectionStore } from '../../src/stores/connection';
 import { StaffNotificationItem, NotificationAudience } from '../../src/features/notifications/types';
@@ -17,6 +18,7 @@ import { NotificationComposeModal } from '../../src/features/notifications/Notif
 export default function NotificationsScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
+  const insets = useSafeAreaInsets();
   const { status, activeBusinessId } = useConnectionStore();
   const [filter, setFilter] = useState<'all' | 'role' | 'direct' | 'alert'>('all');
   const [notifications, setNotifications] = useState<StaffNotificationItem[]>([]);
@@ -56,7 +58,7 @@ export default function NotificationsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [activeBusinessId, status]);
+  }, [activeBusinessId, status, t]);
 
   useEffect(() => {
     if (status !== 'connected' || !activeBusinessId) return;
@@ -153,16 +155,18 @@ export default function NotificationsScreen() {
   return (
     <Screen scrollable={false}>
       <AppHeader title={t('nav.notifications')} />
-      <View style={styles.filterRow}>
-        <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
-        <Chip label="Role" selected={filter === 'role'} onPress={() => setFilter('role')} />
-        <Chip label="Direct" selected={filter === 'direct'} onPress={() => setFilter('direct')} />
-        <Chip label="Alert" selected={filter === 'alert'} onPress={() => setFilter('alert')} />
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} style={styles.chip} />
+          <Chip label="Role" selected={filter === 'role'} onPress={() => setFilter('role')} style={styles.chip} />
+          <Chip label="Direct" selected={filter === 'direct'} onPress={() => setFilter('direct')} style={styles.chip} />
+          <Chip label="Alert" selected={filter === 'alert'} onPress={() => setFilter('alert')} style={styles.chip} />
+        </ScrollView>
       </View>
 
       {errorMessage && (
         <View style={styles.errorContainer}>
-          <InlineError message={errorMessage} onRetry={() => loadNotifications(true)} />
+          <Banner title={errorMessage} variant="offline" />
         </View>
       )}
 
@@ -181,7 +185,7 @@ export default function NotificationsScreen() {
             }}
           />
         )}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, 16) + 80 }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -202,7 +206,7 @@ export default function NotificationsScreen() {
         onEndReachedThreshold={0.5}
       />
 
-      <View style={styles.fabContainer}>
+      <View style={[styles.fabContainer, { bottom: Math.max(insets.bottom, 16) + 64 }]}>
         <Fab label="New" icon="add" onPress={() => setFabMenuVisible(true)} />
       </View>
 
@@ -231,11 +235,16 @@ export default function NotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  filterRow: {
-    flexDirection: 'row',
+  filterContainer: {
+    height: 56,
+  },
+  filterScroll: {
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    alignItems: 'center',
     gap: 8,
+  },
+  chip: {
+    height: 40,
   },
   errorContainer: {
     paddingHorizontal: 16,
@@ -243,11 +252,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
-    paddingBottom: 80,
   },
   fabContainer: {
     position: 'absolute',
-    bottom: 24,
     right: 24,
+    zIndex: 10,
   },
 });

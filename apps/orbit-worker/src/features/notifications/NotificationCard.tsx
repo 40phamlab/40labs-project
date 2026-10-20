@@ -1,10 +1,10 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#notifications]
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { radius } from '../../theme/rn-tokens';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Text } from '../../ui/Text';
 import { StaffNotificationItem } from './types';
 
 interface NotificationCardProps {
@@ -12,9 +12,19 @@ interface NotificationCardProps {
   onPress: () => void;
 }
 
+function getInitials(name?: string): string {
+  if (!name) return 'NT';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
 export function NotificationCard({ item, onPress }: NotificationCardProps) {
   const { colors } = useTheme();
   const isAlert = item.severity === 'alert' || item.audience === 'alert';
+  const initials = getInitials(item.senderName);
 
   return (
     <TouchableOpacity
@@ -31,22 +41,19 @@ export function NotificationCard({ item, onPress }: NotificationCardProps) {
     >
       <View style={styles.headerRow}>
         <View style={styles.senderContainer}>
-          <Ionicons
-            name={isAlert ? 'warning-outline' : 'notifications-outline'}
-            size={16}
-            color={isAlert ? colors.danger : colors.actionPrimary}
-            style={styles.icon}
-          />
-          <Text style={[styles.senderText, { color: colors.textSecondary }]}>
-            {item.senderName} ({item.audience})
-          </Text>
+          <View style={[styles.avatar, { backgroundColor: colors.surfaceSecondary }]}>
+            <Text style={[styles.avatarText, { color: colors.actionPrimary }]}>{initials}</Text>
+          </View>
+          <View>
+            <Text style={[styles.senderText, { color: colors.textSecondary }]}>
+              {item.senderName} ({item.audience})
+            </Text>
+            <Text style={[styles.timeText, { color: colors.textMuted }]}>
+              {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </View>
         </View>
-        <View style={styles.metaRow}>
-          <Text style={[styles.timeText, { color: colors.textMuted }]}>
-            {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </Text>
-          {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.actionPrimary }]} />}
-        </View>
+        {!item.isRead && <View style={[styles.unreadDot, { backgroundColor: colors.actionPrimary }]} />}
       </View>
 
       <Text style={[styles.subjectText, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -70,24 +77,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   senderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
-  icon: {
-    marginRight: 6,
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
   },
   senderText: {
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
     textTransform: 'uppercase',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
   },
   timeText: {
     fontSize: 11,
