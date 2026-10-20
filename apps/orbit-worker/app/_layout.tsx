@@ -5,9 +5,12 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAppFonts } from '../src/theme/fonts';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import { I18nProvider } from '../src/i18n/I18nProvider';
+
+const queryClient = new QueryClient();
 
 function RootContent() {
   const fontsLoaded = useAppFonts();
@@ -39,11 +42,13 @@ function RootContent() {
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <I18nProvider>
-          <RootContent />
-        </I18nProvider>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <I18nProvider>
+            <RootContent />
+          </I18nProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
     </SafeAreaProvider>
   );
 }

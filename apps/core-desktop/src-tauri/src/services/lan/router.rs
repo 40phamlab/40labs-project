@@ -246,12 +246,26 @@ pub async fn summary_handler(
 
     let alerts_count: i64 = alerts_row.and_then(|r| r.try_get("cnt").ok()).unwrap_or(0);
 
+    let stock_val_row = sqlx::query(
+        "SELECT COALESCE(SUM(quantity * buy_price), 0) as stock_val FROM inventory_item WHERE workspace_id = ? AND branch_id = ? AND is_deactivated = 0",
+    )
+    .bind(&workspace_id)
+    .bind(&branch_id)
+    .fetch_optional(&state.pool)
+    .await
+    .ok()
+    .flatten();
+    let stock_value: i64 = stock_val_row
+        .and_then(|r| r.try_get("stock_val").ok())
+        .unwrap_or(0);
+
     Json(json!({
         "sales": sales_total,
         "patients": patients_count,
         "samples": samples_count,
         "results": results_count,
         "lowStockCount": low_stock_count,
+        "stockValue": stock_value,
         "alerts": alerts_count,
         "unreadNotifications": unread_count
     }))
@@ -647,9 +661,43 @@ pub async fn get_lab_orders_handler(
     State(state): State<Arc<LanServerState>>,
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let orders = LabRepository::list_orders(&state.pool, &device.workspace_id, &device.branch_id)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let rows = sqlx::query(
+        r#"
+        SELECT o.*, t.name as test_name, c.name as patient_name
+        FROM lab_order o
+        LEFT JOIN test_catalog_entry t ON o.test_catalog_id = t.id
+        LEFT JOIN customer c ON o.customer_id = c.id
+        WHERE o.workspace_id = ? AND o.branch_id = ?
+        ORDER BY o.created_at DESC
+        "#
+    )
+    .bind(&device.workspace_id)
+    .bind(&device.branch_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let orders = rows.iter().map(|row| {
+        let order = LabOrder {
+            id: row.get("id"),
+            workspace_id: row.get("workspace_id"),
+            branch_id: row.get("branch_id"),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+            customer_id: row.get("customer_id"),
+            sale_id: row.try_get("sale_id").ok().flatten(),
+            ordered_by_user_id: row.get("ordered_by_user_id"),
+            status: row.get("status"),
+            test_catalog_id: row.get("test_catalog_id"),
+        };
+        let mut val = serde_json::to_value(order).unwrap();
+        if let Some(obj) = val.as_object_mut() {
+            obj.insert("testName".to_string(), json!(row.try_get::<String, _>("test_name").unwrap_or_default()));
+            obj.insert("patientName".to_string(), json!(row.try_get::<String, _>("patient_name").unwrap_or_default()));
+        }
+        val
+    }).collect::<Vec<_>>();
+
     Ok(Json(json!(orders)))
 }
 

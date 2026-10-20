@@ -6,13 +6,24 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import { radius } from '../../src/theme/rn-tokens';
 import { Screen, AppHeader } from '../../src/ui';
 import { useI18n } from '../../src/i18n/I18nProvider';
-import { Card } from '../../src/components';
+import { Card, Chip } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
 import { listServerCredentials, removeServerCredential } from '../../src/lib/secure-store';
 import { getDatabase } from '../../src/db/outbox';
 import { clearCache } from '../../src/db/cache';
 import { flush } from '../../src/lib/outbox-sync';
 import { useRouter } from 'expo-router';
+import * as Device from 'expo-device';
+
+const permissionLabels: Record<string, string> = {
+  can_update_stock: 'Update Stock',
+  can_view_stock: 'View Stock',
+  can_manage_customers: 'Manage Customers',
+  can_create_sale: 'Create Sales',
+  can_add_lab_sample: 'Add Lab Sample',
+  can_record_lab_result: 'Record Lab Result',
+  can_send_notifications: 'Send Notifications',
+};
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -123,10 +134,20 @@ export default function SettingsScreen() {
         <Card style={styles.card}>
           <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Server & Connection</Text>
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>Business: {activeServer?.businessName || 'Connected Hub'}</Text>
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Endpoint: {activeServer?.endpoint || 'N/A'}</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Endpoint: {activeServer?.endpoint || userInfo?.deviceLabel ? activeServer?.endpoint : 'N/A'}</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Device Label: {userInfo?.deviceLabel || Device.deviceName || 'Orbit Worker Phone'}</Text>
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>Status: <Text style={{ color: status === 'connected' ? colors.success : colors.danger }}>{status}</Text></Text>
-          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Permissions: {permissions.join(', ') || 'None'}</Text>
-          <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: colors.danger }]} onPress={handleRemoveServer}>
+          <Text style={[styles.infoText, { color: colors.textSecondary, marginBottom: 8 }]}>Permissions:</Text>
+          <View style={styles.chipsRow}>
+            {permissions.length > 0 ? (
+              permissions.map((p) => (
+                <Chip key={p} label={permissionLabels[p] || p} selected={false} onPress={() => {}} />
+              ))
+            ) : (
+              <Text style={[styles.infoText, { color: colors.textMuted }]}>None</Text>
+            )}
+          </View>
+          <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: colors.danger, marginTop: 12 }]} onPress={handleRemoveServer}>
             <Text style={[styles.dangerBtnText, { color: colors.danger }]}>Remove Server</Text>
           </TouchableOpacity>
         </Card>
@@ -210,6 +231,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
     marginBottom: 6,
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
   },
   row: {
     flexDirection: 'row',

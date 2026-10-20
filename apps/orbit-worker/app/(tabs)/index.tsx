@@ -1,17 +1,14 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, RefreshControl } from 'react-native';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { radius } from '../../src/theme/rn-tokens';
-import { Screen, AppHeader, Text } from '../../src/ui';
+import { Screen, AppHeader, Text, Skeleton, Banner } from '../../src/ui';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { StatusDot, CountBadge, Card, Tile, InlineError } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
-import { getServerCredential } from '../../src/lib/secure-store';
-import { pinnedServerFetch } from '../../src/lib/pinned-transport';
-import { ApiClient } from '@40labs/api-client';
-import { putCache, getCache, CacheResult } from '../../src/db/cache';
+import { useSummary, getCachedMeta } from '../../src/hooks/useQueries';
 import { useRouter } from 'expo-router';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -19,82 +16,14 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
   const router = useRouter();
-  const { status, permissions, userInfo, activeBusinessId } = useConnectionStore();
-  const [summary, setSummary] = useState<any>(null);
-  const [cacheMeta, setCacheMeta] = useState<CacheResult | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { status, permissions, activeBusinessId } = useConnectionStore();
 
-  const loadCachedSummary = () => {
-    const cached = getCache<any>('home_summary');
-    if (cached) {
-      setSummary(cached.data);
-      setCacheMeta(cached);
-    }
-  };
-
-  const fetchSummary = async () => {
-    if (!activeBusinessId || status === 'unpaired') return;
-    const server = await getServerCredential(activeBusinessId);
-    if (!server) return;
-
-    setLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const client = new ApiClient({
-        baseUrl: server.endpoint,
-        transport: {
-          request: async (opts) => {
-            const response = await pinnedServerFetch(server, opts.path, {
-              method: opts.method,
-              headers: opts.headers,
-              body: opts.body ? JSON.stringify(opts.body) : undefined,
-              signal: opts.signal,
-            });
-            const data = await response.json().catch(() => ({}));
-            return {
-              status: response.status,
-              headers: {},
-              data: data as any,
-            };
-          },
-        },
-      });
-
-      const data = await client.request<any>({
-        method: 'GET',
-        path: '/api/v1/me/summary',
-        headers: {
-          Authorization: `Bearer ${server.credential}`,
-        },
-      });
-
-      setSummary(data);
-      putCache('home_summary', data);
-      setCacheMeta(null);
-    } catch (err: any) {
-      loadCachedSummary();
-      if (!summary) {
-        setErrorMessage(t('dashboard.errorLoading'));
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: summary, isLoading, isError, error, refetch, isRefetching } = useSummary();
+  const cacheMeta = getCachedMeta('home_summary');
 
   useEffect(() => {
-    loadCachedSummary();
     useConnectionStore.getState().initialize();
   }, []);
-
-  useEffect(() => {
-    if (status === 'connected') {
-      fetchSummary();
-    } else {
-      loadCachedSummary();
-    }
-  }, [status, activeBusinessId]);
 
   const hasPermission = (key: string) => {
     return permissions.includes(key) || (permissions as any)[key] === true;
@@ -133,7 +62,10 @@ export default function HomeScreen() {
           </View>
         }
       />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor={colors.actionPrimary} />}
+      >
         {status === 'unpaired' && (
           <Card style={[styles.connectBanner, { backgroundColor: colors.surfacePrimary, borderColor: colors.actionPrimary }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
@@ -154,43 +86,53 @@ export default function HomeScreen() {
           </Card>
         )}
 
-        {cacheMeta && status !== 'unpaired' && (
-          <View style={[styles.cacheBanner, { backgroundColor: colors.surfaceSecondary }]}>
-            <Text style={[styles.cacheText, { color: colors.accent }]}>
-              Offline mode - displaying cached data as of {cacheMeta.asOfText}
-            </Text>
-          </View>
+        {cacheMeta && status !== 'unpaired' && !summary && (
+          <Banner title={`Offline mode - cached data as of ${cacheMeta.asOfText}`} variant="cached" />
         )}
 
-        {errorMessage && (
+        {isError && !summary && (
           <View style={styles.errorContainer}>
-            <InlineError message={errorMessage} onRetry={fetchSummary} />
+            <InlineError message={error?.message || t('dashboard.errorLoading')} onRetry={() => refetch()} />
           </View>
         )}
 
-        <Card style={styles.todayCard}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.overview')}</Text>
-          <View style={styles.statsGrid}>
-            <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=sales')}>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.todaysSales')}</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>TZS {summary?.sales?.toLocaleString() || '0'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=patients')}>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.patientsInTrack')}</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{summary?.patients || 0}</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.statsGrid, { marginTop: 12 }]}>
-            <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=lab')}>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.labTests')}</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{summary?.samples || 0}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=stock')}>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.inventoryValue')}</Text>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{summary?.lowStockCount || 0} low</Text>
-            </TouchableOpacity>
-          </View>
-        </Card>
+        {isLoading && !summary ? (
+          <Card style={styles.todayCard}>
+            <Skeleton height={24} style={{ marginBottom: 16 }} />
+            <View style={styles.statsGrid}>
+              <Skeleton width="45%" height={50} />
+              <Skeleton width="45%" height={50} />
+            </View>
+            <View style={[styles.statsGrid, { marginTop: 12 }]}>
+              <Skeleton width="45%" height={50} />
+              <Skeleton width="45%" height={50} />
+            </View>
+          </Card>
+        ) : (
+          <Card style={styles.todayCard}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.overview')}</Text>
+            <View style={styles.statsGrid}>
+              <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=sales')}>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.todaysSales')}</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>TZS {summary?.sales?.toLocaleString() || '0'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=patients')}>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.patientsInTrack')}</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>{summary?.patients || 0}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={[styles.statsGrid, { marginTop: 12 }]}>
+              <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=lab')}>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.labTests')}</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>{summary?.samples || 0}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=stock')}>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.inventoryValue')}</Text>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>TZS {summary?.stockValue?.toLocaleString() || '0'}</Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
 
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.quickActions')}</Text>
         <View style={styles.tilesGrid}>
@@ -259,16 +201,6 @@ const styles = StyleSheet.create({
   connectBannerDesc: {
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
-  },
-  cacheBanner: {
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 12,
-    alignItems: 'center',
-  },
-  cacheText: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
   },
   errorContainer: {
     marginBottom: 12,

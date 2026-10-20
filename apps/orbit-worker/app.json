@@ -39,7 +39,15 @@
       "expo-router",
       "expo-font",
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {},

@@ -1,31 +1,25 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#history]
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../src/theme/ThemeProvider';
-import { radius } from '../../src/theme/rn-tokens';
-import { Screen, AppHeader } from '../../src/ui';
+import { Screen, AppHeader, Text, Skeleton, Banner } from '../../src/ui';
 import { useI18n } from '../../src/i18n/I18nProvider';
 import { Chip, Card, EmptyState, InlineError } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
-import { getServerCredential } from '../../src/lib/secure-store';
-import { pinnedServerFetch } from '../../src/lib/pinned-transport';
-import { ApiClient } from '@40labs/api-client';
+import { useActivity, getCachedMeta } from '../../src/hooks/useQueries';
 import { getDatabase } from '../../src/db/outbox';
-import { putCache, getCache, CacheResult } from '../../src/db/cache';
 import { useLocalSearchParams } from 'expo-router';
 
 export default function HistoryScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
-  const { status, activeBusinessId } = useConnectionStore();
   const params = useLocalSearchParams<{ filter?: string }>();
   const [selectedFilter, setSelectedFilter] = useState(params.filter || 'all');
-  const [activities, setActivities] = useState<any[]>([]);
   const [outboxItems, setOutboxItems] = useState<any[]>([]);
-  const [cacheMeta, setCacheMeta] = useState<CacheResult | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { data: activities = [], isLoading, isError, error, refetch, isRefetching } = useActivity();
+  const cacheMeta = getCachedMeta('history_activity');
 
   const loadOutboxItems = () => {
     try {
@@ -37,67 +31,9 @@ export default function HistoryScreen() {
     }
   };
 
-  const fetchHistory = async () => {
-    if (!activeBusinessId) return;
-    const server = await getServerCredential(activeBusinessId);
-    if (!server) return;
-
-    setErrorMessage(null);
-    try {
-      const client = new ApiClient({
-        baseUrl: server.endpoint,
-        transport: {
-          request: async (opts) => {
-            const response = await pinnedServerFetch(server, opts.path, {
-              method: opts.method,
-              headers: opts.headers,
-              body: opts.body ? JSON.stringify(opts.body) : undefined,
-              signal: opts.signal,
-            });
-            const data = await response.json().catch(() => ({}));
-            return {
-              status: response.status,
-              headers: {},
-              data: data as any,
-            };
-          },
-        },
-      });
-
-      const data = await client.request<any>({
-        method: 'GET',
-        path: '/api/v1/activity',
-        headers: {
-          Authorization: `Bearer ${server.credential}`,
-        },
-      });
-
-      const items = data.items || [];
-      setActivities(items);
-      putCache('history_activity', items);
-      setCacheMeta(null);
-    } catch (err: any) {
-      const cached = getCache<any[]>('history_activity');
-      if (cached) {
-        setActivities(cached.data);
-        setCacheMeta(cached);
-      } else {
-        setErrorMessage(t('dashboard.errorLoading'));
-      }
-    } finally {
-      setRefreshing(false);
-      loadOutboxItems();
-    }
-  };
-
-  useEffect(() => {
-    fetchHistory();
-  }, [activeBusinessId]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchHistory();
-  }, [activeBusinessId]);
+  React.useEffect(() => {
+    loadOutboxItems();
+  }, [activities]);
 
   const pendingOrFailedRows = outboxItems.map((item) => ({
     id: item.id,
@@ -147,48 +83,54 @@ export default function HistoryScreen() {
         <Chip label={t('dashboard.labTests')} selected={selectedFilter === 'lab'} onPress={() => setSelectedFilter('lab')} />
       </View>
 
-      {cacheMeta && (
-        <View style={[styles.cacheBanner, { backgroundColor: colors.surfaceSecondary }]}>
-          <Text style={[styles.cacheText, { color: colors.accent }]}>Offline mode - cached data as of {cacheMeta.asOfText}</Text>
-        </View>
+      {cacheMeta && !activities.length && (
+        <Banner title={`Offline mode - cached data as of ${cacheMeta.asOfText}`} variant="cached" />
       )}
 
-      {errorMessage && (
+      {isError && !activities.length && (
         <View style={styles.errorContainer}>
-          <InlineError message={errorMessage} onRetry={fetchHistory} />
+          <InlineError message={error?.message || t('dashboard.errorLoading')} onRetry={() => refetch()} />
         </View>
       )}
 
-      <FlatList
-        data={filteredRows}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<EmptyState title={t('dashboard.noData')} icon="time-outline" />}
-        renderItem={({ item }) => (
-          <Card style={styles.rowCard}>
-            <View style={styles.rowHeader}>
-              <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{item.title}</Text>
-              <Text style={[styles.statusBadge, item.status === 'failed' ? styles.statusFailed : item.status === 'pending' ? styles.statusPending : styles.statusDone]}>
-                {item.status}
-              </Text>
-            </View>
-            <Text style={[styles.rowSubject, { color: colors.textSecondary }]}>{item.subject}</Text>
-            <Text style={[styles.rowTime, { color: colors.textMuted }]}>{new Date(item.createdAt).toLocaleString()}</Text>
-
-            {item.status === 'failed' && (
-              <View style={styles.actionRow}>
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]} onPress={() => handleRetryOutbox(item.id)}>
-                  <Text style={[styles.actionText, { color: colors.textPrimary }]}>Retry</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.discardBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.danger }]} onPress={() => handleDiscardOutbox(item.id)}>
-                  <Text style={[styles.actionText, styles.discardText, { color: colors.danger }]}>Discard</Text>
-                </TouchableOpacity>
+      {isLoading && !activities.length ? (
+        <View style={{ padding: 16, gap: 12 }}>
+          <Skeleton height={80} />
+          <Skeleton height={80} />
+          <Skeleton height={80} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredRows}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} tintColor={colors.actionPrimary} />}
+          ListEmptyComponent={<EmptyState title={t('dashboard.noData')} icon="time-outline" />}
+          renderItem={({ item }) => (
+            <Card style={styles.rowCard}>
+              <View style={styles.rowHeader}>
+                <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{item.title}</Text>
+                <Text style={[styles.statusBadge, item.status === 'failed' ? styles.statusFailed : item.status === 'pending' ? styles.statusPending : styles.statusDone]}>
+                  {item.status}
+                </Text>
               </View>
-            )}
-          </Card>
-        )}
-      />
+              <Text style={[styles.rowSubject, { color: colors.textSecondary }]}>{item.subject}</Text>
+              <Text style={[styles.rowTime, { color: colors.textMuted }]}>{new Date(item.createdAt).toLocaleString()}</Text>
+
+              {item.status === 'failed' && (
+                <View style={styles.actionRow}>
+                  <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]} onPress={() => handleRetryOutbox(item.id)}>
+                    <Text style={[styles.actionText, { color: colors.textPrimary }]}>Retry</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.actionBtn, styles.discardBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.danger }]} onPress={() => handleDiscardOutbox(item.id)}>
+                    <Text style={[styles.actionText, styles.discardText, { color: colors.danger }]}>Discard</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </Card>
+          )}
+        />
+      )}
     </Screen>
   );
 }
@@ -199,17 +141,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     gap: 8,
-  },
-  cacheBanner: {
-    padding: 8,
-    marginHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cacheText: {
-    fontSize: 12,
-    fontFamily: 'Inter_500Medium',
   },
   errorContainer: {
     marginHorizontal: 16,

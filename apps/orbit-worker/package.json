@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@tanstack/react-query": "^5.102.3",
     "@40labs/api-client": "workspace:*",
     "@40labs/design-tokens": "workspace:*",
     "@40labs/i18n": "workspace:*",
