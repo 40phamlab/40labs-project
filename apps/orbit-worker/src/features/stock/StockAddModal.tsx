@@ -1,11 +1,13 @@
 // [PHASE: MVP]
-// [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
+// [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#stock]
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
-import { radius } from '../../theme/rn-tokens';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Screen, AppHeader, Text, TextField, DateField, SelectField, FormSection, Button } from '../../ui';
+import { useI18n } from '../../i18n/I18nProvider';
 import { enqueueStockReceipt } from './api';
+import { radius } from '../../theme/rn-tokens';
 
 interface StockAddModalProps {
   visible: boolean;
@@ -13,274 +15,140 @@ interface StockAddModalProps {
   onSuccess: () => void;
 }
 
+const CATEGORIES = [
+  { label: 'Analgesic', value: 'Analgesic' },
+  { label: 'Antibiotic', value: 'Antibiotic' },
+  { label: 'Sedative', value: 'Sedative' },
+  { label: 'Rehydration', value: 'Rehydration' },
+  { label: 'Supplements', value: 'Supplements' },
+];
+
+const UNITS = [
+  { label: 'Pack', value: 'pack' },
+  { label: 'Tablet', value: 'tablet' },
+  { label: 'Bottle', value: 'bottle' },
+  { label: 'Sachet', value: 'sachet' },
+  { label: 'Ampoule', value: 'ampoule' },
+  { label: 'Vial', value: 'vial' },
+];
+
 export function StockAddModal({ visible, onClose, onSuccess }: StockAddModalProps) {
   const { colors } = useTheme();
-  const [medicineName, setMedicineName] = useState('');
+  const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+
+  const [name, setName] = useState('');
   const [genericName, setGenericName] = useState('');
-  const [category, setCategory] = useState('Tablets');
-  const [unit, setUnit] = useState('pcs');
-  const [batchNumber, setBatchNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [buyPrice, setBuyPrice] = useState('');
-  const [sellPrice, setSellPrice] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [lowStockThreshold, setLowStockThreshold] = useState('5');
+  const [category, setCategory] = useState('Analgesic');
+  const [quantity, setQuantity] = useState('10');
+  const [buyPrice, setBuyPrice] = useState('1000');
+  const [sellPrice, setSellPrice] = useState('1500');
+  const [unit, setUnit] = useState('pack');
+  const [batch, setBatch] = useState(`BATCH-${Math.floor(100000 + Math.random() * 900000)}`);
+  const [expiryDate, setExpiryDate] = useState(new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]);
+  const [lowStockThreshold, setLowStockThreshold] = useState('10');
+
+  const [expiryError, setExpiryError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  if (!visible) return null;
+  // TODO: [reason: scanner not wired in Orbit] [phase: post-MVP]
+  // Batch/expiry scan via existing rxing/OCR only if already wired.
+
+  const handleExpiryChange = (date: string) => {
+    setExpiryError(null);
+    if (new Date(date).getTime() < Date.now()) {
+      setExpiryError('Expiry date cannot be in the past');
+    }
+    setExpiryDate(date);
+  };
+
+  const isFormValid =
+    name.trim() !== '' &&
+    batch.trim() !== '' &&
+    expiryDate.trim() !== '' &&
+    !expiryError &&
+    Number(quantity) > 0;
 
   const handleSave = async () => {
-    if (!medicineName.trim() || !batchNumber.trim() || !expiryDate.trim() || !buyPrice || !sellPrice || !quantity) {
-      Alert.alert('Error', 'Please fill in all required fields.');
-      return;
-    }
-
-    const buy = Number(buyPrice);
-    const sell = Number(sellPrice);
-    const qty = Number(quantity);
-    const threshold = Number(lowStockThreshold) || 5;
-
-    if (isNaN(buy) || isNaN(sell) || isNaN(qty)) {
-      Alert.alert('Error', 'Prices and quantity must be valid numbers.');
-      return;
-    }
+    if (!isFormValid) return;
 
     setSaving(true);
     try {
       await enqueueStockReceipt({
-        medicineName: medicineName.trim(),
-        genericName: genericName.trim() ? genericName.trim() : null,
-        category: category.trim() || 'General',
-        unit: unit.trim() || 'pcs',
-        batchNumber: batchNumber.trim(),
-        expiryDate: expiryDate.trim(),
-        buyPrice: buy,
-        sellPrice: sell,
-        quantity: qty,
-        lowStockThreshold: threshold,
+        medicineName: name.trim(),
+        genericName: genericName.trim() || null,
+        category,
+        unit,
+        batchNumber: batch.trim(),
+        expiryDate: new Date(expiryDate).toISOString(),
+        buyPrice: Number(buyPrice.replace(/,/g, '')),
+        sellPrice: Number(sellPrice.replace(/,/g, '')),
+        quantity: Number(quantity),
+        lowStockThreshold: Number(lowStockThreshold) || 10,
       });
 
-      Alert.alert('Success', 'Stock receipt queued in outbox for synchronization.');
       onSuccess();
       onClose();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to queue stock receipt');
+      setExpiryError(err.message || 'Failed to add stock');
     } finally {
       setSaving(false);
     }
   };
 
+  if (!visible) return null;
+
   return (
-    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle }]}>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Receive Stock (Add Stock)</Text>
-            <TouchableOpacity onPress={onClose} accessibilityLabel="Close">
-              <Ionicons name="close" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
+    <Screen scrollable={false}>
+      <AppHeader title="Add New Stock Item" onBack={onClose} />
 
-          <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Medicine Name *</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                placeholder="e.g. Paracetamol"
-                placeholderTextColor={colors.textMuted}
-                value={medicineName}
-                onChangeText={setMedicineName}
-              />
-            </View>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}>
+        <FormSection title="Product Information">
+          <TextField label="Product Name" value={name} onChangeText={setName} placeholder="" />
+          <TextField label="Generic Name" value={genericName} onChangeText={setGenericName} placeholder="" />
+          <SelectField label="Category" value={category} options={CATEGORIES} onSelect={setCategory} />
+          <SelectField label="Unit / Metric" value={unit} options={UNITS} onSelect={setUnit} />
+        </FormSection>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Generic Name</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                placeholder="e.g. Acetaminophen"
-                placeholderTextColor={colors.textMuted}
-                value={genericName}
-                onChangeText={setGenericName}
-              />
-            </View>
+        <FormSection title="Inventory & Pricing">
+          <TextField label="Quantity" value={quantity} onChangeText={setQuantity} keyboardType="numeric" placeholder="" />
+          <TextField label="Buy Price (TZS)" value={buyPrice} onChangeText={setBuyPrice} keyboardType="numeric" placeholder="" style={styles.monoInput} />
+          <TextField label="Sell Price (TZS)" value={sellPrice} onChangeText={setSellPrice} keyboardType="numeric" placeholder="" style={styles.monoInput} />
+          <TextField label="Low Stock Threshold" value={lowStockThreshold} onChangeText={setLowStockThreshold} keyboardType="numeric" placeholder="" />
+        </FormSection>
 
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Category</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                  placeholder="Tablets"
-                  placeholderTextColor={colors.textMuted}
-                  value={category}
-                  onChangeText={setCategory}
-                />
-              </View>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Unit</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                  placeholder="pcs / tablets"
-                  placeholderTextColor={colors.textMuted}
-                  value={unit}
-                  onChangeText={setUnit}
-                />
-              </View>
-            </View>
+        <FormSection title="Batch & Expiry">
+          <TextField label="Batch Number" value={batch} onChangeText={setBatch} placeholder="" />
+          <DateField label="Expiry Date" value={expiryDate} onChange={handleExpiryChange} error={expiryError || undefined} />
+        </FormSection>
+      </ScrollView>
 
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Batch Number *</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                  placeholder="B12345"
-                  placeholderTextColor={colors.textMuted}
-                  value={batchNumber}
-                  onChangeText={setBatchNumber}
-                />
-              </View>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Expiry Date *</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                  placeholder="2028-12-31"
-                  placeholderTextColor={colors.textMuted}
-                  value={expiryDate}
-                  onChangeText={setExpiryDate}
-                />
-              </View>
-            </View>
-
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Buy Price (TZS) *</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                  placeholder="500"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  value={buyPrice}
-                  onChangeText={setBuyPrice}
-                />
-              </View>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Sell Price (TZS) *</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                  placeholder="1000"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  value={sellPrice}
-                  onChangeText={setSellPrice}
-                />
-              </View>
-            </View>
-
-            <View style={styles.row}>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Quantity *</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                  placeholder="100"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  value={quantity}
-                  onChangeText={setQuantity}
-                />
-              </View>
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>Low Threshold</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                  placeholder="5"
-                  placeholderTextColor={colors.textMuted}
-                  keyboardType="numeric"
-                  value={lowStockThreshold}
-                  onChangeText={setLowStockThreshold}
-                />
-              </View>
-            </View>
-          </ScrollView>
-
-          <View style={styles.footer}>
-            <TouchableOpacity
-              style={[styles.button, { backgroundColor: colors.actionPrimary, opacity: saving ? 0.7 : 1 }]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Save & Queue Receipt</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={[styles.stickyFooter, { backgroundColor: colors.surfaceStrong, borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <Button
+          title="Add Stock"
+          onPress={handleSave}
+          disabled={!isFormValid || saving}
+          loading={saving}
+        />
       </View>
-    </Modal>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  container: {
-    borderRadius: radius.card,
-    borderWidth: 1,
-    maxHeight: '90%',
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  title: {
-    fontSize: 16,
-    fontFamily: 'Sora_600SemiBold',
-  },
   content: {
-    padding: 20,
-    gap: 14,
-  },
-  inputGroup: {
-    gap: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  label: {
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
-  },
-  input: {
-    height: 46,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  footer: {
     padding: 16,
+  },
+  monoInput: {
+    fontFamily: 'JetBrainsMono_400Regular',
+  },
+  stickyFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-  },
-  button: {
-    paddingVertical: 14,
-    borderRadius: radius.card,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
   },
 });

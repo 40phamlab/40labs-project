@@ -1,12 +1,16 @@
 // [PHASE: MVP]
-// [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
+// [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#customers]
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
 import { radius } from '../../theme/rn-tokens';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Screen, AppHeader, Text, TextField, DateField, SelectField, FormSection, Button, Banner } from '../../ui';
+import { useI18n } from '../../i18n/I18nProvider';
 import { Customer } from './types';
-import { enqueueCustomerCreate } from './api';
+import { enqueueCustomerCreate, fetchCustomersApi } from './api';
+import { useConnectionStore } from '../../stores/connection';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 interface AddCustomerModalProps {
   visible: boolean;
@@ -14,32 +18,109 @@ interface AddCustomerModalProps {
   onSuccess: (customer: Customer) => void;
 }
 
+export function normalizePhoneTZ(phone: string): string | null {
+  const cleaned = phone.replace(/[\s()-]/g, '');
+  if (/^0[67]\d{8}$/.test(cleaned)) {
+    return '+255' + cleaned.slice(1);
+  }
+  if (/^255[67]\d{8}$/.test(cleaned)) {
+    return '+' + cleaned;
+  }
+  if (/^\+255[67]\d{8}$/.test(cleaned)) {
+    return cleaned;
+  }
+  return null;
+}
+
 export function AddCustomerModal({ visible, onClose, onSuccess }: AddCustomerModalProps) {
   const { colors } = useTheme();
-  const [phone, setPhone] = useState('');
+  const { t } = useI18n();
+  const insets = useSafeAreaInsets();
+  const { activeBusinessId } = useConnectionStore();
+
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
 
-  if (!visible) return null;
+  // Medical profile
+  const [dob, setDob] = useState('');
+  const [sex, setSex] = useState('');
+  const [bloodGroup, setBloodGroup] = useState('');
+  const [allergies, setAllergies] = useState<{ substance: string; reaction: string; severity: string }[]>([]);
+  const [newSubstance, setNewSubstance] = useState('');
+  const [newReaction, setNewReaction] = useState('');
+  const [newSeverity, setNewSeverity] = useState('moderate');
+  const [chronicConditions, setChronicConditions] = useState<string[]>([]);
+  const [newCondition, setNewCondition] = useState('');
+  const [currentMedications, setCurrentMedications] = useState<string[]>([]);
+  const [newMedication, setNewMedication] = useState('');
+
+  // Contact & Location
+  const [emergencyName, setEmergencyName] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [wardDistrict, setWardDistrict] = useState('');
+
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [duplicateCustomer, setDuplicateCustomer] = useState<{ name: string; id: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [existingCustomers, setExistingCustomers] = useState<Customer[]>([]);
+
+  useEffect(() => {
+    if (visible && activeBusinessId) {
+      fetchCustomersApi(activeBusinessId).then(setExistingCustomers).catch(() => {});
+    }
+  }, [visible, activeBusinessId]);
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(val);
+    setPhoneError(null);
+    setDuplicateCustomer(null);
+
+    const norm = normalizePhoneTZ(val);
+    if (val.trim() && !norm) {
+      setPhoneError('Invalid phone format (0XXXXXXXXX)');
+      return;
+    }
+
+    if (norm) {
+      const match = existingCustomers.find((c) => normalizePhoneTZ(c.phone) === norm);
+      if (match) {
+        setDuplicateCustomer({ name: match.fullName, id: match.id });
+      }
+    }
+  };
+
+  const isFormValid = fullName.trim() !== '' && phone.trim() !== '' && !phoneError;
 
   const handleSave = async () => {
-    if (!phone.trim() || !fullName.trim()) {
-      Alert.alert('Error', 'Phone number and full name are required.');
+    if (!isFormValid) return;
+
+    const normPhone = normalizePhoneTZ(phone);
+    if (!normPhone) {
+      setPhoneError('Invalid phone format');
       return;
     }
 
     setSaving(true);
     try {
-      await enqueueCustomerCreate({
+      const payload = {
         fullName: fullName.trim(),
-        phone: phone.trim(),
-        email: email.trim() ? email.trim() : null,
-        notes: notes.trim() ? notes.trim() : null,
-      });
+        phone: normPhone,
+        email: email.trim() || null,
+        notes: notes.trim() || null,
+        dob: dob.trim() || null,
+        sex: sex || null,
+        bloodGroup: bloodGroup.trim() || null,
+        allergies: allergies.length > 0 ? allergies : null,
+        chronicConditions: chronicConditions.length > 0 ? chronicConditions : null,
+        currentMedications: currentMedications.length > 0 ? currentMedications : null,
+        emergencyContact: emergencyName.trim() || emergencyPhone.trim() ? { name: emergencyName.trim(), phone: emergencyPhone.trim() } : null,
+        wardDistrict: wardDistrict.trim() || null,
+      };
 
-      Alert.alert('Success', 'Patient/Customer created and queued in outbox for synchronization.');
+      await enqueueCustomerCreate(payload);
+
       const tempCustomer: Customer = {
         id: `cust_temp_${Date.now()}`,
         workspaceId: 'ws_010101',
@@ -47,166 +128,177 @@ export function AddCustomerModal({ visible, onClose, onSuccess }: AddCustomerMod
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         fullName: fullName.trim(),
-        phone: phone.trim(),
+        phone: normPhone,
         email: email.trim() || null,
         notes: notes.trim() || null,
       };
+
       onSuccess(tempCustomer);
       onClose();
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to create customer');
+      setPhoneError(err.message || 'Failed to save customer');
     } finally {
       setSaving(false);
     }
   };
 
+  if (!visible) return null;
+
   return (
-    <Modal transparent visible={visible} animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <View style={[styles.container, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle }]}>
-          <View style={styles.header}>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Add New Patient / Customer</Text>
-            <TouchableOpacity onPress={onClose} accessibilityLabel="Close">
-              <Ionicons name="close" size={24} color={colors.textSecondary} />
-            </TouchableOpacity>
+    <Screen scrollable={false}>
+      <AppHeader title="Add Patient / Customer" onBack={onClose} />
+
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}>
+        {duplicateCustomer && (
+          <Banner
+            title={`Already registered as ${duplicateCustomer.name}`}
+            variant="warning"
+          />
+        )}
+
+        <FormSection title="Basic Information">
+          <TextField
+            label="Full Name"
+            value={fullName}
+            onChangeText={setFullName}
+            placeholder=""
+          />
+          <TextField
+            label="Phone Number"
+            value={phone}
+            onChangeText={handlePhoneChange}
+            keyboardType="phone-pad"
+            error={phoneError || undefined}
+            placeholder=""
+          />
+          <TextField
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            placeholder=""
+          />
+        </FormSection>
+
+        <FormSection title="Medical Profile" defaultExpanded={false}>
+          <DateField label="Date of Birth" value={dob} onChange={setDob} />
+          <SelectField
+            label="Sex"
+            value={sex}
+            options={[
+              { label: 'Male', value: 'male' },
+              { label: 'Female', value: 'female' },
+              { label: 'Other', value: 'other' },
+            ]}
+            onSelect={setSex}
+          />
+          <TextField label="Blood Group" value={bloodGroup} onChangeText={setBloodGroup} placeholder="" />
+
+          <Text variant="label" style={{ marginBottom: 6 }}>Allergies</Text>
+          <View style={styles.inlineRow}>
+            <View style={{ flex: 1 }}>
+              <TextField label="Substance" value={newSubstance} onChangeText={setNewSubstance} placeholder="" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <TextField label="Reaction" value={newReaction} onChangeText={setNewReaction} placeholder="" />
+            </View>
           </View>
+          <SelectField
+            label="Severity"
+            value={newSeverity}
+            options={[
+              { label: 'Mild', value: 'mild' },
+              { label: 'Moderate', value: 'moderate' },
+              { label: 'Severe', value: 'severe' },
+            ]}
+            onSelect={setNewSeverity}
+          />
+          <Button
+            title="Add Allergy"
+            variant="secondary"
+            onPress={() => {
+              if (newSubstance.trim()) {
+                setAllergies([...allergies, { substance: newSubstance, reaction: newReaction, severity: newSeverity }]);
+                setNewSubstance('');
+                setNewReaction('');
+              }
+            }}
+          />
+          {allergies.map((a, i) => (
+            <Text key={i} variant="mono" style={{ fontSize: 12, marginTop: 4 }}>• {a.substance} ({a.reaction} - {a.severity})</Text>
+          ))}
 
-          <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Phone Number * (Tanzania)</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                placeholder="e.g. 0712345678 or +255712345678"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={setPhone}
-              />
-            </View>
+          <View style={{ height: 16 }} />
+          <TextField label="Chronic Conditions" value={newCondition} onChangeText={setNewCondition} placeholder="" />
+          <Button
+            title="Add Condition"
+            variant="secondary"
+            onPress={() => {
+              if (newCondition.trim()) {
+                setChronicConditions([...chronicConditions, newCondition.trim()]);
+                setNewCondition('');
+              }
+            }}
+          />
+          {chronicConditions.map((c, i) => (
+            <Text key={i} variant="mono" style={{ fontSize: 12, marginTop: 4 }}>• {c}</Text>
+          ))}
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Full Name *</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                placeholder="e.g. Juma Ally"
-                placeholderTextColor={colors.textMuted}
-                value={fullName}
-                onChangeText={setFullName}
-              />
-            </View>
+          <View style={{ height: 16 }} />
+          <TextField label="Current Medications" value={newMedication} onChangeText={setNewMedication} placeholder="" />
+          <Button
+            title="Add Medication"
+            variant="secondary"
+            onPress={() => {
+              if (newMedication.trim()) {
+                setCurrentMedications([...currentMedications, newMedication.trim()]);
+                setNewMedication('');
+              }
+            }}
+          />
+          {currentMedications.map((m, i) => (
+            <Text key={i} variant="mono" style={{ fontSize: 12, marginTop: 4 }}>• {m}</Text>
+          ))}
+        </FormSection>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Email (Optional)</Text>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                placeholder="e.g. juma@example.com"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
+        <FormSection title="Contact & Location" defaultExpanded={false}>
+          <TextField label="Emergency Contact Name" value={emergencyName} onChangeText={setEmergencyName} placeholder="" />
+          <TextField label="Emergency Contact Phone" value={emergencyPhone} onChangeText={setEmergencyPhone} keyboardType="phone-pad" placeholder="" />
+          <TextField label="Ward / District" value={wardDistrict} onChangeText={setWardDistrict} placeholder="" />
+        </FormSection>
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Notes (Optional)</Text>
-              <TextInput
-                style={[styles.textArea, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
-                placeholder="Allergies, notes, etc."
-                placeholderTextColor={colors.textMuted}
-                multiline
-                numberOfLines={3}
-                value={notes}
-                onChangeText={setNotes}
-              />
-            </View>
-          </ScrollView>
+        <FormSection title="Notes" defaultExpanded={false}>
+          <TextField label="Notes" value={notes} onChangeText={setNotes} placeholder="" />
+        </FormSection>
+      </ScrollView>
 
-          <View style={styles.footer}>
-            <TouchableOpacity
-              style={[styles.button, { backgroundColor: colors.actionPrimary, opacity: saving ? 0.7 : 1 }]}
-              onPress={handleSave}
-              disabled={saving}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Save & Queue Patient</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={[styles.stickyFooter, { backgroundColor: colors.surfaceStrong, borderTopColor: colors.borderSubtle, paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <Button
+          title="Save Customer"
+          onPress={handleSave}
+          disabled={!isFormValid || saving}
+          loading={saving}
+        />
       </View>
-    </Modal>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  container: {
-    borderRadius: radius.card,
-    borderWidth: 1,
-    maxHeight: '85%',
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  title: {
-    fontSize: 16,
-    fontFamily: 'Sora_600SemiBold',
-  },
   content: {
-    padding: 20,
-    gap: 14,
-  },
-  inputGroup: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
-  },
-  input: {
-    height: 46,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-  },
-  textArea: {
-    height: 90,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    textAlignVertical: 'top',
-  },
-  footer: {
     padding: 16,
+  },
+  inlineRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  stickyFooter: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
-  },
-  button: {
-    paddingVertical: 14,
-    borderRadius: radius.card,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontFamily: 'Inter_600SemiBold',
   },
 });
