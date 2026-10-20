@@ -1,37 +1,31 @@
-# Orbit Worker — Mobile Foundation and Desktop Integration Implementation Plan
+# Orbit Worker — Mobile Sales Workflow Implementation Plan
 
-Implement the mobile application foundation, connection lifecycle, design tokens, UI components, API layer, and session security for Orbit Worker (`apps/orbit-worker`), connecting it to `core-desktop`.
+Implement and verify the mobile-optimized Sales workflow (`apps/orbit-worker/app/pos.tsx` and associated sales API clients) integrating with `core-desktop` authoritative sales services, enforcing idempotency, PIN authorization, and rigorous integrity checks.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Connection Lifecycle States**: Fully integrates pairing, active heartbeat monitoring, connection state transitions (`unpaired`, `connecting`, `connected`, `unreachable`, `revoked`), and NetInfo/AppState listeners.
-> - **Design Tokens & Theme**: Leverages canonical `@40labs/design-tokens` with dynamic dark/light theme switching persisted in SQLite.
-> - **Security & Session**: Enforces device-level authentication credentials in `expo-secure-store`, server-side permissions, and handles sign-out/clear-data cleanly without unpairing the device unnecessarily unless requested.
+> - **Online-Only Enforcement**: Sales are processed strictly online through authenticated requests with idempotency keys. If offline, the POS blocks sales and explains that sales require desktop connectivity.
+> - **Authoritative Totals & Stock**: Cart totals and stock checks are validated server-side by `core-desktop`. Client calculations display authoritative amounts returned upon success.
+> - **Idempotency & Retry Safety**: Uses persistent idempotency keys (`Idempotency-Key` header) to prevent duplicate transactions during network retries or timeouts.
 
 ## Open Questions
-- None. All specifications adhere to `apps/orbit-worker/CONTEXT/` and root `CLAUDE.md`.
+- None.
 
 ## Proposed Changes
 
-### Mobile App Foundation & Shell
-- **[MODIFY]** [app/_layout.tsx](file:///C:/dev/40Labs/apps/orbit-worker/app/_layout.tsx): Ensure root layout, fonts, and theme providers correctly wrap all routes.
-- **[MODIFY]** [app/(tabs)/_layout.tsx](file:///C:/dev/40Labs/apps/orbit-worker/app/(tabs)/_layout.tsx): Bottom tab navigation with active state and localized tab items.
+### Mobile Sales Workflow & POS Screen
+- **[MODIFY]** [app/pos.tsx](file:///C:/dev/40Labs/apps/orbit-worker/app/pos.tsx): Enhance POS screen error handling, offline state guards, idempotency key preservation, and receipt rendering.
+- **[MODIFY]** [src/features/sales/api.ts](file:///C:/dev/40Labs/apps/orbit-worker/src/features/sales/api.ts): Ensure proper error propagation and idempotency header injection.
 
-### Design Tokens & Component Library
-- **[MODIFY]** [src/components/](file:///C:/dev/40Labs/apps/orbit-worker/src/components/): Polish primitives (`Card`, `Chip`, `CountBadge`, `EmptyState`, `Fab`, `InlineError`, `ScreenHeader`, `StatusDot`, `Tile`, `BottomTabBar`) to ensure strict token consumption and accessibility.
-
-### Connection & Session Lifecycle
-- **[MODIFY]** [src/stores/connection.ts](file:///C:/dev/40Labs/apps/orbit-worker/src/stores/connection.ts): Robust connection monitoring, heartbeat, and revocation handling.
-- **[MODIFY]** [app/(tabs)/settings.tsx](file:///C:/dev/40Labs/apps/orbit-worker/app/(tabs)/settings.tsx): Complete settings screen with server info, user/role details, language switcher, theme toggle, and outbox sync/clear data actions.
+### Automated Tests
+- **[NEW]** [__tests__/SalesWorkflow.test.tsx](file:///C:/dev/40Labs/apps/orbit-worker/__tests__/SalesWorkflow.test.tsx): Unit tests covering cart operations, offline POS blocking, idempotency handling, and successful checkout flows.
 
 ## Verification Plan
 
 ### Automated Tests
 - Run `pnpm --filter @40labs/orbit-worker typecheck`
-- Run `pnpm --filter @40labs/orbit-worker test` (Jest tests)
+- Run `pnpm --filter @40labs/orbit-worker test`
 
 ### Manual Verification
-- Verify app starts and renders screens correctly.
-- Test theme toggle and i18n language switching.
-- Verify connection state representation and settings actions.
+- Verify POS screen starts, allows product search, cart updates, customer selection, and PIN authorization checkout.

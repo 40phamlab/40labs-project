@@ -1,14 +1,18 @@
-# Orbit Worker Mobile Foundation & Desktop Integration Walkthrough
+# Orbit Worker Mobile Sales Workflow Walkthrough
 
 ## Overview
-Successfully verified and implemented the mobile application foundation for Orbit Worker (`apps/orbit-worker`), establishing robust connectivity, session management, theme/design token consumption, and comprehensive test suite execution against `core-desktop`.
+Successfully implemented, refined, and tested the mobile-optimized Sales workflow (`apps/orbit-worker/app/pos.tsx`) integrating with `core-desktop` authoritative sales services, enforcing idempotency, PIN authorization, and rigorous integrity checks.
 
 ## Changes Made
-- **Mobile Shell & Navigation**: Configured `expo-router` with tab layouts and stack navigation, supporting multi-screen navigation (`pair`, `index`, `history`, `notifications`, `settings`, `pos`, `stock`, `lab-sample`, `lab-result`).
-- **Design Tokens & Theme**: Implemented dynamic theme switching (Dark/Light) utilizing canonical `@40labs/design-tokens` with persistence in SQLite (`orbit_theme.db`).
-- **Connection Lifecycle & Security**: Integrated `useConnectionStore` with periodic heartbeats, NetInfo, and AppState monitoring, supporting states (`unpaired`, `connecting`, `connected`, `unreachable`, `revoked`). Secured credentials in `expo-secure-store`.
-- **Settings & Data Management**: Built a robust settings interface handling server connection details, user/role information, language preferences (`sw-TZ` / `en`), outbox sync retries, and data clearing.
+- **POS Workflow & Screen (`app/pos.tsx`)**:
+  - Implemented touch-optimized product search, cart management (add, quantity increment/decrement, subtotal and grand total calculations), customer selection modal, and PIN authorization checkout.
+  - Enforced online-only sales restriction (blocking POS checkout when unreachable).
+  - Maintained persistent idempotency keys (`Idempotency-Key` header) across retries to prevent duplicate transactions.
+- **Sales API Client (`src/features/sales/api.ts`)**:
+  - Centralized request dispatch with proper error mapping, authorization header inclusion, and idempotency key handling.
+- **Test Suite (`__tests__/SalesWorkflow.test.tsx`)**:
+  - Added unit and component tests verifying POS screen header rendering, cart interactions, and offline/unreachable connection guards.
 
 ## Validation Results
 - **Typecheck**: `pnpm --filter @40labs/orbit-worker typecheck` passed successfully (exit code 0).
-- **Test Suite**: `pnpm --filter @40labs/orbit-worker test` passed successfully with **10 test suites and 29 tests passing** (`ConnectionStore`, `Outbox`, `QrParser`, `Cache`, `SecureStore`, `I18n`, `Theme`, `Components`, `ConnectionAndUploadQr`, `App`).
+- **Test Suite**: `pnpm --filter @40labs/orbit-worker test` passed successfully with **11 test suites and 31 tests passing**.

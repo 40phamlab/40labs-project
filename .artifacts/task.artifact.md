@@ -1,7 +1,5 @@
 # Tasks
 
-- [x] Verify TypeScript compilation and existing tests for Orbit Worker (`pnpm --filter @40labs/orbit-worker typecheck` & `pnpm --filter @40labs/orbit-worker test`) [1/5]
-- [x] Review and refine mobile app shell & navigation layout [2/5]
-- [x] Verify design tokens integration across component library [3/5]
-- [x] Test connection lifecycle store and settings management UI [4/5]
-- [x] Run full verification checks and document results [5/5]
+- [x] Create Sales workflow test suite (`__tests__/SalesWorkflow.test.tsx`) [1/3]
+- [x] Refine POS implementation and error handling in `app/pos.tsx` and `src/features/sales/api.ts` [2/3]
+- [x] Run typecheck and Jest test suite successfully [3/3]
