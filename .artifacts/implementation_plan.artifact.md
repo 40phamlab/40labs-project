@@ -1,25 +1,21 @@
-# Orbit Worker — Mobile Sample Collection Workflow Implementation Plan
+# Orbit Worker — Multi-User Authorization and Secure Desktop Requests Implementation Plan
 
-Implement and verify the mobile-optimized Sample Collection workflow (`apps/orbit-worker/app/lab-sample.tsx` and associated lab API/outbox client) integrating with `core-desktop` authoritative lab services, offline caching, and outbox queuing for sample collection (`lab_sample`) and lab results (`lab_result`).
+Verify and test multi-user authorization, secure pairing, session isolation, and permission-aware request handling in Orbit Worker (`apps/orbit-worker`) interacting with `core-desktop`.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> - **Outbox Queueing for Collection**: Sample collection actions are queued in the idempotent SQLite outbox (`lab_sample`), supporting offline queueing and automatic background syncing when the desktop hub is reachable.
-> - **Cache Fallback**: Displays cached pending orders when offline, with clear connection status indicators.
-> - **Authoritative Desktop Validation**: Desktop validates all sample orders, specimen identifiers, and state transitions (`pending` -> `collected`).
+> - **Separation of Device Pairing and User Identity**: Device pairing establishes the secure LAN tunnel and device credential, while user identity and role permissions govern what operations the user can perform.
+> - **Server-Side Enforcement**: All permissions (`can_create_sale`, `can_add_lab_sample`, `can_update_stock`, etc.) are validated authoritatively by `core-desktop` via `auth_middleware`.
+> - **Session Cleanup**: Sign-out and cache clearing properly scrub session tokens and cached domain data without breaking device pairing credentials unless explicitly uninstalled/cleared.
 
 ## Open Questions
 - None.
 
 ## Proposed Changes
 
-### Mobile Lab Sample Workflow & Screen
-- **[MODIFY]** [app/lab-sample.tsx](file:///C:/dev/40Labs/apps/orbit-worker/app/lab-sample.tsx): Polish sample collection modal, validation, and offline cache display.
-- **[MODIFY]** [src/features/lab/api.ts](file:///C:/dev/40Labs/apps/orbit-worker/src/features/lab/api.ts): Ensure correct outbox queueing and API error handling.
-
-### Automated Tests
-- **[NEW]** [__tests__/LabSampleWorkflow.test.tsx](file:///C:/dev/40Labs/apps/orbit-worker/__tests__/LabSampleWorkflow.test.tsx): Unit tests covering lab orders fetching, offline cache fallback, sample label validation, and outbox enqueueing.
+### Automated Tests for Multi-User Auth & Security
+- **[NEW]** [__tests__/MultiUserAuth.test.ts](file:///C:/dev/40Labs/apps/orbit-worker/__tests__/MultiUserAuth.test.ts): Unit tests verifying permission checks, secure store credential handling, session clearing on sign-out, and cache isolation across users.
 
 ## Verification Plan
 
@@ -28,4 +24,4 @@ Implement and verify the mobile-optimized Sample Collection workflow (`apps/orbi
 - Run `pnpm --filter @40labs/orbit-worker test`
 
 ### Manual Verification
-- Verify lab orders screen lists pending orders, allows selecting an order, entering a sample label, and queueing the sample in the outbox.
+- Verify permission handling and sign-out cleanup behavior.
