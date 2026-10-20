@@ -18,6 +18,7 @@ import { decodeQrFromImageUri } from '../src/lib/qr-scanner';
 import { saveServerCredential } from '../src/lib/secure-store';
 import { pinnedFetch, pinnedFetchFromEndpoints } from '../src/lib/pinned-transport';
 import { ApiClient } from '@40labs/api-client';
+import { useConnectionStore } from '../src/stores/connection';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function PairScreen() {
@@ -86,6 +87,7 @@ export default function PairScreen() {
         fp: parsed.fp,
       });
 
+      await useConnectionStore.getState().initialize();
       setPendingPairQr(null);
       setNetworkSetup(false);
       router.replace('/(tabs)');

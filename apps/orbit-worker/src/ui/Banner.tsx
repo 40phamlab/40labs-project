@@ -9,7 +9,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 interface BannerProps {
   title: string;
-  variant?: 'offline' | 'cached' | 'warning';
+  variant?: 'offline' | 'cached' | 'warning' | 'success';
 }
 
 export function Banner({ title, variant = 'offline' }: BannerProps) {
@@ -21,6 +21,8 @@ export function Banner({ title, variant = 'offline' }: BannerProps) {
         return { bg: colors.surfaceSecondary, border: colors.borderSubtle, text: colors.accentOrange };
       case 'warning':
         return { bg: colors.warningBg, border: colors.warningBorder, text: colors.warning };
+      case 'success':
+        return { bg: colors.successBg, border: colors.successBorder, text: colors.success };
       case 'offline':
       default:
         return { bg: colors.dangerBg, border: colors.dangerBorder, text: colors.danger };
@@ -31,7 +33,18 @@ export function Banner({ title, variant = 'offline' }: BannerProps) {
 
   return (
     <View style={[styles.banner, { backgroundColor: c.bg, borderColor: c.border, borderRadius: r.card }]}>
-      <Ionicons name={variant === 'offline' ? 'cloud-offline-outline' : 'save-outline'} size={18} color={c.text} style={styles.icon} />
+      <Ionicons
+        name={
+          variant === 'offline'
+            ? 'cloud-offline-outline'
+            : variant === 'success'
+            ? 'checkmark-circle-outline'
+            : 'save-outline'
+        }
+        size={18}
+        color={c.text}
+        style={styles.icon}
+      />
       <Text style={[styles.text, { color: c.text }]}>{title}</Text>
     </View>
   );

@@ -24,6 +24,6 @@ describe('Orbit Worker Foundation', () => {
         </ThemeProvider>
       </QueryClientProvider>
     );
-    expect(getByText('Dashibodi')).toBeTruthy();
+    expect(getByText('Orbit Worker')).toBeTruthy();
   });
 });
