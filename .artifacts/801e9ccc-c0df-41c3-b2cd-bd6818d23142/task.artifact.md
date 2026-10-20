@@ -1,0 +1,6 @@
+- `[ ]` Add i18n keys for launchpad actions and search results
+- `[ ]` Implement `CategoryStrip.tsx` component
+- `[ ]` Implement `ChatLaunchpad.tsx` component
+- `[ ]` Implement `ContactSearchPalette.tsx` component
+- `[ ]` Update `NotificationsScreen.tsx` to integrate launchpad, category strip, keyboard shortcuts, and attach flow
+- `[ ]` Verify build, type check, and tests
