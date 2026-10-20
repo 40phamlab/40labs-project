@@ -1,10 +1,12 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, RefreshControl, Alert, ActivityIndicator, Modal } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { View, StyleSheet, FlatList, TextInput, TouchableOpacity, RefreshControl, Alert, ActivityIndicator, Modal } from 'react-native';
+import { useTheme } from '../src/theme/ThemeProvider';
+import { radius } from '../src/theme/rn-tokens';
+import { Screen, AppHeader, Text } from '../src/ui';
 import { useI18n } from '../src/i18n/I18nProvider';
-import { ScreenHeader, EmptyState, InlineError } from '../src/components';
+import { EmptyState, InlineError } from '../src/components';
 import { useConnectionStore } from '../src/stores/connection';
 import { LabOrder } from '../src/features/lab/types';
 import { fetchLabOrdersApi, enqueueRecordResult } from '../src/features/lab/api';
@@ -13,6 +15,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 
 export default function LabResultScreen() {
+  const { colors } = useTheme();
   const { t } = useI18n();
   const router = useRouter();
   const { status, activeBusinessId } = useConnectionStore();
@@ -38,7 +41,6 @@ export default function LabResultScreen() {
 
     try {
       const data = await fetchLabOrdersApi(activeBusinessId);
-      // Filter orders awaiting result (status === 'sample_collected')
       const resultOrders = data.filter((o) => o.status === 'sample_collected');
       setOrders(resultOrders);
       putCache('lab_orders_result', resultOrders);
@@ -94,21 +96,15 @@ export default function LabResultScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Back">
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <ScreenHeader
-          title="Record Result"
-          subtitle="Awaiting Result Orders"
-          style={styles.headerTitleContainer}
-        />
-      </View>
+    <Screen scrollable={false}>
+      <AppHeader
+        title="Record Result"
+        onBack={() => router.back()}
+      />
 
       {cacheMeta && (
-        <View style={styles.cacheBanner}>
-          <Text style={styles.cacheText}>
+        <View style={[styles.cacheBanner, { backgroundColor: colors.surfaceSecondary }]}>
+          <Text style={[styles.cacheText, { color: colors.accent }]}>
             Offline mode - displaying cached data as of {cacheMeta.asOfText}
           </Text>
         </View>
@@ -125,13 +121,13 @@ export default function LabResultScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={[styles.card, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle }]}
+            style={[styles.card, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             onPress={() => setSelectedOrder(item)}
           >
             <View style={styles.cardHeader}>
-              <Text style={[styles.orderIdText, { color: colors.textPrimary }]}>Order #{item.id}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: colors.surfaceSecondary }]}>
-                <Text style={[styles.statusText, { color: colors.actionPrimary }]}>{item.status}</Text>
+              <Text variant="heading" style={{ fontSize: 15 }}>Order #{item.id}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: colors.surfaceSecondary, borderRadius: radius.card }]}>
+                <Text variant="mono" style={{ fontSize: 12, color: colors.actionPrimary }}>{item.status}</Text>
               </View>
             </View>
             <Text style={[styles.metaText, { color: colors.textSecondary }]}>Test Catalog ID: {item.testCatalogId}</Text>
@@ -155,18 +151,18 @@ export default function LabResultScreen() {
 
       <Modal transparent visible={!!selectedOrder} animationType="slide" onRequestClose={() => setSelectedOrder(null)}>
         <View style={styles.overlay}>
-          <View style={[styles.modalContainer, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle }]}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Record Result for Order #{selectedOrder?.id}</Text>
+              <Text variant="heading" style={{ fontSize: 15 }}>Record Result for Order #{selectedOrder?.id}</Text>
               <TouchableOpacity onPress={() => setSelectedOrder(null)} accessibilityLabel="Close">
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>Result Notes / Outcome *</Text>
+              <Text variant="label" style={{ marginBottom: 4 }}>Result Notes / Outcome *</Text>
               <TextInput
-                style={[styles.textArea, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle }]}
+                style={[styles.textArea, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
                 placeholder="Enter test results and notes..."
                 placeholderTextColor={colors.textMuted}
                 multiline
@@ -178,7 +174,7 @@ export default function LabResultScreen() {
 
             <View style={styles.modalFooter}>
               <TouchableOpacity
-                style={[styles.button, { backgroundColor: colors.actionPrimary, opacity: saving ? 0.7 : 1 }]}
+                style={[styles.button, { backgroundColor: colors.actionPrimary, borderRadius: radius.card, opacity: saving ? 0.7 : 1 }]}
                 onPress={handleRecordResult}
                 disabled={saving}
               >
@@ -192,36 +188,12 @@ export default function LabResultScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceStrong,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.topChrome,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    borderBottomWidth: 0,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-  },
   cacheBanner: {
-    backgroundColor: colors.surfaceSecondary,
     padding: 8,
     marginHorizontal: 16,
     borderRadius: 8,
@@ -229,7 +201,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cacheText: {
-    color: colors.accent,
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
   },
@@ -242,7 +213,6 @@ const styles = StyleSheet.create({
   },
   card: {
     padding: 16,
-    borderRadius: radius.card,
     borderWidth: 1,
     marginBottom: 12,
   },
@@ -252,18 +222,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
-  orderIdText: {
-    fontSize: 15,
-    fontFamily: 'Sora_600SemiBold',
-  },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: radius.card,
-  },
-  statusText: {
-    fontSize: 12,
-    fontFamily: 'JetBrainsMono_500Medium',
   },
   metaText: {
     fontSize: 13,
@@ -277,7 +238,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    borderRadius: radius.card,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -289,21 +249,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  modalTitle: {
-    fontSize: 15,
-    fontFamily: 'Sora_600SemiBold',
-  },
   modalBody: {
     padding: 20,
     gap: 8,
   },
-  label: {
-    fontSize: 13,
-    fontFamily: 'Inter_500Medium',
-  },
   textArea: {
     height: 100,
-    borderRadius: radius.card,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingTop: 12,
@@ -318,7 +269,6 @@ const styles = StyleSheet.create({
   },
   button: {
     paddingVertical: 14,
-    borderRadius: radius.card,
     alignItems: 'center',
   },
   buttonText: {

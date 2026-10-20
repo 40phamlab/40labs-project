@@ -2,7 +2,8 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#notifications]
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { useTheme } from '../../theme/ThemeProvider';
+import { radius } from '../../theme/rn-tokens';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { StaffNotificationItem } from './types';
 
@@ -12,6 +13,7 @@ interface NotificationCardProps {
 }
 
 export function NotificationCard({ item, onPress }: NotificationCardProps) {
+  const { colors } = useTheme();
   const isAlert = item.severity === 'alert' || item.audience === 'alert';
 
   return (

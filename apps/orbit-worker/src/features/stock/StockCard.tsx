@@ -2,7 +2,8 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { useTheme } from '../../theme/ThemeProvider';
+import { radius } from '../../theme/rn-tokens';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { StockItem } from './types';
 
@@ -12,6 +13,7 @@ interface StockCardProps {
 }
 
 export function StockCard({ item, onPress }: StockCardProps) {
+  const { colors } = useTheme();
   const isLowStock = item.inventoryItem.quantity <= item.inventoryItem.lowStockThreshold;
 
   return (

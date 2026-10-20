@@ -5,7 +5,7 @@ import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/ThemeProvider';
 import { useElevation } from '../theme/useElevation';
-import { radius } from '@40labs/design-tokens';
+import { radius } from '../theme/rn-tokens';
 
 interface FabProps {
   label: string;

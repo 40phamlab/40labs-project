@@ -2,10 +2,11 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#settings]
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { colors } from '@40labs/design-tokens';
-import { useI18n } from '../../src/i18n/I18nProvider';
 import { useTheme } from '../../src/theme/ThemeProvider';
-import { ScreenHeader, Card } from '../../src/components';
+import { radius } from '../../src/theme/rn-tokens';
+import { Screen, AppHeader } from '../../src/ui';
+import { useI18n } from '../../src/i18n/I18nProvider';
+import { Card } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
 import { listServerCredentials, removeServerCredential } from '../../src/lib/secure-store';
 import { getDatabase } from '../../src/db/outbox';
@@ -14,6 +15,7 @@ import { flush } from '../../src/lib/outbox-sync';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
+  const { colors } = useTheme();
   const { t, language, setLanguage } = useI18n();
   const { theme, setTheme } = useTheme();
   const { status, permissions, userInfo, activeBusinessId } = useConnectionStore();
@@ -115,92 +117,83 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScreenHeader title={t('nav.settings')} />
+    <Screen scrollable={false}>
+      <AppHeader title={t('nav.settings')} />
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Server Section */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Server & Connection</Text>
-          <Text style={styles.infoText}>Business: {activeServer?.businessName || 'Connected Hub'}</Text>
-          <Text style={styles.infoText}>Endpoint: {activeServer?.endpoint || 'N/A'}</Text>
-          <Text style={styles.infoText}>Status: <Text style={{ color: status === 'connected' ? colors.success : colors.danger }}>{status}</Text></Text>
-          <Text style={styles.infoText}>Permissions: {permissions.join(', ') || 'None'}</Text>
-          <TouchableOpacity style={styles.dangerBtn} onPress={handleRemoveServer}>
-            <Text style={styles.dangerBtnText}>Remove Server</Text>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Server & Connection</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Business: {activeServer?.businessName || 'Connected Hub'}</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Endpoint: {activeServer?.endpoint || 'N/A'}</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Status: <Text style={{ color: status === 'connected' ? colors.success : colors.danger }}>{status}</Text></Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Permissions: {permissions.join(', ') || 'None'}</Text>
+          <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: colors.danger }]} onPress={handleRemoveServer}>
+            <Text style={[styles.dangerBtnText, { color: colors.danger }]}>Remove Server</Text>
           </TouchableOpacity>
         </Card>
 
-        {/* User & Role Section */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>User & Role</Text>
-          <Text style={styles.infoText}>User Name: {userInfo?.name || 'Assigned Staff'}</Text>
-          <Text style={styles.infoText}>Job Role: {userInfo?.role || 'Staff'}</Text>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>User & Role</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>User Name: {userInfo?.name || 'Assigned Staff'}</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Job Role: {userInfo?.role || 'Staff'}</Text>
         </Card>
 
-        {/* Language Section */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>{t('settings.language')}</Text>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t('settings.language')}</Text>
           <View style={styles.row}>
             <TouchableOpacity
-              style={[styles.optionBtn, language === 'sw-TZ' && styles.activeBtn]}
+              style={[styles.optionBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }, language === 'sw-TZ' && { backgroundColor: colors.actionPrimary, borderColor: colors.borderSelected }]}
               onPress={() => setLanguage('sw-TZ')}
             >
-              <Text style={[styles.optionText, language === 'sw-TZ' && styles.activeText]}>Swahili (sw-TZ)</Text>
+              <Text style={[styles.optionText, { color: colors.textSecondary }, language === 'sw-TZ' && { color: colors.textPrimary }]}>Swahili (sw-TZ)</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.optionBtn, language === 'en' && styles.activeBtn]}
+              style={[styles.optionBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }, language === 'en' && { backgroundColor: colors.actionPrimary, borderColor: colors.borderSelected }]}
               onPress={() => setLanguage('en')}
             >
-              <Text style={[styles.optionText, language === 'en' && styles.activeText]}>English (en)</Text>
+              <Text style={[styles.optionText, { color: colors.textSecondary }, language === 'en' && { color: colors.textPrimary }]}>English (en)</Text>
             </TouchableOpacity>
           </View>
         </Card>
 
-        {/* Theme Section */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>{t('settings.theme')}</Text>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{t('settings.theme')}</Text>
           <View style={styles.row}>
             <TouchableOpacity
-              style={[styles.optionBtn, theme === 'dark' && styles.activeBtn]}
+              style={[styles.optionBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }, theme === 'dark' && { backgroundColor: colors.actionPrimary, borderColor: colors.borderSelected }]}
               onPress={() => setTheme('dark')}
             >
-              <Text style={[styles.optionText, theme === 'dark' && styles.activeText]}>{t('settings.dark')}</Text>
+              <Text style={[styles.optionText, { color: colors.textSecondary }, theme === 'dark' && { color: colors.textPrimary }]}>{t('settings.dark')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.optionBtn, theme === 'light' && styles.activeBtn]}
+              style={[styles.optionBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }, theme === 'light' && { backgroundColor: colors.actionPrimary, borderColor: colors.borderSelected }]}
               onPress={() => setTheme('light')}
             >
-              <Text style={[styles.optionText, theme === 'light' && styles.activeText]}>{t('settings.light')}</Text>
+              <Text style={[styles.optionText, { color: colors.textSecondary }, theme === 'light' && { color: colors.textPrimary }]}>{t('settings.light')}</Text>
             </TouchableOpacity>
           </View>
         </Card>
 
-        {/* Data & Sync Section */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Data & Sync</Text>
-          <Text style={styles.infoText}>Unsynced Outbox Items: {unsyncedCount}</Text>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Data & Sync</Text>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>Unsynced Outbox Items: {unsyncedCount}</Text>
           <View style={styles.row}>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={async () => { await flush(); loadUnsyncedCount(); }}>
-              <Text style={styles.secondaryBtnText}>Retry Sync</Text>
+            <TouchableOpacity style={[styles.secondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]} onPress={async () => { await flush(); loadUnsyncedCount(); }}>
+              <Text style={[styles.secondaryBtnText, { color: colors.textPrimary }]}>Retry Sync</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={handleDiscardUnsynced}>
-              <Text style={styles.secondaryBtnText}>Discard Unsynced</Text>
+            <TouchableOpacity style={[styles.secondaryBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]} onPress={handleDiscardUnsynced}>
+              <Text style={[styles.secondaryBtnText, { color: colors.textPrimary }]}>Discard Unsynced</Text>
             </TouchableOpacity>
           </View>
-          <TouchableOpacity style={[styles.dangerBtn, { marginTop: 12 }]} onPress={handleClearAllData}>
-            <Text style={styles.dangerBtnText}>Clear All Data</Text>
+          <TouchableOpacity style={[styles.dangerBtn, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: colors.danger, marginTop: 12 }]} onPress={handleClearAllData}>
+            <Text style={[styles.dangerBtnText, { color: colors.danger }]}>Clear All Data</Text>
           </TouchableOpacity>
         </Card>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceStrong,
-  },
   content: {
     padding: 16,
     paddingBottom: 48,
@@ -209,13 +202,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardTitle: {
-    color: colors.textPrimary,
     fontSize: 16,
     fontFamily: 'Sora_600SemiBold',
     marginBottom: 12,
   },
   infoText: {
-    color: colors.textSecondary,
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
     marginBottom: 6,
@@ -230,47 +221,31 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
     alignItems: 'center',
-    backgroundColor: colors.surfaceSecondary,
-  },
-  activeBtn: {
-    backgroundColor: colors.actionPrimary,
-    borderColor: colors.borderSelected,
   },
   optionText: {
-    color: colors.textSecondary,
     fontFamily: 'Inter_500Medium',
     fontSize: 14,
-  },
-  activeText: {
-    color: colors.textPrimary,
   },
   secondaryBtn: {
     flex: 1,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
     alignItems: 'center',
   },
   secondaryBtnText: {
-    color: colors.textPrimary,
     fontFamily: 'Inter_500Medium',
     fontSize: 13,
   },
   dangerBtn: {
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderWidth: 1,
-    borderColor: colors.danger,
     alignItems: 'center',
     marginTop: 10,
   },
   dangerBtnText: {
-    color: colors.danger,
     fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
   },

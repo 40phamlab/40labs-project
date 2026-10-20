@@ -2,9 +2,11 @@
 // [SPEC: apps/orbit-worker/CONTEXT/02_DESIGN-TOKENS.md]
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useTheme } from '../theme/ThemeProvider';
 import { useElevation } from '../theme/useElevation';
+import { CountBadge } from './CountBadge';
 
 export interface TabItem {
   id: string;
@@ -23,6 +25,7 @@ interface BottomTabBarProps {
 
 export function BottomTabBar({ tabs, activeTabId, onTabPress, style }: BottomTabBarProps) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const raisedStyle = useElevation('raised');
 
   return (
@@ -30,8 +33,10 @@ export function BottomTabBar({ tabs, activeTabId, onTabPress, style }: BottomTab
       style={[
         styles.bar,
         {
-          backgroundColor: colors.surface,
+          backgroundColor: colors.tabContainer,
           borderTopColor: colors.borderSubtle,
+          paddingBottom: insets.bottom,
+          height: 56 + insets.bottom,
         },
         raisedStyle,
         style,
@@ -41,6 +46,7 @@ export function BottomTabBar({ tabs, activeTabId, onTabPress, style }: BottomTab
       {tabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         const iconName = isActive ? tab.activeIcon : tab.icon;
+        const color = isActive ? colors.actionPrimary : colors.textMuted;
 
         return (
           <TouchableOpacity
@@ -51,15 +57,18 @@ export function BottomTabBar({ tabs, activeTabId, onTabPress, style }: BottomTab
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
           >
-            <Ionicons
-              name={iconName}
-              size={22}
-              color={isActive ? colors.accent : colors.textMuted}
-            />
+            <View style={styles.iconContainer}>
+              <Ionicons name={iconName} size={20} color={color} />
+              {tab.badgeCount !== undefined && tab.badgeCount > 0 && (
+                <View style={styles.badgeWrapper}>
+                  <CountBadge count={tab.badgeCount} />
+                </View>
+              )}
+            </View>
             <Text
               style={[
                 styles.label,
-                { color: isActive ? colors.accent : colors.textMuted },
+                { color },
               ]}
             >
               {tab.label}
@@ -74,7 +83,6 @@ export function BottomTabBar({ tabs, activeTabId, onTabPress, style }: BottomTab
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    height: 64,
     borderTopWidth: 1,
     paddingHorizontal: 8,
     justifyContent: 'space-around',
@@ -86,9 +94,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 4,
   },
+  iconContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeWrapper: {
+    position: 'absolute',
+    top: -4,
+    right: -10,
+  },
   label: {
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: 'Inter_500Medium',
-    marginTop: 4,
+    marginTop: 2,
   },
 });

@@ -4,11 +4,11 @@ import React, { ReactNode } from 'react';
 import { View, ViewStyle, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useElevation } from '../theme/useElevation';
-import { radius } from '@40labs/design-tokens';
+import { radius } from '../theme/rn-tokens';
 
 interface CardProps {
-  children: ReactNode;
-  style?: ViewStyle;
+  children?: ReactNode;
+  style?: ViewStyle | ViewStyle[];
   accessibilityLabel?: string;
 }
 
@@ -25,7 +25,7 @@ export function Card({ children, style, accessibilityLabel }: CardProps) {
           borderColor: colors.borderSubtle,
         },
         raisedStyle,
-        style,
+        style as any,
       ]}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="summary"

@@ -1,10 +1,12 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { useTheme } from '../../src/theme/ThemeProvider';
+import { radius } from '../../src/theme/rn-tokens';
+import { Screen, AppHeader, Text } from '../../src/ui';
 import { useI18n } from '../../src/i18n/I18nProvider';
-import { ScreenHeader, StatusDot, CountBadge, Card, Tile, InlineError } from '../../src/components';
+import { StatusDot, CountBadge, Card, Tile, InlineError } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
 import { getServerCredential } from '../../src/lib/secure-store';
 import { pinnedServerFetch } from '../../src/lib/pinned-transport';
@@ -14,6 +16,7 @@ import { useRouter } from 'expo-router';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function HomeScreen() {
+  const { colors } = useTheme();
   const { t } = useI18n();
   const router = useRouter();
   const { status, permissions, userInfo, activeBusinessId } = useConnectionStore();
@@ -120,10 +123,9 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScreenHeader
-        title={userInfo?.name || 'Orbit Worker'}
-        subtitle={userInfo?.role || t('dashboard.title')}
+    <Screen scrollable={false}>
+      <AppHeader
+        title={t('dashboard.title')}
         rightAction={
           <View style={styles.headerRight}>
             <StatusDot state={status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : 'offline'} />
@@ -133,7 +135,7 @@ export default function HomeScreen() {
       />
       <ScrollView contentContainerStyle={styles.content}>
         {status === 'unpaired' && (
-          <Card style={styles.connectBanner}>
+          <Card style={[styles.connectBanner, { backgroundColor: colors.surfacePrimary, borderColor: colors.actionPrimary }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <Ionicons name="desktop-outline" size={28} color={colors.actionPrimary} style={{ marginRight: 12 }} />
               <View style={{ flex: 1 }}>
@@ -142,7 +144,7 @@ export default function HomeScreen() {
               </View>
             </View>
             <TouchableOpacity
-              style={[styles.connectButton, { backgroundColor: colors.actionPrimary }]}
+              style={[styles.connectButton, { backgroundColor: colors.actionPrimary, borderRadius: radius.card }]}
               onPress={() => router.push('/pair')}
               accessibilityLabel="Scan to Connect Simply Connect"
             >
@@ -153,8 +155,8 @@ export default function HomeScreen() {
         )}
 
         {cacheMeta && status !== 'unpaired' && (
-          <View style={styles.cacheBanner}>
-            <Text style={styles.cacheText}>
+          <View style={[styles.cacheBanner, { backgroundColor: colors.surfaceSecondary }]}>
+            <Text style={[styles.cacheText, { color: colors.accent }]}>
               Offline mode - displaying cached data as of {cacheMeta.asOfText}
             </Text>
           </View>
@@ -167,30 +169,30 @@ export default function HomeScreen() {
         )}
 
         <Card style={styles.todayCard}>
-          <Text style={styles.sectionTitle}>{t('dashboard.overview')}</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.overview')}</Text>
           <View style={styles.statsGrid}>
             <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=sales')}>
-              <Text style={styles.statLabel}>{t('dashboard.todaysSales')}</Text>
-              <Text style={styles.statValue}>TZS {summary?.sales?.toLocaleString() || '0'}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.todaysSales')}</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>TZS {summary?.sales?.toLocaleString() || '0'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=patients')}>
-              <Text style={styles.statLabel}>{t('dashboard.patientsInTrack')}</Text>
-              <Text style={styles.statValue}>{summary?.patients || 0}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.patientsInTrack')}</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{summary?.patients || 0}</Text>
             </TouchableOpacity>
           </View>
           <View style={[styles.statsGrid, { marginTop: 12 }]}>
             <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=lab')}>
-              <Text style={styles.statLabel}>{t('dashboard.labTests')}</Text>
-              <Text style={styles.statValue}>{summary?.samples || 0}</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.labTests')}</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{summary?.samples || 0}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.statItem} onPress={() => router.push('/(tabs)/history?filter=stock')}>
-              <Text style={styles.statLabel}>{t('dashboard.inventoryValue')}</Text>
-              <Text style={styles.statValue}>{summary?.lowStockCount || 0} low</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>{t('dashboard.inventoryValue')}</Text>
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{summary?.lowStockCount || 0} low</Text>
             </TouchableOpacity>
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>{t('dashboard.quickActions')}</Text>
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{t('dashboard.quickActions')}</Text>
         <View style={styles.tilesGrid}>
           <Tile
             title={t('dashboard.addStock')}
@@ -230,15 +232,11 @@ export default function HomeScreen() {
           />
         </View>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceStrong,
-  },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -250,11 +248,8 @@ const styles = StyleSheet.create({
   },
   connectBanner: {
     padding: 16,
-    borderRadius: radius.card,
     borderWidth: 1,
     marginBottom: 16,
-    backgroundColor: colors.surfacePrimary,
-    borderColor: colors.actionPrimary,
   },
   connectBannerTitle: {
     fontSize: 16,
@@ -266,14 +261,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
   },
   cacheBanner: {
-    backgroundColor: colors.surfaceSecondary,
     padding: 8,
     borderRadius: 8,
     marginBottom: 12,
     alignItems: 'center',
   },
   cacheText: {
-    color: colors.accent,
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
   },
@@ -284,7 +277,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    color: colors.textPrimary,
     fontSize: 16,
     fontFamily: 'Sora_600SemiBold',
     marginBottom: 12,
@@ -297,12 +289,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statLabel: {
-    color: colors.textMuted,
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
   },
   statValue: {
-    color: colors.textPrimary,
     fontSize: 18,
     fontFamily: 'JetBrainsMono_500Medium',
     marginTop: 4,
@@ -316,7 +306,6 @@ const styles = StyleSheet.create({
   connectButton: {
     width: '100%',
     height: 48,
-    borderRadius: radius.card,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

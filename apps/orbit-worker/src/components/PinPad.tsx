@@ -2,7 +2,8 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, AppState } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { useTheme } from '../theme/ThemeProvider';
+import { radius } from '../theme/rn-tokens';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 interface PinPadProps {
@@ -13,9 +14,9 @@ interface PinPadProps {
 }
 
 export function PinPad({ visible, title = 'Enter PIN', onConfirm, onCancel }: PinPadProps) {
+  const { colors } = useTheme();
   const [pin, setPin] = useState('');
 
-  // Clear PIN on background or close
   useEffect(() => {
     if (!visible) {
       setPin('');

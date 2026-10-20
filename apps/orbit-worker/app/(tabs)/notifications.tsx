@@ -1,10 +1,11 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#notifications]
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, AppState, AppStateStatus } from 'react-native';
-import { colors } from '@40labs/design-tokens';
+import { useTheme } from '../../src/theme/ThemeProvider';
+import { Screen, AppHeader } from '../../src/ui';
 import { useI18n } from '../../src/i18n/I18nProvider';
-import { ScreenHeader, Chip, EmptyState, Fab, InlineError } from '../../src/components';
+import { Chip, EmptyState, Fab, InlineError } from '../../src/components';
 import { FabMenu, FabMenuItem } from '../../src/components/FabMenu';
 import { useConnectionStore } from '../../src/stores/connection';
 import { StaffNotificationItem, NotificationAudience } from '../../src/features/notifications/types';
@@ -14,6 +15,7 @@ import { NotificationDetailModal } from '../../src/features/notifications/Notifi
 import { NotificationComposeModal } from '../../src/features/notifications/NotificationComposeModal';
 
 export default function NotificationsScreen() {
+  const { colors } = useTheme();
   const { t } = useI18n();
   const { status, activeBusinessId } = useConnectionStore();
   const [filter, setFilter] = useState<'all' | 'role' | 'direct' | 'alert'>('all');
@@ -56,7 +58,6 @@ export default function NotificationsScreen() {
     }
   }, [activeBusinessId, status]);
 
-  // Polling every 10s while foregrounded + connected, and once on resume
   useEffect(() => {
     if (status !== 'connected' || !activeBusinessId) return;
 
@@ -86,9 +87,7 @@ export default function NotificationsScreen() {
       setNotifications((prev) =>
         prev.map((item) => (item.id === id ? { ...item, isRead: true } : item))
       );
-    } catch (err: any) {
-      // Handle error silently or log
-    }
+    } catch (err: any) {}
   };
 
   const handleSendNotification = async (payload: {
@@ -152,8 +151,8 @@ export default function NotificationsScreen() {
   ];
 
   return (
-    <View style={styles.container}>
-      <ScreenHeader title={t('nav.notifications')} />
+    <Screen scrollable={false}>
+      <AppHeader title={t('nav.notifications')} />
       <View style={styles.filterRow}>
         <Chip label="All" selected={filter === 'all'} onPress={() => setFilter('all')} />
         <Chip label="Role" selected={filter === 'role'} onPress={() => setFilter('role')} />
@@ -227,15 +226,11 @@ export default function NotificationsScreen() {
         onClose={() => setComposeVisible(false)}
         onSend={handleSendNotification}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceStrong,
-  },
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,

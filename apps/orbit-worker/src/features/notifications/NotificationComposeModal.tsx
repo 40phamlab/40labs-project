@@ -2,7 +2,8 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#notifications]
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { useTheme } from '../../theme/ThemeProvider';
+import { radius } from '../../theme/rn-tokens';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { NotificationAudience, StaffRosterMember } from './types';
 import { StaffRosterPickerModal } from './StaffRosterPickerModal';
@@ -23,6 +24,7 @@ interface NotificationComposeModalProps {
 }
 
 export function NotificationComposeModal({ visible, initialAudience, businessId, onClose, onSend }: NotificationComposeModalProps) {
+  const { colors } = useTheme();
   const [audience, setAudience] = useState<NotificationAudience>(initialAudience);
   const [targetRole, setTargetRole] = useState('');
   const [targetUser, setTargetUser] = useState<StaffRosterMember | null>(null);

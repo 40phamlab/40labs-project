@@ -2,7 +2,8 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { useTheme } from '../../theme/ThemeProvider';
+import { radius } from '../../theme/rn-tokens';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { StockItem } from './types';
 
@@ -13,6 +14,7 @@ interface StockDetailModalProps {
 }
 
 export function StockDetailModal({ visible, item, onClose }: StockDetailModalProps) {
+  const { colors } = useTheme();
   if (!visible || !item) return null;
 
   const isLowStock = item.inventoryItem.quantity <= item.inventoryItem.lowStockThreshold;
@@ -44,7 +46,7 @@ export function StockDetailModal({ visible, item, onClose }: StockDetailModalPro
             </View>
 
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Batch & Expiry</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Batch & Expiry</Text>
               <View style={styles.row}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>Batch Number</Text>
                 <Text style={[styles.value, { color: colors.textPrimary }]}>{item.inventoryItem.batchNumber}</Text>
@@ -56,7 +58,7 @@ export function StockDetailModal({ visible, item, onClose }: StockDetailModalPro
             </View>
 
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Pricing & Category</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Pricing & Category</Text>
               <View style={styles.row}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>Category</Text>
                 <Text style={[styles.value, { color: colors.textPrimary }]}>{item.medicine.category}</Text>
@@ -158,7 +160,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora_600SemiBold',
     marginBottom: 10,
     textTransform: 'uppercase',
-    color: colors.textMuted,
   },
   row: {
     flexDirection: 'row',

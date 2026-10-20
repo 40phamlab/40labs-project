@@ -2,9 +2,11 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#history]
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
-import { colors } from '@40labs/design-tokens';
+import { useTheme } from '../../src/theme/ThemeProvider';
+import { radius } from '../../src/theme/rn-tokens';
+import { Screen, AppHeader } from '../../src/ui';
 import { useI18n } from '../../src/i18n/I18nProvider';
-import { ScreenHeader, Chip, Card, EmptyState, InlineError } from '../../src/components';
+import { Chip, Card, EmptyState, InlineError } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
 import { getServerCredential } from '../../src/lib/secure-store';
 import { pinnedServerFetch } from '../../src/lib/pinned-transport';
@@ -14,6 +16,7 @@ import { putCache, getCache, CacheResult } from '../../src/db/cache';
 import { useLocalSearchParams } from 'expo-router';
 
 export default function HistoryScreen() {
+  const { colors } = useTheme();
   const { t } = useI18n();
   const { status, activeBusinessId } = useConnectionStore();
   const params = useLocalSearchParams<{ filter?: string }>();
@@ -134,8 +137,8 @@ export default function HistoryScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ScreenHeader title={t('nav.history')} />
+    <Screen scrollable={false}>
+      <AppHeader title={t('nav.history')} />
       <View style={styles.filterRow}>
         <Chip label="All" selected={selectedFilter === 'all'} onPress={() => setSelectedFilter('all')} />
         <Chip label={t('dashboard.metricSales')} selected={selectedFilter === 'sales'} onPress={() => setSelectedFilter('sales')} />
@@ -145,8 +148,8 @@ export default function HistoryScreen() {
       </View>
 
       {cacheMeta && (
-        <View style={styles.cacheBanner}>
-          <Text style={styles.cacheText}>Offline mode - cached data as of {cacheMeta.asOfText}</Text>
+        <View style={[styles.cacheBanner, { backgroundColor: colors.surfaceSecondary }]}>
+          <Text style={[styles.cacheText, { color: colors.accent }]}>Offline mode - cached data as of {cacheMeta.asOfText}</Text>
         </View>
       )}
 
@@ -161,40 +164,36 @@ export default function HistoryScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={<EmptyState title={t('dashboard.noData')} description={t('dashboard.nothingPending')} icon="time-outline" />}
+        ListEmptyComponent={<EmptyState title={t('dashboard.noData')} icon="time-outline" />}
         renderItem={({ item }) => (
           <Card style={styles.rowCard}>
             <View style={styles.rowHeader}>
-              <Text style={styles.rowTitle}>{item.title}</Text>
+              <Text style={[styles.rowTitle, { color: colors.textPrimary }]}>{item.title}</Text>
               <Text style={[styles.statusBadge, item.status === 'failed' ? styles.statusFailed : item.status === 'pending' ? styles.statusPending : styles.statusDone]}>
                 {item.status}
               </Text>
             </View>
-            <Text style={styles.rowSubject}>{item.subject}</Text>
-            <Text style={styles.rowTime}>{new Date(item.createdAt).toLocaleString()}</Text>
+            <Text style={[styles.rowSubject, { color: colors.textSecondary }]}>{item.subject}</Text>
+            <Text style={[styles.rowTime, { color: colors.textMuted }]}>{new Date(item.createdAt).toLocaleString()}</Text>
 
             {item.status === 'failed' && (
               <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => handleRetryOutbox(item.id)}>
-                  <Text style={styles.actionText}>Retry</Text>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]} onPress={() => handleRetryOutbox(item.id)}>
+                  <Text style={[styles.actionText, { color: colors.textPrimary }]}>Retry</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.discardBtn]} onPress={() => handleDiscardOutbox(item.id)}>
-                  <Text style={[styles.actionText, styles.discardText]}>Discard</Text>
+                <TouchableOpacity style={[styles.actionBtn, styles.discardBtn, { backgroundColor: colors.surfaceSecondary, borderColor: colors.danger }]} onPress={() => handleDiscardOutbox(item.id)}>
+                  <Text style={[styles.actionText, styles.discardText, { color: colors.danger }]}>Discard</Text>
                 </TouchableOpacity>
               </View>
             )}
           </Card>
         )}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceStrong,
-  },
   filterRow: {
     flexDirection: 'row',
     paddingHorizontal: 16,
@@ -202,7 +201,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cacheBanner: {
-    backgroundColor: colors.surfaceSecondary,
     padding: 8,
     marginHorizontal: 16,
     borderRadius: 8,
@@ -210,7 +208,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   cacheText: {
-    color: colors.accent,
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
   },
@@ -232,7 +229,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   rowTitle: {
-    color: colors.textPrimary,
     fontSize: 15,
     fontFamily: 'Sora_600SemiBold',
   },
@@ -244,25 +240,23 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   statusDone: {
-    color: colors.success,
+    color: '#16A34A',
     backgroundColor: 'rgba(34, 197, 94, 0.1)',
   },
   statusPending: {
-    color: colors.accent,
+    color: '#F97316',
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
   },
   statusFailed: {
-    color: colors.danger,
+    color: '#EF4444',
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
   rowSubject: {
-    color: colors.textSecondary,
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
     marginBottom: 6,
   },
   rowTime: {
-    color: colors.textMuted,
     fontSize: 11,
     fontFamily: 'JetBrainsMono_400Regular',
   },
@@ -275,19 +269,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
-    backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
-    borderColor: colors.borderSubtle,
   },
-  discardBtn: {
-    borderColor: colors.danger,
-  },
+  discardBtn: {},
   actionText: {
-    color: colors.textPrimary,
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
   },
-  discardText: {
-    color: colors.danger,
-  },
+  discardText: {},
 });

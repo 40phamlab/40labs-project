@@ -1,8 +1,10 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#pair]
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Platform } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Platform } from 'react-native';
+import { useTheme } from '../src/theme/ThemeProvider';
+import { radius } from '../src/theme/rn-tokens';
+import { Screen, AppHeader, Text } from '../src/ui';
 import { useI18n } from '../src/i18n/I18nProvider';
 import { ScanFrame } from '../src/components/ScanFrame';
 import { Fab } from '../src/components/Fab';
@@ -19,6 +21,7 @@ import { ApiClient } from '@40labs/api-client';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function PairScreen() {
+  const { colors } = useTheme();
   const { t } = useI18n();
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
@@ -93,7 +96,6 @@ export default function PairScreen() {
         setScanned(false);
         return;
       }
-      // SECURITY: Generic pairing failure message. Never reveal whether token is expired, used, or incorrect. Never log credential or token.
       setErrorMessage(err.message && err.message.includes('QR') ? err.message : t('pairing.failed'));
       setPairingInProgress(false);
       setScanned(false);
@@ -143,126 +145,113 @@ export default function PairScreen() {
   };
 
   if (!permission) {
-    return <View style={styles.container} />;
+    return <Screen scrollable={false} />;
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Back">
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>{t('pairing.scanToConnect')}</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <Screen scrollable={false} contentContainerStyle={styles.screenInner}>
+      <AppHeader
+        title={t('pairing.scanToConnect')}
+        onBack={() => router.back()}
+      />
 
-      {networkSetup && pendingPairQr ? (
-        <View style={styles.networkSetupContainer}>
-          <Ionicons name="wifi-outline" size={42} color={colors.actionPrimary} />
-          <Text style={[styles.networkSetupTitle, { color: colors.textPrimary }]}>{t('pairing.networkSetupTitle')}</Text>
-          <Text style={[styles.networkSetupBody, { color: colors.textSecondary }]}>{t('pairing.networkSetupBody')}</Text>
-          <TouchableOpacity
-            accessibilityRole="radio"
-            accessibilityState={{ selected: networkChoice === 'pc_hotspot' }}
-            style={[styles.networkOption, { backgroundColor: colors.surfaceSecondary, borderColor: networkChoice === 'pc_hotspot' ? colors.actionPrimary : colors.borderSubtle }]}
-            onPress={() => setNetworkChoice('pc_hotspot')}
-          >
-            <Text style={[styles.networkOptionTitle, { color: colors.textPrimary }]}>{t('pairing.pcHotspot')}</Text>
-            <Text style={[styles.networkOptionHelp, { color: colors.textSecondary }]}>{t('pairing.pcHotspotHelp')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            accessibilityRole="radio"
-            accessibilityState={{ selected: networkChoice === 'same_wifi' }}
-            style={[styles.networkOption, { backgroundColor: colors.surfaceSecondary, borderColor: networkChoice === 'same_wifi' ? colors.actionPrimary : colors.borderSubtle }]}
-            onPress={() => setNetworkChoice('same_wifi')}
-          >
-            <Text style={[styles.networkOptionTitle, { color: colors.textPrimary }]}>{t('pairing.sameWifi')}</Text>
-            <Text style={[styles.networkOptionHelp, { color: colors.textSecondary }]}>{t('pairing.sameWifiHelp')}</Text>
-          </TouchableOpacity>
-          {Platform.OS === 'android' && (
-            <TouchableOpacity style={styles.settingsLink} onPress={openWifiSettings}>
-              <Text style={[styles.settingsLinkText, { color: colors.actionPrimary }]}>{t('pairing.openWifiSettings')}</Text>
+      <View style={styles.contentBody}>
+        {networkSetup && pendingPairQr ? (
+          <View style={styles.networkSetupContainer}>
+            <Ionicons name="wifi-outline" size={42} color={colors.actionPrimary} />
+            <Text variant="heading" style={styles.networkSetupTitle}>{t('pairing.networkSetupTitle')}</Text>
+            <Text style={[styles.networkSetupBody, { color: colors.textSecondary }]}>{t('pairing.networkSetupBody')}</Text>
+            <TouchableOpacity
+              accessibilityRole="radio"
+              accessibilityState={{ selected: networkChoice === 'pc_hotspot' }}
+              style={[styles.networkOption, { backgroundColor: colors.surfaceSecondary, borderColor: networkChoice === 'pc_hotspot' ? colors.actionPrimary : colors.borderSubtle, borderRadius: radius.card }]}
+              onPress={() => setNetworkChoice('pc_hotspot')}
+            >
+              <Text style={styles.networkOptionTitle}>{t('pairing.pcHotspot')}</Text>
+              <Text style={[styles.networkOptionHelp, { color: colors.textSecondary }]}>{t('pairing.pcHotspotHelp')}</Text>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.actionPrimary }]} onPress={retryPendingPairing} disabled={pairingInProgress}>
-            {pairingInProgress ? <ActivityIndicator color="#fff" /> : <Text style={styles.retryButtonText}>{t('pairing.retryConnection')}</Text>}
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsLink} onPress={() => { setPendingPairQr(null); setNetworkSetup(false); setScanned(false); }}>
-            <Text style={[styles.settingsLinkText, { color: colors.textSecondary }]}>{t('pairing.scanAnotherQr')}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : permission.granted ? (
-        <View style={styles.cameraContainer}>
-          <CameraView
-            style={StyleSheet.absoluteFill}
-            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-            barcodeScannerSettings={{
-              barcodeTypes: ['qr'],
-            }}
-          />
-          <ScanFrame />
-          <Text style={styles.scanCaption}>{t('pairing.scan')}</Text>
-        </View>
-      ) : (
-        <View style={styles.permissionContainer}>
-          <Text style={styles.permissionText}>{t('pairing.cameraPermissionRequired')}</Text>
-          <Fab label={t('pairing.grantPermission')} onPress={requestPermission} />
-        </View>
-      )}
-
-      <View style={styles.uploadSection}>
-        <Text style={[styles.orText, { color: colors.textMuted }]}>{t('pairing.or')}</Text>
-        <TouchableOpacity
-          style={[styles.uploadButton, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]}
-          onPress={handleUploadQr}
-          disabled={pairingInProgress}
-        >
-          <Ionicons name="image-outline" size={20} color={colors.actionPrimary} style={{ marginRight: 8 }} />
-          <Text style={[styles.uploadButtonText, { color: colors.textPrimary }]}>{t('pairing.uploadQr')}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {errorMessage && (
-        <View style={styles.errorContainer}>
-          <InlineError message={errorMessage} onRetry={() => setScanned(false)} />
-        </View>
-      )}
-
-      <View style={styles.footer}>
-        {pairingInProgress ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <ActivityIndicator size="small" color={colors.actionPrimary} />
-            <Text style={styles.footerText}>{t('pairing.inProgress')}</Text>
+            <TouchableOpacity
+              accessibilityRole="radio"
+              accessibilityState={{ selected: networkChoice === 'same_wifi' }}
+              style={[styles.networkOption, { backgroundColor: colors.surfaceSecondary, borderColor: networkChoice === 'same_wifi' ? colors.actionPrimary : colors.borderSubtle, borderRadius: radius.card }]}
+              onPress={() => setNetworkChoice('same_wifi')}
+            >
+              <Text style={styles.networkOptionTitle}>{t('pairing.sameWifi')}</Text>
+              <Text style={[styles.networkOptionHelp, { color: colors.textSecondary }]}>{t('pairing.sameWifiHelp')}</Text>
+            </TouchableOpacity>
+            {Platform.OS === 'android' && (
+              <TouchableOpacity style={styles.settingsLink} onPress={openWifiSettings}>
+                <Text style={[styles.settingsLinkText, { color: colors.actionPrimary }]}>{t('pairing.openWifiSettings')}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.actionPrimary, borderRadius: radius.card }]} onPress={retryPendingPairing} disabled={pairingInProgress}>
+              {pairingInProgress ? <ActivityIndicator color="#fff" /> : <Text style={styles.retryButtonText}>{t('pairing.retryConnection')}</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.settingsLink} onPress={() => { setPendingPairQr(null); setNetworkSetup(false); setScanned(false); }}>
+              <Text style={[styles.settingsLinkText, { color: colors.textSecondary }]}>{t('pairing.scanAnotherQr')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : permission.granted ? (
+          <View style={styles.cameraContainer}>
+            <CameraView
+              style={StyleSheet.absoluteFill}
+              onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr'],
+              }}
+            />
+            <ScanFrame />
+            <Text style={[styles.scanCaption, { color: colors.accent }]}>{t('pairing.scan')}</Text>
           </View>
         ) : (
-          <Text style={styles.footerText}>{t('pairing.code')}</Text>
+          <View style={styles.permissionContainer}>
+            <Text style={styles.permissionText}>{t('pairing.cameraPermissionRequired')}</Text>
+            <Fab label={t('pairing.grantPermission')} onPress={requestPermission} />
+          </View>
         )}
+
+        <View style={styles.uploadSection}>
+          <Text style={[styles.orText, { color: colors.textMuted }]}>{t('pairing.or')}</Text>
+          <TouchableOpacity
+            style={[styles.uploadButton, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
+            onPress={handleUploadQr}
+            disabled={pairingInProgress}
+          >
+            <Ionicons name="image-outline" size={20} color={colors.actionPrimary} style={{ marginRight: 8 }} />
+            <Text style={styles.uploadButtonText}>{t('pairing.uploadQr')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {errorMessage && (
+          <View style={styles.errorContainer}>
+            <InlineError message={errorMessage} onRetry={() => setScanned(false)} />
+          </View>
+        )}
+
+        <View style={styles.footer}>
+          {pairingInProgress ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <ActivityIndicator size="small" color={colors.actionPrimary} />
+              <Text style={[styles.footerText, { color: colors.textSecondary }]}>{t('pairing.inProgress')}</Text>
+            </View>
+          ) : (
+            <Text style={[styles.footerText, { color: colors.textSecondary }]}>{t('pairing.code')}</Text>
+          )}
+        </View>
       </View>
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenInner: {
+    padding: 0,
+  },
+  contentBody: {
     flex: 1,
-    backgroundColor: colors.surfaceStrong,
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: 24,
-  },
-  topBar: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  backButton: {
-    padding: 8,
-  },
-  screenTitle: {
-    fontSize: 16,
-    fontFamily: 'Sora_600SemiBold',
   },
   cameraContainer: {
     width: 260,
@@ -275,7 +264,6 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   scanCaption: {
-    color: colors.accent,
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
     position: 'absolute',
@@ -289,17 +277,16 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   networkSetupContainer: { width: '100%', flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 4 },
-  networkSetupTitle: { fontSize: 20, textAlign: 'center', fontFamily: 'Sora_600SemiBold' },
+  networkSetupTitle: { fontSize: 20, textAlign: 'center' },
   networkSetupBody: { fontSize: 14, textAlign: 'center', lineHeight: 20, fontFamily: 'Inter_400Regular', marginBottom: 4 },
-  networkOption: { width: '100%', borderWidth: 1.5, borderRadius: radius.card, padding: 14, gap: 4 },
+  networkOption: { width: '100%', borderWidth: 1.5, padding: 14, gap: 4 },
   networkOptionTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   networkOptionHelp: { fontSize: 13, lineHeight: 18, fontFamily: 'Inter_400Regular' },
   settingsLink: { paddingVertical: 8 },
   settingsLinkText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  retryButton: { minHeight: 48, width: '100%', borderRadius: radius.card, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  retryButton: { minHeight: 48, width: '100%', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   retryButtonText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   permissionText: {
-    color: colors.textPrimary,
     fontSize: 15,
     textAlign: 'center',
     marginBottom: 20,
@@ -318,7 +305,6 @@ const styles = StyleSheet.create({
   uploadButton: {
     width: '100%',
     height: 48,
-    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -337,7 +323,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    color: colors.textSecondary,
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
   },

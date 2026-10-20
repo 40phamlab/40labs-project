@@ -1,10 +1,12 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, RefreshControl, TouchableOpacity } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { View, StyleSheet, FlatList, TextInput, RefreshControl, TouchableOpacity } from 'react-native';
+import { useTheme } from '../src/theme/ThemeProvider';
+import { radius } from '../src/theme/rn-tokens';
+import { Screen, AppHeader, Text } from '../src/ui';
 import { useI18n } from '../src/i18n/I18nProvider';
-import { ScreenHeader, Chip, EmptyState, Fab, InlineError } from '../src/components';
+import { Chip, EmptyState, Fab, InlineError } from '../src/components';
 import { useConnectionStore } from '../src/stores/connection';
 import { StockItem } from '../src/features/stock/types';
 import { fetchStockListApi } from '../src/features/stock/api';
@@ -16,6 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 
 export default function StockScreen() {
+  const { colors } = useTheme();
   const { t } = useI18n();
   const router = useRouter();
   const { status, activeBusinessId } = useConnectionStore();
@@ -73,20 +76,14 @@ export default function StockScreen() {
   }, [status, activeBusinessId, searchQuery, lowStockOnly, loadStock]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Back">
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <ScreenHeader
-          title="View Stock"
-          subtitle="Inventory & Batches"
-          style={styles.headerTitleContainer}
-        />
-      </View>
+    <Screen scrollable={false}>
+      <AppHeader
+        title="View Stock"
+        onBack={() => router.back()}
+      />
 
       <View style={styles.searchContainer}>
-        <View style={[styles.searchBox, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]}>
+        <View style={[styles.searchBox, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
           <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -104,8 +101,8 @@ export default function StockScreen() {
       </View>
 
       {cacheMeta && (
-        <View style={styles.cacheBanner}>
-          <Text style={styles.cacheText}>
+        <View style={[styles.cacheBanner, { backgroundColor: colors.surfaceSecondary }]}>
+          <Text style={[styles.cacheText, { color: colors.accent }]}>
             Offline mode - displaying cached data as of {cacheMeta.asOfText}
           </Text>
         </View>
@@ -159,34 +156,11 @@ export default function StockScreen() {
         onClose={() => setAddModalVisible(false)}
         onSuccess={() => loadStock(true)}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceStrong,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.topChrome,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    borderBottomWidth: 0,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-  },
   searchContainer: {
     flexDirection: 'row',
     padding: 16,
@@ -196,7 +170,6 @@ const styles = StyleSheet.create({
   searchBox: {
     flex: 1,
     height: 44,
-    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -211,7 +184,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
   },
   cacheBanner: {
-    backgroundColor: colors.surfaceSecondary,
     padding: 8,
     marginHorizontal: 16,
     borderRadius: 8,
@@ -219,7 +191,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cacheText: {
-    color: colors.accent,
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
   },

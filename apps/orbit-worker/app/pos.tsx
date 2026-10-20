@@ -1,10 +1,11 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { View, StyleSheet, FlatList, TextInput, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { useTheme } from '../src/theme/ThemeProvider';
+import { radius } from '../src/theme/rn-tokens';
+import { Screen, AppHeader, Text } from '../src/ui';
 import { useI18n } from '../src/i18n/I18nProvider';
-import { ScreenHeader, Chip, EmptyState, InlineError } from '../src/components';
 import { useConnectionStore } from '../src/stores/connection';
 import { StockItem } from '../src/features/stock/types';
 import { fetchStockListApi } from '../src/features/stock/api';
@@ -17,6 +18,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 
 export default function PosScreen() {
+  const { colors } = useTheme();
   const { t } = useI18n();
   const router = useRouter();
   const { status, activeBusinessId } = useConnectionStore();
@@ -33,7 +35,6 @@ export default function PosScreen() {
   const [confirming, setConfirming] = useState(false);
   const [completedSale, setCompletedSale] = useState<SaleResponse | null>(null);
 
-  // Idempotency key persistent ref for lost response retries
   const idempotencyKeyRef = useRef<string | null>(null);
 
   const loadStock = useCallback(async () => {
@@ -152,36 +153,36 @@ export default function PosScreen() {
 
   if (completedSale) {
     return (
-      <View style={styles.container}>
-        <ScreenHeader title="Sale Successful" subtitle="Receipt Summary" />
+      <Screen scrollable={false}>
+        <AppHeader title="Sale Successful" />
         <ScrollView contentContainerStyle={styles.resultContainer}>
           <Ionicons name="checkmark-circle" size={64} color={colors.actionPrimary} style={{ alignSelf: 'center', marginBottom: 16 }} />
-          <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>Sale Completed Successfully</Text>
-          <Text style={[styles.resultId, { color: colors.textMuted }]}>Sale ID: {completedSale.id}</Text>
+          <Text variant="heading" style={styles.resultTitle}>Sale Completed Successfully</Text>
+          <Text variant="mono" style={{ fontSize: 12, marginBottom: 24 }}>Sale ID: {completedSale.id}</Text>
 
-          <View style={[styles.receiptCard, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle }]}>
-            <Text style={[styles.receiptHeader, { color: colors.textPrimary }]}>Receipt Details</Text>
+          <View style={[styles.receiptCard, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
+            <Text variant="heading" style={{ fontSize: 14, marginBottom: 8 }}>Receipt Details</Text>
             {completedSale.lines.map((l) => (
               <View key={l.id} style={styles.receiptLine}>
                 <Text style={[styles.receiptLineText, { color: colors.textSecondary }]}>
                   {l.medicineName} x{l.quantity}
                 </Text>
-                <Text style={[styles.receiptLineText, { color: colors.textPrimary }]}>
+                <Text variant="mono" style={styles.receiptLineText}>
                   TZS {l.subtotal.toLocaleString()}
                 </Text>
               </View>
             ))}
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
             <View style={styles.receiptLine}>
-              <Text style={[styles.totalLabel, { color: colors.textPrimary }]}>Grand Total</Text>
-              <Text style={[styles.totalValue, { color: colors.actionPrimary }]}>
+              <Text variant="heading" style={{ fontSize: 15 }}>Grand Total</Text>
+              <Text variant="mono" style={{ fontSize: 15, color: colors.actionPrimary }}>
                 TZS {completedSale.grandTotal.toLocaleString()}
               </Text>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[styles.primaryButton, { backgroundColor: colors.actionPrimary }]}
+            style={[styles.primaryButton, { backgroundColor: colors.actionPrimary, borderRadius: radius.card }]}
             onPress={() => {
               setCompletedSale(null);
               idempotencyKeyRef.current = null;
@@ -190,23 +191,20 @@ export default function PosScreen() {
             <Text style={styles.primaryButtonText}>New Sale</Text>
           </TouchableOpacity>
         </ScrollView>
-      </View>
+      </Screen>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton} accessibilityLabel="Back">
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <ScreenHeader title="Point of Sale (POS)" subtitle="Online Sales" style={styles.headerTitleContainer} />
-      </View>
+    <Screen scrollable={false}>
+      <AppHeader
+        title="Point of Sale (POS)"
+        onBack={() => router.back()}
+      />
 
       <View style={styles.layout}>
-        {/* Left: Product Search & List */}
-        <View style={styles.leftPane}>
-          <View style={[styles.searchBox, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]}>
+        <View style={[styles.leftPane, { borderRightColor: colors.borderSubtle }]}>
+          <View style={[styles.searchBox, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
             <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
             <TextInput
               style={[styles.searchInput, { color: colors.textPrimary }]}
@@ -222,18 +220,18 @@ export default function PosScreen() {
             keyExtractor={(item) => item.inventoryItem.id}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={[styles.productCard, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle }]}
+                style={[styles.productCard, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
                 onPress={() => handleAddToCart(item)}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.productName, { color: colors.textPrimary }]} numberOfLines={1}>
+                  <Text variant="heading" style={{ fontSize: 14, marginBottom: 2 }} numberOfLines={1}>
                     {item.medicine.name}
                   </Text>
                   <Text style={[styles.productMeta, { color: colors.textMuted }]}>
                     Batch: {item.inventoryItem.batchNumber} | Qty: {item.inventoryItem.quantity}
                   </Text>
                 </View>
-                <Text style={[styles.productPrice, { color: colors.actionPrimary }]}>
+                <Text variant="mono" style={{ fontSize: 13, color: colors.actionPrimary }}>
                   TZS {item.inventoryItem.sellPrice.toLocaleString()}
                 </Text>
               </TouchableOpacity>
@@ -242,17 +240,15 @@ export default function PosScreen() {
           />
         </View>
 
-        {/* Right: Cart & Checkout */}
         <View style={[styles.rightPane, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.cartTitle, { color: colors.textPrimary }]}>Current Cart</Text>
+          <Text variant="heading" style={{ fontSize: 16, marginBottom: 12 }}>Current Cart</Text>
 
-          {/* Customer Selector */}
           <TouchableOpacity
-            style={[styles.customerButton, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle }]}
+            style={[styles.customerButton, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             onPress={() => setCustomerModalVisible(true)}
           >
             <Ionicons name="person-outline" size={16} color={colors.textSecondary} style={{ marginRight: 8 }} />
-            <Text style={[styles.customerText, { color: selectedCustomer ? colors.textPrimary : colors.textMuted }]} numberOfLines={1}>
+            <Text style={[styles.customerText, { color: selectedCustomer ? colors.textPrimary : colors.textMuted }]}>
               {selectedCustomer ? `${selectedCustomer.fullName} (${selectedCustomer.phone})` : 'Select Patient / Customer'}
             </Text>
           </TouchableOpacity>
@@ -263,19 +259,19 @@ export default function PosScreen() {
             renderItem={({ item }) => (
               <View style={[styles.cartItemRow, { borderBottomColor: colors.divider }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cartItemName, { color: colors.textPrimary }]} numberOfLines={1}>
+                  <Text style={[styles.cartItemName, { color: colors.textPrimary }]}>
                     {item.medicineName}
                   </Text>
-                  <Text style={[styles.cartItemPrice, { color: colors.textMuted }]}>
+                  <Text variant="mono" style={{ fontSize: 11, color: colors.textMuted }}>
                     TZS {item.unitPrice.toLocaleString()} each
                   </Text>
                 </View>
                 <View style={styles.qtyControls}>
-                  <TouchableOpacity onPress={() => handleUpdateQuantity(item.inventoryItemId, -1)} style={styles.qtyBtn}>
+                  <TouchableOpacity onPress={() => handleUpdateQuantity(item.inventoryItemId, -1)} style={[styles.qtyBtn, { backgroundColor: colors.surfaceSecondary }]}>
                     <Ionicons name="remove" size={16} color={colors.textPrimary} />
                   </TouchableOpacity>
-                  <Text style={[styles.qtyText, { color: colors.textPrimary }]}>{item.quantity}</Text>
-                  <TouchableOpacity onPress={() => handleUpdateQuantity(item.inventoryItemId, 1)} style={styles.qtyBtn}>
+                  <Text variant="mono" style={{ fontSize: 13 }}>{item.quantity}</Text>
+                  <TouchableOpacity onPress={() => handleUpdateQuantity(item.inventoryItemId, 1)} style={[styles.qtyBtn, { backgroundColor: colors.surfaceSecondary }]}>
                     <Ionicons name="add" size={16} color={colors.textPrimary} />
                   </TouchableOpacity>
                 </View>
@@ -289,18 +285,18 @@ export default function PosScreen() {
             }
           />
 
-          <View style={styles.summaryContainer}>
+          <View style={[styles.summaryContainer, { borderTopColor: colors.borderSubtle }]}>
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Subtotal</Text>
-              <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>TZS {subtotalSum.toLocaleString()}</Text>
+              <Text variant="mono" style={{ fontSize: 13 }}>TZS {subtotalSum.toLocaleString()}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Grand Total</Text>
-              <Text style={[styles.grandTotalValue, { color: colors.actionPrimary }]}>TZS {grandTotal.toLocaleString()}</Text>
+              <Text variant="mono" style={{ fontSize: 16, color: colors.actionPrimary }}>TZS {grandTotal.toLocaleString()}</Text>
             </View>
 
             <TouchableOpacity
-              style={[styles.confirmButton, { backgroundColor: colors.actionPrimary, opacity: confirming || cart.length === 0 ? 0.6 : 1 }]}
+              style={[styles.confirmButton, { backgroundColor: colors.actionPrimary, borderRadius: radius.card, opacity: confirming || cart.length === 0 ? 0.6 : 1 }]}
               onPress={() => setPinPadVisible(true)}
               disabled={confirming || cart.length === 0}
             >
@@ -326,34 +322,11 @@ export default function PosScreen() {
         onConfirm={(pin) => executeCheckout(pin)}
         onCancel={() => setPinPadVisible(false)}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surfaceStrong,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.topChrome,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    borderBottomWidth: 0,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-  },
   layout: {
     flex: 1,
     flexDirection: 'row',
@@ -362,11 +335,9 @@ const styles = StyleSheet.create({
     flex: 1.2,
     padding: 16,
     borderRightWidth: 1,
-    borderRightColor: colors.borderSubtle,
   },
   searchBox: {
     height: 44,
-    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -386,37 +357,21 @@ const styles = StyleSheet.create({
   },
   productCard: {
     padding: 12,
-    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  productName: {
-    fontSize: 14,
-    fontFamily: 'Sora_600SemiBold',
-    marginBottom: 2,
-  },
   productMeta: {
     fontSize: 11,
     fontFamily: 'Inter_400Regular',
-  },
-  productPrice: {
-    fontSize: 13,
-    fontFamily: 'JetBrainsMono_500Medium',
   },
   rightPane: {
     flex: 1,
     padding: 16,
     borderLeftWidth: 1,
   },
-  cartTitle: {
-    fontSize: 16,
-    fontFamily: 'Sora_600SemiBold',
-    marginBottom: 12,
-  },
   customerButton: {
     height: 40,
-    borderRadius: radius.card,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -440,10 +395,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_500Medium',
   },
-  cartItemPrice: {
-    fontSize: 11,
-    fontFamily: 'JetBrainsMono_400Regular',
-  },
   qtyControls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -453,13 +404,8 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.surfaceSecondary,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  qtyText: {
-    fontSize: 13,
-    fontFamily: 'JetBrainsMono_500Medium',
   },
   emptyCart: {
     flex: 1,
@@ -469,7 +415,6 @@ const styles = StyleSheet.create({
   },
   summaryContainer: {
     borderTopWidth: 1,
-    borderTopColor: colors.borderSubtle,
     paddingTop: 12,
     gap: 8,
   },
@@ -481,18 +426,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
   },
-  summaryValue: {
-    fontSize: 13,
-    fontFamily: 'JetBrainsMono_500Medium',
-  },
-  grandTotalValue: {
-    fontSize: 16,
-    fontFamily: 'JetBrainsMono_600SemiBold',
-  },
   confirmButton: {
     marginTop: 8,
     paddingVertical: 14,
-    borderRadius: radius.card,
     alignItems: 'center',
   },
   confirmButtonText: {
@@ -506,26 +442,14 @@ const styles = StyleSheet.create({
   },
   resultTitle: {
     fontSize: 20,
-    fontFamily: 'Sora_600SemiBold',
     marginBottom: 4,
-  },
-  resultId: {
-    fontSize: 12,
-    fontFamily: 'JetBrainsMono_400Regular',
-    marginBottom: 24,
   },
   receiptCard: {
     width: '100%',
-    borderRadius: radius.card,
     borderWidth: 1,
     padding: 16,
     marginBottom: 24,
     gap: 8,
-  },
-  receiptHeader: {
-    fontSize: 14,
-    fontFamily: 'Sora_600SemiBold',
-    marginBottom: 8,
   },
   receiptLine: {
     flexDirection: 'row',
@@ -539,18 +463,9 @@ const styles = StyleSheet.create({
     height: 1,
     marginVertical: 8,
   },
-  totalLabel: {
-    fontSize: 15,
-    fontFamily: 'Sora_600SemiBold',
-  },
-  totalValue: {
-    fontSize: 15,
-    fontFamily: 'JetBrainsMono_600SemiBold',
-  },
   primaryButton: {
     width: '100%',
     paddingVertical: 14,
-    borderRadius: radius.card,
     alignItems: 'center',
   },
   primaryButtonText: {

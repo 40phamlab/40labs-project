@@ -2,7 +2,8 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, FlatList, ActivityIndicator } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { useTheme } from '../../theme/ThemeProvider';
+import { radius } from '../../theme/rn-tokens';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Customer } from './types';
 import { fetchCustomersApi } from './api';
@@ -16,6 +17,7 @@ interface CustomerPickerModalProps {
 }
 
 export function CustomerPickerModal({ visible, onSelect, onClose }: CustomerPickerModalProps) {
+  const { colors } = useTheme();
   const { activeBusinessId } = useConnectionStore();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [search, setSearch] = useState('');

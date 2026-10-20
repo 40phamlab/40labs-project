@@ -2,7 +2,8 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { useTheme } from '../../theme/ThemeProvider';
+import { radius } from '../../theme/rn-tokens';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { enqueueStockReceipt } from './api';
 
@@ -13,6 +14,7 @@ interface StockAddModalProps {
 }
 
 export function StockAddModal({ visible, onClose, onSuccess }: StockAddModalProps) {
+  const { colors } = useTheme();
   const [medicineName, setMedicineName] = useState('');
   const [genericName, setGenericName] = useState('');
   const [category, setCategory] = useState('Tablets');

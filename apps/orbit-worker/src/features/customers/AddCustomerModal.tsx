@@ -2,7 +2,8 @@
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { colors, radius } from '@40labs/design-tokens';
+import { useTheme } from '../../theme/ThemeProvider';
+import { radius } from '../../theme/rn-tokens';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { Customer } from './types';
 import { enqueueCustomerCreate } from './api';
@@ -14,6 +15,7 @@ interface AddCustomerModalProps {
 }
 
 export function AddCustomerModal({ visible, onClose, onSuccess }: AddCustomerModalProps) {
+  const { colors } = useTheme();
   const [phone, setPhone] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -38,7 +40,6 @@ export function AddCustomerModal({ visible, onClose, onSuccess }: AddCustomerMod
       });
 
       Alert.alert('Success', 'Patient/Customer created and queued in outbox for synchronization.');
-      // Create temporary customer object for picker selection
       const tempCustomer: Customer = {
         id: `cust_temp_${Date.now()}`,
         workspaceId: 'ws_010101',

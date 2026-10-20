@@ -4,7 +4,7 @@ import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useElevation } from '../theme/useElevation';
-import { radius } from '@40labs/design-tokens';
+import { radius } from '../theme/rn-tokens';
 
 interface ChipProps {
   label: string;
