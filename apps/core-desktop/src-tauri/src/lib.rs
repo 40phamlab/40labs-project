@@ -37,7 +37,11 @@ pub fn run() {
                 err
             })?;
             let port = 4040;
-            let lan_state = Arc::new(LanServerState::new(pool.clone(), port));
+            let app_data_dir = app.path().app_data_dir()?;
+            let lan_state = Arc::new(
+                LanServerState::new(pool.clone(), port, &app_data_dir)
+                    .map_err(std::io::Error::other)?,
+            );
             let lan_state_for_server = Arc::clone(&lan_state);
             tauri::async_runtime::spawn(async move {
                 services::lan::start_lan_server(lan_state_for_server, port).await;

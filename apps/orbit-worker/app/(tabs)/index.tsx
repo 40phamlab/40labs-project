@@ -7,6 +7,7 @@ import { useI18n } from '../../src/i18n/I18nProvider';
 import { ScreenHeader, StatusDot, CountBadge, Card, Tile, InlineError } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
 import { getServerCredential } from '../../src/lib/secure-store';
+import { pinnedServerFetch } from '../../src/lib/pinned-transport';
 import { ApiClient } from '@40labs/api-client';
 import { putCache, getCache, CacheResult } from '../../src/db/cache';
 import { useRouter } from 'expo-router';
@@ -21,6 +22,14 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const loadCachedSummary = () => {
+    const cached = getCache<any>('home_summary');
+    if (cached) {
+      setSummary(cached.data);
+      setCacheMeta(cached);
+    }
+  };
+
   const fetchSummary = async () => {
     if (!activeBusinessId || status === 'unpaired') return;
     const server = await getServerCredential(activeBusinessId);
@@ -34,7 +43,7 @@ export default function HomeScreen() {
         baseUrl: server.endpoint,
         transport: {
           request: async (opts) => {
-            const response = await fetch(`${server.endpoint}${opts.path}`, {
+            const response = await pinnedServerFetch(server, opts.path, {
               method: opts.method,
               headers: opts.headers,
               body: opts.body ? JSON.stringify(opts.body) : undefined,
@@ -44,7 +53,7 @@ export default function HomeScreen() {
             return {
               status: response.status,
               headers: {},
-              data,
+              data: data as any,
             };
           },
         },
@@ -62,11 +71,8 @@ export default function HomeScreen() {
       putCache('home_summary', data);
       setCacheMeta(null);
     } catch (err: any) {
-      const cached = getCache<any>('home_summary');
-      if (cached) {
-        setSummary(cached.data);
-        setCacheMeta(cached);
-      } else {
+      loadCachedSummary();
+      if (!summary) {
         setErrorMessage(t('dashboard.errorLoading'));
       }
     } finally {
@@ -75,18 +81,15 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
+    loadCachedSummary();
     useConnectionStore.getState().initialize();
   }, []);
 
   useEffect(() => {
     if (status === 'connected') {
       fetchSummary();
-    } else if (status === 'unreachable') {
-      const cached = getCache<any>('home_summary');
-      if (cached) {
-        setSummary(cached.data);
-        setCacheMeta(cached);
-      }
+    } else {
+      loadCachedSummary();
     }
   }, [status, activeBusinessId]);
 
@@ -96,7 +99,7 @@ export default function HomeScreen() {
 
   const handleTilePress = (title: string, permKey: string) => {
     if (status === 'unpaired') {
-      router.push('/pair');
+      Alert.alert('Not Connected', 'Please connect to your desktop computer first using "Scan to Connect".');
       return;
     }
     if (!hasPermission(permKey) && status === 'connected') {
@@ -116,40 +119,10 @@ export default function HomeScreen() {
     }
   };
 
-  if (status === 'unpaired') {
-    return (
-      <View style={styles.container}>
-        <ScreenHeader
-          title="Orbit Worker"
-          subtitle={t('dashboard.title')}
-          rightAction={
-            <View style={styles.headerRight}>
-              <StatusDot state="offline" />
-            </View>
-          }
-        />
-        <ScrollView contentContainerStyle={styles.content}>
-          <Card style={styles.notConnectedCard}>
-            <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} style={{ alignSelf: 'center', marginBottom: 12 }} />
-            <Text style={[styles.notConnectedTitle, { color: colors.textPrimary }]}>{t('pairing.notConnected')}</Text>
-            <Text style={[styles.notConnectedSubtitle, { color: colors.textMuted }]}>{t('pairing.connectPrompt')}</Text>
-            <TouchableOpacity
-              style={[styles.connectButton, { backgroundColor: colors.actionPrimary }]}
-              onPress={() => router.push('/pair')}
-            >
-              <Ionicons name="qr-code-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.connectButtonText}>{t('pairing.scanToConnect')}</Text>
-            </TouchableOpacity>
-          </Card>
-        </ScrollView>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title={userInfo?.name || 'Daktari / Mwuzaji'}
+        title={userInfo?.name || 'Orbit Worker'}
         subtitle={userInfo?.role || t('dashboard.title')}
         rightAction={
           <View style={styles.headerRight}>
@@ -159,7 +132,27 @@ export default function HomeScreen() {
         }
       />
       <ScrollView contentContainerStyle={styles.content}>
-        {cacheMeta && (
+        {status === 'unpaired' && (
+          <Card style={styles.connectBanner}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <Ionicons name="desktop-outline" size={28} color={colors.actionPrimary} style={{ marginRight: 12 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.connectBannerTitle, { color: colors.textPrimary }]}>Connect to Computer</Text>
+                <Text style={[styles.connectBannerDesc, { color: colors.textMuted }]}>{t('pairing.notConnected')}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.connectButton, { backgroundColor: colors.actionPrimary }]}
+              onPress={() => router.push('/pair')}
+              accessibilityLabel="Scan to Connect Simply Connect"
+            >
+              <Ionicons name="qr-code-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.connectButtonText}>{t('pairing.scanToConnect')} (Simply Connect)</Text>
+            </TouchableOpacity>
+          </Card>
+        )}
+
+        {cacheMeta && status !== 'unpaired' && (
           <View style={styles.cacheBanner}>
             <Text style={styles.cacheText}>
               Offline mode - displaying cached data as of {cacheMeta.asOfText}
@@ -255,6 +248,23 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
+  connectBanner: {
+    padding: 16,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    marginBottom: 16,
+    backgroundColor: colors.surfacePrimary,
+    borderColor: colors.actionPrimary,
+  },
+  connectBannerTitle: {
+    fontSize: 16,
+    fontFamily: 'Sora_600SemiBold',
+    marginBottom: 2,
+  },
+  connectBannerDesc: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+  },
   cacheBanner: {
     backgroundColor: colors.surfaceSecondary,
     padding: 8,
@@ -302,23 +312,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     justifyContent: 'space-between',
-  },
-  notConnectedCard: {
-    padding: 32,
-    alignItems: 'center',
-    marginTop: 40,
-  },
-  notConnectedTitle: {
-    fontSize: 18,
-    fontFamily: 'Sora_600SemiBold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  notConnectedSubtitle: {
-    fontSize: 14,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-    marginBottom: 24,
   },
   connectButton: {
     width: '100%',

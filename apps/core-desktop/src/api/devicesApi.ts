@@ -5,6 +5,9 @@ import { isTauriAvailable, invokeCommand } from './client';
 export interface PairingSessionInfo {
   sessionId: string;
   endpoint: string;
+  endpoints: string[];
+  networkOptions: { endpoint: string; connectionType: string; interfaceName: string }[];
+  fingerprint: string;
   expiresAt: string;
   qrPayload: string;
 }
@@ -36,9 +39,12 @@ export const devicesApi = {
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
     return {
       sessionId,
-      endpoint: 'http://192.168.1.100:4040',
+      endpoint: 'https://192.168.1.100:4040',
+      endpoints: ['https://192.168.1.100:4040'],
+      networkOptions: [{ endpoint: 'https://192.168.1.100:4040', connectionType: 'same_wifi', interfaceName: 'Wi-Fi' }],
+      fingerprint: 'a'.repeat(64),
       expiresAt,
-      qrPayload: `orbit://pair?endpoint=http://192.168.1.100:4040&sessionId=${sessionId}&token=${token}`,
+      qrPayload: `orbit://pair?endpoint=https://192.168.1.100:4040&sessionId=${sessionId}&token=${token}&fp=${'a'.repeat(64)}`,
     };
   },
 

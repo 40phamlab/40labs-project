@@ -4,6 +4,7 @@ export interface ServerCredential {
   businessId: string;
   businessName: string;
   endpoint: string;
+  endpoints?: string[];
   credential: string;
   fp: string;
 }
@@ -17,7 +18,11 @@ export async function saveServerCredential(cred: ServerCredential): Promise<void
   }
 
   const key = `${STORAGE_KEY_PREFIX}${cred.businessId}`;
-  await SecureStore.setItemAsync(key, JSON.stringify(cred));
+  const normalizedCredential = {
+    ...cred,
+    endpoints: cred.endpoints?.length ? cred.endpoints : [cred.endpoint],
+  };
+  await SecureStore.setItemAsync(key, JSON.stringify(normalizedCredential));
 
   const indexStr = await SecureStore.getItemAsync(SERVERS_INDEX_KEY);
   const index: string[] = indexStr ? JSON.parse(indexStr) : [];

@@ -1,6 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#notifications]
 import { getServerCredential } from '../../lib/secure-store';
+import { pinnedServerFetch } from '../../lib/pinned-transport';
 import { StaffNotificationItem, StaffRosterMember } from './types';
 
 function generateUuid(): string {
@@ -20,7 +21,7 @@ export async function fetchNotificationsApi(businessId: string, cursor?: string)
     url += `?cursor=${encodeURIComponent(cursor)}`;
   }
 
-  const response = await fetch(url, {
+  const response = await pinnedServerFetch(server, url, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${server.credential}`,
@@ -42,7 +43,7 @@ export async function markNotificationReadApi(businessId: string, notificationId
   const server = await getServerCredential(businessId);
   if (!server) throw new Error('No server credential');
 
-  const response = await fetch(`${server.endpoint}/api/v1/staff-notifications/${notificationId}/read`, {
+  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/staff-notifications/${notificationId}/read`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${server.credential}`,
@@ -70,7 +71,7 @@ export async function sendNotificationApi(
 
   const idempotencyKey = generateUuid();
 
-  const response = await fetch(`${server.endpoint}/api/v1/staff-notifications`, {
+  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/staff-notifications`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${server.credential}`,
@@ -92,7 +93,7 @@ export async function fetchStaffRosterApi(businessId: string): Promise<StaffRost
   const server = await getServerCredential(businessId);
   if (!server) throw new Error('No server credential');
 
-  const response = await fetch(`${server.endpoint}/api/v1/staff/roster`, {
+  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/staff/roster`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${server.credential}`,

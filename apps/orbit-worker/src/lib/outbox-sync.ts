@@ -1,6 +1,7 @@
 import { getDatabase, getNextPendingOutboxItem, updateOutboxItemStatus, enqueueOutboxItem, initOutboxDatabase } from '../db/outbox';
 import { useConnectionStore } from '../stores/connection';
 import { getServerCredential, listServerCredentials } from './secure-store';
+import { pinnedServerFetch } from './pinned-transport';
 import { ApiClient, ApiError } from '@40labs/api-client';
 
 export type OutboxKind = 'stock_receipt' | 'lab_sample' | 'lab_result' | 'customer_create';
@@ -62,7 +63,7 @@ export async function flush(): Promise<void> {
         baseUrl: server.endpoint,
         transport: {
           request: async (opts) => {
-            const response = await fetch(`${server.endpoint}${opts.path}`, {
+            const response = await pinnedServerFetch(server, opts.path, {
               method: opts.method,
               headers: opts.headers,
               body: opts.body ? JSON.stringify(opts.body) : undefined,
@@ -72,7 +73,7 @@ export async function flush(): Promise<void> {
             return {
               status: response.status,
               headers: {},
-              data,
+              data: data as any,
             };
           },
         },

@@ -26,6 +26,8 @@ uuid = { version = "1", features = ["v4", "serde"] }
 sha2 = "0.10"
 infer = "0.19"
 axum = "0.7"
+axum-server = { version = "0.7", features = ["tls-rustls"] }
+rcgen = "0.13"
 local-ip-address = "0.6"
 tower = { version = "0.5", features = ["util"] }
 argon2 = "0.5"

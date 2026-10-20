@@ -50,8 +50,19 @@ impl Default for StaffPermissionSet {
 pub struct PairingSessionInfo {
     pub session_id: String,
     pub endpoint: String,
+    pub endpoints: Vec<String>,
+    pub network_options: Vec<PairingNetworkOption>,
+    pub fingerprint: String,
     pub expires_at: String,
     pub qr_payload: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairingNetworkOption {
+    pub endpoint: String,
+    pub connection_type: String,
+    pub interface_name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

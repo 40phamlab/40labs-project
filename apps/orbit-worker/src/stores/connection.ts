@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import NetInfo from '@react-native-community/netinfo';
 import { AppState, AppStateStatus } from 'react-native';
 import { getServerCredential, listServerCredentials } from '../lib/secure-store';
+import { pinnedServerFetch } from '../lib/pinned-transport';
 import { ApiClient, ApiError } from '@40labs/api-client';
 
 export type ConnectionState = 'unpaired' | 'connecting' | 'connected' | 'unreachable' | 'revoked';
@@ -60,7 +61,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         baseUrl: server.endpoint,
         transport: {
           request: async (opts) => {
-            const response = await fetch(`${server.endpoint}${opts.path}`, {
+            const response = await pinnedServerFetch(server, opts.path, {
               method: opts.method,
               headers: {
                 ...opts.headers,
@@ -72,7 +73,7 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
             return {
               status: response.status,
               headers: {},
-              data,
+              data: data as any,
             };
           },
         },
@@ -95,11 +96,16 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         userInfo: deviceMe.user || { id: deviceMe.id, deviceLabel: deviceMe.deviceLabel },
       });
     } catch (err: any) {
-      if (err instanceof ApiError) {
-        if (err.status === 401 || err.status === 403 || err.code === 'UNAUTHORIZED' || err.code === 'FORBIDDEN') {
-          set({ status: 'revoked' });
-          return;
-        }
+      const status = err?.status;
+      const code = err?.code;
+      if (
+        status === 401 ||
+        status === 403 ||
+        code === 'UNAUTHORIZED' ||
+        code === 'FORBIDDEN'
+      ) {
+        set({ status: 'revoked' });
+        return;
       }
       set({ status: 'unreachable' });
     }

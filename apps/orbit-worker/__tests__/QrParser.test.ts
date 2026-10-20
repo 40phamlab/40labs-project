@@ -2,13 +2,15 @@ import { parsePairQr } from '../src/lib/qr-parser';
 
 describe('QR Parser', () => {
   it('parses valid https pairing QR string successfully', () => {
-    const qr = 'orbit://pair?endpoint=https://192.168.1.50:8443&sessionId=123e4567-e89b-12d3-a456-426614174000&token=abc123token&fp=A1B2C3D4E5F6';
+    const fingerprint = 'a'.repeat(64);
+    const qr = `orbit://pair?endpoint=https://192.168.1.50:8443&sessionId=123e4567-e89b-12d3-a456-426614174000&token=abc123token&fp=${fingerprint}`;
     const result = parsePairQr(qr);
     expect(result).toEqual({
       endpoint: 'https://192.168.1.50:8443',
+      endpoints: ['https://192.168.1.50:8443'],
       sessionId: '123e4567-e89b-12d3-a456-426614174000',
       token: 'abc123token',
-      fp: 'A1B2C3D4E5F6',
+      fp: fingerprint,
     });
   });
 

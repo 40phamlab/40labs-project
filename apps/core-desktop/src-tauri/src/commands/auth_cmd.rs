@@ -334,7 +334,14 @@ mod tests {
             });
         }
 
-        let lan_state = Arc::new(crate::services::lan::LanServerState::new(pool.clone(), 0));
+        let lan_state = Arc::new(
+            crate::services::lan::LanServerState::new(
+                pool.clone(),
+                0,
+                &std::env::temp_dir().join(format!("40labs-auth-test-{}", uuid::Uuid::new_v4())),
+            )
+            .unwrap(),
+        );
         let (otp_client, activation_client) = crate::activation::client::ActivationClientFactory::create_clients(Some("http://localhost".to_string()), None);
         let _state = AppState {
             pool: pool.clone(),

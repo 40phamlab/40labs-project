@@ -16,8 +16,9 @@ describe('SecureStore Credential Wrapper', () => {
       businessId: 'biz-1',
       businessName: 'Pharmacy A',
       endpoint: 'https://192.168.1.50:8443',
+      endpoints: ['https://192.168.1.50:8443'],
       credential: 'secret-hash-cred',
-      fp: 'AA:BB:CC',
+      fp: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     };
 
     await saveServerCredential(cred);

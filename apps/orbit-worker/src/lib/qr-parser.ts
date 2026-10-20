@@ -1,5 +1,6 @@
 export interface ParsedPairQr {
   endpoint: string;
+  endpoints: string[];
   sessionId: string;
   token: string;
   fp: string;
@@ -29,32 +30,42 @@ export function parsePairQr(qrString: string): ParsedPairQr {
       throw new Error('Duplicate parameters detected');
     }
 
-    const endpoint = params.get('endpoint');
+    const endpointsValue = params.get('endpoint');
     const sessionId = params.get('sessionId');
     const token = params.get('token');
     const fp = params.get('fp');
 
-    if (!endpoint || !sessionId || !token || !fp) {
+    if (!endpointsValue || !sessionId || !token || !fp) {
       throw new Error('Missing required pairing parameters');
     }
 
-    let parsedEndpoint: URL;
-    try {
-      parsedEndpoint = new URL(endpoint);
-    } catch {
-      throw new Error('Malformed endpoint URL');
+    const endpoints = endpointsValue.split('|').map((value) => {
+      let parsed: URL;
+      try {
+        parsed = new URL(value);
+      } catch {
+        throw new Error('Malformed endpoint URL');
+      }
+      if (parsed.protocol !== 'https:' || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+        throw new Error('Pairing endpoints must be HTTPS origins');
+      }
+      if (!isPrivateIpv4(parsed.hostname) || !parsed.port || Number(parsed.port) < 1 || Number(parsed.port) > 65535) {
+        throw new Error('Pairing endpoint must use a private IPv4 address and port');
+      }
+      return parsed.origin;
+    });
+
+    if (endpoints.length === 0 || endpoints.length > 8 || new Set(endpoints).size !== endpoints.length) {
+      throw new Error('Invalid pairing endpoint list');
     }
 
-    if (parsedEndpoint.protocol !== 'https:') {
-      throw new Error('Endpoint must use HTTPS');
-    }
-
-    if (endpoint.length > 512 || sessionId.length > 128 || token.length > 256 || fp.length > 128) {
+    if (endpointsValue.length > 4096 || sessionId.length > 128 || token.length > 256 || !/^[a-f\d]{64}$/i.test(fp)) {
       throw new Error('Parameter value exceeds maximum allowed length');
     }
 
     return {
-      endpoint: parsedEndpoint.toString().replace(/\/$/, ''),
+      endpoint: endpoints[0],
+      endpoints,
       sessionId,
       token,
       fp,
@@ -65,4 +76,14 @@ export function parsePairQr(qrString: string): ParsedPairQr {
     }
     throw new Error('Malformed pairing QR code');
   }
+}
+
+function isPrivateIpv4(hostname: string): boolean {
+  const octets = hostname.split('.').map(Number);
+  if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+    return false;
+  }
+  return octets[0] === 10
+    || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+    || (octets[0] === 192 && octets[1] === 168);
 }

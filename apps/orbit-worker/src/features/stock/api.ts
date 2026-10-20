@@ -1,6 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import { getServerCredential } from '../../lib/secure-store';
+import { pinnedServerFetch } from '../../lib/pinned-transport';
 import { StockItem } from './types';
 import { enqueue } from '../../lib/outbox-sync';
 
@@ -18,7 +19,7 @@ export async function fetchStockListApi(
   if (lowStock) params.append('lowStock', 'true');
   url += params.toString();
 
-  const response = await fetch(url, {
+  const response = await pinnedServerFetch(server, url, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${server.credential}`,
@@ -37,7 +38,7 @@ export async function fetchStockItemApi(businessId: string, id: string): Promise
   const server = await getServerCredential(businessId);
   if (!server) throw new Error('No server credential');
 
-  const response = await fetch(`${server.endpoint}/api/v1/stock/${id}`, {
+  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/stock/${id}`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${server.credential}`,

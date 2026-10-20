@@ -31,6 +31,7 @@ describe('Connection Store', () => {
       businessId: 'biz-1',
       endpoint: 'https://hub.local',
       credential: 'bad-token',
+      fp: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     });
 
     (globalThis as any).fetch = jest.fn().mockResolvedValue({
@@ -50,6 +51,7 @@ describe('Connection Store', () => {
       businessId: 'biz-1',
       endpoint: 'https://hub.local',
       credential: 'token',
+      fp: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     });
 
     (globalThis as any).fetch = jest.fn().mockRejectedValue(new Error('Network request failed'));
@@ -66,6 +68,7 @@ describe('Connection Store', () => {
       businessId: 'biz-1',
       endpoint: 'https://hub.local',
       credential: 'good-token',
+      fp: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     });
 
     (globalThis as any).fetch = jest.fn().mockResolvedValue({

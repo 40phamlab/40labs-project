@@ -1,6 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import { getServerCredential } from '../../lib/secure-store';
+import { pinnedServerFetch } from '../../lib/pinned-transport';
 import { LabOrder } from './types';
 import { enqueue } from '../../lib/outbox-sync';
 
@@ -8,7 +9,7 @@ export async function fetchLabOrdersApi(businessId: string): Promise<LabOrder[]>
   const server = await getServerCredential(businessId);
   if (!server) throw new Error('No server credential');
 
-  const response = await fetch(`${server.endpoint}/api/v1/lab/orders`, {
+  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/lab/orders`, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${server.credential}`,

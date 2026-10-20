@@ -8,32 +8,44 @@ export interface CacheResult<T = any> {
 }
 
 export function initCacheDatabase(): void {
-  const db = getDatabase();
-  db.execSync(`
-    CREATE TABLE IF NOT EXISTS read_cache (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      stored_at TEXT NOT NULL
-    );
-  `);
+  try {
+    const db = getDatabase();
+    if (db && typeof db.execSync === 'function') {
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS read_cache (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          stored_at TEXT NOT NULL
+        );
+      `);
+    }
+  } catch {
+    // ignore
+  }
 }
 
 export function putCache<T>(key: string, value: T): void {
-  const db = getDatabase();
-  const storedAt = new Date().toISOString();
-  const valueJson = JSON.stringify(value);
-  db.runSync(
-    `INSERT OR REPLACE INTO read_cache (key, value, stored_at) VALUES (?, ?, ?);`,
-    [key, valueJson, storedAt]
-  );
+  try {
+    const db = getDatabase();
+    if (!db || typeof db.runSync !== 'function') return;
+    const storedAt = new Date().toISOString();
+    const valueJson = JSON.stringify(value);
+    db.runSync(
+      `INSERT OR REPLACE INTO read_cache (key, value, stored_at) VALUES (?, ?, ?);`,
+      [key, valueJson, storedAt]
+    );
+  } catch {
+    // ignore
+  }
 }
 
 export function getCache<T>(key: string): CacheResult<T> | null {
-  const db = getDatabase();
-  const row = db.getFirstSync(`SELECT * FROM read_cache WHERE key = ?;`, [key]);
-  if (!row) return null;
-
   try {
+    const db = getDatabase();
+    if (!db || typeof db.getFirstSync !== 'function') return null;
+    const row = db.getFirstSync(`SELECT * FROM read_cache WHERE key = ?;`, [key]);
+    if (!row) return null;
+
     const data = JSON.parse(row.value) as T;
     const storedAt = row.stored_at;
     const storedTime = new Date(storedAt).getTime();
@@ -55,11 +67,21 @@ export function getCache<T>(key: string): CacheResult<T> | null {
 }
 
 export function removeCache(key: string): void {
-  const db = getDatabase();
-  db.runSync(`DELETE FROM read_cache WHERE key = ?;`, [key]);
+  try {
+    const db = getDatabase();
+    if (!db || typeof db.runSync !== 'function') return;
+    db.runSync(`DELETE FROM read_cache WHERE key = ?;`, [key]);
+  } catch {
+    // ignore
+  }
 }
 
 export function clearCache(): void {
-  const db = getDatabase();
-  db.runSync(`DELETE FROM read_cache;`);
+  try {
+    const db = getDatabase();
+    if (!db || typeof db.runSync !== 'function') return;
+    db.runSync(`DELETE FROM read_cache;`);
+  } catch {
+    // ignore
+  }
 }

@@ -185,7 +185,14 @@ mod tests {
         .await
         .unwrap();
 
-        Arc::new(LanServerState::new(pool, 4040))
+        Arc::new(
+            LanServerState::new(
+                pool,
+                4040,
+                &std::env::temp_dir().join(format!("40labs-pair-test-{}", Uuid::new_v4())),
+            )
+            .unwrap(),
+        )
     }
 
     #[tokio::test]

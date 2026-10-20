@@ -457,7 +457,7 @@ export const DevicesPanel: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-text-muted max-w-sm">
-                Scan this high-contrast secure QR code using the Orbit Worker mobile app while connected to the same local network (LAN) to complete authenticated pairing.
+                Connect the phone to the PC hotspot, or connect both devices to the same Wi-Fi. Scan this QR code in Orbit Worker; if the phone cannot reach the PC, the app will guide you to the right network and let you retry.
               </p>
             </>
           ) : (

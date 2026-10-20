@@ -1,6 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import { getServerCredential } from '../../lib/secure-store';
+import { pinnedServerFetch } from '../../lib/pinned-transport';
 import { SaleResponse, CartItem } from './types';
 
 function generateUuid(): string {
@@ -29,7 +30,7 @@ export async function createSaleApi(
 
   const key = idempotencyKey || generateUuid();
 
-  const response = await fetch(`${server.endpoint}/api/v1/sales`, {
+  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/sales`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${server.credential}`,

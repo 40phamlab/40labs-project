@@ -100,6 +100,16 @@ const swTzData = {
   'pairing.notConnected': 'Haujaunganishwa na kitovu cha duka.',
   'pairing.connectPrompt': 'Unganisha kifaa chako kuwezesha mauzo, akiba na maabara.',
   'pairing.or': 'AU',
+  'pairing.networkSetupTitle': 'Chagua muunganisho wa mtandao',
+  'pairing.networkSetupBody': 'Simu haiwezi kufikia kompyuta bado. Unganisha simu kwenye mtandao unaotumika na kompyuta, kisha bonyeza jaribu tena.',
+  'pairing.pcHotspot': 'Unganisha kwenye hotspot ya kompyuta',
+  'pairing.pcHotspotHelp': 'Washa hotspot ya Wi-Fi kwenye kompyuta, kisha unganisha simu kwenye hotspot hiyo.',
+  'pairing.sameWifi': 'Tumia Wi-Fi moja',
+  'pairing.sameWifiHelp': 'Unganisha kompyuta na simu kwenye mtandao huo huo wa Wi-Fi.',
+  'pairing.openWifiSettings': 'Fungua mipangilio ya Wi-Fi',
+  'pairing.openWifiSettingsFailed': 'Imeshindikana kufungua mipangilio ya Wi-Fi.',
+  'pairing.retryConnection': 'Nimeunganisha — jaribu tena',
+  'pairing.scanAnotherQr': 'Tambaza msimbo mwingine',
 
   // Dashboard labels
   'dashboard.title': 'Dashibodi',
@@ -565,6 +575,16 @@ export const translations = {
     'pairing.notConnected': 'Not connected to a pharmacy hub.',
     'pairing.connectPrompt': 'Connect your device to enable sales, stock, and lab operations.',
     'pairing.or': 'OR',
+    'pairing.networkSetupTitle': 'Choose a network connection',
+    'pairing.networkSetupBody': 'The phone cannot reach the PC yet. Connect the phone to a network the PC can reach, then tap retry.',
+    'pairing.pcHotspot': 'Connect to the PC hotspot',
+    'pairing.pcHotspotHelp': 'Turn on Wi-Fi hotspot on the PC, then connect the phone to that hotspot.',
+    'pairing.sameWifi': 'Use the same Wi-Fi',
+    'pairing.sameWifiHelp': 'Connect both the PC and phone to the same Wi-Fi network.',
+    'pairing.openWifiSettings': 'Open Wi-Fi settings',
+    'pairing.openWifiSettingsFailed': 'Could not open Wi-Fi settings.',
+    'pairing.retryConnection': 'I’m connected — retry',
+    'pairing.scanAnotherQr': 'Scan another QR code',
 
     // Dashboard labels
     'dashboard.title': 'Dashboard',

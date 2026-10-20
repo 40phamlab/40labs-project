@@ -1,6 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
 import { getServerCredential } from '../../lib/secure-store';
+import { pinnedServerFetch } from '../../lib/pinned-transport';
 import { Customer } from './types';
 import { enqueue } from '../../lib/outbox-sync';
 
@@ -13,7 +14,7 @@ export async function fetchCustomersApi(businessId: string, search?: string): Pr
   if (search) params.append('search', search);
   url += params.toString();
 
-  const response = await fetch(url, {
+  const response = await pinnedServerFetch(server, url, {
     method: 'GET',
     headers: {
       Authorization: `Bearer ${server.credential}`,

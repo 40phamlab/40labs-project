@@ -1,7 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#pair]
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Platform } from 'react-native';
 import { colors, radius } from '@40labs/design-tokens';
 import { useI18n } from '../src/i18n/I18nProvider';
 import { ScanFrame } from '../src/components/ScanFrame';
@@ -11,9 +11,10 @@ import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Device from 'expo-device';
 import * as ImagePicker from 'expo-image-picker';
-import { parsePairQr } from '../src/lib/qr-parser';
+import { ParsedPairQr, parsePairQr } from '../src/lib/qr-parser';
 import { decodeQrFromImageUri } from '../src/lib/qr-scanner';
 import { saveServerCredential } from '../src/lib/secure-store';
+import { pinnedFetch, pinnedFetchFromEndpoints } from '../src/lib/pinned-transport';
 import { ApiClient } from '@40labs/api-client';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -24,6 +25,9 @@ export default function PairScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [pairingInProgress, setPairingInProgress] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const [networkSetup, setNetworkSetup] = useState(false);
+  const [pendingPairQr, setPendingPairQr] = useState<{ qrData: string; parsed: ParsedPairQr } | null>(null);
+  const [networkChoice, setNetworkChoice] = useState<'pc_hotspot' | 'same_wifi'>('pc_hotspot');
 
   const processAndPair = async (qrData: string) => {
     if (pairingInProgress) return;
@@ -32,22 +36,32 @@ export default function PairScreen() {
 
     try {
       const parsed = parsePairQr(qrData);
+      setPendingPairQr({ qrData, parsed });
+      setNetworkSetup(false);
+      const health = await pinnedFetchFromEndpoints(
+        parsed.endpoints,
+        '/api/pairing/health',
+        { method: 'GET' },
+        parsed.fp,
+      );
+      if (!health.response.ok) throw new Error('ORBIT_NETWORK_UNREACHABLE');
+      const selectedEndpoint = health.endpoint;
 
       const client = new ApiClient({
-        baseUrl: parsed.endpoint,
+        baseUrl: selectedEndpoint,
         transport: {
           request: async (opts) => {
-            const response = await fetch(`${parsed.endpoint}${opts.path}`, {
+            const response = await pinnedFetch(opts.path, {
               method: opts.method,
-              headers: opts.headers,
+              headers: opts.headers as Record<string, string>,
               body: opts.body ? JSON.stringify(opts.body) : undefined,
               signal: opts.signal,
-            });
+            }, parsed.fp);
             const resData = await response.json().catch(() => ({}));
             return {
               status: response.status,
               headers: {},
-              data: resData,
+              data: resData as any,
             };
           },
         },
@@ -63,13 +77,22 @@ export default function PairScreen() {
       await saveServerCredential({
         businessId: response.businessId || parsed.sessionId,
         businessName: 'Pharmacy Hub',
-        endpoint: parsed.endpoint,
+        endpoint: selectedEndpoint,
+        endpoints: parsed.endpoints,
         credential: response.credential,
         fp: parsed.fp,
       });
 
+      setPendingPairQr(null);
+      setNetworkSetup(false);
       router.replace('/(tabs)');
     } catch (err: any) {
+      if (err instanceof Error && err.message === 'ORBIT_NETWORK_UNREACHABLE') {
+        setNetworkSetup(true);
+        setPairingInProgress(false);
+        setScanned(false);
+        return;
+      }
       // SECURITY: Generic pairing failure message. Never reveal whether token is expired, used, or incorrect. Never log credential or token.
       setErrorMessage(err.message && err.message.includes('QR') ? err.message : t('pairing.failed'));
       setPairingInProgress(false);
@@ -96,7 +119,6 @@ export default function PairScreen() {
       }
 
       const assetUri = result.assets[0].uri;
-      setPairingInProgress(true);
       setErrorMessage(null);
 
       const qrData = await decodeQrFromImageUri(assetUri);
@@ -105,6 +127,19 @@ export default function PairScreen() {
       setErrorMessage(err.message || t('pairing.uploadError'));
       setPairingInProgress(false);
     }
+  };
+
+  const openWifiSettings = async () => {
+    if (Platform.OS !== 'android') return;
+    try {
+      await Linking.sendIntent('android.settings.WIFI_SETTINGS');
+    } catch {
+      setErrorMessage(t('pairing.openWifiSettingsFailed'));
+    }
+  };
+
+  const retryPendingPairing = async () => {
+    if (pendingPairQr) await processAndPair(pendingPairQr.qrData);
   };
 
   if (!permission) {
@@ -121,7 +156,42 @@ export default function PairScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      {permission.granted ? (
+      {networkSetup && pendingPairQr ? (
+        <View style={styles.networkSetupContainer}>
+          <Ionicons name="wifi-outline" size={42} color={colors.actionPrimary} />
+          <Text style={[styles.networkSetupTitle, { color: colors.textPrimary }]}>{t('pairing.networkSetupTitle')}</Text>
+          <Text style={[styles.networkSetupBody, { color: colors.textSecondary }]}>{t('pairing.networkSetupBody')}</Text>
+          <TouchableOpacity
+            accessibilityRole="radio"
+            accessibilityState={{ selected: networkChoice === 'pc_hotspot' }}
+            style={[styles.networkOption, { backgroundColor: colors.surfaceSecondary, borderColor: networkChoice === 'pc_hotspot' ? colors.actionPrimary : colors.borderSubtle }]}
+            onPress={() => setNetworkChoice('pc_hotspot')}
+          >
+            <Text style={[styles.networkOptionTitle, { color: colors.textPrimary }]}>{t('pairing.pcHotspot')}</Text>
+            <Text style={[styles.networkOptionHelp, { color: colors.textSecondary }]}>{t('pairing.pcHotspotHelp')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="radio"
+            accessibilityState={{ selected: networkChoice === 'same_wifi' }}
+            style={[styles.networkOption, { backgroundColor: colors.surfaceSecondary, borderColor: networkChoice === 'same_wifi' ? colors.actionPrimary : colors.borderSubtle }]}
+            onPress={() => setNetworkChoice('same_wifi')}
+          >
+            <Text style={[styles.networkOptionTitle, { color: colors.textPrimary }]}>{t('pairing.sameWifi')}</Text>
+            <Text style={[styles.networkOptionHelp, { color: colors.textSecondary }]}>{t('pairing.sameWifiHelp')}</Text>
+          </TouchableOpacity>
+          {Platform.OS === 'android' && (
+            <TouchableOpacity style={styles.settingsLink} onPress={openWifiSettings}>
+              <Text style={[styles.settingsLinkText, { color: colors.actionPrimary }]}>{t('pairing.openWifiSettings')}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.actionPrimary }]} onPress={retryPendingPairing} disabled={pairingInProgress}>
+            {pairingInProgress ? <ActivityIndicator color="#fff" /> : <Text style={styles.retryButtonText}>{t('pairing.retryConnection')}</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingsLink} onPress={() => { setPendingPairQr(null); setNetworkSetup(false); setScanned(false); }}>
+            <Text style={[styles.settingsLinkText, { color: colors.textSecondary }]}>{t('pairing.scanAnotherQr')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : permission.granted ? (
         <View style={styles.cameraContainer}>
           <CameraView
             style={StyleSheet.absoluteFill}
@@ -218,6 +288,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
   },
+  networkSetupContainer: { width: '100%', flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingHorizontal: 4 },
+  networkSetupTitle: { fontSize: 20, textAlign: 'center', fontFamily: 'Sora_600SemiBold' },
+  networkSetupBody: { fontSize: 14, textAlign: 'center', lineHeight: 20, fontFamily: 'Inter_400Regular', marginBottom: 4 },
+  networkOption: { width: '100%', borderWidth: 1.5, borderRadius: radius.card, padding: 14, gap: 4 },
+  networkOptionTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold' },
+  networkOptionHelp: { fontSize: 13, lineHeight: 18, fontFamily: 'Inter_400Regular' },
+  settingsLink: { paddingVertical: 8 },
+  settingsLinkText: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
+  retryButton: { minHeight: 48, width: '100%', borderRadius: radius.card, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  retryButtonText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
   permissionText: {
     color: colors.textPrimary,
     fontSize: 15,

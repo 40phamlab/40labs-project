@@ -7,6 +7,7 @@ import { useI18n } from '../../src/i18n/I18nProvider';
 import { ScreenHeader, Chip, Card, EmptyState, InlineError } from '../../src/components';
 import { useConnectionStore } from '../../src/stores/connection';
 import { getServerCredential } from '../../src/lib/secure-store';
+import { pinnedServerFetch } from '../../src/lib/pinned-transport';
 import { ApiClient } from '@40labs/api-client';
 import { getDatabase } from '../../src/db/outbox';
 import { putCache, getCache, CacheResult } from '../../src/db/cache';
@@ -44,7 +45,7 @@ export default function HistoryScreen() {
         baseUrl: server.endpoint,
         transport: {
           request: async (opts) => {
-            const response = await fetch(`${server.endpoint}${opts.path}`, {
+            const response = await pinnedServerFetch(server, opts.path, {
               method: opts.method,
               headers: opts.headers,
               body: opts.body ? JSON.stringify(opts.body) : undefined,
@@ -54,7 +55,7 @@ export default function HistoryScreen() {
             return {
               status: response.status,
               headers: {},
-              data,
+              data: data as any,
             };
           },
         },
