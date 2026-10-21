@@ -1,7 +1,5 @@
 import type {
   Alert,
-  AlertDomain,
-  AlertSeverity,
   MedicineWithInventory,
   LabOrder,
   LabResult,
@@ -39,7 +37,6 @@ export function evaluateAlerts(
   const firstSeenAt = now.toISOString();
 
   // 1. STOCK (Akiba)
-  let stockOutCount = 0;
   let stockDangerCount = 0;
   let stockWarningCount = 0;
 
@@ -48,7 +45,6 @@ export function evaluateAlerts(
     const threshold = item.low_stock_threshold ?? 0;
 
     if (qty === thresholds.stock.criticalQty) {
-      stockOutCount++;
       alerts.push({
         key: `stock:out:${item.id}`,
         domain: 'stock',
@@ -100,7 +96,6 @@ export function evaluateAlerts(
   }
 
   // 2. EXPIRY (Muda)
-  let expiryCriticalCount = 0;
   let expiryDangerCount = 0;
   let expiryWarningCount = 0;
 
@@ -111,7 +106,6 @@ export function evaluateAlerts(
     const qty = item.quantity ?? 0;
 
     if (daysToExpiry < 0 && qty > 0) {
-      expiryCriticalCount++;
       alerts.push({
         key: `expiry:expired:${item.id}`,
         domain: 'expiry',
@@ -281,13 +275,11 @@ export function evaluateAlerts(
   // 6. SALES (Mauzo) - day-over-day drop > 50% after noon
   const currentHour = now.getHours();
   if (currentHour >= thresholds.sales.checkHour) {
-    // Today's sales from midnight today
     const todaySales = snapshot.sales.filter(
       (s) => new Date(s.created_at).getTime() >= nowMidnight
     );
     const todayRevenue = todaySales.reduce((sum, s) => sum + (s.grand_total ?? 0), 0);
 
-    // Yesterday's sales (same time window or full yesterday)
     const yesterdayMidnight = nowMidnight - dayMs;
     const yesterdayEnd = nowMidnight;
     const yesterdaySales = snapshot.sales.filter((s) => {
@@ -319,38 +311,8 @@ export function evaluateAlerts(
   let totalCost = 0;
   snapshot.sales.forEach((s) => {
     totalRevenue += s.grand_total ?? 0;
-    // Estimate cost from lines if buy_price available or assume 0 if not
-    s.lines?.forEach((l) => {
-      // If we don't have direct buy_price on sale line, check inventory or item
-      totalCost += 0; // or compute if available
-    });
   });
 
-  // Alternative check for net profit if purchase orders / inventory buy prices total:
-  // Let's compute gross profit across sales if buy prices are known or check if total profit is negative.
-  let netProfit = 0;
-  snapshot.sales.forEach((s) => {
-    let saleCost = 0;
-    s.lines?.forEach((l) => {
-      // Find inventory item to get buy_price
-      saleCost += (l.quantity ?? 0) * 0; // fallback
-    });
-    netProfit += (s.grand_total ?? 0) - saleCost;
-  });
-
-  // Or simpler: check if sum of buy_price * qty sold vs sell_price * qty sold.
-  // If profit is negative (< 0):
-  let grossProfit = 0;
-  snapshot.sales.forEach((s) => {
-    s.lines?.forEach((l) => {
-      const lineTotal = l.subtotal ?? (l.quantity * l.unit_price);
-      // we can check if buy_price is available or net profit is negative
-      grossProfit += lineTotal; // revenue portion
-    });
-  });
-
-  // Let's also check if any explicit negative profit condition exists.
-  // For testing purposes, if totalRevenue < totalCost (or netProfit < 0), trigger profit:negative:all.
   if (totalRevenue > 0 && totalCost > totalRevenue) {
     alerts.push({
       key: 'profit:negative:all',

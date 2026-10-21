@@ -69,7 +69,7 @@ export function useAlerts(thresholds: AlertThresholds = DEFAULT_ALERT_THRESHOLDS
     queryFn: () => purchasesApi.list(),
   });
 
-  const { acknowledged, mutedUntilResolved, snoozedUntil, acknowledge, mute, snooze, clear } = useAlertStore();
+  const { mutedUntilResolved, snoozedUntil, acknowledge, mute, snooze, clear } = useAlertStore();
 
   const alerts = useMemo(() => {
     const rawAlerts = evaluateAlerts(

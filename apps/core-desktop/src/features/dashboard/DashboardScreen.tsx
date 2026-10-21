@@ -1,8 +1,9 @@
-// [phase: 8D] DashboardScreen with 3-Row Layout, Modal Wiring & PDF Sales Report Generation
+// [phase: 8D-2] DashboardScreen with KPI Card Alert Badges & Alert Details Modal
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { SearchInput, Skeleton, Alert } from '@40labs/ui-components';
 import { t } from '@40labs/i18n';
+import type { Alert as AlertType } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useToast } from '../../hooks/useToast';
@@ -19,15 +20,16 @@ import { CustomerFormModal, type CustomerFormPayload } from '../customers/compon
 import { NewStockModal } from '../inventory/components/NewStockModal';
 import { CreatePODraftModal } from '../purchases/components/CreatePODraftModal';
 import { ReportShareModal } from '../reports/components/ReportShareModal';
+import { AlertDetailsModal } from './components/AlertDetailsModal';
 import { useAlerts } from '../alerts/useAlerts';
-import type { DashboardChartMetric } from './utils/chartData';
+import { useNavStore } from '../../stores/useNavStore';
 
 export const DashboardScreen: React.FC = () => {
   const queryClient = useQueryClient();
   const { summary, isLoading, isError, error, refetch } = useDashboard();
   const { toast } = useToast();
   const { addItem } = useInventory();
-  const { alerts, byDomain } = useAlerts();
+  const { byDomain, worstByDomain } = useAlerts();
 
   const [searchQuery, setSearchQuery] = React.useState('');
 
@@ -36,6 +38,7 @@ export const DashboardScreen: React.FC = () => {
   const [isAddStockOpen, setIsAddStockOpen] = React.useState(false);
   const [isAddPODraftOpen, setIsAddPODraftOpen] = React.useState(false);
   const [isSalesReportModalOpen, setIsSalesReportModalOpen] = React.useState(false);
+  const [selectedAlert, setSelectedAlert] = React.useState<AlertType | null>(null);
   const [isModalLoading, setIsModalLoading] = React.useState(false);
 
   const searchInputRef = React.useRef<HTMLInputElement>(null);
@@ -75,7 +78,6 @@ export const DashboardScreen: React.FC = () => {
       toast.success('Mteja mpya ameongezwa kikamilifu');
       setIsAddCustomerOpen(false);
 
-      // Invalidate React Query keys so dashboard cards update instantly
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       await queryClient.invalidateQueries({ queryKey: ['customers'] });
       await queryClient.invalidateQueries({ queryKey: ['inventory'] });
@@ -103,7 +105,7 @@ export const DashboardScreen: React.FC = () => {
     }
   };
 
-  // Add PO Draft Handler (Not PIN gated for drafts)
+  // Add PO Draft Handler
   const handleSavePODraft = async (
     supplierId: string,
     lines: { medicineId: string; quantity: number; unitCost: number }[]
@@ -210,18 +212,37 @@ export const DashboardScreen: React.FC = () => {
               toast.info(summaryText);
             }}
           />
+
+          {/* Alert Details & Action Modal */}
+          <AlertDetailsModal
+            isOpen={selectedAlert !== null}
+            onClose={() => setSelectedAlert(null)}
+            alert={selectedAlert}
+            onAction={(alert) => {
+              if (alert.domain === 'stock') {
+                setIsAddStockOpen(true);
+              } else if (alert.domain === 'purchases') {
+                setIsAddPODraftOpen(true);
+              } else if (alert.domain === 'customers' || alert.domain === 'debts') {
+                useNavStore.getState().setActiveScreen('customers');
+              } else if (alert.domain === 'expiry') {
+                useNavStore.getState().setActiveScreen('inventory');
+              } else if (alert.domain === 'lab') {
+                useNavStore.getState().setActiveScreen('lab');
+              }
+            }}
+          />
         </>
       }
     >
       <div className="flex flex-col gap-5 w-full max-w-[1600px] mx-auto p-4 min-h-0">
-        {alerts.length > 0 && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center justify-between text-xs text-amber-300">
-            <span>[Dev Alerts Wire] Active alerts: {alerts.length} (Stock: {byDomain.stock.length}, Expiry: {byDomain.expiry.length}, Lab: {byDomain.lab.length}, Debts: {byDomain.debts.length}, Purchases: {byDomain.purchases.length}, Sales: {byDomain.sales.length}, Profit: {byDomain.profit.length})</span>
-          </div>
-        )}
-
-        {/* Row 1: 8 KpiCards (4×2) */}
-        <KPIRows summary={summary} />
+        {/* Row 1: 8 KpiCards (4×2) with Alert Badges */}
+        <KPIRows
+          summary={summary}
+          byDomain={byDomain}
+          worstByDomain={worstByDomain}
+          onAlertClick={(alert) => setSelectedAlert(alert)}
+        />
 
         {/* Row 2: DashboardChart (2/3) | Right Rail (1/3) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">

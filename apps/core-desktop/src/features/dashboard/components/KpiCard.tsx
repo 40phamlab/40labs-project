@@ -1,20 +1,31 @@
-// [phase: 8D] Compact KPI Card (~96px High, 12px Radius)
+// [phase: 8D-2] Compact KPI Card (~96px High, 12px Radius) with Alert Badges & Severity Ring
 import * as React from 'react';
 import { ArrowUpRight } from 'lucide-react';
-import type { DashboardKpi } from '@40labs/types';
+import type { DashboardKpi, Alert, AlertSeverity } from '@40labs/types';
 import { useNavStore } from '../../../stores/useNavStore';
 import { KPI_META_MAP } from './kpiMeta';
 import { DeltaChip, getDeltaState } from './DeltaChip';
 import { Sparkline } from './Sparkline';
 import { KpiTooltip } from './KpiTooltip';
+import { CardAlertBadges } from './CardAlertBadges';
 
 export interface KpiCardProps {
   kpi: DashboardKpi;
+  alerts?: Alert[];
+  worstSeverity?: AlertSeverity | null;
   onSelectMetric?: (id: DashboardKpi['id']) => void;
+  onAlertClick?: (alert: Alert) => void;
   className?: string;
 }
 
-export const KpiCard: React.FC<KpiCardProps> = ({ kpi, onSelectMetric, className = '' }) => {
+export const KpiCard: React.FC<KpiCardProps> = ({
+  kpi,
+  alerts = [],
+  worstSeverity,
+  onSelectMetric,
+  onAlertClick,
+  className = '',
+}) => {
   const meta = KPI_META_MAP[kpi.id];
   const Icon = meta.icon;
   const deltaState = getDeltaState(kpi.delta);
@@ -37,6 +48,13 @@ export const KpiCard: React.FC<KpiCardProps> = ({ kpi, onSelectMetric, className
     }
   };
 
+  const ringClass =
+    worstSeverity === 'danger' || worstSeverity === 'critical'
+      ? 'border-2 border-[#EF4444]'
+      : worstSeverity === 'warning'
+      ? 'border-2 border-[#F97316]'
+      : 'border border-border/50';
+
   return (
     <KpiTooltip kpi={kpi} meta={meta}>
       <div
@@ -51,13 +69,13 @@ export const KpiCard: React.FC<KpiCardProps> = ({ kpi, onSelectMetric, className
           }
         }}
         className={`
-          relative h-[96px] p-3 rounded-[12px] bg-surface-primary border border-border/50
+          relative h-[96px] p-3 rounded-[12px] bg-surface-primary ${ringClass}
           elevation-raised hover:elevation-hover active:elevation-pressed transition-all
           cursor-pointer flex flex-col justify-between group focus:outline-none focus-visible:ring-2
           focus-visible:ring-focus-ring ${className}
         `}
       >
-        {/* Top Row: [Icon chip] Title ... [DeltaChip] [Open icon] */}
+        {/* Top Row: [Icon chip] Title ... [DeltaChip] [AlertBadges] [Open icon] */}
         <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <div
@@ -72,6 +90,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({ kpi, onSelectMetric, className
 
           <div className="flex items-center gap-1.5 shrink-0">
             <DeltaChip delta={kpi.delta} />
+            <CardAlertBadges alerts={alerts} worstSeverity={worstSeverity} onAlertClick={onAlertClick} />
             {meta.targetScreen && (
               <button
                 type="button"
