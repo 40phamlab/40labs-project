@@ -1,12 +1,11 @@
-// [phase: StockAnalytics] React Query Hook for Stock Trends & Category Analytics
+// [phase: 8E] React Query hook for live inventory analytics
 import { useQuery } from '@tanstack/react-query';
-import type { StockAnalytics, StockAnalyticsRange } from '@40labs/types';
-import { inventoryApi, salesApi, purchasesApi } from '../../../api';
-import { WORKSPACE_ID, BRANCH_ID } from '../../../devData/constants';
-import { computeStockAnalytics } from '../analytics/computeStockAnalytics';
+import type { StockAnalyticsRange } from '@40labs/types';
+import { inventoryApi } from '../../../api';
+import { computeStockAnalytics, type ComputedStockAnalytics } from '../analytics/stockAnalytics.queries';
 
 export function useStockAnalytics(range: StockAnalyticsRange = '30d') {
-  const queryKey = ['inventory', 'analytics', WORKSPACE_ID, BRANCH_ID, range];
+  const queryKey = ['inventory', 'stock-analytics', range];
 
   const {
     data,
@@ -14,30 +13,19 @@ export function useStockAnalytics(range: StockAnalyticsRange = '30d') {
     isError,
     error,
     refetch,
-  } = useQuery<StockAnalytics>({
+  } = useQuery<ComputedStockAnalytics>({
     queryKey,
     queryFn: async () => {
-      const [rawItems, medicines, sales, purchaseOrders, adjustments] = await Promise.all([
-        inventoryApi.listInventoryItems(),
-        inventoryApi.listMedicines(),
-        salesApi.list(),
-        purchasesApi.list(),
-        inventoryApi.listStockAdjustments(),
-      ]);
-
-      return computeStockAnalytics(
-        rawItems,
-        medicines,
-        sales,
-        purchaseOrders,
-        adjustments,
-        range
-      );
+      const items = await inventoryApi.list();
+      return computeStockAnalytics(items);
     },
   });
 
   return {
     analytics: data,
+    kpis: data?.kpis,
+    categoryDistribution: data?.categoryDistribution || [],
+    stockHealth: data?.stockHealth || { in_stock: 0, low: 0, out: 0, expired: 0 },
     isLoading,
     isError,
     error,
