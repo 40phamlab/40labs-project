@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { Dropdown, Alert } from '@40labs/ui-components';
 import type { DashboardSummary } from '../../../devData/dashboard/summary';
+import { useChartPrefs } from '../../../hooks/useChartPrefs';
+import type { ChartType, TimeRange } from '@40labs/types';
 import {
   buildAnalyticsChartData,
   type DashboardChartType,
@@ -25,8 +27,8 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
   loading = false,
   error,
 }) => {
-  const [chartType, setChartType] = React.useState<DashboardChartType>('bar');
-  const [period, setPeriod] = React.useState<AnalyticsPeriod>('30d');
+  const { chartType, range, setChartType, setRange } = useChartPrefs('dashboard_overview');
+
   const [grouping, setGrouping] = React.useState<TimeGrouping>('daily');
   const [scale, setScale] = React.useState<ChartScale>('auto');
   const [hiddenSeries, setHiddenSeries] = React.useState<string[]>([]);
@@ -44,8 +46,28 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
     );
   };
 
+  const analyticsPeriod: AnalyticsPeriod =
+    range === 'today'
+      ? 'today'
+      : range === '7d'
+      ? '7d'
+      : range === '30d'
+      ? '30d'
+      : range === '90d'
+      ? '90d'
+      : 'thisYear';
+
+  const effectiveChartType: DashboardChartType =
+    chartType === 'line'
+      ? 'line'
+      : chartType === 'bar'
+      ? 'bar'
+      : chartType === 'area'
+      ? 'area'
+      : 'pie';
+
   const { data, pieData, series, totalValues, canUseLog } = buildAnalyticsChartData(summary, {
-    period,
+    period: analyticsPeriod,
     grouping,
     scale,
     customStartDate,
@@ -59,7 +81,7 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
         {/* Panel Title */}
         <div className="flex items-center gap-1.5 min-w-0">
           <h3 className="font-heading text-xs font-bold text-text uppercase tracking-wider truncate">
-            MUHTASARI WA BIASHARA <span className="text-text-muted font-mono font-normal">(TAKWIMU ZOTE)</span>
+            MUHTASARI WA BIASHARA <span className="text-text-muted font-mono font-normal">({range === '7d' ? 'SIKU 7' : range === 'today' ? 'LEO' : range === '30d' ? 'SIKU 30' : range === '90d' ? 'SIKU 90' : 'TAKWIMU ZOTE'})</span>
           </h3>
         </div>
 
@@ -97,37 +119,31 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
                 <label className="text-[10px] font-bold uppercase text-text-muted">Aina ya Chati (Chart Type)</label>
                 <select
                   value={chartType}
-                  onChange={(e) => setChartType(e.target.value as DashboardChartType)}
+                  onChange={(e) => setChartType(e.target.value as ChartType)}
                   className="w-full bg-surface-secondary border border-border/60 rounded px-2 py-1 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                 >
-                  <option value="bar">Bar Chart</option>
                   <option value="line">Line Chart</option>
+                  <option value="bar">Bar Chart</option>
                   <option value="area">Area Chart</option>
-                  <option value="stackedBar">Stacked Bar</option>
-                  <option value="stackedArea">Stacked Area</option>
                   <option value="pie">Pie Chart</option>
-                  <option value="donut">Donut Chart</option>
                 </select>
               </div>
 
-              {/* 2. Time Range */}
+              {/* 2. Time Range (Order: Leo | Siku 7 | Siku 30 | Siku 90 | Zote) */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold uppercase text-text-muted">Kipindi (Time Range)</label>
                 <select
-                  value={period}
-                  onChange={(e) => setPeriod(e.target.value as AnalyticsPeriod)}
+                  value={range}
+                  onChange={(e) => setRange(e.target.value as TimeRange)}
                   className="w-full bg-surface-secondary border border-border/60 rounded px-2 py-1 text-xs text-text focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                 >
                   <option value="today">Leo (Today)</option>
-                  <option value="7d">Siku 7 zilizopita</option>
-                  <option value="30d">Siku 30 zilizopita</option>
-                  <option value="90d">Siku 90 zilizopita</option>
-                  <option value="thisMonth">Mwezi huu</option>
-                  <option value="lastMonth">Mwezi uliopita</option>
-                  <option value="thisYear">Mwaka huu</option>
-                  <option value="custom">Kipindi maalum (Custom)</option>
+                  <option value="7d">Siku 7 (7 Days)</option>
+                  <option value="30d">Siku 30 (30 Days)</option>
+                  <option value="90d">Siku 90 (90 Days)</option>
+                  <option value="all">Zote (All)</option>
                 </select>
-                {period === 'custom' && (
+                {range === 'custom' && (
                   <div className="flex gap-2 pt-1">
                     <input
                       type="date"
@@ -231,8 +247,8 @@ export const OverviewChartPanel: React.FC<OverviewChartPanelProps> = ({
             data={data}
             pieData={pieData}
             series={series}
-            chartType={chartType}
-            period={period === 'custom' ? '30d' : period as any}
+            chartType={effectiveChartType}
+            period={analyticsPeriod === 'today' ? '7d' : analyticsPeriod as any}
             hiddenSeries={hiddenSeries}
             showGrid={showGrid}
             showLegend={showLegend}

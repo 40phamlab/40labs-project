@@ -18,6 +18,7 @@
     "expo-camera": "~57.0.6",
     "expo-dev-client": "~57.0.20",
     "expo-device": "~57.0.2",
+    "expo-build-properties": "~57.0.22",
     "expo-font": "~57.0.4",
     "expo-image-manipulator": "^57.0.21",
     "expo-image-picker": "^57.0.20",
@@ -54,7 +55,10 @@
     "ios": "expo start --dev-client --ios",
     "web": "expo start --web --port 8081",
     "typecheck": "tsc --noEmit",
-    "test": "jest"
+    "test": "jest",
+    "build:android": "eas build --platform android --profile preview",
+    "build:android:prod": "eas build --platform android --profile production",
+    "build:android:dev": "eas build --platform android --profile development"
   },
   "private": true
 }

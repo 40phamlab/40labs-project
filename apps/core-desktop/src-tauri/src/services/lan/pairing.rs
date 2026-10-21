@@ -99,14 +99,30 @@ pub async fn pair_handler(
     hasher.update(raw_credential.as_bytes());
     let credential_hash = format!("{:x}", hasher.finalize());
 
-    const DEFAULT_WORKSPACE_ID: &str = "ws_010101";
-    const DEFAULT_BRANCH_ID: &str = "br_010101";
+    let user_info: Option<(String, String)> = sqlx::query_as(
+        r#"
+        SELECT workspace_id, branch_id FROM app_user WHERE id = ?
+        "#,
+    )
+    .bind(&user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("DB Error: {}", e) })),
+        )
+    })?;
+
+    let (workspace_id, branch_id) = user_info.unwrap_or_else(|| {
+        ("ws_010101".to_string(), "br_010101".to_string())
+    });
 
     // 5. Create paired device in database
     let device = match device_repo::create_paired_device(
         &state.pool,
-        DEFAULT_WORKSPACE_ID,
-        DEFAULT_BRANCH_ID,
+        &workspace_id,
+        &branch_id,
         &user_id,
         label,
         dev_type,
@@ -127,8 +143,8 @@ pub async fn pair_handler(
     // 6. Record immutable audit log entry
     let audit_entry = AuditLogEntry {
         id: format!("audit_{}", Uuid::new_v4()),
-        workspace_id: DEFAULT_WORKSPACE_ID.to_string(),
-        branch_id: DEFAULT_BRANCH_ID.to_string(),
+        workspace_id: workspace_id.clone(),
+        branch_id: branch_id.clone(),
         created_at: chrono::Utc::now().to_rfc3339(),
         action: "device_pair".to_string(),
         performed_by_user_id: Some(user_id.clone()),

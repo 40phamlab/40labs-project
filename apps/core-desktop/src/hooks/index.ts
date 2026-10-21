@@ -15,3 +15,4 @@ export * from './useUsers';
 export * from './useIntegrations';
 export * from './useDevices';
 export * from './useBackup';
+export * from './useChartPrefs';

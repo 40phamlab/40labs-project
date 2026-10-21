@@ -11,7 +11,7 @@ pub async fn get_paired_devices(
         r#"
         SELECT id, workspace_id, branch_id, user_id, device_label, device_type, status, permissions_json, credential_hash, last_connected_at, paired_at, updated_at
         FROM paired_device
-        WHERE workspace_id = ? AND status != 'removed'
+        WHERE workspace_id = ?
         ORDER BY paired_at DESC
         "#,
     )
