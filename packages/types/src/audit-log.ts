@@ -16,6 +16,8 @@ export type AuditAction =
   | 'pin_unlock_success'
   | 'pin_unlock_failed'
   | 'session_destroyed_pin_lockout'
+  | 'customer_export'
+  | 'customer_archive'
   | (string & {});
 
 // Immutable, append-only. NEVER updated or deleted, at the DB layer, not

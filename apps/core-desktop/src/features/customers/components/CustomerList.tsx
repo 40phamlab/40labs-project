@@ -11,9 +11,10 @@ import type { Customer } from '@40labs/types';
 import { formatDate, formatPhoneTZ, formatNumberOrUnknown } from '@40labs/i18n';
 import { MoreVertical, Eye, Edit, Archive } from 'lucide-react';
 import { CustomerAvatar } from './CustomerAvatar';
+import { SelectionCheckbox } from './SelectionCheckbox';
+import { useCustomerSelectionStore } from '../state/customerSelectionSlice';
 
 export async function requirePin(action: string): Promise<boolean> {
-  // TODO: [wire in auth phase] [phase: auth]
   console.warn(`[PIN Gated Action] ${action} requested.`);
   return true;
 }
@@ -40,8 +41,20 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   const [activeMenuId, setActiveMenuId] = React.useState<string | null>(null);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(50);
+  const [lastSelectedId, setLastSelectedId] = React.useState<string | null>(null);
 
-  // Reset to page 1 if customers list length changes or filters change
+  const toggle = useCustomerSelectionStore((s) => s.toggle);
+  const selectRange = useCustomerSelectionStore((s) => s.selectRange);
+  const selectPage = useCustomerSelectionStore((s) => s.selectPage);
+  const clearSelection = useCustomerSelectionStore((s) => s.clear);
+  const selectAllMatching = useCustomerSelectionStore((s) => s.selectAllMatching);
+  const isSelected = useCustomerSelectionStore((s) => s.isSelected);
+  const setTotalMatching = useCustomerSelectionStore((s) => s.setTotalMatching);
+
+  React.useEffect(() => {
+    setTotalMatching(customers.length);
+  }, [customers.length, setTotalMatching]);
+
   React.useEffect(() => {
     setCurrentPage(1);
   }, [customers.length]);
@@ -53,7 +66,60 @@ export const CustomerList: React.FC<CustomerListProps> = ({
 
   const totalPages = Math.ceil(customers.length / pageSize) || 1;
 
+  const visibleIds = React.useMemo(() => paginatedCustomers.map((c) => c.id), [paginatedCustomers]);
+  const visibleSelectedCount = visibleIds.filter((id) => isSelected(id)).length;
+  const allVisibleSelected = visibleIds.length > 0 && visibleSelectedCount === visibleIds.length;
+  const isSomeVisibleSelected = visibleSelectedCount > 0 && visibleSelectedCount < visibleIds.length;
+
+  // Keyboard shortcut handlers
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        clearSelection();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        const activeEl = document.activeElement;
+        if (activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA') return;
+        e.preventDefault();
+        selectAllMatching();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [clearSelection, selectAllMatching]);
+
   const columns: ColumnDefinition<Customer>[] = [
+    {
+      key: 'selection',
+      header: (
+        <SelectionCheckbox
+          checked={allVisibleSelected}
+          indeterminate={isSomeVisibleSelected}
+          onChange={() => selectPage(visibleIds)}
+          aria-label="Select all visible rows"
+        />
+      ),
+      width: '40px',
+      render: (item) => {
+        const selected = isSelected(item.id);
+        return (
+          <SelectionCheckbox
+            checked={selected}
+            onChange={() => {
+              toggle(item.id);
+              setLastSelectedId(item.id);
+            }}
+            onClick={(e) => {
+              if (e.shiftKey && lastSelectedId) {
+                const allIds = customers.map((c) => c.id);
+                selectRange(lastSelectedId, item.id, allIds);
+              }
+            }}
+            aria-label={`Select ${item.full_name}`}
+          />
+        );
+      },
+    },
     {
       key: 'full_name',
       header: 'Customer',
@@ -165,6 +231,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       keyExtractor={(item) => item.id}
       density="compact"
       onRowClick={(item) => onViewDetails(item.id)}
+      isRowSelected={(item) => isSelected(item.id)}
       pagination={{
         currentPage,
         totalPages,

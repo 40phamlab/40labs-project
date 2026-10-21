@@ -20,6 +20,8 @@ pub enum AuditAction {
     PinUnlockSuccess,
     PinUnlockFailed,
     SessionDestroyedPinLockout,
+    CustomerExport,
+    CustomerArchive,
     Custom(String),
 }
 
@@ -43,6 +45,8 @@ impl AuditAction {
             AuditAction::PinUnlockSuccess => "pin_unlock_success",
             AuditAction::PinUnlockFailed => "pin_unlock_failed",
             AuditAction::SessionDestroyedPinLockout => "session_destroyed_pin_lockout",
+            AuditAction::CustomerExport => "customer_export",
+            AuditAction::CustomerArchive => "customer_archive",
             AuditAction::Custom(s) => s.as_str(),
         }
     }

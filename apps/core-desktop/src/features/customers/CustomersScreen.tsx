@@ -10,14 +10,21 @@ import type { Customer } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
 import { useNavStore } from '../../stores/useNavStore';
 import { CustomerKpiRow } from './components/CustomerKpiRow';
-import { useCustomerStats } from './hooks/useCustomerStats';
 import { CustomerFilterBar } from './components/CustomerFilterBar';
+import { SexFilter } from './components/SexFilter';
+import { ActiveFilterChips } from './components/ActiveFilterChips';
 import { CustomerList } from './components/CustomerList';
 import { CustomerFormModal, CustomerFormPayload } from './components/CustomerFormModal';
 import { DataImportModal } from '../../components/DataImportModal';
+import { BulkActionBar } from './components/BulkActionBar';
+import { SelectAllBanner } from './components/SelectAllBanner';
 import { PatientRecordScreen } from './PatientRecordScreen';
 import { useCustomers } from '../../hooks/useCustomers';
 import { customersApi } from '../../api/customersApi';
+import { useCustomerStats } from './hooks/useCustomerStats';
+import { useCustomerSelectionStore } from './state/customerSelectionSlice';
+import { useBulkArchive } from './hooks/useBulkArchive';
+import { useExportCustomers } from './hooks/useExportCustomers';
 
 export const CustomersScreen: React.FC = () => {
   const patientDetailId = useNavStore((s) => s.patientDetailId);
@@ -25,81 +32,54 @@ export const CustomersScreen: React.FC = () => {
 
   const {
     customers,
+    allCustomers,
     isLoading,
     isError,
     error,
     refetch,
     searchTerm,
     setSearchTerm,
+    timeRange,
+    setTimeRange,
+    balanceFilter,
+    setBalanceFilter,
+    sexFilter,
+    setSexFilter,
     isAddModalOpen,
     setAddModalOpen,
     addCustomer,
     updateCustomer,
-    isAdding,
-    isUpdating,
   } = useCustomers();
+
+  const stats = useCustomerStats(allCustomers);
+
+  const selection = useCustomerSelectionStore((s) => s.selection);
+  const totalMatching = useCustomerSelectionStore((s) => s.totalMatching);
+  const getSelectedCount = useCustomerSelectionStore((s) => s.getCount);
+  const isAllMatching = useCustomerSelectionStore((s) => s.isAllMatching);
+  const selectAllMatching = useCustomerSelectionStore((s) => s.selectAllMatching);
+  const clearSelection = useCustomerSelectionStore((s) => s.clear);
+  const isSelected = useCustomerSelectionStore((s) => s.isSelected);
+
+  const selectedCount = getSelectedCount();
+
+  const { archiveCustomers, isArchiving } = useBulkArchive(() => {
+    clearSelection();
+    refetch();
+  });
+
+  const { exportCustomers, isExporting } = useExportCustomers();
 
   const [editingCustomer, setEditingCustomer] = React.useState<Customer | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
-  const [timeRange, setTimeRange] = React.useState('all');
-  const [balanceFilter, setBalanceFilter] = React.useState('all');
-
-  const stats = useCustomerStats(customers);
-
-  const activeCustomers = React.useMemo(() => {
-    return customers.filter((c) => !c.archived_at);
-  }, [customers]);
-
-  const filteredCustomers = React.useMemo(() => {
-    const baseList = timeRange === 'archived'
-      ? customers.filter((c) => Boolean(c.archived_at))
-      : activeCustomers;
-
-    return baseList.filter((c) => {
-      const q = searchTerm.toLowerCase().trim();
-      const qDigits = q.replace(/\D/g, '');
-      const phoneDigits = c.phone.replace(/\D/g, '');
-
-      const matchesSearch =
-        !q ||
-        c.full_name.toLowerCase().includes(q) ||
-        c.phone.includes(q) ||
-        (qDigits.length >= 3 && phoneDigits.includes(qDigits)) ||
-        (c.email && c.email.toLowerCase().includes(q));
-
-      let matchesTime = true;
-      if (timeRange !== 'archived') {
-        const createdAt = new Date(c.created_at);
-        const now = new Date();
-
-        if (timeRange === 'today') {
-          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          matchesTime = createdAt >= startOfToday;
-        } else if (timeRange === 'week') {
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          matchesTime = createdAt >= weekAgo;
-        } else if (timeRange === 'month') {
-          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          matchesTime = createdAt >= monthAgo;
-        }
-      }
-
-      let matchesBalance = true;
-      if (balanceFilter === 'debtors') {
-        matchesBalance = c.outstanding_balance > 0;
-      } else if (balanceFilter === 'clear') {
-        matchesBalance = c.outstanding_balance === 0;
-      }
-
-      return matchesSearch && matchesTime && matchesBalance;
-    });
-  }, [customers, activeCustomers, searchTerm, timeRange, balanceFilter]);
 
   const handleClearAll = React.useCallback(() => {
     setTimeRange('all');
     setBalanceFilter('all');
+    setSexFilter('all');
     setSearchTerm('');
-  }, [setSearchTerm]);
+    clearSelection();
+  }, [setTimeRange, setBalanceFilter, setSexFilter, setSearchTerm, clearSelection]);
 
   const handleSaveCustomer = async (payload: CustomerFormPayload) => {
     if (editingCustomer) {
@@ -109,7 +89,7 @@ export const CustomersScreen: React.FC = () => {
         email: payload.email,
         notes: payload.notes,
         dob: payload.dob,
-        sex: payload.sex,
+        gender: payload.gender,
         bloodGroup: payload.bloodGroup,
         allergies: payload.allergies as any,
         chronicConditions: payload.chronicConditions ?? undefined,
@@ -126,7 +106,7 @@ export const CustomersScreen: React.FC = () => {
         email: payload.email || undefined,
         notes: payload.notes || undefined,
         dob: payload.dob || undefined,
-        sex: payload.sex || undefined,
+        gender: payload.gender || undefined,
         bloodGroup: payload.bloodGroup || undefined,
         allergies: payload.allergies as any,
         chronicConditions: payload.chronicConditions ?? undefined,
@@ -142,14 +122,15 @@ export const CustomersScreen: React.FC = () => {
     await updateCustomer(id, {
       archivedAt: new Date().toISOString(),
     });
+    refetch();
   };
 
   const existingPatientRecords = React.useMemo(() => {
-    return customers.map((c) => ({
+    return allCustomers.map((c) => ({
       fullName: c.full_name,
       phone: c.phone,
     }));
-  }, [customers]);
+  }, [allCustomers]);
 
   const handleExecuteImport = async (rows: Array<Record<string, any>>, duplicateStrategy: 'skip' | 'update' | 'new') => {
     let imported = 0;
@@ -159,7 +140,7 @@ export const CustomersScreen: React.FC = () => {
 
     for (const row of rows) {
       try {
-        const existing = customers.find(
+        const existing = allCustomers.find(
           (c) => c.phone === row.phone || c.full_name.toLowerCase() === row.fullName.toLowerCase()
         );
 
@@ -173,9 +154,9 @@ export const CustomersScreen: React.FC = () => {
               phone: row.phone,
               email: row.email || undefined,
               dob: row.dob || undefined,
-              sex: row.sex || undefined,
+              gender: row.gender || undefined,
               bloodGroup: row.bloodGroup || undefined,
-              wardDistrict: row.wardDistrict || undefined,
+              wardDistrict: row.address || undefined,
               notes: row.notes || undefined,
             });
             updated++;
@@ -188,9 +169,9 @@ export const CustomersScreen: React.FC = () => {
           phone: row.phone,
           email: row.email || undefined,
           dob: row.dob || undefined,
-          sex: row.sex || undefined,
+          gender: row.gender || undefined,
           bloodGroup: row.bloodGroup || undefined,
-          wardDistrict: row.wardDistrict || undefined,
+          wardDistrict: row.address || undefined,
           notes: row.notes || undefined,
         });
         imported++;
@@ -203,6 +184,32 @@ export const CustomersScreen: React.FC = () => {
     return { imported, skipped, updated, rejected };
   };
 
+  const handleBulkExport = async () => {
+    let targetCustomers: Customer[] = [];
+    if (selection.mode === 'allMatching') {
+      targetCustomers = customers.filter((c) => !selection.excludedIds.has(c.id));
+    } else {
+      targetCustomers = customers.filter((c) => selection.ids.has(c.id));
+    }
+    await exportCustomers(targetCustomers);
+  };
+
+  const handleBulkArchive = async () => {
+    let targetIds: string[] = [];
+    if (selection.mode === 'allMatching') {
+      targetIds = customers.filter((c) => !selection.excludedIds.has(c.id)).map((c) => c.id);
+    } else {
+      targetIds = Array.from(selection.ids);
+    }
+
+    if (targetIds.length === 0) return;
+    const confirmed = window.confirm(`Are you sure you want to archive ${targetIds.length} customer(s)?`);
+    if (!confirmed) return;
+
+    const res = await archiveCustomers(targetIds);
+    alert(`Archived ${res.archived}, failed ${res.failed}`);
+  };
+
   if (patientDetailId) {
     return <PatientRecordScreen customerId={patientDetailId} />;
   }
@@ -211,57 +218,81 @@ export const CustomersScreen: React.FC = () => {
     <TabContainer
       scroll
       toolbar={
-        <PageToolbar
-          left={
-            <CustomerFilterBar
-              timeRange={timeRange}
-              onTimeRangeChange={setTimeRange}
-              balanceFilter={balanceFilter}
-              onBalanceFilterChange={setBalanceFilter}
-              onClearAll={handleClearAll}
-              hasActiveFilters={Boolean(searchTerm)}
-            />
-          }
-          right={
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                intent="secondary"
-                size="sm"
-                leftIcon={<ArrowDownToLine size={14} />}
-                onClick={() => setIsImportModalOpen(true)}
-              >
-                Import Patients
-              </Button>
-              <Button
-                type="button"
-                intent="primary"
-                size="sm"
-                leftIcon={<Plus size={14} />}
-                onClick={() => {
-                  setEditingCustomer(null);
-                  setAddModalOpen(true);
-                }}
-              >
-                Add Customer
-              </Button>
-              <SearchInput
-                className="w-64"
-                placeholder="Search name, phone, email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onClear={() => setSearchTerm('')}
-              />
-              <IconButton
-                icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-                label="Refresh customers"
-                intent="ghost"
-                size="sm"
-                onClick={() => refetch()}
-              />
-            </div>
-          }
-        />
+        <div className="relative w-full flex flex-col">
+          <BulkActionBar
+            selectedCount={selectedCount}
+            onExport={handleBulkExport}
+            onArchive={handleBulkArchive}
+            onClear={clearSelection}
+            isArchiving={isArchiving}
+            isExporting={isExporting}
+          />
+          <PageToolbar
+            left={
+              <div className="flex items-center gap-3 flex-wrap">
+                <CustomerFilterBar
+                  timeRange={timeRange}
+                  onTimeRangeChange={setTimeRange}
+                  balanceFilter={balanceFilter}
+                  onBalanceFilterChange={setBalanceFilter}
+                  onClearAll={handleClearAll}
+                  hasActiveFilters={Boolean(searchTerm || timeRange !== 'all' || balanceFilter !== 'all' || sexFilter !== 'all')}
+                />
+                <SexFilter sexFilter={sexFilter} onSexFilterChange={setSexFilter} />
+              </div>
+            }
+            right={
+              <div className="flex items-center gap-3">
+                <Button
+                  type="button"
+                  intent="secondary"
+                  size="sm"
+                  leftIcon={<ArrowDownToLine size={14} />}
+                  onClick={() => setIsImportModalOpen(true)}
+                >
+                  Import Patients
+                </Button>
+                <Button
+                  type="button"
+                  intent="primary"
+                  size="sm"
+                  leftIcon={<Plus size={14} />}
+                  onClick={() => {
+                    setEditingCustomer(null);
+                    setAddModalOpen(true);
+                  }}
+                >
+                  Add Customer
+                </Button>
+                <SearchInput
+                  className="w-64"
+                  placeholder="Search name, phone, email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onClear={() => setSearchTerm('')}
+                />
+                <IconButton
+                  icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
+                  label="Refresh customers"
+                  intent="ghost"
+                  size="sm"
+                  onClick={() => refetch()}
+                />
+              </div>
+            }
+          />
+          <ActiveFilterChips
+            timeRange={timeRange}
+            balanceFilter={balanceFilter}
+            sexFilter={sexFilter}
+            searchTerm={searchTerm}
+            onClearTime={() => setTimeRange('all')}
+            onClearBalance={() => setBalanceFilter('all')}
+            onClearSex={() => setSexFilter('all')}
+            onClearSearch={() => setSearchTerm('')}
+            onClearAll={handleClearAll}
+          />
+        </div>
       }
       overlays={
         <>
@@ -273,8 +304,8 @@ export const CustomersScreen: React.FC = () => {
             }}
             onSave={handleSaveCustomer}
             editCustomer={editingCustomer}
-            isLoading={isAdding || isUpdating}
-            allCustomers={customers}
+            isLoading={false}
+            allCustomers={allCustomers}
             onOpenCustomerProfile={(id) => setPatientDetailId(id)}
           />
 
@@ -295,10 +326,19 @@ export const CustomersScreen: React.FC = () => {
         {/* KPI Stats Bar */}
         <CustomerKpiRow stats={stats} />
 
+        {/* Select All Banner */}
+        <SelectAllBanner
+          selectedCount={selectedCount}
+          totalMatching={customers.length}
+          isAllMatching={isAllMatching}
+          onSelectAllMatching={selectAllMatching}
+          onClear={clearSelection}
+        />
+
         {/* Table Region */}
         <div className="flex-1 min-h-0">
           <CustomerList
-            customers={filteredCustomers}
+            customers={customers}
             onViewDetails={(id) => setPatientDetailId(id)}
             onEditCustomer={(cust) => setEditingCustomer(cust)}
             onArchiveCustomer={handleArchiveCustomer}
