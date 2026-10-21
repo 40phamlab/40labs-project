@@ -33,6 +33,8 @@ import { AuthDevScreen } from './features/auth/shell/AuthDevScreen';
 import { ToastProvider } from './hooks/useToast';
 import { useNotifications } from './hooks/useNotifications';
 import { useNotificationSound } from './hooks/useNotificationSound';
+import { useAlertToasts } from './features/alerts/useAlertToasts';
+import { useAlertSound } from './features/alerts/useAlertSound';
 import { AuthGate } from './features/auth/AuthGate';
 import { FilePreviewProvider, useFilePreviewContext } from './providers/FilePreviewProvider';
 import './App.css';
@@ -103,6 +105,9 @@ function MainWorkspaceContent() {
 }
 
 export default function App() {
+  useAlertToasts();
+  useAlertSound();
+
   const activeScreen = useNavStore((s) => s.activeScreen);
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
   const sidebarState = useNavStore((s) => s.sidebarState);

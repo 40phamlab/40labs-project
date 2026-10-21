@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   Lock,
   Database,
+  Bell,
 } from 'lucide-react';
 import type { Branch } from '@40labs/types';
 import {
@@ -29,6 +30,7 @@ import { DevicesPanel } from './components/DevicesPanel';
 import { SecurityPanel } from './components/SecurityPanel';
 import { BackupPanel } from './components/BackupPanel';
 import { CompliancePanel } from './components/CompliancePanel';
+import { AlertsPanel } from './components/AlertsPanel';
 
 export type SettingsTab =
   | 'business'
@@ -38,7 +40,8 @@ export type SettingsTab =
   | 'devices'
   | 'compliance'
   | 'security'
-  | 'backup';
+  | 'backup'
+  | 'alerts';
 
 const SETTINGS_SUBNAV_SECTIONS: SubNavSection[] = [
   {
@@ -52,6 +55,7 @@ const SETTINGS_SUBNAV_SECTIONS: SubNavSection[] = [
       { id: 'compliance', label: 'Compliance', icon: <ShieldCheck size={16} /> },
       { id: 'security', label: 'Security', icon: <Lock size={16} /> },
       { id: 'backup', label: 'Backup', icon: <Database size={16} /> },
+      { id: 'alerts', label: 'Alerts', icon: <Bell size={16} /> },
     ],
   },
 ];
@@ -65,6 +69,7 @@ const SETTINGS_TAB_TITLES: Record<SettingsTab, string> = {
   'compliance': 'Compliance',
   'security': 'Security',
   'backup': 'Backup',
+  'alerts': 'Alerts',
 };
 
 export const SettingsScreen: React.FC = () => {
@@ -169,6 +174,10 @@ export const SettingsScreen: React.FC = () => {
 
     if (activeTab === 'backup') {
       return <BackupPanel />;
+    }
+
+    if (activeTab === 'alerts') {
+      return <AlertsPanel />;
     }
 
     return null;
