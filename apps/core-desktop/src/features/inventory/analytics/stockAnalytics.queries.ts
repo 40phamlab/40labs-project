@@ -47,11 +47,21 @@ export interface ComputedStockAnalytics {
 
 export function computeStockAnalytics(
   items: MedicineWithInventory[],
-  sales: Sale[] = [],
+  salesOrTime: Sale[] | Date = [],
   purchaseOrders: PurchaseOrder[] = [],
   adjustments: StockAdjustment[] = [],
   currentTime: Date = new Date()
 ): ComputedStockAnalytics {
+  let actualSales: Sale[] = [];
+  let actualTime = currentTime;
+
+  if (salesOrTime instanceof Date) {
+    actualTime = salesOrTime;
+    actualSales = [];
+  } else if (Array.isArray(salesOrTime)) {
+    actualSales = salesOrTime;
+  }
+
   let totalValue = 0;
   let totalBuyValue = 0;
   let lowStockCount = 0;
@@ -68,7 +78,7 @@ export function computeStockAnalytics(
   };
 
   const categoryMap = new Map<string, { skuCount: number; value: number; units: number }>();
-  const nowMs = currentTime.getTime();
+  const nowMs = actualTime.getTime();
   const dayMs = 24 * 60 * 60 * 1000;
 
   const expiryBucketsMap = new Map<string, { units: number; value: number }>([
@@ -82,7 +92,7 @@ export function computeStockAnalytics(
   const topMovingMap = new Map<string, { name: string; units_out: number }>();
   const performanceMap = new Map<string, { name: string; revenue: number; cost: number; units: number }>();
 
-  sales.forEach((sale) => {
+  actualSales.forEach((sale) => {
     sale.lines?.forEach((line: any) => {
       const medName = line.medicine_name || line.medicineId || 'Medicine';
       const qty = line.quantity ?? 1;
@@ -110,7 +120,7 @@ export function computeStockAnalytics(
     totalValue += itemValue;
     totalBuyValue += itemBuyValue;
 
-    const status = deriveStockStatus(item, DEFAULT_ALERT_THRESHOLDS, currentTime);
+    const status = deriveStockStatus(item, DEFAULT_ALERT_THRESHOLDS, actualTime);
     health[status]++;
 
     if (status === 'low') lowStockCount++;
