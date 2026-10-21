@@ -19,6 +19,7 @@ import { CustomerFormModal, type CustomerFormPayload } from '../customers/compon
 import { NewStockModal } from '../inventory/components/NewStockModal';
 import { CreatePODraftModal } from '../purchases/components/CreatePODraftModal';
 import { ReportShareModal } from '../reports/components/ReportShareModal';
+import { useAlerts } from '../alerts/useAlerts';
 import type { DashboardChartMetric } from './utils/chartData';
 
 export const DashboardScreen: React.FC = () => {
@@ -26,6 +27,7 @@ export const DashboardScreen: React.FC = () => {
   const { summary, isLoading, isError, error, refetch } = useDashboard();
   const { toast } = useToast();
   const { addItem } = useInventory();
+  const { alerts, byDomain } = useAlerts();
 
   const [searchQuery, setSearchQuery] = React.useState('');
 
@@ -212,6 +214,12 @@ export const DashboardScreen: React.FC = () => {
       }
     >
       <div className="flex flex-col gap-5 w-full max-w-[1600px] mx-auto p-4 min-h-0">
+        {alerts.length > 0 && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center justify-between text-xs text-amber-300">
+            <span>[Dev Alerts Wire] Active alerts: {alerts.length} (Stock: {byDomain.stock.length}, Expiry: {byDomain.expiry.length}, Lab: {byDomain.lab.length}, Debts: {byDomain.debts.length}, Purchases: {byDomain.purchases.length}, Sales: {byDomain.sales.length}, Profit: {byDomain.profit.length})</span>
+          </div>
+        )}
+
         {/* Row 1: 8 KpiCards (4×2) */}
         <KPIRows summary={summary} />
 
