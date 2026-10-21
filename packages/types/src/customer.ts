@@ -1,6 +1,8 @@
 // [PHASE: MVP]
 import { BaseEntity } from './common';
 
+export type Gender = 'male' | 'female';
+
 export interface AllergyItem {
   substance: string;
   reaction: string;
@@ -22,7 +24,8 @@ export interface Customer extends BaseEntity {
 
   // --- Structured Medical Profile ---
   dob?: string | null;
-  sex?: 'male' | 'female' | 'other' | null;
+  gender?: Gender | null;
+  sex?: Gender | 'other' | null; // Deprecated alias for backwards compatibility
   blood_group?: string | null;
   allergies?: string | AllergyItem[] | null;
   chronic_conditions?: string | string[] | null;

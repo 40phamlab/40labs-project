@@ -9,7 +9,8 @@ import { Plus, RefreshCw, ArrowDownToLine } from 'lucide-react';
 import type { Customer } from '@40labs/types';
 import { TabContainer } from '../../components/TabContainer';
 import { useNavStore } from '../../stores/useNavStore';
-import { CustomerStatsBar } from './components/CustomerStatsBar';
+import { CustomerKpiRow } from './components/CustomerKpiRow';
+import { useCustomerStats } from './hooks/useCustomerStats';
 import { CustomerFilterBar } from './components/CustomerFilterBar';
 import { CustomerList } from './components/CustomerList';
 import { CustomerFormModal, CustomerFormPayload } from './components/CustomerFormModal';
@@ -42,6 +43,8 @@ export const CustomersScreen: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
   const [timeRange, setTimeRange] = React.useState('all');
   const [balanceFilter, setBalanceFilter] = React.useState('all');
+
+  const stats = useCustomerStats(customers);
 
   const activeCustomers = React.useMemo(() => {
     return customers.filter((c) => !c.archived_at);
@@ -290,7 +293,7 @@ export const CustomersScreen: React.FC = () => {
     >
       <div className="flex flex-col gap-3 flex-1 min-h-0 w-full overflow-y-auto custom-scrollbar">
         {/* KPI Stats Bar */}
-        <CustomerStatsBar customers={activeCustomers} />
+        <CustomerKpiRow stats={stats} />
 
         {/* Table Region */}
         <div className="flex-1 min-h-0">

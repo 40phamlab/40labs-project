@@ -10,6 +10,7 @@ import {
 import type { Customer } from '@40labs/types';
 import { formatDate, formatPhoneTZ, formatNumberOrUnknown } from '@40labs/i18n';
 import { MoreVertical, Eye, Edit, Archive } from 'lucide-react';
+import { CustomerAvatar } from './CustomerAvatar';
 
 export async function requirePin(action: string): Promise<boolean> {
   // TODO: [wire in auth phase] [phase: auth]
@@ -37,6 +38,20 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   onRetry,
 }) => {
   const [activeMenuId, setActiveMenuId] = React.useState<string | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(50);
+
+  // Reset to page 1 if customers list length changes or filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [customers.length]);
+
+  const paginatedCustomers = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return customers.slice(start, start + pageSize);
+  }, [customers, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(customers.length / pageSize) || 1;
 
   const columns: ColumnDefinition<Customer>[] = [
     {
@@ -44,6 +59,12 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       header: 'Customer',
       render: (item) => (
         <div className="flex items-center gap-3">
+          <CustomerAvatar
+            id={item.id}
+            name={item.full_name}
+            gender={item.gender || (item.sex === 'male' || item.sex === 'female' ? item.sex : null)}
+            size="sm"
+          />
           <div className="flex flex-col">
             <span className="font-semibold text-text">{item.full_name}</span>
             <span className="text-xs text-text-muted">{formatPhoneTZ(item.phone)}</span>
@@ -135,7 +156,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
 
   return (
     <DataTable
-      data={customers}
+      data={paginatedCustomers}
       columns={columns}
       loading={loading}
       error={error}
@@ -144,6 +165,18 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       keyExtractor={(item) => item.id}
       density="compact"
       onRowClick={(item) => onViewDetails(item.id)}
+      pagination={{
+        currentPage,
+        totalPages,
+        pageSize,
+        totalItems: customers.length,
+        pageSizeOptions: [25, 50, 100],
+        onPageChange: setCurrentPage,
+        onPageSizeChange: (sz) => {
+          setPageSize(sz);
+          setCurrentPage(1);
+        },
+      }}
     />
   );
 };

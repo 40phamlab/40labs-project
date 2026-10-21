@@ -19,7 +19,8 @@ export interface CustomerFormPayload {
   email?: string | null;
   notes?: string | null;
   dob?: string | null;
-  sex?: 'male' | 'female' | 'other' | null;
+  gender?: 'male' | 'female' | null;
+  sex?: 'male' | 'female' | null;
   bloodGroup?: string | null;
   allergies?: AllergyItem[] | null;
   chronicConditions?: string[] | null;
@@ -56,7 +57,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
   // Medical profile states
   const [isMedicalOpen, setIsMedicalOpen] = React.useState(false);
   const [dob, setDob] = React.useState('');
-  const [sex, setSex] = React.useState<'male' | 'female' | 'other' | ''>('');
+  const [gender, setGender] = React.useState<'male' | 'female' | null>(null);
   const [bloodGroup, setBloodGroup] = React.useState('');
   const [allergies, setAllergies] = React.useState<AllergyItem[]>([]);
   const [newSubstance, setNewSubstance] = React.useState('');
@@ -85,7 +86,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       setEmail(editCustomer.email || '');
       setNotes(editCustomer.notes || '');
       setDob(editCustomer.dob || '');
-      setSex(editCustomer.sex || '');
+      const rawGender = editCustomer.gender || editCustomer.sex;
+      setGender(rawGender === 'male' || rawGender === 'female' ? rawGender : null);
       setBloodGroup(editCustomer.blood_group || '');
 
       try {
@@ -145,7 +147,7 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
       setEmail('');
       setNotes('');
       setDob('');
-      setSex('');
+      setGender(null);
       setBloodGroup('');
       setAllergies([]);
       setChronicConditions([]);
@@ -207,7 +209,8 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
         email: email.trim() ? email.trim() : isEditing ? null : undefined,
         notes: notes.trim() ? notes.trim() : isEditing ? null : undefined,
         dob: dob.trim() ? dob.trim() : isEditing ? null : undefined,
-        sex: sex ? (sex as any) : isEditing ? null : undefined,
+        gender: gender || (isEditing ? null : undefined),
+        sex: gender || (isEditing ? null : undefined),
         bloodGroup: bloodGroup.trim() ? bloodGroup.trim() : isEditing ? null : undefined,
         allergies: allergies.length > 0 ? allergies : isEditing ? null : undefined,
         chronicConditions: chronicConditions.length > 0 ? chronicConditions : isEditing ? null : undefined,
@@ -324,13 +327,41 @@ export const CustomerForm: React.FC<CustomerFormProps> = ({
                 />
               </Field>
               <Field>
-                <FieldLabel>Sex</FieldLabel>
-                <Select value={sex} onChange={(e) => setSex(e.target.value as any)}>
-                  <option value="">Select Sex</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </Select>
+                <FieldLabel>Gender</FieldLabel>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setGender(gender === 'male' ? null : 'male')}
+                    className={`px-3 py-1 rounded-input text-xs font-medium border transition-colors ${
+                      gender === 'male'
+                        ? 'bg-[#3B82F6] text-white border-[#3B82F6]'
+                        : 'bg-surface-primary text-text-muted border-border-default hover:border-border-focus'
+                    }`}
+                  >
+                    Male
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGender(gender === 'female' ? null : 'female')}
+                    className={`px-3 py-1 rounded-input text-xs font-medium border transition-colors ${
+                      gender === 'female'
+                        ? 'bg-[#EC4899] text-white border-[#EC4899]'
+                        : 'bg-surface-primary text-text-muted border-border-default hover:border-border-focus'
+                    }`}
+                  >
+                    Female
+                  </button>
+                  {gender && (
+                    <button
+                      type="button"
+                      onClick={() => setGender(null)}
+                      className="px-2 py-1 rounded-input text-xs text-text-muted hover:text-text-primary border border-border-default bg-surface-primary"
+                      title="Clear gender"
+                    >
+                      —
+                    </button>
+                  )}
+                </div>
               </Field>
               <Field>
                 <FieldLabel>Blood Group</FieldLabel>
