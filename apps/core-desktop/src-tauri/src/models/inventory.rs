@@ -13,6 +13,7 @@ pub struct Medicine {
     pub unit: String,
     pub is_controlled_substance: bool,
     pub requires_prescription: bool,
+    pub image_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -68,6 +69,7 @@ pub struct AddStockRequest {
     pub sell_price: i64,
     pub quantity: i64,
     pub low_stock_threshold: i64,
+    pub image_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

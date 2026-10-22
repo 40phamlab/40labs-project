@@ -87,8 +87,8 @@ impl InventoryRepository {
             r#"
             INSERT INTO medicine (
                 id, workspace_id, branch_id, name, generic_name, category, unit,
-                is_controlled_substance, requires_prescription, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_controlled_substance, requires_prescription, image_path, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&med.id)
@@ -100,6 +100,7 @@ impl InventoryRepository {
         .bind(&med.unit)
         .bind(med.is_controlled_substance)
         .bind(med.requires_prescription)
+        .bind(&med.image_path)
         .bind(&med.created_at)
         .bind(&med.updated_at)
         .execute(executor)

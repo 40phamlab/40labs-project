@@ -39,6 +39,7 @@ export const StockHealthChart: React.FC<StockHealthChartProps> = ({
       isEmpty={total === 0}
       emptyAction={emptyAction}
       rowCount={data.length}
+      rowHeight={28}
       ariaLabel="Stock Health Distribution Chart"
       fallbackTableData={data.map((d) => ({ label: d.name, count: d.value }))}
     >
@@ -47,15 +48,16 @@ export const StockHealthChart: React.FC<StockHealthChartProps> = ({
           <XAxis type="number" hide />
           <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} interval={0} />
           <Tooltip
-            formatter={(val: number) => [`${val} items`, 'Count']}
+            formatter={(val: any) => [`${val} items`, 'Count']}
             contentStyle={{ background: 'var(--panel)', borderColor: 'var(--border)', fontSize: '11px', borderRadius: '8px' }}
           />
           <Bar
             dataKey="value"
             radius={[0, 4, 4, 0]}
-            onClick={(data) => {
-              if (data && data.status && onSelectStatus) {
-                onSelectStatus(data.status);
+            onClick={(barData) => {
+              const idx = (barData as any).index;
+              if (idx !== undefined && data[idx] && onSelectStatus) {
+                onSelectStatus(data[idx].status);
               }
             }}
             className="cursor-pointer"

@@ -13,7 +13,7 @@ export interface StockAnalyticsPanelProps {
   graphVisible: boolean;
   onToggleGraph: () => void;
   onSelectCategory?: (category: string) => void;
-  onSelectStatus?: (status: 'expired' | 'low' | 'out' | 'in_stock') => void;
+  onSelectStatus?: (status: string) => void;
   onSelectItemSearch?: (itemId: string) => void;
 }
 
@@ -52,15 +52,15 @@ export const StockAnalyticsPanel: React.FC<StockAnalyticsPanelProps> = ({
             { id: '30d', label: '30D' },
             { id: '90d', label: '90D' },
           ]}
-          activeTab={range}
+          activeTabId={range}
           onChange={(id) => setRange(id as StockAnalyticsRange)}
         />
       </div>
 
       {graphVisible && (
-        <Panel variant="inset" className="p-3 flex flex-col gap-2.5 bg-panel border border-border/50 h-[310px] overflow-hidden">
+        <Panel variant="inset" className="p-3 flex flex-col gap-2.5 bg-panel border border-border/50 h-auto">
           {isError ? (
-            <div className="flex items-center justify-center h-full text-danger text-xs">
+            <div className="flex items-center justify-center py-6 text-danger text-xs">
               Failed to load analytics data.
             </div>
           ) : (
@@ -69,7 +69,7 @@ export const StockAnalyticsPanel: React.FC<StockAnalyticsPanelProps> = ({
               <StockKpiStrip analytics={analytics} isLoading={isLoading} />
 
               {/* Row 2: Sub-tabs & Chart Body */}
-              <div className="flex flex-col flex-1 min-h-0 gap-2">
+              <div className="flex flex-col gap-2.5">
                 <div className="flex items-center justify-between border-b border-border/30 pb-1.5">
                   <FilterTabs
                     tabs={[
@@ -78,12 +78,12 @@ export const StockAnalyticsPanel: React.FC<StockAnalyticsPanelProps> = ({
                       { id: 'performance', label: 'Performance' },
                       { id: 'expiry', label: 'Expiry' },
                     ]}
-                    activeTab={activeTab}
+                    activeTabId={activeTab}
                     onChange={(id) => setActiveTab(id as any)}
                   />
                 </div>
 
-                <div className="flex-1 min-h-0">
+                <div>
                   {activeTab === 'overview' && (
                     <OverviewTab
                       analytics={analytics}

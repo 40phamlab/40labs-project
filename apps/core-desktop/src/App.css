@@ -58,7 +58,7 @@ button { cursor: pointer; }
   border-radius: 999px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+  background: rgba(22, 163, 74, 0.4);
 }
 .custom-scrollbar::-webkit-scrollbar-button {
   display: none;

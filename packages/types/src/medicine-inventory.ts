@@ -7,6 +7,7 @@ export interface Medicine extends BaseEntity {
   unit: string; // e.g. "pack", "tablet", "bottle"
   is_controlled_substance: boolean; // MVP-blocking regulatory field — must exist now
   requires_prescription: boolean;
+  image_path?: string | null;
 }
 
 export interface InventoryItem extends BaseEntity {

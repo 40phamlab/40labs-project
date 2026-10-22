@@ -1,3 +1,6 @@
+// [PHASE MVP — Medicine Product Image Slot]
+// [SPEC: CONTEXT/SPEC/inventory.md]
+
 import * as React from 'react';
 import {
   DataTable,
@@ -21,6 +24,7 @@ import {
 } from 'lucide-react';
 import { type MedicineWithInventory } from '@40labs/types';
 import { StockIndicator } from './StockIndicator';
+import { MedicineAvatar } from './MedicineAvatar';
 import type { StockActionType } from '../../../hooks/useInventory';
 
 interface InventoryTableProps {
@@ -124,22 +128,45 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   error,
   onRetry,
 }) => {
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(50);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [data.length]);
+
+  const paginatedData = React.useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return data.slice(start, start + pageSize);
+  }, [data, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(data.length / pageSize) || 1;
+
   const columns: ColumnDefinition<MedicineWithInventory>[] = [
     {
       key: 'name',
       header: 'Product Name',
+      width: '260px',
       render: (item) => {
         const isExpired = new Date(item.expiry_date) < new Date();
         return (
-          <div className="flex flex-col gap-0.5">
-            <span className={`font-semibold ${isExpired ? 'text-danger font-bold' : 'text-text-primary'}`}>
-              {item.medicine.name}
-            </span>
-            {item.medicine.generic_name && (
-              <span className="text-[11px] text-text-muted">
-                {item.medicine.generic_name}
+          <div className="flex items-center gap-3 h-[56px]" title={item.medicine.name}>
+            <MedicineAvatar
+              id={item.medicine.id}
+              name={item.medicine.name}
+              category={item.medicine.category}
+              imagePath={item.medicine.image_path}
+            />
+            <div className="flex flex-col justify-center truncate max-w-[200px]">
+              <span className={`font-semibold truncate ${isExpired ? 'text-danger font-bold' : 'text-text-primary'}`}>
+                {item.medicine.name}
               </span>
-            )}
+              {item.medicine.generic_name && (
+                <span className="text-[11px] text-text-muted truncate">
+                  {item.medicine.generic_name}
+                </span>
+              )}
+            </div>
           </div>
         );
       },
@@ -147,44 +174,61 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     {
       key: 'category',
       header: 'Category',
+      className: 'whitespace-nowrap',
       render: (item) => (
-        <span className="text-xs text-text-secondary">
+        <div className="h-[56px] flex items-center text-xs text-text-secondary whitespace-nowrap">
           {item.medicine.category}
-        </span>
+        </div>
       ),
     },
     {
       key: 'quantity',
       header: 'Stock Status',
+      className: 'whitespace-nowrap',
       render: (item) => (
-        <StockIndicator
-          quantity={item.quantity}
-          lowStockThreshold={item.low_stock_threshold}
-        />
+        <div className="h-[56px] flex items-center whitespace-nowrap">
+          <StockIndicator
+            quantity={item.quantity}
+            lowStockThreshold={item.low_stock_threshold}
+          />
+        </div>
       ),
     },
     {
       key: 'buy_price',
       header: 'Buy Price',
-      className: 'font-mono text-xs',
-      render: (item) => `${item.buy_price.toLocaleString()} TZS`,
+      className: 'font-mono text-xs whitespace-nowrap',
+      render: (item) => (
+        <div className="h-[56px] flex items-center font-mono text-xs whitespace-nowrap">
+          {item.buy_price.toLocaleString()} TZS
+        </div>
+      ),
     },
     {
       key: 'sell_price',
       header: 'Sell Price',
-      className: 'font-mono text-xs',
-      render: (item) => `${item.sell_price.toLocaleString()} TZS`,
+      className: 'font-mono text-xs whitespace-nowrap',
+      render: (item) => (
+        <div className="h-[56px] flex items-center font-mono text-xs whitespace-nowrap">
+          {item.sell_price.toLocaleString()} TZS
+        </div>
+      ),
     },
     {
       key: 'expiry_date',
       header: 'Expiry Date',
+      className: 'whitespace-nowrap',
       render: (item) => {
         const isExpired = new Date(item.expiry_date) < new Date();
         const dateStr = item.expiry_date.slice(0, 10);
-        return isExpired ? (
-          <StatusBadge status="error" label={dateStr} />
-        ) : (
-          <span className="text-xs font-mono">{dateStr}</span>
+        return (
+          <div className="h-[56px] flex items-center whitespace-nowrap">
+            {isExpired ? (
+              <StatusBadge status="error" label={dateStr} />
+            ) : (
+              <span className="text-xs font-mono">{dateStr}</span>
+            )}
+          </div>
         );
       },
     },
@@ -192,15 +236,23 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       key: 'batch_number',
       header: 'Batch No.',
       accessorKey: 'batch_number',
-      className: 'font-mono text-xs',
+      className: 'font-mono text-xs whitespace-nowrap',
+      render: (item) => (
+        <div className="h-[56px] flex items-center font-mono text-xs whitespace-nowrap">
+          {item.batch_number}
+        </div>
+      ),
     },
     {
       key: 'metric',
       header: 'Unit',
+      className: 'whitespace-nowrap',
       render: (item) => (
-        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
-          {item.medicine.unit}
-        </span>
+        <div className="h-[56px] flex items-center whitespace-nowrap">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+            {item.medicine.unit}
+          </span>
+        </div>
       ),
     },
     {
@@ -208,8 +260,9 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       header: '',
       width: '150px',
       align: 'right',
+      className: 'whitespace-nowrap',
       render: (item) => (
-        <div className="flex items-center gap-2 justify-end">
+        <div className="h-[56px] flex items-center gap-2 justify-end whitespace-nowrap">
           <Button
             variant="neutral"
             size="sm"
@@ -225,7 +278,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
 
   return (
     <DataTable
-      data={data}
+      data={paginatedData}
       columns={columns}
       loading={loading}
       error={error}
@@ -233,6 +286,18 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       emptyState={<EmptyState variant="filtered" />}
       keyExtractor={(item) => item.id}
       density="compact"
+      pagination={{
+        currentPage,
+        totalPages,
+        pageSize,
+        totalItems: data.length,
+        pageSizeOptions: [25, 50, 100],
+        onPageChange: setCurrentPage,
+        onPageSizeChange: (sz) => {
+          setPageSize(sz);
+          setCurrentPage(1);
+        },
+      }}
     />
   );
 };

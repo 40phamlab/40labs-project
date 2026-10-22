@@ -33,4 +33,4 @@ staff task per owner-defined permission set).
 batch numbers and prices.
 
 ## Data model reference
-`Medicine`, `InventoryItem` — see CONTEXT/03-DATA-MODEL.md
+`Medicine`, `InventoryItem` — see CONTEXT/03-DATA-MODEL.md (`Medicine` includes nullable `image_path TEXT` for product thumbnail slot).

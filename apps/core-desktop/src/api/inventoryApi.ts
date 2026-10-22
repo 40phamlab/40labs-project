@@ -1,3 +1,6 @@
+// [PHASE MVP — Medicine Product Image Slot]
+// [SPEC: CONTEXT/SPEC/inventory.md]
+
 import type { Medicine, InventoryItem, MedicineWithInventory, StockAdjustment, AuditLogEntry } from '@40labs/types';
 import { initialMedicines, initialInventoryItems, initialStockAdjustments, WORKSPACE_ID, BRANCH_ID } from '../devData';
 import { auditApi } from './auditApi';
@@ -14,6 +17,7 @@ export interface AddStockPayload {
   sellPrice: number;
   quantity: number;
   lowStockThreshold: number;
+  imagePath?: string;
 }
 
 export interface UpdateStockPayload {
@@ -23,6 +27,7 @@ export interface UpdateStockPayload {
   sellPrice?: number;
   quantity?: number;
   lowStockThreshold?: number;
+  imagePath?: string;
 }
 
 export type StockActionType =
@@ -132,6 +137,7 @@ export const inventoryApi = {
       unit: payload.unit,
       is_controlled_substance: false,
       requires_prescription: false,
+      image_path: payload.imagePath || null,
     };
 
     const newInventoryItem: ExtendedInventoryItem = {
@@ -189,6 +195,14 @@ export const inventoryApi = {
     };
 
     inventoryStore[index] = updatedItem;
+    const medIndex = medicinesStore.findIndex((m) => m.id === updatedItem.medicine_id);
+    if (medIndex !== -1 && updates.imagePath !== undefined) {
+      medicinesStore[medIndex] = {
+        ...medicinesStore[medIndex],
+        image_path: updates.imagePath || null,
+      };
+    }
+
     const medicine = medicinesStore.find((m) => m.id === updatedItem.medicine_id);
     if (!medicine) return null;
 

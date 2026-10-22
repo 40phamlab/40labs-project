@@ -360,6 +360,10 @@ const swTzData = {
   'inventory.visualization': 'Taswira ya Mwelekeo wa Stoo',
   'inventory.hideGraph': 'Ficha grafu',
   'inventory.showGraph': 'Onyesha grafu',
+  'inventory.photo.title': 'Picha ya Bidhaa',
+  'inventory.photo.dropzone': 'Buruta na udondoshe picha hapa, au bofya kuchagua (PNG, JPG, WebP, hadi 5MB)',
+  'inventory.photo.replace': 'Badilisha',
+  'inventory.photo.remove': 'Ondoa',
   'notifications.launchpad.searchCustomer': 'Tafuta Mteja',
   'notifications.launchpad.newChat': 'Mazungumzo Mapya',
   'notifications.launchpad.attachMedia': 'Ambatisha',
@@ -726,6 +730,10 @@ export const translations = {
     'inventory.visualization': 'Stock Trends Visualization',
     'inventory.hideGraph': 'Hide graph',
     'inventory.showGraph': 'Show graph',
+    'inventory.photo.title': 'Product Photo',
+    'inventory.photo.dropzone': 'Drag & drop product photo here, or click to browse (PNG, JPG, WebP, max 5MB)',
+    'inventory.photo.replace': 'Replace',
+    'inventory.photo.remove': 'Remove',
 
     // Group By
     'dashboard.groupBy': 'Group By',

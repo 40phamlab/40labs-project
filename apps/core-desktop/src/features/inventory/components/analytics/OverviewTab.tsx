@@ -25,7 +25,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   const health = analytics?.stockHealth || { in_stock: 0, low: 0, out: 0, expired: 0 };
 
   return (
-    <div className="grid grid-cols-2 gap-3 h-[210px] min-h-0">
+    <div className="grid grid-cols-1 min-[1100px]:grid-cols-2 gap-3">
       <CategoryDistributionChart
         categories={categories}
         isLoading={isLoading}

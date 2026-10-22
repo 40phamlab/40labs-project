@@ -1,3 +1,6 @@
+// [PHASE MVP — Medicine Product Image Slot]
+// [SPEC: CONTEXT/SPEC/inventory.md]
+
 import * as React from 'react';
 import {
   Modal,
@@ -10,6 +13,8 @@ import {
   CurrencyInput,
   DateInput,
 } from '@40labs/ui-components';
+import { Upload, Trash2, RefreshCw } from 'lucide-react';
+import { t } from '@40labs/i18n';
 import { useInventory, type AddStockPayload } from '../../../hooks/useInventory';
 
 interface NewStockModalProps {
@@ -21,6 +26,49 @@ interface NewStockModalProps {
 
 const UNITS = ['pack', 'tablet', 'bottle', 'sachet', 'ampoule', 'vial'];
 const DEFAULT_CATEGORIES = ['Analgesic', 'Antibiotic', 'Sedative', 'Rehydration', 'Supplements'];
+
+async function processImageFile(file: File): Promise<string> {
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error('Image file exceeds 5MB limit');
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 256;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Canvas context failed'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const webpDataUrl = canvas.toDataURL('image/webp', 0.8);
+        resolve(webpDataUrl);
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export const NewStockModal: React.FC<NewStockModalProps> = ({
   isOpen,
@@ -46,7 +94,10 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({
     batch: 'BATCH-' + Math.floor(100000 + Math.random() * 900000),
     expiry_date: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
     low_stock_threshold: '10',
+    imagePath: '' as string | null,
   });
+
+  const [isDragging, setIsDragging] = React.useState(false);
 
   React.useEffect(() => {
     if (categories.length > 0 && !categories.includes(formData.category)) {
@@ -57,6 +108,25 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileSelected = async (file?: File) => {
+    if (!file) return;
+    try {
+      const compressedWebp = await processImageFile(file);
+      setFormData((prev) => ({ ...prev, imagePath: compressedWebp }));
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      await handleFileSelected(file);
+    }
   };
 
   const isFormValid =
@@ -80,6 +150,7 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({
       sellPrice: Number(formData.sell_price.replace(/,/g, '')),
       quantity: Number(formData.quantity),
       lowStockThreshold: Number(formData.low_stock_threshold) || 10,
+      imagePath: formData.imagePath || undefined,
     };
 
     await onAdd(payload);
@@ -95,6 +166,7 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({
       batch: 'BATCH-' + Math.floor(100000 + Math.random() * 900000),
       expiry_date: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
       low_stock_threshold: '10',
+      imagePath: null,
     });
     onClose();
   };
@@ -156,6 +228,78 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({
             </Select>
           </Field>
 
+          {/* Product Photo Dropzone */}
+          <Field>
+            <FieldLabel>{t('inventory.photo.title')}</FieldLabel>
+            <div className="flex items-center gap-4">
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/png,image/jpeg,image/webp';
+                  input.onchange = (ev: any) => {
+                    const file = ev.target.files?.[0];
+                    if (file) handleFileSelected(file);
+                  };
+                  input.click();
+                }}
+                className={`relative w-24 h-24 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all ${
+                  isDragging ? 'border-primary bg-primary/10' : 'border-border/60 bg-panel-subtle hover:border-primary'
+                }`}
+                title={t('inventory.photo.dropzone')}
+              >
+                {formData.imagePath ? (
+                  <img src={formData.imagePath} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center p-1 text-center text-text-muted">
+                    <Upload size={20} className="mb-1 text-primary" />
+                    <span className="text-[10px] leading-tight">Photo</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2 flex-1 text-xs">
+                <p className="text-text-muted text-[11px] leading-relaxed">
+                  {t('inventory.photo.dropzone')}
+                </p>
+                {formData.imagePath && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="neutral"
+                      size="sm"
+                      leftIcon={<RefreshCw size={12} />}
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/png,image/jpeg,image/webp';
+                        input.onchange = (ev: any) => {
+                          const file = ev.target.files?.[0];
+                          if (file) handleFileSelected(file);
+                        };
+                        input.click();
+                      }}
+                    >
+                      {t('inventory.photo.replace')}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      leftIcon={<Trash2 size={12} />}
+                      onClick={() => setFormData((prev) => ({ ...prev, imagePath: null }))}
+                    >
+                      {t('inventory.photo.remove')}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Field>
+
           <Field>
             <FieldLabel required>Quantity</FieldLabel>
             <NumberInput
@@ -165,7 +309,10 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({
               placeholder="0"
             />
           </Field>
+        </div>
 
+        {/* Right Column */}
+        <div className="space-y-4">
           <Field>
             <FieldLabel required>Buy Price (TZS)</FieldLabel>
             <CurrencyInput
@@ -176,10 +323,7 @@ export const NewStockModal: React.FC<NewStockModalProps> = ({
               placeholder="0"
             />
           </Field>
-        </div>
 
-        {/* Right Column */}
-        <div className="space-y-4">
           <Field>
             <FieldLabel required>Sell Price (TZS)</FieldLabel>
             <CurrencyInput

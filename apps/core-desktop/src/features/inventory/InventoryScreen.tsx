@@ -200,9 +200,9 @@ export const InventoryScreen: React.FC = () => {
       }
     >
       <div className="flex gap-3.5 flex-1 min-h-0 w-full overflow-hidden">
-        {/* Main Column */}
-        <div className="flex-1 min-w-0 flex flex-col gap-3 h-full overflow-hidden">
-          {/* Stock Analytics Panel */}
+        {/* Main Column - ONE vertical scroll container */}
+        <div className="flex-1 min-w-0 flex flex-col gap-3 h-full overflow-y-auto custom-scrollbar pr-1">
+          {/* Stock Analytics Panel (natural height) */}
           <StockAnalyticsPanel
             graphVisible={graphVisible}
             onToggleGraph={() => setGraphVisible(!graphVisible)}
@@ -220,8 +220,8 @@ export const InventoryScreen: React.FC = () => {
             }}
           />
 
-          {/* Table Region - ONE controlled scroll region */}
-          <div className="flex-1 min-h-0 bg-panel rounded-card border border-border/50 p-3 elevation-inset overflow-y-auto custom-scrollbar">
+          {/* Table Region - Sits directly below the panel in the same page scroll */}
+          <div className="bg-panel rounded-card border border-border/50 p-3 elevation-inset">
             <InventoryTable
               data={filteredData}
               onAction={openActionModal}

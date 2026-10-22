@@ -32,44 +32,50 @@ export const CategoryDistributionChart: React.FC<CategoryDistributionChartProps>
       isEmpty={categories.length === 0}
       emptyAction={emptyAction}
       rowCount={categories.length}
-      rowHeight={32}
+      rowHeight={28}
       ariaLabel="Category Distribution Chart"
       fallbackTableData={categories.map((c) => ({ label: c.category, count: c.skuCount, value: c.value }))}
     >
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={categories} layout="vertical" margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-          <XAxis type="number" hide />
-          <YAxis
-            dataKey="category"
-            type="category"
-            width={100}
-            tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
-            interval={0}
-            tickFormatter={(val) => (val.length > 15 ? `${val.substring(0, 15)}...` : val)}
-          />
-          <Tooltip
-            formatter={(value: any, name: any, item: any) => [
-              `${item.payload.skuCount} SKUs (${item.payload.units} units) - TZS ${new Intl.NumberFormat('en-US').format(value)}`,
-              item.payload.category,
-            ]}
-            contentStyle={{ background: 'var(--panel)', borderColor: 'var(--border)', fontSize: '11px', borderRadius: '8px' }}
-          />
-          <Bar
-            dataKey="value"
-            radius={[0, 4, 4, 0]}
-            onClick={(data) => {
-              if (data && data.category && onSelectCategory) {
-                onSelectCategory(data.category);
-              }
-            }}
-            className="cursor-pointer"
-          >
-            {categories.map((_, index) => (
-              <Cell key={`cat-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+      {(showAll) => {
+        const displayedCategories = showAll ? categories : categories.slice(0, 8);
+        return (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={displayedCategories} layout="vertical" margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <XAxis type="number" hide />
+              <YAxis
+                dataKey="category"
+                type="category"
+                width={100}
+                tick={{ fontSize: 10, fill: 'var(--text-muted)' }}
+                interval={0}
+                tickFormatter={(val) => (val.length > 15 ? `${val.substring(0, 15)}...` : val)}
+              />
+              <Tooltip
+                formatter={(value: any, _name: any, item: any) => [
+                  `${item?.payload?.skuCount ?? 0} SKUs (${item?.payload?.units ?? 0} units) - TZS ${new Intl.NumberFormat('en-US').format(Number(value) || 0)}`,
+                  item?.payload?.category || '',
+                ]}
+                contentStyle={{ background: 'var(--panel)', borderColor: 'var(--border)', fontSize: '11px', borderRadius: '8px' }}
+              />
+              <Bar
+                dataKey="value"
+                radius={[0, 4, 4, 0]}
+                onClick={(barData) => {
+                  const idx = (barData as any).index;
+                  if (idx !== undefined && displayedCategories[idx] && onSelectCategory) {
+                    onSelectCategory(displayedCategories[idx].category);
+                  }
+                }}
+                className="cursor-pointer"
+              >
+                {displayedCategories.map((_, index) => (
+                  <Cell key={`cat-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      }}
     </ScrollableChartCard>
   );
 };

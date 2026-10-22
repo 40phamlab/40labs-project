@@ -35,6 +35,7 @@ impl InventoryService {
             unit: req.unit,
             is_controlled_substance: false,
             requires_prescription: false,
+            image_path: req.image_path,
         };
 
         let inventory_item = InventoryItem {
