@@ -45,6 +45,7 @@ pub struct CreateTestCatalogRequest {
     pub category: String,
     pub reference_range: Option<String>,
     pub price: i64,
+    pub stability_hours: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,7 +68,6 @@ pub struct CreateLabQcRecordRequest {
     pub outcome: String,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct LabOrder {
     pub id: String,
@@ -83,6 +83,7 @@ pub struct LabOrder {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct LabSample {
     pub id: String,
     pub workspace_id: String,
@@ -94,6 +95,37 @@ pub struct LabSample {
     pub collected_at: String,
     pub sample_label: String,
     pub status: String,
+    pub expires_at: Option<String>,
+    pub expiry_source: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct SampleEvent {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub sample_id: String,
+    pub event_type: String,
+    pub actor_user_id: String,
+    pub payload_json: Option<String>,
+    pub occurred_at: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSampleExpiryRequest {
+    pub expires_at: Option<String>,
+    pub expiry_source: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpiryOverrideRequest {
+    pub pin: String,
+    pub reason: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,6 +140,8 @@ pub struct CreateLabOrderRequest {
 pub struct CollectLabSampleRequest {
     pub lab_order_id: String,
     pub sample_label: String,
+    pub expires_at: Option<String>,
+    pub expiry_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -116,9 +150,13 @@ pub struct RecordLabResultRequest {
     pub lab_order_id: String,
     pub result_notes: String,
     pub status: Option<String>,
+    pub expiry_override_pin: Option<String>,
+    pub expiry_override_reason: Option<String>,
+    pub request_recollect: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct TestCatalogEntry {
     pub id: String,
     pub workspace_id: String,
@@ -127,6 +165,7 @@ pub struct TestCatalogEntry {
     pub category: String,
     pub reference_range: Option<String>,
     pub price: i64,
+    pub stability_hours: Option<i64>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -153,4 +192,7 @@ pub struct EnterLabResultRequest {
     pub value: String,
     pub reference_range: Option<String>,
     pub is_out_of_range: Option<bool>,
+    pub expiry_override_pin: Option<String>,
+    pub expiry_override_reason: Option<String>,
+    pub request_recollect: Option<bool>,
 }

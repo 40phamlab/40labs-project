@@ -2,6 +2,17 @@ import { BaseEntity } from './common';
 
 export type LabOrderStatus = 'pending' | 'sample_collected' | 'result_entered' | 'report_ready' | 'unsolved' | 'cancelled';
 export type LabSampleStatus = 'collected' | 'insufficient' | 'declined' | 'used' | 'removed';
+export type ExpirySource = 'catalog' | 'manual';
+export type SampleEventType =
+  | 'collected'
+  | 'received'
+  | 'processing'
+  | 'result_entered'
+  | 'recollect_requested'
+  | 'expiry_overridden'
+  | 'status_changed'
+  | 'reported'
+  | 'forwarded';
 
 export interface LabOrder extends BaseEntity {
   customer_id: string; // same shared Customer entity as Sales
@@ -17,6 +28,16 @@ export interface LabSample extends BaseEntity {
   collected_at: string;
   sample_label: string;
   status: LabSampleStatus;
+  expires_at: string | null;
+  expiry_source: ExpirySource | null;
+}
+
+export interface SampleEvent extends BaseEntity {
+  sample_id: string;
+  event_type: SampleEventType;
+  actor_user_id: string;
+  payload_json: string | null;
+  occurred_at: string;
 }
 
 export interface LabResult extends BaseEntity {
@@ -39,6 +60,7 @@ export interface TestCatalogEntry extends BaseEntity {
   category: string;
   reference_range: string | null;
   price: number;
+  stability_hours: number | null;
 }
 
 export interface LabQcEquipment extends BaseEntity {

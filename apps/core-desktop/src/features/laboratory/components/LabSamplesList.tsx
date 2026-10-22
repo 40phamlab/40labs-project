@@ -33,8 +33,10 @@ import type {
 } from '@40labs/types';
 import { formatDate, formatDateTime } from '@40labs/i18n';
 import { isInLabDatePeriod } from '../utils/dateFilters';
+import { ExpiryChip } from './ExpiryChip';
+import { useSampleExpiry } from '../hooks/useSampleExpiry';
 
-export type SampleTimeFilter = 'today' | 'week' | 'month' | 'all';
+export type SampleTimeFilter = 'today' | 'week' | 'month' | 'expiring_expired' | 'all';
 
 export interface LabSamplesListProps {
   samples: LabSample[];
@@ -97,7 +99,7 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Counts follow the same local calendar boundaries as the selected filters.
+  // Counts follow local calendar boundaries and expiry status.
   const counts = React.useMemo(() => {
     const now = new Date();
     const all = samples.length;
@@ -105,6 +107,10 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
       today: samples.filter((s) => isInLabDatePeriod(s.collected_at, 'today', now)).length,
       week: samples.filter((s) => isInLabDatePeriod(s.collected_at, 'week', now)).length,
       month: samples.filter((s) => isInLabDatePeriod(s.collected_at, 'month', now)).length,
+      expiring_expired: samples.filter((s) => {
+        const st = useSampleExpiry(s);
+        return st === 'expiring_soon' || st === 'expired';
+      }).length,
       all,
     };
   }, [samples]);
@@ -114,15 +120,20 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
       { id: 'today', label: 'Today', count: counts.today },
       { id: 'week', label: 'This week', count: counts.week },
       { id: 'month', label: 'This month', count: counts.month },
+      { id: 'expiring_expired', label: 'Expiring / Expired', count: counts.expiring_expired },
       { id: 'all', label: 'All', count: counts.all },
     ],
     [counts]
   );
 
-  // Client-side date filtering on collected_at
+  // Client-side date and expiry filtering
   const filteredSamples = React.useMemo(() => {
     const now = new Date();
     return samples.filter((s) => {
+      if (activeTimeFilter === 'expiring_expired') {
+        const st = useSampleExpiry(s);
+        return st === 'expiring_soon' || st === 'expired';
+      }
       if (activeTimeFilter !== 'all') return isInLabDatePeriod(s.collected_at, activeTimeFilter, now);
       return true;
     });
@@ -220,19 +231,15 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
       {
         key: 'end',
         header: 'End',
-        render: () => {
-          const formatted = 'Not configured';
-          return <span className="text-xs text-text-muted">{formatted}</span>;
+        render: (item) => {
+          const formatted = item.expires_at ? formatDateTime(item.expires_at) : 'Not configured';
+          return <span className="text-xs text-text-muted font-mono">{formatted}</span>;
         },
       },
       {
         key: 'exp',
         header: 'Exp',
-        render: () => (
-          // Question to Sairiamu: Exp (sample viability) is NOT a stored field per current schema;
-          // rendering '—'. Flagging whether this needs its own column or is derived from test_catalog_entry per-test.
-          <span className="text-xs text-text-muted font-mono">—</span>
-        ),
+        render: (item) => <ExpiryChip sample={item} />,
       },
       {
         key: 'status',
@@ -321,6 +328,16 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
     [orders, customers, testCatalog, activeMenuSampleId, pendingSampleId]
   );
 
+  const selectedOrderForDrawer = selectedSampleForDrawer
+    ? orders.find((o) => o.id === selectedSampleForDrawer.lab_order_id)
+    : null;
+  const selectedCustomerForDrawer = selectedOrderForDrawer
+    ? customers.find((c) => c.id === selectedOrderForDrawer.customer_id)
+    : null;
+  const selectedTestForDrawer = selectedOrderForDrawer
+    ? testCatalog.find((t) => t.id === selectedOrderForDrawer.test_catalog_id)
+    : null;
+
   return (
     <div className="flex flex-col gap-6 w-full">
       {/* Header and Filter Bar */}
@@ -331,8 +348,6 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
           onChange={(id) => setActiveTimeFilter(id as SampleTimeFilter)}
         />
       </div>
-
-
 
       {/* Samples DataTable */}
       <div className="w-full">
@@ -351,180 +366,76 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
         isOpen={!!selectedSampleForDrawer}
         onClose={() => setSelectedSampleForDrawer(null)}
         title="Sample Details"
-        size="md"
+        width="md"
       >
-        {selectedSampleForDrawer &&
-          (() => {
-            const order = orders.find(
-              (o) => o.id === selectedSampleForDrawer.lab_order_id
-            );
-            const customer = order
-              ? customers.find((c) => c.id === order.customer_id)
-              : undefined;
-            const test = order
-              ? testCatalog.find((t) => t.id === order.test_catalog_id)
-              : undefined;
-            const statusConfig =
-              STATUS_BADGE_CONFIG[selectedSampleForDrawer.status] ||
-              STATUS_BADGE_CONFIG.collected;
+        {selectedSampleForDrawer && (
+          <div className="flex flex-col gap-6 p-6">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-mono text-text-muted">SAMPLE ID</span>
+              <span className="text-lg font-bold text-text font-mono">
+                {selectedSampleForDrawer.id}
+              </span>
+            </div>
 
-            return (
-              <div className="flex flex-col gap-6 text-xs text-text">
-                {/* Sample Header Section */}
-                <div className="flex items-center justify-between p-3 rounded-card bg-panel-strong/50 border border-border/50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                      <TestTube size={18} />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-text">
-                        {selectedSampleForDrawer.sample_label}
-                      </p>
-                      <p className="text-[10px] text-text-muted font-mono">
-                        ID: {selectedSampleForDrawer.id}
-                      </p>
-                    </div>
-                  </div>
-                  <Badge variant={statusConfig.variant}>
-                    {statusConfig.label}
-                  </Badge>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-panel-strong/40 rounded-card border border-border/50">
+                <span className="text-xs text-text-muted block mb-1">Patient</span>
+                <span className="font-bold text-text">
+                  {selectedCustomerForDrawer?.full_name || 'Unknown'}
+                </span>
+                <span className="text-xs text-text-muted block mt-1">
+                  {selectedCustomerForDrawer?.phone || 'No phone'}
+                </span>
+              </div>
+              <div className="p-3 bg-panel-strong/40 rounded-card border border-border/50">
+                <span className="text-xs text-text-muted block mb-1">Test Ordered</span>
+                <span className="font-bold text-text">
+                  {selectedTestForDrawer?.name || 'Unknown Test'}
+                </span>
+                <span className="text-xs text-text-muted block mt-1">
+                  {selectedTestForDrawer?.category || 'General'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <h4 className="text-sm font-bold text-text">Sample Collection Info</h4>
+              <div className="flex flex-col gap-2 text-xs">
+                <div className="flex justify-between py-2 border-b border-border/40">
+                  <span className="text-text-muted">Sample Label</span>
+                  <span className="font-mono font-medium text-text">
+                    {selectedSampleForDrawer.sample_label}
+                  </span>
                 </div>
-
-                {/* Specimen Info */}
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                    <Clock size={12} /> Intake & Collection
-                  </h3>
-                  <div className="p-3 rounded-card bg-panel/40 border border-border/40 flex flex-col gap-2">
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Collected At (In):</span>
-                      <span className="font-medium">
-                        {formatDateTime(selectedSampleForDrawer.collected_at) || 'Invalid date'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">
-                        Target Completion (End):
-                      </span>
-                      <span className="font-medium">
-                        Not configured
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">TAT SLA Target:</span>
-                      <span className="font-mono">Not configured</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">
-                        Sample Viability (Exp):
-                      </span>
-                      <span className="font-mono text-text-muted">—</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Collected By User:</span>
-                      <span className="font-mono">
-                        {selectedSampleForDrawer.collected_by_user_id}
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex justify-between py-2 border-b border-border/40">
+                  <span className="text-text-muted">Collected At</span>
+                  <span className="font-mono text-text">
+                    {formatDateTime(selectedSampleForDrawer.collected_at)}
+                  </span>
                 </div>
-
-                {/* Linked Test & Order */}
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                    <ClipboardList size={12} /> Linked Requisition
-                  </h3>
-                  <div className="p-3 rounded-card bg-panel/40 border border-border/40 flex flex-col gap-2">
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Test Name:</span>
-                      <span className="font-bold">
-                        {test?.name || `Test record missing · ${order?.test_catalog_id || selectedSampleForDrawer.lab_order_id}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Category:</span>
-                      <span>{test ? (test.category || 'Category not set') : `Test record missing · ${order?.test_catalog_id || selectedSampleForDrawer.lab_order_id}`}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">
-                        Reference Range:
-                      </span>
-                      <span className="font-mono">
-                        {test?.reference_range || '—'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Price:</span>
-                      <span className="font-mono font-bold">
-                        {test?.price
-                          ? `${test.price.toLocaleString()} TZS`
-                          : '—'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Order ID:</span>
-                      <span className="font-mono">
-                        {selectedSampleForDrawer.lab_order_id}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Order Status:</span>
-                      <span className="font-mono uppercase">
-                        {order?.status || 'Unknown'}
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex justify-between py-2 border-b border-border/40">
+                  <span className="text-text-muted">Expires At</span>
+                  <span className="font-mono text-text">
+                    {selectedSampleForDrawer.expires_at ? formatDateTime(selectedSampleForDrawer.expires_at) : '—'}
+                  </span>
                 </div>
-
-                {/* Patient Info */}
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
-                    <User size={12} /> Patient Details
-                  </h3>
-                  <div className="p-3 rounded-card bg-panel/40 border border-border/40 flex flex-col gap-2">
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Patient Name:</span>
-                      <span className="font-bold">
-                        {customer ? (customer.full_name || 'Name not recorded') : `Patient record missing · ${order?.customer_id || selectedSampleForDrawer.lab_order_id}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Phone Number:</span>
-                      <span className="font-mono">{customer?.phone || '—'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">Email:</span>
-                      <span>{customer?.email || '—'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-text-muted">
-                        Outstanding Balance:
-                      </span>
-                      <span className="font-mono font-bold">
-                        {customer?.outstanding_balance
-                          ? `${customer.outstanding_balance.toLocaleString()} TZS`
-                          : '0 TZS'}
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex justify-between py-2 border-b border-border/40">
+                  <span className="text-text-muted">Viability Status</span>
+                  <ExpiryChip sample={selectedSampleForDrawer} />
                 </div>
-
-                {/* Viability Schema Note */}
-                <div className="p-2.5 rounded-card bg-panel-strong/30 border border-border/30 text-[10px] text-text-muted leading-relaxed">
-                  <p className="font-semibold text-text">
-                    Schema Note (Flag to Sairiamu):
-                  </p>
-                  Sample viability expiration (Exp) is derived from test
-                  catalog SLA default. If per-sample viability tracking is
-                  needed in future, add `expiry_at` column to `lab_sample`.
+                <div className="flex justify-between py-2 border-b border-border/40">
+                  <span className="text-text-muted">Current Status</span>
+                  <span className="font-medium text-text">
+                    {selectedSampleForDrawer.status}
+                  </span>
                 </div>
               </div>
-            );
-          })()}
+            </div>
+          </div>
+        )}
       </Drawer>
 
-      {/* Toast Notifications */}
-      <ToastContainer toasts={toasts} onClose={removeToast} />
+      <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </div>
   );
 };

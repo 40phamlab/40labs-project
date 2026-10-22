@@ -396,13 +396,24 @@ const swTzData = {
   'alert.sales.notice.detail': 'Mauzo ya leo yameshuka kwa zaidi ya 50% ikilinganishwa na jana baada ya saa sita mchana.',
   'alert.profit.danger.title': 'Faida hasi',
   'alert.profit.danger.detail': 'Biashara inaendeshwa kwa faida hasi kwa kipindi hiki.',
+  'lab.sample.fresh': 'Safi',
+  'lab.sample.expiringSoon': 'Inakaribia Kuisha',
+  'lab.sample.expired': 'Imeisha Muda',
+  'lab.sample.expiryOverride': 'Idhini ya Muda (PIN)',
+  'lab.sample.recollect': 'Omba Sampuli Mpya',
+  'lab.sample.reason': 'Sababu ya Kulazimisha',
 };
 
 export const translations = {
   'sw-TZ': swTzData,
   sw: swTzData,
   en: {
-    // Landing
+    'lab.sample.fresh': 'Fresh',
+    'lab.sample.expiringSoon': 'Expiring Soon',
+    'lab.sample.expired': 'Expired',
+    'lab.sample.expiryOverride': 'Expiry Override PIN',
+    'lab.sample.recollect': 'Request Recollect',
+    'lab.sample.reason': 'Mandatory Reason',
     'landing.cta.start': 'Get started',
     'landing.cta.newDevice': 'New Device',
     'landing.cta.haveAccount': 'Already have an account?',

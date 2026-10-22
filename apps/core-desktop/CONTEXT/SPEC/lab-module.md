@@ -22,6 +22,9 @@ Gap 1).
 - POST /lab/orders/:id/sample
 - POST /lab/orders/:id/result
 - POST /lab/orders/:id/report (Typst-generated PDF)
+- PATCH /lab/samples/:id (expires_at)
+- GET /lab/samples/:id/events
+- POST /lab/samples/:id/expiry-override
 
 ## Offline behavior
 Full order→sample→result flow works offline. Report PDF generation is local

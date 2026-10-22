@@ -5,8 +5,8 @@ use crate::db::AppState;
 use crate::models::inventory::MedicineWithInventory;
 use crate::models::lab::{
     CollectLabSampleRequest, CreateLabOrderRequest, CreateLabQcEquipmentRequest,
-    CreateLabQcRecordRequest, CreateTestCatalogRequest, EnterLabResultRequest, LabOrder, LabQcData,
-    LabQcEquipment, LabQcRecord, LabResult, LabSample, TestCatalogEntry,
+    CreateLabQcRecordRequest, CreateTestCatalogRequest, EnterLabResultRequest, ExpiryOverrideRequest, LabOrder, LabQcData,
+    LabQcEquipment, LabQcRecord, LabResult, LabSample, RecordLabResultRequest, SampleEvent, TestCatalogEntry, UpdateSampleExpiryRequest,
 };
 use crate::repositories::lab_repo::LabRepository;
 use crate::services::lab_service::LabService;
@@ -124,6 +124,67 @@ pub async fn update_lab_sample_status(
     LabService::update_sample_status(&state.pool, &ctx, &id, &status)
         .await
         .map_err(|e| map_lab_status_error(e).to_response())?;
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn update_sample_expiry(
+    state: State<'_, AppState>,
+    id: String,
+    payload: UpdateSampleExpiryRequest,
+) -> Result<bool, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("lab.order")
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::update_sample_expiry(&state.pool, &ctx, &id, payload)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn get_sample_events(
+    state: State<'_, AppState>,
+    sample_id: String,
+) -> Result<Vec<SampleEvent>, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::get_sample_events(&state.pool, &ctx, &sample_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn expiry_override(
+    state: State<'_, AppState>,
+    sample_id: String,
+    payload: ExpiryOverrideRequest,
+) -> Result<bool, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("lab.result.enter")
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::expiry_override(&state.pool, &ctx, &sample_id, &payload.pin, &payload.reason)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
     Ok(true)
 }
 
@@ -273,6 +334,19 @@ pub async fn enter_lab_result(
     let res_id = format!("labresult_{}", uuid::Uuid::new_v4());
     let is_out_of_range = payload.is_out_of_range.unwrap_or(false);
 
+    let record_req = RecordLabResultRequest {
+        lab_order_id: payload.lab_order_id.clone(),
+        result_notes: format!("Value: {} (Ref: {})", payload.value, payload.reference_range.as_deref().unwrap_or("N/A")),
+        status: Some("report_ready".to_string()),
+        expiry_override_pin: payload.expiry_override_pin,
+        expiry_override_reason: payload.expiry_override_reason,
+        request_recollect: payload.request_recollect,
+    };
+
+    LabService::record_result(&state.pool, &ctx, record_req)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())?;
+
     let res = LabResult {
         id: res_id,
         workspace_id: ctx.workspace_id.clone(),
@@ -293,40 +367,9 @@ pub async fn enter_lab_result(
         .await
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
 
-    let current = LabRepository::get_order_status(
-        &mut *tx,
-        &ctx.workspace_id,
-        &ctx.branch_id,
-        &payload.lab_order_id,
-    )
-    .await
-    .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-    .ok_or_else(|| crate::auth::AuthError::NotFound("Lab order".into()).to_response())?;
-    if !crate::services::lab_service::valid_order_transition(&current, "report_ready") {
-        return Err(crate::auth::AuthError::PolicyViolation(format!(
-            "Cannot enter a result while order status is '{current}'"
-        ))
-        .to_response());
-    }
-
     LabRepository::enter_result(&mut *tx, &res)
         .await
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
-
-    let rows = LabRepository::update_order_status(
-        &mut *tx,
-        &ctx.workspace_id,
-        &ctx.branch_id,
-        &payload.lab_order_id,
-        &current,
-        "report_ready",
-        &now,
-    )
-    .await
-    .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
-    if rows != 1 {
-        return Err(crate::auth::AuthError::NotFound("Lab order".into()).to_response());
-    }
 
     tx.commit()
         .await
