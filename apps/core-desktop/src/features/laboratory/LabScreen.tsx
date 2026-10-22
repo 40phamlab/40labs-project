@@ -29,6 +29,7 @@ import {
   RefreshCw,
   Plus,
   FileText,
+  GitBranch,
 } from 'lucide-react';
 import type { LabResult, TestCatalogEntry, LabOrderStatus, LabSampleStatus } from '@40labs/types';
 import { LabDashboard } from './components/LabDashboard';
@@ -43,8 +44,10 @@ import { NewTestCatalogModal } from './components/NewTestCatalogModal';
 import { LabQcPanel } from './components/LabQcPanel';
 import { LabOrderActionModal } from './components/LabOrderActionModal';
 import { formatDateTime } from '@40labs/i18n';
-import { TraceView } from './trace/TraceView';
+import { TraceView } from '../lab/trace/TraceView';
 import { useLabStore } from '../../stores/useLabStore';
+import { WorkflowBuilder } from '../lab/workflow/WorkflowBuilder';
+import { labWorkflowApi } from '../../api/labWorkflowApi';
 
 export type LabTab =
   | 'dashboard'
@@ -53,6 +56,7 @@ export type LabTab =
   | 'results'
   | 'reports'
   | 'test-catalog'
+  | 'workflows'
   | 'qc-equipment'
   | 'analytics'
   | 'lab-store'
@@ -66,6 +70,7 @@ const LAB_TAB_LABELS: Record<LabTab, string> = {
   'results': 'Results',
   'reports': 'Reports',
   'test-catalog': 'Test Catalog',
+  'workflows': 'Workflows',
   'qc-equipment': 'QC & Equipment',
   'analytics': 'Analytics',
   'lab-store': 'Lab Store',
@@ -83,6 +88,7 @@ const LAB_SUBNAV_SECTIONS: SubNavSection[] = [
       { id: 'results', label: 'Results', icon: <FileCheck size={16} /> },
       { id: 'reports', label: 'Reports', icon: <FileText size={16} /> },
       { id: 'test-catalog', label: 'Test Catalog', icon: <BookOpen size={16} /> },
+      { id: 'workflows', label: 'Workflows', icon: <GitBranch size={16} /> },
       { id: 'qc-equipment', label: 'QC & Equipment', icon: <Sliders size={16} /> },
       { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={16} /> },
       { id: 'lab-store', label: 'Lab Store', icon: <Store size={16} /> },
@@ -135,6 +141,8 @@ export const LabScreen: React.FC = () => {
   const { customers } = useCustomers();
   const traceSampleId = useLabStore((s) => s.traceSampleId);
   const setTraceSampleId = useLabStore((s) => s.setTraceSampleId);
+  const [workflowTestEntry, setWorkflowTestEntry] = React.useState<TestCatalogEntry | null>(null);
+  const [initialWorkflowJson, setInitialWorkflowJson] = React.useState<string | undefined>(undefined);
 
   const handleAddOrder = React.useCallback(
     async (customerId: string, testCatalogId: string) => {
@@ -238,6 +246,23 @@ export const LabScreen: React.FC = () => {
         header: 'Status',
         render: () => <Badge variant="success">Active</Badge>,
       },
+      {
+        key: 'workflow',
+        header: 'Workflow',
+        render: (item) => (
+          <Button
+            intent="neutral"
+            size="sm"
+            onClick={async () => {
+              const wf = await labWorkflowApi.getWorkflowForTest(item.id);
+              setInitialWorkflowJson(wf?.graph_json);
+              setWorkflowTestEntry(item);
+            }}
+          >
+            Configure Workflow
+          </Button>
+        ),
+      },
     ],
     []
   );
@@ -327,6 +352,29 @@ export const LabScreen: React.FC = () => {
         );
 
       case 'test-catalog':
+        if (workflowTestEntry) {
+          return (
+            <div className="flex flex-col h-full w-full">
+              <div className="flex items-center justify-between p-2 mb-2 bg-panel-strong/40 rounded-card">
+                <span className="font-bold text-sm text-text">Workflow for: {workflowTestEntry.name}</span>
+                <Button intent="neutral" size="sm" onClick={() => setWorkflowTestEntry(null)}>Back to Catalog</Button>
+              </div>
+              <div className="flex-1 min-h-[500px]">
+                <WorkflowBuilder
+                  testId={workflowTestEntry.id}
+                  initialGraphJson={initialWorkflowJson}
+                  onPublish={async (json) => {
+                    const draft = await labWorkflowApi.saveWorkflowDraft(workflowTestEntry.id, json);
+                    await labWorkflowApi.publishWorkflow(draft.id);
+                  }}
+                  onSaveDraft={async (json) => {
+                    await labWorkflowApi.saveWorkflowDraft(workflowTestEntry.id, json);
+                  }}
+                />
+              </div>
+            </div>
+          );
+        }
         return (
           <div className="flex flex-col gap-4 w-full">
             <div className="flex justify-end"><Button type="button" intent="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsCatalogModalOpen(true)}>Add test</Button></div>
@@ -338,6 +386,63 @@ export const LabScreen: React.FC = () => {
               onRetry={refetch}
               emptyMessage="No test catalog entries found."
             />
+          </div>
+        );
+
+      case 'workflows':
+        if (workflowTestEntry) {
+          return (
+            <div className="flex flex-col h-full w-full">
+              <div className="flex items-center justify-between p-2 mb-2 bg-panel-strong/40 rounded-card">
+                <span className="font-bold text-sm text-text">Workflow for: {workflowTestEntry.name}</span>
+                <Button intent="neutral" size="sm" onClick={() => setWorkflowTestEntry(null)}>Back to Workflows</Button>
+              </div>
+              <div className="flex-1 min-h-[500px]">
+                <WorkflowBuilder
+                  testId={workflowTestEntry.id}
+                  initialGraphJson={initialWorkflowJson}
+                  onPublish={async (json) => {
+                    const draft = await labWorkflowApi.saveWorkflowDraft(workflowTestEntry.id, json);
+                    await labWorkflowApi.publishWorkflow(draft.id);
+                  }}
+                  onSaveDraft={async (json) => {
+                    await labWorkflowApi.saveWorkflowDraft(workflowTestEntry.id, json);
+                  }}
+                />
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="flex flex-col gap-4 w-full">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-heading font-bold text-base text-text">Test Step Workflows</h3>
+                <p className="text-xs text-text-muted">Manage deterministic state machine step flows for each test in the catalog.</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {testCatalog.map((test) => (
+                <div key={test.id} className="p-4 bg-panel rounded-card border border-border flex flex-col justify-between gap-3">
+                  <div>
+                    <h4 className="font-bold text-sm text-text">{test.name}</h4>
+                    <span className="text-xs text-text-muted font-mono">{test.category}</span>
+                  </div>
+                  <Button
+                    intent="primary"
+                    size="sm"
+                    leftIcon={<GitBranch size={14} />}
+                    onClick={async () => {
+                      const wf = await labWorkflowApi.getWorkflowForTest(test.id);
+                      setInitialWorkflowJson(wf?.graph_json);
+                      setWorkflowTestEntry(test);
+                    }}
+                  >
+                    Configure Workflow
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
         );
 

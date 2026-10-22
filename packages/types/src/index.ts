@@ -7,6 +7,7 @@ export * from './sales';
 export * from './dispensingInstruction';
 export * from './fiscal';
 export * from './lab';
+export * from './lab-workflow';
 export * from './purchases';
 export * from './channel';
 export * from './notification';

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ReactFlow, Controls, MiniMap, Background, useNodesState, useEdgesState, Node } from '@xyflow/react';
-import '@xyflow/react/style.css';
+import '@xyflow/react/dist/style.css';
 import { buildTraceGraph } from './buildTraceGraph';
 import { TraceTimeline } from './TraceTimeline';
 import { PatientNode } from './nodes/PatientNode';
