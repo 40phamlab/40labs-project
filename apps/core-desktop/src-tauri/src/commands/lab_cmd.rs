@@ -7,6 +7,7 @@ use crate::models::lab::{
     CollectLabSampleRequest, CreateLabOrderRequest, CreateLabQcEquipmentRequest,
     CreateLabQcRecordRequest, CreateTestCatalogRequest, EnterLabResultRequest, ExpiryOverrideRequest, LabOrder, LabQcData,
     LabQcEquipment, LabQcRecord, LabResult, LabSample, RecordLabResultRequest, SampleEvent, TestCatalogEntry, UpdateSampleExpiryRequest,
+    LabReport, LabReportForward, CreateLabReportRequest, FinalizeLabReportRequest, AmendLabReportRequest, ForwardLabReportRequest,
 };
 use crate::repositories::lab_repo::LabRepository;
 use crate::services::lab_service::LabService;
@@ -376,6 +377,123 @@ pub async fn enter_lab_result(
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
 
     Ok(res)
+}
+
+// --- Lab Reports Commands ---
+
+#[tauri::command]
+pub async fn get_lab_reports(
+    state: State<'_, AppState>,
+) -> Result<Vec<LabReport>, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::list_reports(&state.pool, &ctx)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn create_lab_report(
+    state: State<'_, AppState>,
+    payload: CreateLabReportRequest,
+) -> Result<LabReport, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("lab.order")
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::create_report(&state.pool, &ctx, payload)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn finalize_lab_report(
+    state: State<'_, AppState>,
+    report_id: String,
+    payload: FinalizeLabReportRequest,
+) -> Result<LabReport, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("lab.result.enter")
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::finalize_report(&state.pool, &ctx, &report_id, payload)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn amend_lab_report(
+    state: State<'_, AppState>,
+    report_id: String,
+    payload: AmendLabReportRequest,
+) -> Result<LabReport, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("lab.result.enter")
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::amend_report(&state.pool, &ctx, &report_id, payload)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn forward_lab_report(
+    state: State<'_, AppState>,
+    report_id: String,
+    payload: ForwardLabReportRequest,
+) -> Result<LabReportForward, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::forward_report(&state.pool, &ctx, &report_id, payload)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn get_forwarded_reports_to_me(
+    state: State<'_, AppState>,
+) -> Result<Vec<LabReportForward>, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+    LabService::get_forwarded_reports_to_me(&state.pool, &ctx)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
 }
 
 fn map_lab_status_error(

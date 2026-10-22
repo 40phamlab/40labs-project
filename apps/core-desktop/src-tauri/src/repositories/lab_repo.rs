@@ -1,6 +1,7 @@
 use crate::models::inventory::{InventoryItem, Medicine, MedicineWithInventory};
 use crate::models::lab::{
     LabOrder, LabQcData, LabQcEquipment, LabQcRecord, LabResult, LabSample, SampleEvent, TestCatalogEntry,
+    LabReport, LabReportItem, LabReportForward,
 };
 use sqlx::SqlitePool;
 
@@ -385,5 +386,177 @@ impl LabRepository {
         .await?;
 
         Ok(())
+    }
+
+    // --- Lab Reports Repository Methods ---
+
+    pub async fn list_reports(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+    ) -> Result<Vec<LabReport>, sqlx::Error> {
+        sqlx::query_as::<_, LabReport>(
+            "SELECT * FROM lab_report WHERE workspace_id = ? AND branch_id = ? ORDER BY created_at DESC"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn get_report(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        workspace_id: &str,
+        branch_id: &str,
+        id: &str,
+    ) -> Result<Option<LabReport>, sqlx::Error> {
+        sqlx::query_as::<_, LabReport>(
+            "SELECT * FROM lab_report WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(id)
+        .fetch_optional(executor)
+        .await
+    }
+
+    pub async fn create_report(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        report: &LabReport,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO lab_report (
+                id, workspace_id, branch_id, patient_id, order_id, version,
+                supersedes_report_id, status, summary_note, prepared_by,
+                finalized_by, finalized_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&report.id)
+        .bind(&report.workspace_id)
+        .bind(&report.branch_id)
+        .bind(&report.patient_id)
+        .bind(&report.order_id)
+        .bind(report.version)
+        .bind(&report.supersedes_report_id)
+        .bind(&report.status)
+        .bind(&report.summary_note)
+        .bind(&report.prepared_by)
+        .bind(&report.finalized_by)
+        .bind(&report.finalized_at)
+        .bind(&report.created_at)
+        .bind(&report.updated_at)
+        .execute(executor)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn finalize_report_db(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        workspace_id: &str,
+        branch_id: &str,
+        id: &str,
+        finalized_by: &str,
+        finalized_at: &str,
+        summary_note: Option<&str>,
+    ) -> Result<u64, sqlx::Error> {
+        sqlx::query(
+            "UPDATE lab_report SET status = 'finalized', finalized_by = ?, finalized_at = ?, summary_note = COALESCE(?, summary_note), updated_at = ? WHERE workspace_id = ? AND branch_id = ? AND id = ? AND status = 'draft'"
+        )
+        .bind(finalized_by)
+        .bind(finalized_at)
+        .bind(summary_note)
+        .bind(finalized_at)
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(id)
+        .execute(executor)
+        .await
+        .map(|res| res.rows_affected())
+    }
+
+    pub async fn create_report_item(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        item: &LabReportItem,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO lab_report_item (
+                id, workspace_id, branch_id, report_id, result_id, snapshot_json, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&item.id)
+        .bind(&item.workspace_id)
+        .bind(&item.branch_id)
+        .bind(&item.report_id)
+        .bind(&item.result_id)
+        .bind(&item.snapshot_json)
+        .bind(&item.created_at)
+        .bind(&item.updated_at)
+        .execute(executor)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn list_report_items(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        workspace_id: &str,
+        branch_id: &str,
+        report_id: &str,
+    ) -> Result<Vec<LabReportItem>, sqlx::Error> {
+        sqlx::query_as::<_, LabReportItem>(
+            "SELECT * FROM lab_report_item WHERE workspace_id = ? AND branch_id = ? AND report_id = ?"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(report_id)
+        .fetch_all(executor)
+        .await
+    }
+
+    pub async fn create_report_forward(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        forward: &LabReportForward,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO lab_report_forward (
+                id, workspace_id, branch_id, report_id, from_user_id, to_user_id,
+                note, forwarded_at, read_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&forward.id)
+        .bind(&forward.workspace_id)
+        .bind(&forward.branch_id)
+        .bind(&forward.report_id)
+        .bind(&forward.from_user_id)
+        .bind(&forward.to_user_id)
+        .bind(&forward.note)
+        .bind(&forward.forwarded_at)
+        .bind(&forward.read_at)
+        .bind(&forward.created_at)
+        .bind(&forward.updated_at)
+        .execute(executor)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn list_report_forwards_to_user(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        to_user_id: &str,
+    ) -> Result<Vec<LabReportForward>, sqlx::Error> {
+        sqlx::query_as::<_, LabReportForward>(
+            "SELECT * FROM lab_report_forward WHERE workspace_id = ? AND branch_id = ? AND to_user_id = ? ORDER BY forwarded_at DESC"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(to_user_id)
+        .fetch_all(pool)
+        .await
     }
 }

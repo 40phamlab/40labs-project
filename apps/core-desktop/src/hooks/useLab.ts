@@ -9,6 +9,7 @@ import type {
   LabSampleStatus,
   MedicineWithInventory,
   LabQcData,
+  LabReport,
 } from '@40labs/types';
 import { labApi, usersApi, auditApi, CreateLabOrderPayload } from '../api';
 import type { CreateTestCatalogPayload, CreateLabQcEquipmentPayload, CreateLabQcRecordPayload } from '../api/labApi';
@@ -54,6 +55,17 @@ export function useLab() {
   });
 
   const {
+    data: reports = [],
+    isLoading: isLoadingReports,
+    isError: isErrorReports,
+    error: errorReports,
+    refetch: refetchReports,
+  } = useQuery<LabReport[]>({
+    queryKey: ['lab-reports'],
+    queryFn: async () => labApi.listReports(),
+  });
+
+  const {
     data: catalog = [],
     isLoading: isLoadingCatalog,
     isError: isErrorCatalog,
@@ -85,18 +97,19 @@ export function useLab() {
     queryFn: async () => auditApi.list(),
   });
 
-  const isLoading = isLoadingOrders || isLoadingSamples || isLoadingResults || isLoadingCatalog || isLoadingStock || isLoadingQc;
-  const isError = isErrorOrders || isErrorSamples || isErrorResults || isErrorCatalog || isErrorStock || isErrorQc;
-  const error = errorOrders || errorSamples || errorResults || errorCatalog || errorStock || errorQc;
+  const isLoading = isLoadingOrders || isLoadingSamples || isLoadingResults || isLoadingReports || isLoadingCatalog || isLoadingStock || isLoadingQc;
+  const isError = isErrorOrders || isErrorSamples || isErrorResults || isErrorReports || isErrorCatalog || isErrorStock || isErrorQc;
+  const error = errorOrders || errorSamples || errorResults || errorReports || errorCatalog || errorStock || errorQc;
 
   const refetch = React.useCallback(() => {
     refetchOrders();
     refetchSamples();
     refetchResults();
+    refetchReports();
     refetchCatalog();
     refetchStock();
     refetchQc();
-  }, [refetchOrders, refetchSamples, refetchResults, refetchCatalog, refetchStock, refetchQc]);
+  }, [refetchOrders, refetchSamples, refetchResults, refetchReports, refetchCatalog, refetchStock, refetchQc]);
 
   // Mutations
   const createOrderMutation = useMutation({
@@ -159,6 +172,30 @@ export function useLab() {
     },
   });
 
+  const createReportMutation = useMutation({
+    mutationFn: (payload: { patientId: string; orderId: string; summaryNote?: string; resultIds: string[] }) =>
+      labApi.createReport(payload),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lab-reports'] }),
+  });
+
+  const finalizeReportMutation = useMutation({
+    mutationFn: ({ reportId, pin, summaryNote }: { reportId: string; pin: string; summaryNote?: string }) =>
+      labApi.finalizeReport(reportId, pin, summaryNote),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lab-reports'] }),
+  });
+
+  const amendReportMutation = useMutation({
+    mutationFn: ({ reportId, pin, summaryNote, resultIds }: { reportId: string; pin: string; summaryNote?: string; resultIds?: string[] }) =>
+      labApi.amendReport(reportId, pin, summaryNote, resultIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lab-reports'] }),
+  });
+
+  const forwardReportMutation = useMutation({
+    mutationFn: ({ reportId, toUserId, note }: { reportId: string; toUserId: string; note?: string }) =>
+      labApi.forwardReport(reportId, toUserId, note),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['lab-reports'] }),
+  });
+
   const createCatalogMutation = useMutation({
     mutationFn: (payload: CreateTestCatalogPayload) => labApi.createCatalogEntry(payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: labKeys.all }),
@@ -180,6 +217,7 @@ export function useLab() {
     orders,
     samples,
     results,
+    reports,
     catalog,
     stock,
     qcData,
@@ -221,6 +259,15 @@ export function useLab() {
         referenceRange,
         isOutOfRange,
       }),
+    createReport: (payload: { patientId: string; orderId: string; summaryNote?: string; resultIds: string[] }) =>
+      createReportMutation.mutateAsync(payload),
+    finalizeReport: (reportId: string, pin: string, summaryNote?: string) =>
+      finalizeReportMutation.mutateAsync({ reportId, pin, summaryNote }),
+    amendReport: (reportId: string, pin: string, summaryNote?: string, resultIds?: string[]) =>
+      amendReportMutation.mutateAsync({ reportId, pin, summaryNote, resultIds }),
+    forwardReport: (reportId: string, toUserId: string, note?: string) =>
+      forwardReportMutation.mutateAsync({ reportId, toUserId, note }),
+
     createCatalogEntry: (payload: CreateTestCatalogPayload) => createCatalogMutation.mutateAsync(payload),
     createQcEquipment: (payload: CreateLabQcEquipmentPayload) => createQcEquipmentMutation.mutateAsync(payload),
     createQcRecord: (payload: CreateLabQcRecordPayload) => createQcRecordMutation.mutateAsync(payload),
@@ -228,6 +275,10 @@ export function useLab() {
     isCreatingOrder: createOrderMutation.isPending,
     isCollectingSample: collectSampleMutation.isPending,
     isEnteringResult: enterResultMutation.isPending,
+    isCreatingReport: createReportMutation.isPending,
+    isFinalizingReport: finalizeReportMutation.isPending,
+    isAmendingReport: amendReportMutation.isPending,
+    isForwardingReport: forwardReportMutation.isPending,
     isCreatingCatalogEntry: createCatalogMutation.isPending,
     isCreatingQcEquipment: createQcEquipmentMutation.isPending,
     isCreatingQcRecord: createQcRecordMutation.isPending,

@@ -28,12 +28,14 @@ import {
   Activity,
   RefreshCw,
   Plus,
+  FileText,
 } from 'lucide-react';
 import type { LabResult, TestCatalogEntry, LabOrderStatus, LabSampleStatus } from '@40labs/types';
 import { LabDashboard } from './components/LabDashboard';
 import { LabOrdersList } from './components/LabOrdersList';
 import { LabSamplesList } from './components/LabSamplesList';
 import { ResultsScreen } from './ResultsScreen';
+import { ReportsScreen } from './reports/ReportsScreen';
 import { NewLabOrderModal } from './components/NewLabOrderModal';
 import { useLab } from '../../hooks/useLab';
 import { useCustomers } from '../../hooks/useCustomers';
@@ -47,6 +49,7 @@ export type LabTab =
   | 'orders'
   | 'samples'
   | 'results'
+  | 'reports'
   | 'test-catalog'
   | 'qc-equipment'
   | 'analytics'
@@ -59,6 +62,7 @@ const LAB_TAB_LABELS: Record<LabTab, string> = {
   'orders': 'Orders',
   'samples': 'Samples',
   'results': 'Results',
+  'reports': 'Reports',
   'test-catalog': 'Test Catalog',
   'qc-equipment': 'QC & Equipment',
   'analytics': 'Analytics',
@@ -75,6 +79,7 @@ const LAB_SUBNAV_SECTIONS: SubNavSection[] = [
       { id: 'orders', label: 'Orders', icon: <ClipboardList size={16} /> },
       { id: 'samples', label: 'Samples', icon: <TestTube size={16} /> },
       { id: 'results', label: 'Results', icon: <FileCheck size={16} /> },
+      { id: 'reports', label: 'Reports', icon: <FileText size={16} /> },
       { id: 'test-catalog', label: 'Test Catalog', icon: <BookOpen size={16} /> },
       { id: 'qc-equipment', label: 'QC & Equipment', icon: <Sliders size={16} /> },
       { id: 'analytics', label: 'Analytics', icon: <BarChart3 size={16} /> },
@@ -95,6 +100,7 @@ export const LabScreen: React.FC = () => {
     orders,
     samples,
     results,
+    reports,
     catalog: testCatalog,
     stock,
     qcData,
@@ -107,6 +113,10 @@ export const LabScreen: React.FC = () => {
     createOrder,
     updateOrderStatus,
     updateSampleStatus,
+    createReport,
+    finalizeReport,
+    amendReport,
+    forwardReport,
     isCreatingOrder,
     createCatalogEntry,
     createQcEquipment,
@@ -286,6 +296,26 @@ export const LabScreen: React.FC = () => {
             customers={customers}
             testCatalog={testCatalog}
             samples={samples}
+            loading={isLoading}
+            error={isError ? (error as Error) : null}
+            onRetry={refetch}
+          />
+        );
+
+      case 'reports':
+        return (
+          <ReportsScreen
+            reports={reports}
+            orders={orders}
+            customers={customers}
+            results={results}
+            testCatalog={testCatalog}
+            samples={samples}
+            users={users}
+            onCreateReport={createReport}
+            onFinalizeReport={finalizeReport}
+            onAmendReport={amendReport}
+            onForwardReport={forwardReport}
             loading={isLoading}
             error={isError ? (error as Error) : null}
             onRetry={refetch}

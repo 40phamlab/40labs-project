@@ -8,6 +8,8 @@ import type {
   LabQcData,
   LabQcEquipment,
   LabQcRecord,
+  LabReport,
+  LabReportForward,
 } from '@40labs/types';
 import {
   initialLabOrders,
@@ -260,6 +262,49 @@ export const labApi = {
     );
 
     return newResult;
+  },
+
+  // Reports
+  listReports: async (): Promise<LabReport[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabReport[]>('get_lab_reports');
+    }
+    return [];
+  },
+
+  createReport: async (payload: { patientId: string; orderId: string; summaryNote?: string; resultIds: string[] }): Promise<LabReport> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabReport>('create_lab_report', { payload });
+    }
+    throw new Error('Not implemented in mock');
+  },
+
+  finalizeReport: async (reportId: string, pin: string, summaryNote?: string): Promise<LabReport> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabReport>('finalize_lab_report', { reportId, payload: { pin, summaryNote } });
+    }
+    throw new Error('Not implemented in mock');
+  },
+
+  amendReport: async (reportId: string, pin: string, summaryNote?: string, resultIds?: string[]): Promise<LabReport> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabReport>('amend_lab_report', { reportId, payload: { pin, summaryNote, resultIds } });
+    }
+    throw new Error('Not implemented in mock');
+  },
+
+  forwardReport: async (reportId: string, toUserId: string, note?: string): Promise<LabReportForward> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabReportForward>('forward_lab_report', { reportId, payload: { toUserId, note } });
+    }
+    throw new Error('Not implemented in mock');
+  },
+
+  getForwardedReportsToMe: async (): Promise<LabReportForward[]> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<LabReportForward[]>('get_forwarded_reports_to_me');
+    }
+    return [];
   },
 
   // Catalog

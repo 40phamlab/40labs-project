@@ -196,3 +196,82 @@ pub struct EnterLabResultRequest {
     pub expiry_override_reason: Option<String>,
     pub request_recollect: Option<bool>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LabReport {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub patient_id: String,
+    pub order_id: String,
+    pub version: i64,
+    pub supersedes_report_id: Option<String>,
+    pub status: String,
+    pub summary_note: Option<String>,
+    pub prepared_by: String,
+    pub finalized_by: Option<String>,
+    pub finalized_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LabReportItem {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub report_id: String,
+    pub result_id: String,
+    pub snapshot_json: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LabReportForward {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub report_id: String,
+    pub from_user_id: String,
+    pub to_user_id: String,
+    pub note: Option<String>,
+    pub forwarded_at: String,
+    pub read_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateLabReportRequest {
+    pub patient_id: String,
+    pub order_id: String,
+    pub summary_note: Option<String>,
+    pub result_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FinalizeLabReportRequest {
+    pub pin: String,
+    pub summary_note: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AmendLabReportRequest {
+    pub pin: String,
+    pub summary_note: Option<String>,
+    pub result_ids: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ForwardLabReportRequest {
+    pub to_user_id: String,
+    pub note: Option<String>,
+}

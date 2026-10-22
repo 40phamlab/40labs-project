@@ -49,10 +49,56 @@ export interface LabResult extends BaseEntity {
   override_authorized_by_user_id: string | null; // PIN-gated if out-of-range override
 }
 
+export type LabReportStatus = 'draft' | 'finalized';
+
 export interface LabReport extends BaseEntity {
-  lab_order_id: string;
-  generated_at: string;
-  pdf_path: string; // local Typst-generated file path, synced as a blob later
+  patient_id: string;
+  order_id: string;
+  version: number;
+  supersedes_report_id: string | null;
+  status: LabReportStatus;
+  summary_note: string | null;
+  prepared_by: string;
+  finalized_by: string | null;
+  finalized_at: string | null;
+}
+
+export interface LabReportItem extends BaseEntity {
+  report_id: string;
+  result_id: string;
+  snapshot_json: string;
+}
+
+export interface LabReportForward extends BaseEntity {
+  report_id: string;
+  from_user_id: string;
+  to_user_id: string;
+  note: string | null;
+  forwarded_at: string;
+  read_at: string | null;
+}
+
+export interface CreateLabReportRequest {
+  patient_id: string;
+  order_id: string;
+  summary_note?: string;
+  result_ids: string[];
+}
+
+export interface FinalizeLabReportRequest {
+  pin: string;
+  summary_note?: string;
+}
+
+export interface AmendLabReportRequest {
+  pin: string;
+  summary_note?: string;
+  result_ids?: string[];
+}
+
+export interface ForwardLabReportRequest {
+  to_user_id: string;
+  note?: string;
 }
 
 export interface TestCatalogEntry extends BaseEntity {
