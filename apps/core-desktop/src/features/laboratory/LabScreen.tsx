@@ -43,6 +43,8 @@ import { NewTestCatalogModal } from './components/NewTestCatalogModal';
 import { LabQcPanel } from './components/LabQcPanel';
 import { LabOrderActionModal } from './components/LabOrderActionModal';
 import { formatDateTime } from '@40labs/i18n';
+import { TraceView } from './trace/TraceView';
+import { useLabStore } from '../../stores/useLabStore';
 
 export type LabTab =
   | 'dashboard'
@@ -131,6 +133,8 @@ export const LabScreen: React.FC = () => {
   } = useLab();
 
   const { customers } = useCustomers();
+  const traceSampleId = useLabStore((s) => s.traceSampleId);
+  const setTraceSampleId = useLabStore((s) => s.setTraceSampleId);
 
   const handleAddOrder = React.useCallback(
     async (customerId: string, testCatalogId: string) => {
@@ -469,7 +473,34 @@ export const LabScreen: React.FC = () => {
           onSelect={(id) => setActiveLabTab(id as LabTab)}
         />
         <div className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto custom-scrollbar pl-4 pr-3 pt-3">
-          {renderContent()}
+          {traceSampleId ? (
+            <TraceView
+              sampleId={traceSampleId}
+              samples={samples}
+              orders={orders}
+              customers={customers}
+              results={results}
+              reports={reports}
+              reportForwards={[]}
+              catalog={testCatalog}
+              qcData={qcData}
+              onBack={() => setTraceSampleId(null)}
+              onOpenResult={() => {
+                setTraceSampleId(null);
+                setActiveLabTab('results');
+              }}
+              onOpenReport={() => {
+                setTraceSampleId(null);
+                setActiveLabTab('reports');
+              }}
+              onRecollect={(ordId) => {
+                setTraceSampleId(null);
+                setOrderAction({ mode: 'sample', orderId: ordId });
+              }}
+            />
+          ) : (
+            renderContent()
+          )}
         </div>
       </div>
     </TabContainer>

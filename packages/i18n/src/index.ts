@@ -402,6 +402,13 @@ const swTzData = {
   'lab.sample.expiryOverride': 'Idhini ya Muda (PIN)',
   'lab.sample.recollect': 'Omba Sampuli Mpya',
   'lab.sample.reason': 'Sababu ya Kulazimisha',
+  'lab.trace.title': 'Mfuatizo wa Sampuli',
+  'lab.trace.graph': 'Grafu',
+  'lab.trace.timeline': 'Mlolongo wa Matukio',
+  'lab.trace.nodeDetails': 'Taarifa za Kidonge',
+  'lab.trace.openResult': 'Fungua Matokeo',
+  'lab.trace.openReport': 'Fungua Ripoti',
+  'lab.trace.recollect': 'Kusanya Upya',
 };
 
 export const translations = {
@@ -414,6 +421,13 @@ export const translations = {
     'lab.sample.expiryOverride': 'Expiry Override PIN',
     'lab.sample.recollect': 'Request Recollect',
     'lab.sample.reason': 'Mandatory Reason',
+    'lab.trace.title': 'Lab Trace & Chain of Custody',
+    'lab.trace.graph': 'Graph',
+    'lab.trace.timeline': 'Timeline',
+    'lab.trace.nodeDetails': 'Node Details',
+    'lab.trace.openResult': 'Open Result',
+    'lab.trace.openReport': 'Open Report',
+    'lab.trace.recollect': 'Recollect',
     'landing.cta.start': 'Get started',
     'landing.cta.newDevice': 'New Device',
     'landing.cta.haveAccount': 'Already have an account?',

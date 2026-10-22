@@ -33,6 +33,7 @@ import type {
 } from '@40labs/types';
 import { formatDate, formatDateTime } from '@40labs/i18n';
 import { isInLabDatePeriod } from '../utils/dateFilters';
+import { useLabStore } from '../../../stores/useLabStore';
 import { ExpiryChip } from './ExpiryChip';
 import { useSampleExpiry } from '../hooks/useSampleExpiry';
 
@@ -280,6 +281,14 @@ export const LabSamplesList: React.FC<LabSamplesListProps> = ({
                 onClick={() => {
                   setActiveMenuSampleId(null);
                   setSelectedSampleForDrawer(item);
+                }}
+              />
+              <DropdownMenuItem
+                label="Trace"
+                icon={<TestTube size={14} className="text-primary" />}
+                onClick={() => {
+                  setActiveMenuSampleId(null);
+                  useLabStore.getState().setTraceSampleId(item.id);
                 }}
               />
               {item.status === 'collected' && <DropdownMenuItem

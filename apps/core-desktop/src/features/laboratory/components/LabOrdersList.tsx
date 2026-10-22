@@ -24,6 +24,7 @@ import type {
 } from '@40labs/types';
 import { formatDate } from '@40labs/i18n';
 import { isInLabDatePeriod } from '../utils/dateFilters';
+import { useLabStore } from '../../../stores/useLabStore';
 
 export type ChannelTab = 'active' | 'completed' | 'all' | 'cancelled';
 export type TimeRange = 'today' | 'week' | 'month' | 'all';
@@ -214,6 +215,16 @@ export const LabOrdersList: React.FC<LabOrdersListProps> = ({
             >
               {item.status === 'pending' && <DropdownMenuItem label="Collect sample" icon={<TestTube size={14} className="text-primary" />} onClick={() => { setActiveMenuOrderId(null); onCollectSample(item); }} />}
               {item.status === 'sample_collected' && <DropdownMenuItem label="Enter result" icon={<FileCheck size={14} className="text-primary" />} onClick={() => { setActiveMenuOrderId(null); onEnterResult(item); }} />}
+              <DropdownMenuItem
+                label="Trace"
+                icon={<TestTube size={14} className="text-primary" />}
+                onClick={() => {
+                  setActiveMenuOrderId(null);
+                  const storeSamples = useLabStore.getState().samples;
+                  const sample = storeSamples.find((s) => s.lab_order_id === item.id);
+                  useLabStore.getState().setTraceSampleId(sample ? sample.id : item.id);
+                }}
+              />
 
               {!['report_ready', 'result_entered', 'cancelled'].includes(item.status) && <DropdownMenuItem
                 label="Cancel"

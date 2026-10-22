@@ -15,6 +15,7 @@ import { ResultDetailPanel } from './components/ResultDetailPanel';
 import { ExportMenu } from './components/ExportMenu';
 import { downloadResultsCsv } from './export/resultCsv';
 import { downloadResultsJson } from './export/resultJson';
+import { useLabStore } from '../../stores/useLabStore';
 
 export interface ResultsScreenProps {
   results: LabResult[];
@@ -185,6 +186,15 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                   onClick={() => {
                     setActiveMenuResultId(null);
                     setInspectingResult(item);
+                  }}
+                />
+                <DropdownMenuItem
+                  label="Trace"
+                  icon={<Search size={14} className="text-primary" />}
+                  onClick={() => {
+                    setActiveMenuResultId(null);
+                    const sample = samples.find((s) => s.lab_order_id === item.lab_order_id);
+                    useLabStore.getState().setTraceSampleId(sample ? sample.id : item.lab_order_id);
                   }}
                 />
               </Dropdown>

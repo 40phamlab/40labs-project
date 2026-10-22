@@ -9,9 +9,11 @@ interface LabState {
   catalog: TestCatalogEntry[];
   selectedOrderId: string | null;
   activeTab: 'orders' | 'samples' | 'catalog';
+  traceSampleId: string | null;
 
   setSelectedOrderId: (id: string | null) => void;
   setActiveTab: (tab: 'orders' | 'samples' | 'catalog') => void;
+  setTraceSampleId: (id: string | null) => void;
 
   createOrder: (customerId: string, testCatalogId: string) => Promise<LabOrder>;
   collectSample: (orderId: string, sampleLabel: string) => Promise<LabSample>;
@@ -26,9 +28,11 @@ export const useLabStore = create<LabState>((set) => ({
   catalog: [],
   selectedOrderId: null,
   activeTab: 'orders',
+  traceSampleId: null,
 
   setSelectedOrderId: (selectedOrderId) => set({ selectedOrderId }),
   setActiveTab: (activeTab) => set({ activeTab }),
+  setTraceSampleId: (traceSampleId) => set({ traceSampleId }),
 
   fetchResultsAndCatalog: async () => {
     const [orders, samples, results, catalog] = await Promise.all([

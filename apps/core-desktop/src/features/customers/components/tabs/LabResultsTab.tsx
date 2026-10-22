@@ -5,6 +5,7 @@ import { formatDate } from '@40labs/i18n';
 import { FlaskConical, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useNavStore } from '../../../../stores/useNavStore';
 import { useLab } from '../../../../hooks/useLab';
+import { useLabStore } from '../../../../stores/useLabStore';
 
 interface LabResultsTabProps {
   customer: Customer;
@@ -12,7 +13,7 @@ interface LabResultsTabProps {
 
 export const LabResultsTab: React.FC<LabResultsTabProps> = ({ customer }) => {
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
-  const { orders = [], results = [], catalog = [], isLoadingOrders, isOrdersError, refetchOrders } = useLab();
+  const { orders = [], results = [], catalog = [], samples = [], isLoadingOrders, isOrdersError, refetchOrders } = useLab();
 
   const customerOrders = React.useMemo(() => {
     return orders
@@ -94,6 +95,17 @@ export const LabResultsTab: React.FC<LabResultsTabProps> = ({ customer }) => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-text-muted font-mono">{formatDate(ord.created_at)}</span>
+                  <Button
+                    intent="neutral"
+                    size="sm"
+                    onClick={() => {
+                      const sample = samples.find((s) => s.lab_order_id === ord.id);
+                      useLabStore.getState().setTraceSampleId(sample ? sample.id : ord.id);
+                      setActiveScreen('lab');
+                    }}
+                  >
+                    View Trace
+                  </Button>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${ord.status === 'report_ready' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'}`}>
                     {ord.status}
                   </span>
