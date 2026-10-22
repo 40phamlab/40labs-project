@@ -33,6 +33,7 @@ import type { LabResult, TestCatalogEntry, LabOrderStatus, LabSampleStatus } fro
 import { LabDashboard } from './components/LabDashboard';
 import { LabOrdersList } from './components/LabOrdersList';
 import { LabSamplesList } from './components/LabSamplesList';
+import { ResultsScreen } from './ResultsScreen';
 import { NewLabOrderModal } from './components/NewLabOrderModal';
 import { useLab } from '../../hooks/useLab';
 import { useCustomers } from '../../hooks/useCustomers';
@@ -279,16 +280,16 @@ export const LabScreen: React.FC = () => {
 
       case 'results':
         return (
-          <div className="flex flex-col gap-4 w-full">
-            <DataTable
-              data={results}
-              columns={resultColumns}
-              loading={isLoading}
-              error={isError ? (error as Error) : null}
-              onRetry={refetch}
-              emptyMessage="No laboratory results recorded."
-            />
-          </div>
+          <ResultsScreen
+            results={results}
+            orders={orders}
+            customers={customers}
+            testCatalog={testCatalog}
+            samples={samples}
+            loading={isLoading}
+            error={isError ? (error as Error) : null}
+            onRetry={refetch}
+          />
         );
 
       case 'test-catalog':
