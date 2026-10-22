@@ -1,4 +1,4 @@
-// [PHASE: marketplace-preview — Data foundation]
+// [PHASE: marketplace-preview — Order flow]
 import { OrderChannel, OrderChannelResult } from './OrderChannel';
 import { Supplier, PurchaseOrder } from '@40labs/types';
 import { normalizeToE164 } from './phone';
@@ -39,8 +39,9 @@ ${linesText}
         sentAt: new Date().toISOString(),
         deliveryConfirmed: false,
       };
-    } catch (err: any) {
-      return { ok: false, reason: err?.message || 'OPEN_FAILED' };
+    } catch (err: unknown) {
+      const reason = err instanceof Error ? err.message : 'OPEN_FAILED';
+      return { ok: false, reason };
     }
   }
 }

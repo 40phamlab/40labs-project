@@ -11,6 +11,7 @@ import {
 } from '@40labs/ui-components';
 import { usePurchases } from '../../../hooks/usePurchases';
 import { useInventory } from '../../../hooks/useInventory';
+import { Supplier } from '@40labs/types';
 
 export interface CreatePODraftModalProps {
   isOpen: boolean;
@@ -28,7 +29,6 @@ export const CreatePODraftModal: React.FC<CreatePODraftModalProps> = ({
   const { suppliers } = usePurchases();
   const { medicines } = useInventory();
 
-  // FLAG: [phase: 8D] Custom supplier picker component is absent in UI library; using native Select with initialSuppliers.
   const [supplierId, setSupplierId] = React.useState('');
   const [medicineId, setMedicineId] = React.useState('');
   const [quantity, setQuantity] = React.useState('50');
@@ -70,26 +70,31 @@ export const CreatePODraftModal: React.FC<CreatePODraftModalProps> = ({
           <Button type="button" intent="neutral" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="button" intent="primary" onClick={handleSubmit as any} disabled={!isValid || isLoading}>
+          <Button
+            type="button"
+            intent="primary"
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+              void handleSubmit(e as unknown as React.FormEvent);
+            }}
+            disabled={!isValid || isLoading}
+          >
             {isLoading ? 'Creating Draft...' : 'Save PO Draft'}
           </Button>
         </div>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Supplier Picker */}
         <Field>
           <FieldLabel required>Supplier</FieldLabel>
           <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
             {suppliers.map((s) => (
               <option key={s.id} value={s.id}>
-                {(s as any).name || s.id}
+                {(s as Supplier & { name?: string }).name || s.id}
               </option>
             ))}
           </Select>
         </Field>
 
-        {/* Medicine / Product */}
         <Field>
           <FieldLabel required>Product / Medicine</FieldLabel>
           <Select value={medicineId} onChange={(e) => setMedicineId(e.target.value)}>
