@@ -1,6 +1,7 @@
+// [PHASE: marketplace-preview — Product catalog UI v2]
 import * as React from 'react';
-import { Button, MoneyDisplay } from '@40labs/ui-components';
-import { Plus, MessageCircle, Info } from 'lucide-react';
+import { Button } from '@40labs/ui-components';
+import { MessageCircle, Info } from 'lucide-react';
 import { QtyStepper } from './QtyStepper';
 import { UnitChip } from './UnitChip';
 import { ProductImage } from './ProductImage';
@@ -8,51 +9,51 @@ import { ProductImage } from './ProductImage';
 export interface ProductCardProps {
   id: string;
   name: string;
+  genericName?: string;
   subtitle?: string;
   unitPrice: number;
   oldUnitPrice?: number;
   stock: number | 'in' | 'low' | 'out';
   unitType?: string;
+  form?: string;
+  controlled?: boolean;
   mode: 'sale' | 'purchase';
   cartQty?: number;
+  viewMode?: 'grid' | 'list';
   isPriceEditable?: boolean;
   onPriceChange?: (id: string, price: number) => void;
   onAddToCart?: () => void;
   onUpdateQty?: (qty: number) => void;
-  onMoreAbout?: () => void;
+  onDetails?: () => void;
   onSeeAlternatives?: () => void;
   onChat?: () => void;
   disabled?: boolean;
-  imageSrc?: string;
+  imageUrl?: string;
   className?: string;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
-  id,
   name,
-  subtitle,
+  genericName,
   unitPrice,
   oldUnitPrice,
   stock,
   unitType,
+  form = 'tablet',
+  controlled = false,
   mode,
   cartQty = 0,
-  isPriceEditable = false,
-  onPriceChange,
+  viewMode = 'grid',
   onAddToCart,
   onUpdateQty,
-  onMoreAbout,
+  onDetails,
   onSeeAlternatives,
   onChat,
   disabled = false,
-  imageSrc,
+  imageUrl,
   className = '',
 }) => {
-  const [isEditingPrice, setIsEditingPrice] = React.useState(false);
-  const [editablePrice, setEditablePrice] = React.useState(String(unitPrice));
-
-  const isOutOfStock =
-    stock === 'out' || (typeof stock === 'number' && stock <= 0);
+  const isOutOfStock = stock === 'out' || (typeof stock === 'number' && stock <= 0);
   const isLowStock = stock === 'low' || (typeof stock === 'number' && stock > 0 && stock <= 5);
 
   let discountPercent = 0;
@@ -60,128 +61,182 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     discountPercent = Math.round(((oldUnitPrice - unitPrice) / oldUnitPrice) * 100);
   }
 
-  const handlePriceBlur = () => {
-    setIsEditingPrice(false);
-    const parsed = Number(editablePrice);
-    if (!isNaN(parsed) && parsed >= 0 && onPriceChange) {
-      onPriceChange(id, parsed);
-    } else {
-      setEditablePrice(String(unitPrice));
-    }
-  };
+  const priceFormatted = `TZS ${unitPrice.toLocaleString()} /${unitType || 'pack'}`;
 
+  if (viewMode === 'list') {
+    return (
+      <div
+        className={[
+          'flex items-center gap-3 p-3 rounded-card bg-panel border transition-all elevation-flat',
+          isOutOfStock ? 'opacity-60 border-danger/30 bg-panel/60' : 'border-border/40 hover:border-primary hover:shadow-sm',
+          className,
+        ].join(' ')}
+      >
+        <ProductImage src={imageUrl} alt={name} form={form} variant="thumb" />
+
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-xs font-bold text-text truncate" title={name}>
+              {name}
+            </p>
+            {controlled && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20 shrink-0">
+                Controlled
+              </span>
+            )}
+            <UnitChip unit={unitType} />
+          </div>
+          <div className="flex items-center gap-2 mt-0.5 min-w-0">
+            {genericName && <p className="text-[10px] text-text-muted italic truncate">{genericName}</p>}
+            {isOutOfStock && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/20 shrink-0">
+                Out of stock
+              </span>
+            )}
+            {isLowStock && mode === 'purchase' && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
+                Low stock
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 shrink-0 text-right">
+          <div>
+            <p className="text-xs font-mono font-bold text-primary">{priceFormatted}</p>
+            {oldUnitPrice && oldUnitPrice > unitPrice && (
+              <div className="flex items-center justify-end gap-1">
+                <span className="font-mono text-[10px] text-text-muted line-through">
+                  TZS {oldUnitPrice.toLocaleString()}
+                </span>
+                <span className="text-[9px] font-bold text-danger">-{discountPercent}%</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {onDetails && (
+            <Button size="sm" intent="ghost" onClick={onDetails} title="Details" className="!p-1.5 !h-7 !w-7">
+              <Info size={14} />
+            </Button>
+          )}
+          {onChat && (
+            <Button size="sm" intent="secondary" onClick={onChat} title="Communicate" className="!p-1.5 !h-7 !w-7">
+              <MessageCircle size={14} className="text-accent" />
+            </Button>
+          )}
+          {isOutOfStock ? (
+            onSeeAlternatives && (
+              <Button size="sm" intent="secondary" onClick={onSeeAlternatives}>
+                See alternatives
+              </Button>
+            )
+          ) : cartQty === 0 ? (
+            <Button size="sm" intent="primary" disabled={disabled} onClick={onAddToCart} className="!h-7 px-3">
+              Add
+            </Button>
+          ) : (
+            <QtyStepper
+              value={cartQty}
+              onChange={(newQty) => {
+                if (onUpdateQty) onUpdateQty(newQty);
+              }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Grid Card Mode (default)
   return (
     <div
       className={[
-        'flex items-center gap-3 p-3 rounded-card bg-panel border transition-all elevation-flat',
-        isOutOfStock ? 'opacity-60 border-danger/30 bg-panel/60' : 'border-border/40 hover:border-primary/40',
+        'flex flex-col rounded-card bg-panel border transition-all elevation-flat overflow-hidden',
+        isOutOfStock ? 'opacity-60 border-danger/30 bg-panel/60' : 'border-border/40 hover:border-primary hover:shadow-md',
         className,
       ].join(' ')}
     >
-      <ProductImage src={imageSrc} />
-
-      <div className="flex-1 min-w-0 flex flex-col justify-center">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <p className="text-xs font-bold text-text truncate" title={name}>
-            {name}
-          </p>
-          <UnitChip unit={unitType} />
-        </div>
-        <div className="flex items-center gap-2 mt-0.5 min-w-0">
-          {subtitle && <p className="text-[10px] font-mono text-text-muted truncate">{subtitle}</p>}
-          {isOutOfStock && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/20 shrink-0">
-              Out of stock
-            </span>
-          )}
-          {isLowStock && mode === 'purchase' && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
-              Low stock
-            </span>
-          )}
-        </div>
+      <div className="relative">
+        <ProductImage src={imageUrl} alt={name} form={form} variant="card" />
+        {controlled && (
+          <span className="absolute top-2 right-2 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/90 text-white shadow">
+            Controlled
+          </span>
+        )}
       </div>
 
-      <div className="flex items-center gap-3 shrink-0 justify-end">
-        {mode === 'purchase' && (
-          <div className="text-right">
-            <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Stock</p>
-            <p className="text-xs font-mono font-medium text-text">
-              {typeof stock === 'number' ? stock : stock.toUpperCase()}
-            </p>
+      <div className="p-3 flex-1 flex flex-col justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-start justify-between gap-1">
+            <h3 className="text-xs font-bold text-text line-clamp-2" title={name}>
+              {name}
+            </h3>
+            <UnitChip unit={unitType} />
           </div>
-        )}
-
-        <div className="text-right min-w-[80px]">
-          <p className="text-[8px] text-text-muted font-bold uppercase tracking-widest">Price</p>
-          {mode === 'sale' && isPriceEditable && isEditingPrice ? (
-            <input
-              type="number"
-              autoFocus
-              value={editablePrice}
-              onChange={(e) => setEditablePrice(e.target.value)}
-              onBlur={handlePriceBlur}
-              onKeyDown={(e) => e.key === 'Enter' && handlePriceBlur()}
-              className="w-20 px-1 py-0.5 text-xs font-mono bg-panel-strong border border-primary rounded text-right"
-            />
-          ) : (
-            <div
-              onClick={() => {
-                if (mode === 'sale' && isPriceEditable) setIsEditingPrice(true);
-              }}
-              className={mode === 'sale' && isPriceEditable ? 'cursor-pointer hover:text-primary' : ''}
-              title={mode === 'sale' && isPriceEditable ? 'Click to edit price' : undefined}
-            >
-              <MoneyDisplay amount={unitPrice} emphasis="strong" className="text-xs font-bold text-primary" />
-            </div>
-          )}
-          {oldUnitPrice && oldUnitPrice > unitPrice && (
-            <div className="flex items-center justify-end gap-1 mt-0.5">
-              <span className="font-mono text-[10px] text-text-muted line-through">
-                TZS {oldUnitPrice.toLocaleString()}
-              </span>
-              <span className="text-[9px] font-bold text-danger">-{discountPercent}%</span>
-            </div>
-          )}
+          {genericName && <p className="text-[10px] text-text-muted italic truncate">{genericName}</p>}
         </div>
-      </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        {onMoreAbout && (
-          <Button size="sm" intent="ghost" onClick={onMoreAbout} title="More information" className="!p-1.5 !h-7 !w-7">
-            <Info size={14} />
-          </Button>
-        )}
-        {onChat && (
-          <Button size="sm" intent="secondary" onClick={onChat} title="Chat with supplier" className="!p-1.5 !h-7 !w-7">
-            <MessageCircle size={14} className="text-accent" />
-          </Button>
-        )}
-        {isOutOfStock ? (
-          onSeeAlternatives && (
-            <Button size="sm" intent="secondary" onClick={onSeeAlternatives}>
-              Alternatives
-            </Button>
-          )
-        ) : cartQty === 0 ? (
-          <Button
-            size="sm"
-            intent="primary"
-            disabled={disabled}
-            onClick={onAddToCart}
-            className="!h-7 px-3"
-          >
-            {mode === 'purchase' ? 'Add' : <Plus size={14} />}
-          </Button>
-        ) : (
-          <QtyStepper
-            value={cartQty}
-            onChange={(newQty) => {
-              if (onUpdateQty) onUpdateQty(newQty);
-            }}
-          />
-        )}
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <p className="text-xs font-mono font-bold text-primary">{priceFormatted}</p>
+              {oldUnitPrice && oldUnitPrice > unitPrice && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="font-mono text-[10px] text-text-muted line-through">
+                    TZS {oldUnitPrice.toLocaleString()}
+                  </span>
+                  <span className="text-[9px] font-bold text-danger">-{discountPercent}%</span>
+                </div>
+              )}
+            </div>
+            {isOutOfStock ? (
+              <span className="text-[9px] font-bold text-danger bg-danger/10 px-1.5 py-0.5 rounded">Out</span>
+            ) : isLowStock ? (
+              <span className="text-[9px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded">Low</span>
+            ) : (
+              <span className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">In stock</span>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border/20 gap-2">
+            <div className="flex items-center gap-1">
+              {onDetails && (
+                <Button size="sm" intent="ghost" onClick={onDetails} title="Details" className="!p-1.5 !h-7 !w-7">
+                  <Info size={14} />
+                </Button>
+              )}
+              {onChat && (
+                <Button size="sm" intent="secondary" onClick={onChat} title="Communicate" className="!p-1.5 !h-7 !w-7">
+                  <MessageCircle size={14} className="text-accent" />
+                </Button>
+              )}
+            </div>
+
+            <div>
+              {isOutOfStock ? (
+                onSeeAlternatives && (
+                  <Button size="sm" intent="secondary" onClick={onSeeAlternatives} className="!h-7 text-[10px]">
+                    See alternatives
+                  </Button>
+                )
+              ) : cartQty === 0 ? (
+                <Button size="sm" intent="primary" disabled={disabled} onClick={onAddToCart} className="!h-7 px-4">
+                  Add
+                </Button>
+              ) : (
+                <QtyStepper
+                  value={cartQty}
+                  onChange={(newQty) => {
+                    if (onUpdateQty) onUpdateQty(newQty);
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

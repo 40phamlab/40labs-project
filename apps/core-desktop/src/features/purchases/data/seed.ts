@@ -184,6 +184,18 @@ export const SEED_CATALOG_PRODUCTS: CatalogProduct[] = [
     stock: 'in',
     medicineKey: 'artemether_lumefantrine_20_120mg_tablet',
   },
+  {
+    id: 'prod_dar01_7',
+    supplierBusinessId: 'AFYA-DAR01',
+    name: 'Diazepam 5mg Tablets (Pack of 100)',
+    genericName: 'Diazepam',
+    form: 'Tablet',
+    packSize: 'Pack (100s)',
+    unitPriceTzs: 15000,
+    stock: 'in',
+    medicineKey: 'diazepam_5mg_tablet',
+    controlled: true,
+  },
 
   // Arusha Medical Hub (AFYA-ARU01)
   {

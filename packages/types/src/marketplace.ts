@@ -50,6 +50,8 @@ export interface CatalogProduct {
   stock: 'in' | 'low' | 'out';
   medicineKey: string; // normalized generic+strength+form, used for alternatives matching
   mappedMedicineId?: string;
+  imageUrl?: string;
+  controlled?: boolean;
 }
 
 export interface MarketplaceCartLine {

@@ -1,3 +1,4 @@
+// [PHASE: marketplace-preview — Cart rebuild]
 import * as React from 'react';
 import { Trash2 } from 'lucide-react';
 import { IconButton, MoneyDisplay } from '@40labs/ui-components';
@@ -13,13 +14,18 @@ export interface CartLineProps {
   quantity: number;
   maxStock?: number;
   unitType?: string;
-  stockStatus?: string;
+  form?: string;
+  controlled?: boolean;
+  unitChipOptions?: string[];
+  selectedUnit?: string;
+  onSelectUnit?: (unit: string) => void;
   discountAmount?: number;
   mode: 'sale' | 'purchase';
   isPriceEditable?: boolean;
   onPriceChange?: (id: string, price: number) => void;
   onQuantityChange: (id: string, qty: number) => void;
   onRemove: (id: string) => void;
+  imageUrl?: string;
   className?: string;
 }
 
@@ -30,67 +36,58 @@ export const CartLine: React.FC<CartLineProps> = ({
   unitPrice,
   quantity,
   maxStock,
-  unitType,
+  unitType = 'Pack',
+  form = 'tablet',
+  controlled = false,
+  unitChipOptions,
+  selectedUnit,
+  onSelectUnit,
   discountAmount = 0,
-  mode,
-  isPriceEditable = false,
-  onPriceChange,
   onQuantityChange,
   onRemove,
+  imageUrl,
   className = '',
 }) => {
-  const [isEditingPrice, setIsEditingPrice] = React.useState(false);
-  const [editablePrice, setEditablePrice] = React.useState(String(unitPrice));
-
-  const subtotal = unitPrice * quantity - discountAmount;
-
-  const handlePriceBlur = () => {
-    setIsEditingPrice(false);
-    const parsed = Number(editablePrice);
-    if (!isNaN(parsed) && parsed >= 0 && onPriceChange) {
-      onPriceChange(id, parsed);
-    } else {
-      setEditablePrice(String(unitPrice));
-    }
-  };
+  const lineTotal = unitPrice * quantity - discountAmount;
 
   return (
     <div
       className={[
-        'flex items-center gap-3 p-2.5 rounded-card bg-panel-strong border border-border/40 elevation-raised',
+        'flex items-center gap-3 p-3 rounded-card bg-panel-strong border border-border/40 elevation-raised',
         className,
       ].join(' ')}
     >
-      <ProductImage />
+      <ProductImage src={imageUrl} alt={name} form={form} variant="thumb" />
 
       <div className="min-w-0 flex-1 flex flex-col justify-center">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
           <h4 className="text-xs font-bold text-text truncate min-w-0">{name}</h4>
-          <UnitChip unit={unitType} />
+          {controlled && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-600 border border-amber-500/20 shrink-0">
+              Controlled
+            </span>
+          )}
+          {unitChipOptions && unitChipOptions.length > 1 && onSelectUnit ? (
+            <select
+              value={selectedUnit || unitType}
+              onChange={(e) => onSelectUnit(e.target.value)}
+              className="text-[10px] font-bold px-1.5 py-0.5 bg-panel border border-border/30 rounded text-primary"
+            >
+              {unitChipOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <UnitChip unit={unitType} />
+          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
-          {subtitle && <span className="text-[10px] text-text-muted font-mono">{subtitle}</span>}
-          {mode === 'sale' && isPriceEditable && isEditingPrice ? (
-            <input
-              type="number"
-              autoFocus
-              value={editablePrice}
-              onChange={(e) => setEditablePrice(e.target.value)}
-              onBlur={handlePriceBlur}
-              onKeyDown={(e) => e.key === 'Enter' && handlePriceBlur()}
-              className="w-20 px-1 py-0.5 text-[10px] font-mono bg-panel border border-primary rounded"
-            />
-          ) : (
-            <div
-              onClick={() => {
-                if (mode === 'sale' && isPriceEditable) setIsEditingPrice(true);
-              }}
-              className={mode === 'sale' && isPriceEditable ? 'cursor-pointer hover:text-primary text-[10px]' : 'text-[10px]'}
-              title={mode === 'sale' && isPriceEditable ? 'Click to edit unit price' : undefined}
-            >
-              <MoneyDisplay amount={unitPrice} emphasis="normal" /> / unit
-            </div>
-          )}
+          {subtitle && <span className="text-[10px] text-text-muted italic truncate">{subtitle}</span>}
+          <div className="text-[10px] font-mono text-text-muted">
+            <MoneyDisplay amount={unitPrice} emphasis="normal" /> / {unitType.toLowerCase()}
+          </div>
         </div>
       </div>
 
@@ -104,8 +101,8 @@ export const CartLine: React.FC<CartLineProps> = ({
         />
       </div>
 
-      <div className="w-24 text-right shrink-0">
-        <MoneyDisplay amount={subtotal} emphasis="strong" className="text-xs text-primary" />
+      <div className="w-28 text-right shrink-0">
+        <MoneyDisplay amount={lineTotal} emphasis="strong" className="text-xs font-mono font-bold text-primary" />
       </div>
 
       <IconButton

@@ -1,8 +1,9 @@
-// [PHASE: marketplace-preview — Purchases shell]
+// [PHASE: marketplace-preview — Cart rebuild]
 import * as React from 'react';
 import { Supplier } from '@40labs/types';
 import { StatusBadge, Button } from '@40labs/ui-components';
-import { MapPin, Store } from 'lucide-react';
+import { MapPin, Store, ShoppingBag } from 'lucide-react';
+import { useCartQuery } from '../hooks/usePurchasesMarketplace';
 
 export interface SupplierCardProps {
   supplier: Supplier;
@@ -15,6 +16,9 @@ export const SupplierCard: React.FC<SupplierCardProps> = ({
   onOpen,
   onUnfollow,
 }) => {
+  const { data: cart } = useCartQuery(supplier.businessId);
+  const totalCartQty = cart?.lines.reduce((sum, l) => sum + l.qty, 0) || 0;
+
   return (
     <div className="p-4 bg-panel border border-border/40 rounded-card flex flex-col justify-between gap-3 elevation-raised hover:border-primary/40 transition-all">
       <div className="flex items-start gap-3 min-w-0">
@@ -29,10 +33,18 @@ export const SupplierCard: React.FC<SupplierCardProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1.5">
-        {supplier.verification.tmda && <StatusBadge status="success" label="TMDA" />}
-        {supplier.verification.tra && <StatusBadge status="success" label="TRA" />}
-        {supplier.verification.verified40Labs && <StatusBadge status="success" label="40Labs" />}
+      <div className="flex flex-wrap items-center gap-1.5 justify-between">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {supplier.verification.tmda && <StatusBadge status="success" label="TMDA" />}
+          {supplier.verification.tra && <StatusBadge status="success" label="TRA" />}
+          {supplier.verification.verified40Labs && <StatusBadge status="success" label="40Labs" />}
+        </div>
+        {totalCartQty > 0 && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+            <ShoppingBag size={12} />
+            {totalCartQty} items in cart
+          </span>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/20 text-xs text-text-muted">

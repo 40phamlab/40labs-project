@@ -58,6 +58,25 @@ export function useCartQuery(supplierId: string) {
   });
 }
 
+export function useAllCartsQuery(suppliers: Supplier[]) {
+  return useQuery<{ supplier: Supplier; count: number; totalTzs: number }[]>({
+    queryKey: [...marketplaceQueryKeys.all, 'all-carts', suppliers.map((s) => s.businessId).join(',')],
+    queryFn: async () => {
+      const results: { supplier: Supplier; count: number; totalTzs: number }[] = [];
+      for (const sup of suppliers) {
+        const cart = await templateCartRepo.getCart(sup.businessId);
+        const count = cart.lines.reduce((sum, l) => sum + l.qty, 0);
+        if (count > 0) {
+          const totalTzs = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPriceTzsSnapshot, 0);
+          results.push({ supplier: sup, count, totalTzs });
+        }
+      }
+      return results;
+    },
+    staleTime: 5_000,
+  });
+}
+
 export function useOrdersQuery(status?: PurchaseOrderStatus | 'pending' | 'recently') {
   return useQuery<PurchaseOrder[]>({
     queryKey: marketplaceQueryKeys.orders(status),

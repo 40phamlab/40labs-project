@@ -5,9 +5,10 @@ import { CheckCircle2 } from 'lucide-react';
 import type { MarketplaceSupplier, CatalogProduct } from '@40labs/types';
 import { SupplierStorefrontHeader } from './SupplierStorefrontHeader';
 import { SupplierProductsTab } from './SupplierProductsTab';
-import { SupplierCartTab } from './SupplierCartTab';
+import { CartTab } from './tabs/CartTab';
+import { useSendOrder } from '../hooks/useSendOrder';
 import { SupplierDealsTab, SupplierDealEntry } from './SupplierDealsTab';
-import { useCatalogQuery, useCartQuery, useOrdersQuery, useMarketplaceMutations } from '../hooks/usePurchasesMarketplace';
+import { useCatalogQuery, useCartQuery, useOrdersQuery, useMarketplaceMutations, useFollowedSuppliersQuery } from '../hooks/usePurchasesMarketplace';
 import { WhatsAppChannel } from '../data/channels/WhatsAppChannel';
 import { Button } from '@40labs/ui-components';
 
@@ -26,6 +27,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   const { data: catalog = [] } = useCatalogQuery(undefined, supplier.businessId);
   const { data: cart = { id: '', supplierBusinessId: supplier.businessId, lines: [] } } = useCartQuery(supplier.businessId);
   const { data: supplierOrders = [] } = useOrdersQuery('recently');
+  const { data: followedSuppliers = [] } = useFollowedSuppliersQuery();
 
   const { toggleFollow, updateCart, createOrder } = useMarketplaceMutations();
   const whatsappChannel = React.useMemo(() => new WhatsAppChannel(), []);
@@ -65,11 +67,12 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     });
   };
 
-  const handleSendOrder = async () => {
-    if (cart.lines.length === 0) return;
-    const newOrder = await createOrder(supplier.businessId, cart, 'whatsapp');
-    await whatsappChannel.send(newOrder, supplier);
+  const { sendOrder } = useSendOrder(() => {
     setIsOrderConfirmed(true);
+  });
+
+  const handleSendOrderWithNote = async (note?: string) => {
+    await sendOrder(supplier, cart, note);
   };
 
   const supplierDeals = React.useMemo(() => {
@@ -133,37 +136,33 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
         >
           {activeTab === 'products' && (
             <SupplierProductsTab
-              products={catalog.map((p) => ({
-                id: p.id,
-                name: p.name,
-                priceFormatted: `TZS ${p.unitPriceTzs.toLocaleString()}`,
-                unitPrice: p.unitPriceTzs,
-                scientificName: p.genericName,
-                unitType: p.packSize,
-              }))}
-              onAddToCart={(id) => {
-                const prod = catalog.find((cp) => cp.id === id);
-                if (prod) handleAddToCart(prod);
+              products={catalog}
+              cart={cart}
+              onAddToCart={async (product, qty) => {
+                await updateCart(supplier.businessId, {
+                  productId: product.id,
+                  qty,
+                  unitPriceTzsSnapshot: product.unitPriceTzs,
+                });
               }}
-              onMoreInfo={() => {}}
+              onUpdateQty={handleUpdateQty}
+              supplierPhone={supplier.phones[0]}
+              supplierName={supplier.name}
+              followedSupplierIds={followedSuppliers.map((s) => s.businessId)}
+              onNavigateToSupplier={(id) => onNavigate(`#purchases/supplier/${id}`)}
             />
           )}
 
           {activeTab === 'cart' && (
-            <SupplierCartTab
-              cart={cart.lines.map((l) => ({
-                id: l.productId,
-                name: l.productId,
-                unitPrice: l.unitPriceTzsSnapshot,
-                quantity: l.qty,
-              }))}
-              supplierName={supplier.name}
-              subtotal={subtotal}
-              grandTotal={subtotal}
-              onQuantityChange={(id, qty) => handleUpdateQty(String(id), qty)}
-              onRemoveItem={(id) => handleRemoveLine(String(id))}
+            <CartTab
+              cart={cart}
+              supplier={supplier}
+              catalogProducts={catalog}
+              onUpdateQty={handleUpdateQty}
+              onRemoveLine={handleRemoveLine}
               onClearCart={() => cart.lines.forEach((l) => handleRemoveLine(l.productId))}
-              onConfirmOrder={handleSendOrder}
+              onSendOrder={handleSendOrderWithNote}
+              onSwitchTab={setActiveTab}
             />
           )}
 
