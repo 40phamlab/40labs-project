@@ -1,4 +1,4 @@
-// [PHASE: marketplace-preview — Collapsible search panel]
+// [PHASE: marketplace-preview — Collapsed search rail polish]
 import * as React from 'react';
 import { SearchableListPanel } from '@40labs/ui-components';
 import { Supplier } from '@40labs/types';
@@ -30,7 +30,7 @@ export const SupplierLeftPanel: React.FC<SupplierLeftPanelProps> = ({
     const quickSuppliers = followedSuppliers.slice(0, 6);
     return (
       <div
-        className="w-14 h-full bg-panel border-r border-border/40 flex flex-col items-center py-3 gap-4 shrink-0 transition-all duration-200 ease-in-out motion-reduce:transition-none"
+        className="w-14 h-full bg-panel rounded-card border border-border/50 elevation-raised flex flex-col items-center p-2 gap-3 shrink-0 overflow-hidden transition-[width] duration-200 ease-in-out motion-reduce:transition-none select-none"
         aria-label="Suppliers rail"
       >
         <button
@@ -39,7 +39,7 @@ export const SupplierLeftPanel: React.FC<SupplierLeftPanelProps> = ({
           aria-controls="supplier-search-panel"
           onClick={onToggleOpen}
           title="Show search / Onyesha utafutaji"
-          className="w-9 h-9 rounded-lg bg-panel-strong border border-border/30 flex items-center justify-center text-text hover:text-primary transition-colors cursor-pointer"
+          className="w-9 h-9 rounded-lg bg-panel-strong border border-border/30 flex items-center justify-center text-text hover:text-primary transition-colors cursor-pointer shrink-0"
         >
           <PanelLeftOpen size={18} />
         </button>
@@ -51,15 +51,15 @@ export const SupplierLeftPanel: React.FC<SupplierLeftPanelProps> = ({
             setTimeout(() => searchInputRef.current?.focus(), 50);
           }}
           title="Search suppliers / Tafuta wasambazaji"
-          className="w-9 h-9 rounded-lg bg-panel hover:bg-panel-strong border border-border/20 flex items-center justify-center text-text-muted hover:text-primary transition-colors cursor-pointer"
+          className="w-9 h-9 rounded-lg bg-panel hover:bg-panel-strong border border-border/20 flex items-center justify-center text-text-muted hover:text-primary transition-colors cursor-pointer shrink-0"
         >
           <Search size={18} />
         </button>
 
-        <div className="w-8 h-px bg-border/40 my-1" />
+        <div className="w-8 h-px bg-border/40 my-1 shrink-0" />
 
         {/* Quick-open avatars of followed suppliers */}
-        <div className="flex flex-col gap-2.5 items-center w-full px-1 overflow-y-auto custom-scrollbar">
+        <div className="flex flex-col gap-2.5 items-center w-full overflow-y-auto custom-scrollbar p-0.5">
           {quickSuppliers.map((s) => {
             const initials = s.name.slice(0, 2).toUpperCase();
             const isSelected = s.businessId === selectedSupplierId;
@@ -69,9 +69,9 @@ export const SupplierLeftPanel: React.FC<SupplierLeftPanelProps> = ({
                 type="button"
                 onClick={() => onSelectSupplier(s.businessId)}
                 title={`${s.name} (${s.location.city})`}
-                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold font-sora transition-all ${
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold font-sora transition-all shrink-0 ${
                   isSelected
-                    ? 'bg-primary text-primary-foreground ring-2 ring-primary/40'
+                    ? 'bg-primary text-primary-foreground ring-2 ring-primary/40 ring-offset-2 ring-offset-panel'
                     : 'bg-panel-strong text-text hover:bg-primary/20 border border-border/30'
                 }`}
               >
@@ -87,7 +87,7 @@ export const SupplierLeftPanel: React.FC<SupplierLeftPanelProps> = ({
   return (
     <div
       id="supplier-search-panel"
-      className="w-[280px] lg:w-[320px] h-full flex flex-col bg-panel border-r border-border/40 shrink-0 transition-all duration-200 ease-in-out motion-reduce:transition-none relative"
+      className="w-[280px] lg:w-[320px] h-full flex flex-col bg-panel rounded-card border border-border/50 elevation-raised shrink-0 overflow-hidden transition-[width] duration-200 ease-in-out motion-reduce:transition-none relative p-2"
     >
       <div className="absolute top-2.5 right-2.5 z-10">
         <button
