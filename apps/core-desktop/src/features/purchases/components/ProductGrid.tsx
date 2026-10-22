@@ -35,7 +35,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto custom-scrollbar p-1">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 overflow-y-auto custom-scrollbar p-1">
       {products.map((p) => {
         const cartLine = cart.lines.find((l) => l.productId === p.id);
         const qty = cartLine?.qty || 0;

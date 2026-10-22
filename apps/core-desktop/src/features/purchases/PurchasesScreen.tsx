@@ -1,4 +1,4 @@
-// [PHASE: marketplace-preview — Purchases shell & routing]
+// [PHASE: marketplace-preview — Purchases shell & collapsible search panel]
 import * as React from 'react';
 import { TabContainer } from '../../components/TabContainer';
 import { SupplierLeftPanel } from './components/SupplierLeftPanel';
@@ -29,6 +29,8 @@ export const PurchasesScreen: React.FC = () => {
     setSelectedOrderId,
     isDrawerOpen,
     setDrawerOpen,
+    searchPanelOpen,
+    toggleSearchPanel,
   } = usePurchasesUiStore();
 
   const { data: allSuppliers = [] } = useSuppliersQuery(searchText);
@@ -114,21 +116,22 @@ export const PurchasesScreen: React.FC = () => {
   return (
     <TabContainer>
       <div className="flex flex-row gap-3.5 flex-1 min-h-0 w-full overflow-hidden">
-        {/* Left Search & Directory Panel */}
-        <div className="w-[280px] lg:w-[320px] shrink-0 h-full overflow-y-auto custom-scrollbar">
-          <SupplierLeftPanel
-            suppliers={allSuppliers}
-            selectedSupplierId={routeState.businessId || selectedSupplierId}
-            onSelectSupplier={(id) => {
-              if (id) handleNavigate(`#purchases/supplier/${id}`);
-              else handleNavigate('#purchases');
-            }}
-            onSearchChange={setSearchText}
-          />
-        </div>
+        {/* Left Search & Directory Panel (Collapsible) */}
+        <SupplierLeftPanel
+          suppliers={allSuppliers}
+          followedSuppliers={followedSuppliers}
+          selectedSupplierId={routeState.businessId || selectedSupplierId}
+          onSelectSupplier={(id) => {
+            if (id) handleNavigate(`#purchases/supplier/${id}`);
+            else handleNavigate('#purchases');
+          }}
+          onSearchChange={setSearchText}
+          isOpen={searchPanelOpen}
+          onToggleOpen={toggleSearchPanel}
+        />
 
         {/* Right Pane */}
-        <div className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto custom-scrollbar bg-panel rounded-card border border-border/50 elevation-raised flex flex-col">
+        <div className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto custom-scrollbar bg-panel rounded-card border border-border/50 elevation-raised flex flex-col transition-all duration-200 ease-in-out motion-reduce:transition-none">
           {routeState.mode === 'profile' && selectedSupplierObj ? (
             <SupplierProfilePage
               supplier={selectedSupplierObj}
