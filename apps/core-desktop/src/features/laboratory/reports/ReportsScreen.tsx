@@ -134,7 +134,7 @@ export const ReportsScreen: React.FC<ReportsScreenProps> = ({
                     setIsBuilderOpen(true);
                   }}
                 />
-              </DropdownMenuItem>
+              </Dropdown>
             </div>
           );
         },
