@@ -1,21 +1,16 @@
+// [PHASE: marketplace-preview]
 import * as React from 'react';
-import {
-  EntityProfileHeader,
-  EntityProfileAction,
-  TabbedListContainer,
-  Modal,
-  Button,
-  Input,
-} from '@40labs/ui-components';
-import { CompactProductRow } from './CompactProductRow';
-import { ProductActionCard } from './ProductActionCard';
-import { CartItemRow } from '../../sales/components/CartItemRow';
-import { CartSummaryPanel } from '../../sales/components/CartSummaryPanel';
-import { ShoppingBag, CheckCircle2, Tag, Lock, ArrowLeft } from 'lucide-react';
+import { TabbedListContainer, Modal, Button } from '@40labs/ui-components';
+import { CheckCircle2 } from 'lucide-react';
 import type { PurchaseOrder } from '@40labs/types';
 import { ExtendedSupplier } from './SupplierListItem';
 import { usePurchases } from '../../../hooks/usePurchases';
+import { useStepUp } from '../../../features/auth/stepup/StepUpProvider';
 import { pharmaciesApi } from '../../../api';
+import { SupplierStorefrontHeader } from './SupplierStorefrontHeader';
+import { SupplierProductsTab } from './SupplierProductsTab';
+import { SupplierCartTab } from './SupplierCartTab';
+import { SupplierDealsTab, SupplierDealEntry } from './SupplierDealsTab';
 
 export interface StorefrontProduct {
   id: string;
@@ -100,6 +95,8 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     updatePurchaseOrder,
   } = usePurchases();
 
+  const { requestStepUp } = useStepUp();
+
   const purchaseOrders = React.useMemo(() => {
     return purchaseOrdersProp || fetchedPOs;
   }, [purchaseOrdersProp, fetchedPOs]);
@@ -152,40 +149,17 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   const [isFollowed, setIsFollowed] = React.useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
   const [selectedProductInfo, setSelectedProductInfo] = React.useState<StorefrontProduct | null>(null);
-
-  // PIN Gate State
-  const [isPinModalOpen, setIsPinModalOpen] = React.useState(false);
-  const [pinCode, setPinCode] = React.useState('');
-  const [pinError, setPinError] = React.useState('');
-  const [isPinVerified, setIsPinVerified] = React.useState(false);
   const [isOrderConfirmed, setIsOrderConfirmed] = React.useState(false);
 
-  const OWNER_APPROVAL_THRESHOLD = 500000; // TZS threshold
-
-  const handleBack = React.useCallback(() => {
-    if (onBack) onBack();
-    else if (onClose) onClose();
-  }, [onBack, onClose]);
+  const OWNER_APPROVAL_THRESHOLD = 500000;
 
   React.useEffect(() => {
     setIsFollowed(false);
   }, [supplier?.id]);
 
-  const handleToggleFollow = React.useCallback(async () => {
-    if (!supplier) return;
-    const nextState = !isFollowed;
-    setIsFollowed(nextState);
-
-    try {
-      if (nextState) {
-        // Followed
-      } else {
-        // Unfollowed
-      }
-    } catch {
-      setIsFollowed(!nextState);
-    }
-  }, [isFollowed, supplier]);
+  const handleToggleFollow = React.useCallback(() => {
+    setIsFollowed((prev) => !prev);
+  }, []);
 
   const handleAddToCart = React.useCallback((productId: string) => {
     const targetProduct = products.find((p) => p.id === productId);
@@ -234,7 +208,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
   const grandTotal = subtotal;
 
-  const createDraftOrder = React.useCallback(async () => {
+  const executeCreateOrder = React.useCallback(async (grantToken?: string) => {
     if (!supplier) return;
 
     const newDraftPO = await createPurchaseOrder(
@@ -246,7 +220,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
       }))
     );
 
-    if (isPinVerified && newDraftPO) {
+    if (grantToken && newDraftPO) {
       await updatePurchaseOrder(newDraftPO.id, { approved_by_user_id: 'user_001_sudo' });
     }
 
@@ -256,46 +230,29 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
     setCart([]);
     setIsOrderConfirmed(true);
-    setIsPinModalOpen(false);
-    setPinCode('');
-  }, [cart, isPinVerified, supplier, createPurchaseOrder, updatePurchaseOrder, onOrderCreated]);
+  }, [cart, supplier, createPurchaseOrder, updatePurchaseOrder, onOrderCreated]);
 
-  const handleConfirmOrder = React.useCallback(() => {
-    if (cart.length === 0) return;
+  const handleConfirmOrder = React.useCallback(async () => {
+    if (cart.length === 0 || !supplier) return;
 
     const requiresPin = grandTotal > OWNER_APPROVAL_THRESHOLD;
 
-    if (requiresPin && !isPinVerified) {
-      setIsPinModalOpen(true);
-      return;
-    }
-
-    createDraftOrder();
-  }, [cart.length, grandTotal, OWNER_APPROVAL_THRESHOLD, isPinVerified, createDraftOrder]);
-
-  const handlePinSubmit = React.useCallback(() => {
-    if (pinCode === '1234' || pinCode.length >= 4) {
-      setIsPinVerified(true);
-      setPinError('');
-      createDraftOrder();
+    if (requiresPin) {
+      await requestStepUp(
+        async (token) => {
+          await executeCreateOrder(token);
+        },
+        'purchases.approve'
+      );
     } else {
-      setPinError('Invalid PIN code. Please enter owner approval PIN.');
+      await executeCreateOrder();
     }
-  }, [pinCode, createDraftOrder]);
+  }, [cart.length, grandTotal, OWNER_APPROVAL_THRESHOLD, requestStepUp, executeCreateOrder, supplier]);
 
   const supplierDeals = React.useMemo(() => {
     if (!supplier) return [];
     const supplierPOs = purchaseOrders.filter((po) => po.supplier_id === supplier.id);
-
-    const dealEntries: Array<{
-      id: string;
-      poId: string;
-      medicine_id: string;
-      productName: string;
-      currentPriceNum: number;
-      currentPriceFormatted: string;
-      originalPriceFormatted?: string;
-    }> = [];
+    const dealEntries: SupplierDealEntry[] = [];
 
     supplierPOs.forEach((po) => {
       po.lines.forEach((line, idx) => {
@@ -360,39 +317,12 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     }
   }, [supplier]);
 
-  const handleMoreInfo = React.useCallback((_poId: string, _medicineId: string) => {}, []);
-
   if (!supplier) return null;
 
   const supplierName = supplier.business?.name || supplier.name || 'Supplier Storefront';
   const mobile = supplier.phone || '+255 700 000 000';
   const whatsapp = supplier.whatsapp;
-  const phoneFormatted = whatsapp
-    ? `${mobile} | WhatsApp: ${whatsapp}`
-    : mobile;
-
-  const verifications = [
-    supplier.tmda_verified ? 'TMDA Verified' : null,
-    supplier.tra_verified ? 'TRA Verified' : null,
-  ].filter(Boolean) as string[];
-
-  const headerActions: EntityProfileAction[] = [
-    {
-      id: 'profile',
-      label: 'Profile',
-      variant: 'secondary',
-      onClick: () => {
-        if (onViewProfile) onViewProfile(supplier.id);
-        else setIsProfileModalOpen(true);
-      },
-    },
-    {
-      id: 'follow',
-      label: isFollowed ? 'Following' : 'Follow',
-      variant: isFollowed ? 'primary' : 'secondary',
-      onClick: handleToggleFollow,
-    },
-  ];
+  const phoneFormatted = whatsapp ? `${mobile} | WhatsApp: ${whatsapp}` : mobile;
 
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -404,32 +334,20 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
 
   return (
     <div className={`flex flex-col gap-3.5 h-full bg-panel p-4 rounded-card border border-border/50 elevation-raised overflow-hidden ${className}`}>
-      {(onBack || onClose) && (
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            intent="secondary"
-            size="sm"
-            leftIcon={<ArrowLeft size={16} />}
-            onClick={handleBack}
-          >
-            Back to Suppliers Directory
-          </Button>
-        </div>
-      )}
-
-      {/* Header */}
-      <EntityProfileHeader
-        entity={{
-          id: supplier.id,
-          name: supplierName,
-          phone: phoneFormatted,
-          statusIndicator: 'active',
-          verifications,
+      <SupplierStorefrontHeader
+        supplier={supplier}
+        supplierName={supplierName}
+        phoneFormatted={phoneFormatted}
+        isFollowed={isFollowed}
+        onBack={onBack}
+        onClose={onClose}
+        onToggleFollow={handleToggleFollow}
+        onViewProfile={() => {
+          if (onViewProfile) onViewProfile(supplier.id);
+          else setIsProfileModalOpen(true);
         }}
-        actions={headerActions}
       />
 
-      {/* Confirmation Banner */}
       {isOrderConfirmed && (
         <div className="p-4 bg-primary/10 border border-primary/30 rounded-card flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-primary font-bold">
@@ -442,7 +360,6 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
         </div>
       )}
 
-      {/* Main Tabbed Layout */}
       <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
         <TabbedListContainer
           tabs={tabs}
@@ -451,131 +368,38 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
           scrollable={activeTab !== 'cart'}
         >
           {activeTab === 'products' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-1">
-              {products.map((product) => (
-                <CompactProductRow
-                  key={product.id}
-                  product={product}
-                  onAdd={handleAddToCart}
-                  onMoreInfo={() => setSelectedProductInfo(product)}
-                />
-              ))}
-            </div>
+            <SupplierProductsTab
+              products={products}
+              onAddToCart={handleAddToCart}
+              onMoreInfo={(prod) => setSelectedProductInfo(prod)}
+            />
           )}
 
           {activeTab === 'cart' && (
-            <div className="flex flex-col lg:flex-row gap-6 h-full p-1 overflow-hidden">
-              <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto pr-1 custom-scrollbar">
-                {cart.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-text-muted gap-2">
-                    <ShoppingBag size={36} className="opacity-30" />
-                    <p className="text-xs italic">Your cart for {supplierName} is empty.</p>
-                  </div>
-                ) : (
-                  cart.map((item) => (
-                    <CartItemRow
-                      key={item.id}
-                      item={{
-                        id: item.id,
-                        name: item.name,
-                        unitPrice: item.unitPrice,
-                        quantity: item.quantity,
-                        unitType: item.unitType,
-                        stockStatus: 'in-stock',
-                        currencyCode: 'TZS',
-                      }}
-                      onQuantityChange={handleQuantityChange}
-                      onRemove={handleRemoveItem}
-                    />
-                  ))
-                )}
-              </div>
-
-              {cart.length > 0 && (
-                <div className="w-full lg:w-80 shrink-0">
-                  <CartSummaryPanel
-                    payload={{
-                      subtotal,
-                      discounts: [],
-                      taxes: [],
-                      grandTotal,
-                      currencyCode: 'TZS',
-                    }}
-                    onConfirm={handleConfirmOrder}
-                    onClear={handleClearCart}
-                  />
-                </div>
-              )}
-            </div>
+            <SupplierCartTab
+              cart={cart}
+              supplierName={supplierName}
+              subtotal={subtotal}
+              grandTotal={grandTotal}
+              onQuantityChange={handleQuantityChange}
+              onRemoveItem={handleRemoveItem}
+              onClearCart={handleClearCart}
+              onConfirmOrder={handleConfirmOrder}
+            />
           )}
 
           {activeTab === 'deals' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1 overflow-y-auto custom-scrollbar">
-              {supplierDeals.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-text-muted gap-3">
-                  <Tag size={36} className="opacity-30" />
-                  <p className="text-xs italic text-center">
-                    No past purchase order history or deals available from {supplierName}.
-                  </p>
-                </div>
-              ) : (
-                supplierDeals.map((deal) => (
-                  <ProductActionCard
-                    key={deal.id}
-                    productName={deal.productName}
-                    currentPrice={deal.currentPriceFormatted}
-                    originalPrice={deal.originalPriceFormatted}
-                    onAddToCart={() =>
-                      handleAddDealToCart(deal.medicine_id, deal.currentPriceNum, deal.productName)
-                    }
-                    onCommunicate={() => handleCommunicate(deal.productName)}
-                    onMoreInfo={() => handleMoreInfo(deal.poId, deal.medicine_id)}
-                  />
-                ))
-              )}
-            </div>
+            <SupplierDealsTab
+              supplierName={supplierName}
+              deals={supplierDeals}
+              onAddDealToCart={handleAddDealToCart}
+              onCommunicate={handleCommunicate}
+              onMoreInfo={() => {}}
+            />
           )}
         </TabbedListContainer>
       </div>
 
-      {/* PIN Approval Modal for high value draft POs */}
-      <Modal
-        isOpen={isPinModalOpen}
-        onClose={() => setIsPinModalOpen(false)}
-        title="Owner PIN Approval Required"
-      >
-        <div className="flex flex-col gap-4 p-2">
-          <div className="flex items-center gap-3 p-3 bg-accent/10 border border-accent/20 rounded-card text-xs text-text">
-            <Lock size={20} className="text-accent shrink-0" />
-            <p>
-              This Purchase Order total (<strong>TZS {grandTotal.toLocaleString()}</strong>) exceeds the approval threshold (<strong>TZS {OWNER_APPROVAL_THRESHOLD.toLocaleString()}</strong>). Enter owner PIN to authorize draft creation.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-bold text-text-muted">Owner PIN Code</label>
-            <Input
-              type="password"
-              placeholder="Enter PIN"
-              value={pinCode}
-              onChange={(e) => setPinCode(e.target.value)}
-              className="text-center font-mono tracking-widest text-lg"
-            />
-            {pinError && <p className="text-xs text-danger mt-1">{pinError}</p>}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/20">
-            <Button intent="ghost" onClick={() => setIsPinModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button intent="primary" onClick={handlePinSubmit}>
-              Authorize & Create Draft
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Product Details Modal */}
       <Modal
         isOpen={!!selectedProductInfo}
         onClose={() => setSelectedProductInfo(null)}
@@ -608,7 +432,6 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
         )}
       </Modal>
 
-      {/* Supplier Profile Modal */}
       <Modal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
@@ -627,13 +450,6 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
             <div>
               <span className="text-text-muted uppercase text-[10px] font-bold">Contact Details</span>
               <p className="text-text">{phoneFormatted}</p>
-            </div>
-            <div>
-              <span className="text-text-muted uppercase text-[10px] font-bold">Verifications</span>
-              <div className="flex gap-2 mt-1">
-                {supplier.tmda_verified && <span className="text-primary font-bold">✓ TMDA Verified</span>}
-                {supplier.tra_verified && <span className="text-primary font-bold">✓ TRA Verified</span>}
-              </div>
             </div>
           </div>
           <div className="flex justify-end">
