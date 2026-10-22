@@ -107,6 +107,9 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
         "update_lab_sample_status",
         CommandPolicy::Permission("lab.result.enter"),
     );
+    map.insert("update_sample_expiry", CommandPolicy::Permission("lab.order"));
+    map.insert("get_sample_events", CommandPolicy::SessionOnly);
+    map.insert("expiry_override", CommandPolicy::Permission("lab.result.enter"));
 
     map.insert(
         "get_audit_logs",
@@ -148,6 +151,12 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
         "enter_lab_result",
         CommandPolicy::Permission("lab.result.enter"),
     );
+    map.insert("get_lab_reports", CommandPolicy::SessionOnly);
+    map.insert("create_lab_report", CommandPolicy::Permission("lab.order"));
+    map.insert("finalize_lab_report", CommandPolicy::Permission("lab.result.enter"));
+    map.insert("amend_lab_report", CommandPolicy::Permission("lab.result.enter"));
+    map.insert("forward_lab_report", CommandPolicy::SessionOnly);
+    map.insert("get_forwarded_reports_to_me", CommandPolicy::SessionOnly);
 
     map.insert(
         "get_paired_devices",
