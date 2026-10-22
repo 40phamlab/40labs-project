@@ -2,17 +2,20 @@
 
 export type Day = 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN';
 
+export type BusinessType = 'Supplier' | 'Retailer' | 'Face to Face' | 'Cosmetics';
+
 export interface MarketplaceSupplier {
   businessId: `AFYA-${string}`;
   name: string;
   logoUrl?: string;
+  businessTypes: BusinessType[];
   verification: {
     verified40Labs: boolean;
     tmda: boolean;
     tra: boolean;
   };
   phones: string[];
-  email?: string;
+  email: string;
   location: {
     city: string;
     region: string;

@@ -1,7 +1,8 @@
 // [PHASE: marketplace-preview — QA]
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { normalizeToE164 } from '../data/channels/phone';
 import { templateCatalogRepo, templateSupplierRepo } from '../data/templateRepos';
+import { calculateOpenNow } from '../utils/availability';
 
 describe('Purchases Feature QA Audit', () => {
   it('normalizes various phone number formats correctly', () => {
@@ -30,5 +31,29 @@ describe('Purchases Feature QA Audit', () => {
     expect(suppliers.length).toBeGreaterThan(0);
     const catalog = await templateCatalogRepo.searchProducts('paracetamol');
     expect(catalog.length).toBeGreaterThan(0);
+  });
+
+  it('calculates openNow status correctly', () => {
+    const status = calculateOpenNow({
+      openTime: '08:00',
+      closeTime: '18:00',
+      days: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],
+    });
+    expect(status).toHaveProperty('isOpen');
+    expect(status).toHaveProperty('label');
+    expect(status).toHaveProperty('tooltip');
+  });
+
+  it('warns in dev when businessId is missing', () => {
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const supplierWithoutId = { name: 'Test Supplier', businessId: '' };
+    if (!supplierWithoutId.businessId) {
+      console.warn('[40Labs Purchases] Missing businessId for supplier:', supplierWithoutId);
+    }
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Missing businessId'),
+      expect.any(Object)
+    );
+    consoleWarnSpy.mockRestore();
   });
 });

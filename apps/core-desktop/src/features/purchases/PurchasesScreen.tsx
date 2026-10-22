@@ -1,4 +1,4 @@
-// [PHASE: marketplace-preview — Purchases shell]
+// [PHASE: marketplace-preview — Purchases shell & routing]
 import * as React from 'react';
 import { TabContainer } from '../../components/TabContainer';
 import { SupplierLeftPanel } from './components/SupplierLeftPanel';
@@ -7,8 +7,15 @@ import { StoresTabContent } from './components/StoresTabContent';
 import { OrderList } from './components/OrderList';
 import { OrderDetailDrawer } from './components/OrderDetailDrawer';
 import { SupplierStorefront } from './components/SupplierStorefront';
+import { SupplierProfilePage } from './components/SupplierProfilePage';
 import { usePurchasesUiStore, PurchasesTabId } from './store/purchasesUi.slice';
-import { useSuppliersQuery, useFollowedSuppliersQuery, useOrdersQuery, useMarketplaceMutations } from './hooks/usePurchasesMarketplace';
+import {
+  useSuppliersQuery,
+  useFollowedSuppliersQuery,
+  useOrdersQuery,
+  useMarketplaceMutations,
+  useCatalogQuery,
+} from './hooks/usePurchasesMarketplace';
 
 export const PurchasesScreen: React.FC = () => {
   const {
@@ -33,7 +40,53 @@ export const PurchasesScreen: React.FC = () => {
   const { toggleFollow, updateOrderStatus } = useMarketplaceMutations();
 
   const selectedOrder = [...recentlyOrders, ...pendingOrders, ...completedOrders].find((o) => o.id === selectedOrderId) || null;
-  const selectedSupplierObj = allSuppliers.find((s) => s.businessId === selectedSupplierId) || null;
+
+  // Route state parsed from window.location.hash
+  const [routeState, setRouteState] = React.useState<{
+    mode: 'list' | 'storefront' | 'profile';
+    businessId: string | null;
+    tab?: string;
+  }>({ mode: 'list', businessId: null });
+
+  const parseHash = React.useCallback(() => {
+    const hash = window.location.hash || '#purchases';
+    if (hash.includes('/profile')) {
+      const match = hash.match(/\/supplier\/([^/]+)\/profile/);
+      if (match) {
+        return { mode: 'profile' as const, businessId: match[1] };
+      }
+    } else if (hash.includes('/supplier/')) {
+      const match = hash.match(/\/supplier\/([^/?]+)/);
+      const urlParams = new URLSearchParams(hash.split('?')[1] || '');
+      const tab = urlParams.get('tab') || 'products';
+      if (match) {
+        return { mode: 'storefront' as const, businessId: match[1], tab };
+      }
+    }
+    return { mode: 'list' as const, businessId: null };
+  }, []);
+
+  React.useEffect(() => {
+    const handleHashChange = () => {
+      const parsed = parseHash();
+      setRouteState(parsed);
+      if (parsed.businessId) {
+        setSelectedSupplierId(parsed.businessId);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [parseHash, setSelectedSupplierId]);
+
+  const handleNavigate = React.useCallback((route: string) => {
+    window.location.hash = route;
+  }, []);
+
+  const selectedSupplierObj = allSuppliers.find((s) => s.businessId === routeState.businessId || s.businessId === selectedSupplierId) || null;
+
+  const { data: selectedSupplierCatalog = [] } = useCatalogQuery(undefined, selectedSupplierObj?.businessId);
 
   const counts = {
     stores: followedSuppliers.length,
@@ -47,8 +100,16 @@ export const PurchasesScreen: React.FC = () => {
   }, [toggleFollow]);
 
   const handleOpenStore = React.useCallback((supplierBusinessId: string) => {
-    setSelectedSupplierId(supplierBusinessId);
-  }, [setSelectedSupplierId]);
+    handleNavigate(`#purchases/supplier/${supplierBusinessId}`);
+  }, [handleNavigate]);
+
+  const handleToggleFollowSupplier = React.useCallback(async () => {
+    if (!selectedSupplierObj) return;
+    const isCurrentlyFollowed = followedSuppliers.some((s) => s.businessId === selectedSupplierObj.businessId);
+    await toggleFollow(selectedSupplierObj.businessId, !isCurrentlyFollowed);
+  }, [selectedSupplierObj, followedSuppliers, toggleFollow]);
+
+  const isSelectedFollowed = selectedSupplierObj ? followedSuppliers.some((s) => s.businessId === selectedSupplierObj.businessId) : false;
 
   return (
     <TabContainer>
@@ -57,41 +118,41 @@ export const PurchasesScreen: React.FC = () => {
         <div className="w-[280px] lg:w-[320px] shrink-0 h-full overflow-y-auto custom-scrollbar">
           <SupplierLeftPanel
             suppliers={allSuppliers}
-            selectedSupplierId={selectedSupplierId}
-            onSelectSupplier={setSelectedSupplierId}
+            selectedSupplierId={routeState.businessId || selectedSupplierId}
+            onSelectSupplier={(id) => {
+              if (id) handleNavigate(`#purchases/supplier/${id}`);
+              else handleNavigate('#purchases');
+            }}
             onSearchChange={setSearchText}
           />
         </div>
 
-        {/* Right Pane: Supplier Storefront or Tabs Content */}
-        <div className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto custom-scrollbar bg-panel rounded-card p-4 border border-border/50 elevation-raised flex flex-col">
-          {selectedSupplierId ? (
+        {/* Right Pane */}
+        <div className="flex-1 min-w-0 min-h-0 h-full overflow-y-auto custom-scrollbar bg-panel rounded-card border border-border/50 elevation-raised flex flex-col">
+          {routeState.mode === 'profile' && selectedSupplierObj ? (
+            <SupplierProfilePage
+              supplier={selectedSupplierObj}
+              catalog={selectedSupplierCatalog}
+              orders={[...recentlyOrders, ...pendingOrders, ...completedOrders]}
+              isFollowed={isSelectedFollowed}
+              onToggleFollow={handleToggleFollowSupplier}
+              onNavigate={handleNavigate}
+            />
+          ) : routeState.mode === 'storefront' && selectedSupplierObj ? (
             <SupplierStorefront
-              supplierId={selectedSupplierId}
-              supplier={selectedSupplierObj ? {
-                ...selectedSupplierObj,
-                id: selectedSupplierObj.businessId,
-                name: selectedSupplierObj.name,
-                region: selectedSupplierObj.location.region,
-                phone: selectedSupplierObj.phones[0],
-                email: selectedSupplierObj.email,
-                whatsapp: selectedSupplierObj.phones[0],
-                business: {
-                  name: selectedSupplierObj.name,
-                  address: { region: selectedSupplierObj.location.region, district: selectedSupplierObj.location.city, place: selectedSupplierObj.location.label },
-                },
-              } : undefined}
-              onBack={() => setSelectedSupplierId(null)}
+              supplier={selectedSupplierObj}
+              initialTab={routeState.tab}
+              onNavigate={handleNavigate}
             />
           ) : (
-            <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex flex-col h-full overflow-hidden p-4">
               <PurchasesTabs
                 activeTab={activeTab}
                 onTabChange={(tab: PurchasesTabId) => setActiveTab(tab)}
                 counts={counts}
               />
 
-              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pt-3">
                 {activeTab === 'stores' && (
                   <StoresTabContent
                     followedSuppliers={followedSuppliers}

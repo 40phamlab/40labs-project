@@ -1,11 +1,12 @@
 // [PHASE: marketplace-preview — Data foundation]
-import { Supplier, CatalogProduct } from '@40labs/types';
+import { MarketplaceSupplier, CatalogProduct } from '@40labs/types';
 
-export const SEED_SUPPLIERS: Supplier[] = [
+export const SEED_SUPPLIERS: MarketplaceSupplier[] = [
   {
     businessId: 'AFYA-DAR01',
     name: 'Kibo Pharma Distributors',
     logoUrl: undefined,
+    businessTypes: ['Supplier', 'Retailer'],
     verification: { verified40Labs: true, tmda: true, tra: true },
     phones: ['+255 754 889 000', '+255 713 111 222'],
     email: 'info@kibopharma.co.tz',
@@ -20,6 +21,7 @@ export const SEED_SUPPLIERS: Supplier[] = [
   {
     businessId: 'AFYA-ARU01',
     name: 'Arusha Medical Hub',
+    businessTypes: ['Supplier'],
     verification: { verified40Labs: true, tmda: true, tra: true },
     phones: ['+255 784 222 333'],
     email: 'sales@arushamedical.co.tz',
@@ -33,6 +35,7 @@ export const SEED_SUPPLIERS: Supplier[] = [
   {
     businessId: 'AFYA-MWZ01',
     name: 'Lake Victoria Drugs',
+    businessTypes: ['Supplier', 'Face to Face'],
     verification: { verified40Labs: true, tmda: true, tra: false },
     phones: ['+255 762 333 444'],
     email: 'orders@lakevictoriadrugs.co.tz',
@@ -46,6 +49,7 @@ export const SEED_SUPPLIERS: Supplier[] = [
   {
     businessId: 'AFYA-DOM01',
     name: 'Capital Meds Dodoma',
+    businessTypes: ['Supplier'],
     verification: { verified40Labs: true, tmda: true, tra: true },
     phones: ['+255 715 444 555'],
     email: 'contact@capitalmeds.co.tz',
@@ -59,8 +63,10 @@ export const SEED_SUPPLIERS: Supplier[] = [
   {
     businessId: 'AFYA-MBE01',
     name: 'Southern Highlands Pharma',
+    businessTypes: ['Retailer', 'Face to Face'],
     verification: { verified40Labs: false, tmda: false, tra: false },
     phones: ['+255 756 555 666'],
+    email: 'info@southernhighlands.co.tz',
     location: { city: 'Mbeya', region: 'Mbeya', label: 'Soweto, Main Highway' },
     availability: { openTime: '09:00', closeTime: '18:00', days: ['MON', 'TUE', 'WED', 'THU', 'FRI'] },
     flags: { ePharmacy: false, education: false, delivery: true },
@@ -69,6 +75,7 @@ export const SEED_SUPPLIERS: Supplier[] = [
   {
     businessId: 'AFYA-MOS01',
     name: 'Kilimanjaro Healthcare',
+    businessTypes: ['Supplier', 'Cosmetics'],
     verification: { verified40Labs: true, tmda: true, tra: true },
     phones: ['+255 787 666 777'],
     email: 'support@kilimanjarohealth.co.tz',
@@ -82,8 +89,10 @@ export const SEED_SUPPLIERS: Supplier[] = [
   {
     businessId: 'AFYA-DAR02',
     name: 'Dar Express Medical',
+    businessTypes: ['Retailer'],
     verification: { verified40Labs: false, tmda: true, tra: false },
     phones: ['+255 712 777 888'],
+    email: 'orders@darexpress.co.tz',
     location: { city: 'Dar es Salaam', region: 'Dar es Salaam', label: 'Ilala, Gerezani' },
     availability: { openTime: '08:30', closeTime: '16:30', days: ['MON', 'TUE', 'WED', 'THU', 'FRI'] },
     flags: { ePharmacy: false, education: false, delivery: false },
@@ -92,6 +101,7 @@ export const SEED_SUPPLIERS: Supplier[] = [
   {
     businessId: 'AFYA-MWZ02',
     name: 'Nyanza Pharma Supplies',
+    businessTypes: ['Supplier', 'Retailer', 'Cosmetics'],
     verification: { verified40Labs: true, tmda: true, tra: true },
     phones: ['+255 755 888 999'],
     email: 'sales@nyanzapharma.co.tz',
