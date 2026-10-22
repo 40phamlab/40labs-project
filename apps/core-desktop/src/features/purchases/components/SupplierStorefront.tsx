@@ -76,7 +76,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
     await sendOrder(supplier, cart, note);
   };
 
-  const supplierDeals = React.memo(() => {
+  const supplierDeals = React.useMemo(() => {
     const ordersForThisSupplier = supplierOrders.filter((o) => o.sellerBusinessId === supplier.businessId);
     const dealEntries: SupplierDealEntry[] = [];
     ordersForThisSupplier.forEach((po) => {
@@ -95,7 +95,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
       });
     });
     return dealEntries;
-  })();
+  }, [supplierOrders, supplier.businessId, catalog]);
 
   const subtotal = cart.lines.reduce((sum, l) => sum + l.qty * l.unitPriceTzsSnapshot, 0);
   const totalCartCount = cart.lines.reduce((sum, l) => sum + l.qty, 0);
