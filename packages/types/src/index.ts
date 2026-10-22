@@ -23,3 +23,4 @@ export * from './dashboard';
 export * from './stockAnalytics';
 export * from './chart';
 export * from './alert';
+export * from './marketplace';

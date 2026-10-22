@@ -1,13 +1,20 @@
 // [PHASE: marketplace-preview — Data foundation]
-import { Supplier, CatalogProduct, SupplierCart, CartLine, PurchaseOrder, PurchaseOrderStatus } from '@40labs/types';
+import {
+  MarketplaceSupplier,
+  CatalogProduct,
+  MarketplaceSupplierCart,
+  MarketplaceCartLine,
+  MarketplacePurchaseOrder,
+  MarketplacePurchaseOrderStatus,
+} from '@40labs/types';
 
 export interface SupplierRepo {
-  list(): Promise<Supplier[]>;
-  get(businessId: string): Promise<Supplier | null>;
-  search(q: string): Promise<Supplier[]>;
+  list(): Promise<MarketplaceSupplier[]>;
+  get(businessId: string): Promise<MarketplaceSupplier | null>;
+  search(q: string): Promise<MarketplaceSupplier[]>;
   follow(supplierBusinessId: string): Promise<void>;
   unfollow(supplierBusinessId: string): Promise<void>;
-  listFollowed(): Promise<Supplier[]>;
+  listFollowed(): Promise<MarketplaceSupplier[]>;
 }
 
 export interface CatalogRepo {
@@ -17,15 +24,19 @@ export interface CatalogRepo {
 }
 
 export interface CartRepo {
-  getCart(supplierBusinessId: string): Promise<SupplierCart>;
-  upsertLine(supplierBusinessId: string, line: CartLine): Promise<SupplierCart>;
-  removeLine(supplierBusinessId: string, productId: string): Promise<SupplierCart>;
+  getCart(supplierBusinessId: string): Promise<MarketplaceSupplierCart>;
+  upsertLine(supplierBusinessId: string, line: MarketplaceCartLine): Promise<MarketplaceSupplierCart>;
+  removeLine(supplierBusinessId: string, productId: string): Promise<MarketplaceSupplierCart>;
   clear(supplierBusinessId: string): Promise<void>;
 }
 
 export interface OrderRepo {
-  createDraft(supplierBusinessId: string, cart: SupplierCart, channel?: 'whatsapp' | 'inapp' | 'cloud'): Promise<PurchaseOrder>;
-  listByStatus(status: PurchaseOrderStatus | 'pending' | 'recently'): Promise<PurchaseOrder[]>;
-  listBySupplier(supplierBusinessId: string): Promise<PurchaseOrder[]>;
-  markStatus(orderId: string, status: PurchaseOrderStatus): Promise<PurchaseOrder>;
+  createDraft(
+    supplierBusinessId: string,
+    cart: MarketplaceSupplierCart,
+    channel?: 'whatsapp' | 'inapp' | 'cloud'
+  ): Promise<MarketplacePurchaseOrder>;
+  listByStatus(status: MarketplacePurchaseOrderStatus | 'pending' | 'recently'): Promise<MarketplacePurchaseOrder[]>;
+  listBySupplier(supplierBusinessId: string): Promise<MarketplacePurchaseOrder[]>;
+  markStatus(orderId: string, status: MarketplacePurchaseOrderStatus): Promise<MarketplacePurchaseOrder>;
 }

@@ -26,6 +26,12 @@ receipt (GRN) always works offline regardless of PO submission status.
 
 ## PIN gates
 PO approval above owner-set threshold = PIN-gated, server-enforced.
+TODO: [Server enforcement endpoint /api/purchases/approve step-up verification] [PHASE: marketplace-preview]
+
+## Future Cloud Endpoints (DRAFT — Not Implemented)
+- `POST /orders`: Submit purchase order to cloud marketplace backend.
+- `GET /orders/:id`: Fetch order status and synchronization state.
+- `POST /orders/:id/events`: Record local order lifecycle event rows (sent, confirmed, completed, cancelled).
 
 ## Design tokens
 Verification badge uses `color-primary` (verified) — do not invent a new
