@@ -1,4 +1,4 @@
-// [PHASE: marketplace-preview — Supplier Profile Page]
+// [PHASE: marketplace-preview — Storefront scroll + space]
 import * as React from 'react';
 import { MarketplaceSupplier, CatalogProduct, PurchaseOrder } from '@40labs/types';
 import { Button, StatusBadge } from '@40labs/ui-components';
@@ -44,100 +44,153 @@ export const SupplierProfilePage: React.FC<SupplierProfilePageProps> = ({
   const daysOfWeek = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
   const todayKey = new Date().toLocaleString('en-US', { weekday: 'short', timeZone: 'Africa/Dar_es_Salaam' }).toUpperCase().slice(0, 3);
 
+  // IntersectionObserver for header scroll detection
+  const headerRef = React.useRef<HTMLDivElement>(null);
+  const stickyBarRef = React.useRef<HTMLDivElement>(null);
+  const [isHeaderScrolled, setIsHeaderScrolled] = React.useState(false);
+
+  React.useEffect(() => {
+    const headerEl = headerRef.current;
+    if (!headerEl) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsHeaderScrolled(!entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+    observer.observe(headerEl);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <div className="flex flex-col gap-5 h-full bg-panel p-6 rounded-card border border-border/50 elevation-raised overflow-y-auto custom-scrollbar">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-medium text-text-muted shrink-0">
-        <button type="button" onClick={() => onNavigate('#purchases')} className="hover:text-primary transition-colors">
-          Purchases
-        </button>
-        <ChevronRight size={14} className="opacity-60" />
-        <button
-          type="button"
-          onClick={() => onNavigate(`#purchases/supplier/${supplier.businessId}`)}
-          className="hover:text-primary transition-colors truncate max-w-[200px]"
-        >
-          {supplier.name}
-        </button>
-        <ChevronRight size={14} className="opacity-60" />
-        <span className="text-text font-bold">Profile</span>
-      </nav>
+    <div className="flex flex-col gap-5 bg-panel p-6 rounded-card border border-border/50 elevation-raised min-h-full pb-6">
+      {/* Scroll-away area: Breadcrumb + Header */}
+      <div ref={headerRef} className="flex flex-col gap-5">
+        {/* Breadcrumb */}
+        <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-medium text-text-muted shrink-0">
+          <button type="button" onClick={() => onNavigate('#purchases')} className="hover:text-primary transition-colors">
+            Purchases
+          </button>
+          <ChevronRight size={14} className="opacity-60" />
+          <button
+            type="button"
+            onClick={() => onNavigate(`#purchases/supplier/${supplier.businessId}`)}
+            className="hover:text-primary transition-colors truncate max-w-[200px]"
+          >
+            {supplier.name}
+          </button>
+          <ChevronRight size={14} className="opacity-60" />
+          <span className="text-text font-bold">Profile</span>
+        </nav>
 
-      {/* Header card */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 p-6 bg-panel-strong border border-border/30 rounded-card shrink-0 shadow-sm">
-        <div className="flex items-center gap-5 min-w-0">
-          <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-sora font-bold text-2xl shrink-0 shadow-inner">
-            {initials}
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl font-bold font-sora text-text truncate">{supplier.name}</h1>
-              {supplier.businessId ? (
+        {/* Header card */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 p-6 bg-panel-strong border border-border/30 rounded-card shrink-0 shadow-sm">
+          <div className="flex items-center gap-5 min-w-0">
+            <div className="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center font-sora font-bold text-2xl shrink-0 shadow-inner">
+              {initials}
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-xl font-bold font-sora text-text truncate">{supplier.name}</h1>
+                {supplier.businessId ? (
+                  <span
+                    onClick={handleCopyBusinessId}
+                    className="font-mono text-xs bg-panel px-2.5 py-0.5 rounded border border-border/30 cursor-pointer hover:bg-border/20 transition-colors text-text-muted select-all"
+                    title="Click to copy Business ID"
+                  >
+                    {supplier.businessId}
+                  </span>
+                ) : (
+                  <span className="font-mono text-xs text-text-muted">"—"</span>
+                )}
                 <span
-                  onClick={handleCopyBusinessId}
-                  className="font-mono text-xs bg-panel px-2.5 py-0.5 rounded border border-border/30 cursor-pointer hover:bg-border/20 transition-colors text-text-muted select-all"
-                  title="Click to copy Business ID"
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    openStatus.isOpen ? 'bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/20' : 'bg-danger/10 text-danger border border-danger/20'
+                  }`}
+                  title={openStatus.tooltip}
                 >
-                  {supplier.businessId}
+                  <span className={`w-1.5 h-1.5 rounded-full ${openStatus.isOpen ? 'bg-[#16A34A]' : 'bg-danger'}`} />
+                  {openStatus.label}
                 </span>
-              ) : (
-                <span className="font-mono text-xs text-text-muted">"—"</span>
-              )}
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                  openStatus.isOpen ? 'bg-[#16A34A]/10 text-[#16A34A] border border-[#16A34A]/20' : 'bg-danger/10 text-danger border border-danger/20'
-                }`}
-                title={openStatus.tooltip}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${openStatus.isOpen ? 'bg-[#16A34A]' : 'bg-danger'}`} />
-                {openStatus.label}
-              </span>
-            </div>
+              </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {supplier.businessTypes?.map((bt) => (
-                <span key={bt} className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
-                  {bt}
-                </span>
-              ))}
-            </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {supplier.businessTypes?.map((bt) => (
+                  <span key={bt} className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                    {bt}
+                  </span>
+                ))}
+              </div>
 
-            <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted pt-1">
-              {supplier.phones[0] && (
-                <span className="flex items-center gap-1.5 font-mono">
-                  <Phone size={12} /> {supplier.phones[0]}
+              <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted pt-1">
+                {supplier.phones[0] && (
+                  <span className="flex items-center gap-1.5 font-mono">
+                    <Phone size={12} /> {supplier.phones[0]}
+                  </span>
+                )}
+                {supplier.email && (
+                  <span className="flex items-center gap-1.5 font-mono">
+                    <Mail size={12} /> {supplier.email}
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5 font-medium">
+                  <MapPin size={12} /> {supplier.location.label}, {supplier.location.city}
                 </span>
-              )}
-              {supplier.email && (
-                <span className="flex items-center gap-1.5 font-mono">
-                  <Mail size={12} /> {supplier.email}
-                </span>
-              )}
-              <span className="flex items-center gap-1.5 font-medium">
-                <MapPin size={12} /> {supplier.location.label}, {supplier.location.city}
-              </span>
-            </div>
+              </div>
 
-            <div className="pt-1">
-              <VerificationBadges verification={supplier.verification} />
+              <div className="pt-1">
+                <VerificationBadges verification={supplier.verification} />
+              </div>
             </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <FollowButton isFollowed={isFollowed} onToggle={onToggleFollow} />
+            <Button
+              intent="secondary"
+              size="md"
+              onClick={() => onNavigate(`#purchases/supplier/${supplier.businessId}`)}
+            >
+              Storefront
+            </Button>
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+      {/* Sticky Slim Bar */}
+      <div
+        ref={stickyBarRef}
+        className={`sticky top-0 z-30 transition-all duration-200 bg-[#F8FAFB] dark:bg-panel border-b ${
+          isHeaderScrolled ? 'border-border/60 shadow-md py-2 px-4' : 'border-transparent py-1 px-1'
+        } flex items-center justify-between gap-3 min-h-[56px] rounded-card`}
+      >
+        <div
+          className={`hidden min-[1200px]:flex items-center gap-2.5 transition-all duration-150 ease-out motion-reduce:transition-none ${
+            isHeaderScrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1 pointer-events-none'
+          }`}
+        >
+          <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-sora font-bold text-xs shrink-0 shadow-inner">
+            {initials}
+          </div>
+          <span className="text-xs font-bold text-text truncate max-w-[180px]" title={supplier.name}>
+            {supplier.name} (Profile)
+          </span>
           <FollowButton isFollowed={isFollowed} onToggle={onToggleFollow} />
+        </div>
+
+        <div className="flex items-center gap-2 ml-auto">
           <Button
-            intent="secondary"
-            size="md"
+            intent="primary"
+            size="sm"
             onClick={() => onNavigate(`#purchases/supplier/${supplier.businessId}`)}
           >
-            Storefront
+            Open Storefront
           </Button>
         </div>
       </div>
 
       {/* Grid: Availability & Flags & Services */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 shrink-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Availability Card */}
         <div className="p-5 bg-panel-strong border border-border/30 rounded-card space-y-4">
           <div className="flex items-center justify-between">
@@ -217,7 +270,7 @@ export const SupplierProfilePage: React.FC<SupplierProfilePageProps> = ({
       </div>
 
       {/* Services Grid */}
-      <div className="p-5 bg-panel-strong border border-border/30 rounded-card space-y-4 shrink-0">
+      <div className="p-5 bg-panel-strong border border-border/30 rounded-card space-y-4">
         <h3 className="font-bold text-sm text-text">Services Offered</h3>
         {supplier.services.length === 0 ? (
           <p className="text-xs text-text-muted italic py-4 text-center">No specialized services listed by this supplier.</p>
@@ -233,11 +286,11 @@ export const SupplierProfilePage: React.FC<SupplierProfilePageProps> = ({
         )}
       </div>
 
-      {/* Featured Products Strip (Placeholder [V2]) */}
-      <div className="p-5 bg-panel-strong border border-border/30 rounded-card space-y-4 shrink-0">
+      {/* Featured Products Strip */}
+      <div className="p-5 bg-panel-strong border border-border/30 rounded-card space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-sm text-text">Featured Products (Top Deals)</h3>
-          <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">TODO: Cloud Profile [V2]</span>
+          <span className="text-[10px] font-mono text-text-muted uppercase tracking-wider">Cloud Profile [V2]</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {featuredProducts.map((prod) => (

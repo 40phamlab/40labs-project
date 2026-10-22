@@ -1,4 +1,4 @@
-// [PHASE: marketplace-preview — Cart rebuild]
+// [PHASE: marketplace-preview — Storefront scroll + space]
 import * as React from 'react';
 import { SupplierCart, MarketplaceSupplier, CatalogProduct } from '@40labs/types';
 import { ShoppingBag, Send, Trash2, ArrowRight } from 'lucide-react';
@@ -60,7 +60,7 @@ export const CartTab: React.FC<CartTabProps> = ({
   }, [cart.lines.length, orderNote, onSendOrder]);
 
   const handleClearWithConfirm = () => {
-    if (window.confirm('Are you sure you want to clear this cart?')) {
+    if (window.confirm('Are you sure you want to clear this cart? / Una hakika unataka kufuta gari hili?')) {
       onClearCart();
     }
   };
@@ -81,9 +81,9 @@ export const CartTab: React.FC<CartTabProps> = ({
   }
 
   return (
-    <div ref={containerRef} className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden p-1">
-      {/* Left: Scrollable list of CartLine */}
-      <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto pr-1 custom-scrollbar">
+    <div ref={containerRef} className="flex flex-col lg:flex-row gap-6 p-1">
+      {/* Left: List of CartLine */}
+      <div className="flex-1 flex flex-col gap-3 pr-1">
         {hasControlledItems && (
           <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-card flex items-center gap-2 text-xs text-amber-700 font-bold">
             <span>⚠️ This order contains controlled substances and requires pharmacist step-up approval upon sending.</span>
@@ -120,7 +120,7 @@ export const CartTab: React.FC<CartTabProps> = ({
       </div>
 
       {/* Right: Sticky CartSummary (320px) */}
-      <div className="w-full lg:w-[320px] shrink-0 sticky top-0 flex flex-col gap-4 bg-panel-strong/40 p-4 rounded-card border border-border/40 elevation-raised">
+      <div className="w-full lg:w-[320px] shrink-0 sticky top-16 flex flex-col gap-4 bg-panel-strong/40 p-4 rounded-card border border-border/40 elevation-raised h-fit">
         <div className="space-y-2">
           <h3 className="text-xs font-bold uppercase tracking-wider text-text">Order Summary</h3>
           <div className="flex items-center justify-between text-xs text-text-muted">

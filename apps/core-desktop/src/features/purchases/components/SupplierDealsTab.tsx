@@ -1,4 +1,4 @@
-// [PHASE: marketplace-preview]
+// [PHASE: marketplace-preview — Storefront scroll + space]
 import * as React from 'react';
 import { Tag } from 'lucide-react';
 import { ProductActionCard } from './ProductActionCard';
@@ -29,12 +29,12 @@ export const SupplierDealsTab: React.FC<SupplierDealsTabProps> = ({
   onMoreInfo,
 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1 overflow-y-auto custom-scrollbar">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1">
       {deals.length === 0 ? (
         <div className="col-span-full flex flex-col items-center justify-center py-16 text-text-muted gap-3">
           <Tag size={36} className="opacity-30" />
           <p className="text-xs italic text-center">
-            No past purchase order history or deals available from {supplierName}.
+            No past purchase order history or deals available from {supplierName}. / Hakuna historia ya oda za ununuzi.
           </p>
         </div>
       ) : (
