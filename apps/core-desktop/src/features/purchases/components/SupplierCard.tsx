@@ -1,9 +1,10 @@
-// [PHASE: marketplace-preview — Cart rebuild]
+// [PHASE: marketplace-preview — Polish]
 import * as React from 'react';
 import { Supplier } from '@40labs/types';
 import { StatusBadge, Button } from '@40labs/ui-components';
-import { MapPin, Store, ShoppingBag } from 'lucide-react';
+import { MapPin, Store, ShoppingBag, Clock } from 'lucide-react';
 import { useCartQuery } from '../hooks/usePurchasesMarketplace';
+import { calculateOpenNow } from '../utils/availability';
 
 export interface SupplierCardProps {
   supplier: Supplier;
@@ -18,6 +19,7 @@ export const SupplierCard: React.FC<SupplierCardProps> = ({
 }) => {
   const { data: cart } = useCartQuery(supplier.businessId);
   const totalCartQty = cart?.lines.reduce((sum, l) => sum + l.qty, 0) || 0;
+  const openStatus = calculateOpenNow(supplier.availability);
 
   return (
     <div className="p-4 bg-panel border border-border/40 rounded-card flex flex-col justify-between gap-3 elevation-raised hover:border-primary/40 transition-all">
@@ -38,6 +40,15 @@ export const SupplierCard: React.FC<SupplierCardProps> = ({
           {supplier.verification.tmda && <StatusBadge status="success" label="TMDA" />}
           {supplier.verification.tra && <StatusBadge status="success" label="TRA" />}
           {supplier.verification.verified40Labs && <StatusBadge status="success" label="40Labs" />}
+          <span
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+              openStatus.isOpen ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-danger/10 text-danger border border-danger/20'
+            }`}
+            title={openStatus.tooltip}
+          >
+            <Clock size={10} />
+            {openStatus.label}
+          </span>
         </div>
         {totalCartQty > 0 && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
@@ -48,12 +59,12 @@ export const SupplierCard: React.FC<SupplierCardProps> = ({
       </div>
 
       <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/20 text-xs text-text-muted">
-        <div className="flex items-center gap-1 font-medium truncate">
-          <MapPin size={12} className="shrink-0" />
-          <span className="truncate">{supplier.location.city}</span>
+        <div className="flex items-center gap-1 font-medium truncate min-w-0 flex-1" title={`${supplier.location.city}, ${supplier.location.label}`}>
+          <MapPin size={12} className="shrink-0 text-primary" />
+          <span className="truncate whitespace-nowrap">{supplier.location.city} • {supplier.location.label}</span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Button size="sm" intent="ghost" onClick={() => onUnfollow(supplier.businessId)}>
+          <Button size="sm" intent="secondary" onClick={() => onUnfollow(supplier.businessId)} className="!px-3 !h-7">
             Unfollow
           </Button>
           <Button
@@ -61,6 +72,7 @@ export const SupplierCard: React.FC<SupplierCardProps> = ({
             intent="primary"
             leftIcon={<Store size={14} />}
             onClick={() => onOpen(supplier.businessId)}
+            className="!px-3 !h-7"
           >
             Open
           </Button>

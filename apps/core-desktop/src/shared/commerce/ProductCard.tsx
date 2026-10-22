@@ -1,4 +1,5 @@
 // [PHASE: marketplace-preview — Product catalog UI v2]
+// TODO: confirm TMDA schedule and premises-licence requirement prior to launch [marketplace-preview]
 import * as React from 'react';
 import { Button } from '@40labs/ui-components';
 import { MessageCircle, Info } from 'lucide-react';

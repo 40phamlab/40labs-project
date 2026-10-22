@@ -1,10 +1,12 @@
-// [PHASE: marketplace-preview — Product catalog UI]
+// [PHASE: marketplace-preview — Polish]
 import * as React from 'react';
 import { CatalogProduct } from '@40labs/types';
 import { Modal, Button } from '@40labs/ui-components';
 import { StockChip } from './StockChip';
 import { MessageCircle, Plus, Minus } from 'lucide-react';
 import { normalizeToE164 } from '../data/channels/phone';
+
+// TODO: confirm TMDA schedule and premises-licence requirement prior to launch [marketplace-preview]
 
 export interface ProductDrawerProps {
   isOpen: boolean;
@@ -45,6 +47,12 @@ export const ProductDrawer: React.FC<ProductDrawerProps> = ({
     <Modal isOpen={isOpen} onClose={onClose} title={product.name} size="md">
       <div className="flex flex-col gap-4 p-2 text-xs">
         <div className="p-3 bg-panel-strong rounded-card space-y-2">
+          {product.controlled && (
+            <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-amber-700 font-bold flex items-center justify-between">
+              <span>Controlled Substance (TMDA Schedule)</span>
+              <span className="text-[10px] px-1.5 py-0.5 bg-amber-500 text-white rounded">Controlled</span>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <span className="text-text-muted uppercase text-[10px] font-bold">Generic Name</span>
             <span className="font-bold text-text">{product.genericName}</span>
