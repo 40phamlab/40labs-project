@@ -33,7 +33,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
 
   const containerClasses =
     variant === 'card'
-      ? 'w-full aspect-[4/3] rounded-t-card bg-surface border-b border-border/20 flex items-center justify-center overflow-hidden relative'
+      ? 'w-full aspect-[16/10] max-h-[160px] rounded-t-card bg-surface border-b border-border/20 flex items-center justify-center overflow-hidden relative'
       : 'w-12 h-12 rounded-input bg-surface border border-border/20 flex items-center justify-center overflow-hidden shrink-0 relative';
 
   if (src && !hasError) {
@@ -45,7 +45,7 @@ export const ProductImage: React.FC<ProductImageProps> = ({
           loading="lazy"
           decoding="async"
           onError={() => setHasError(true)}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover max-h-[160px]"
         />
       </div>
     );
