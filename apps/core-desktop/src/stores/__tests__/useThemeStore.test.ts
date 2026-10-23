@@ -1,14 +1,15 @@
 import { describe, test, expect, beforeEach } from 'vitest';
 import { useThemeStore } from '../useThemeStore';
 
-describe('useThemeStore (Theme Controller)', () => {
+describe('useThemeStore (Theme & Language Preferences Controller)', () => {
   beforeEach(() => {
     localStorage.clear();
-    useThemeStore.setState({ theme: 'system' });
+    useThemeStore.setState({ theme: 'system', language: 'sw' });
   });
 
-  test('initializes with system theme by default', () => {
+  test('initializes with system theme and swahili language by default', () => {
     expect(useThemeStore.getState().theme).toBe('system');
+    expect(useThemeStore.getState().language).toBe('sw');
   });
 
   test('switches theme correctly and updates DOM / localStorage', () => {
@@ -21,6 +22,18 @@ describe('useThemeStore (Theme Controller)', () => {
     expect(useThemeStore.getState().theme).toBe('dark');
     expect(localStorage.getItem('40labs_theme')).toBe('dark');
     expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+
+  test('switches language correctly and updates DOM / localStorage', () => {
+    useThemeStore.getState().setLanguage('en');
+    expect(useThemeStore.getState().language).toBe('en');
+    expect(localStorage.getItem('40labs_language')).toBe('en');
+    expect(document.documentElement.lang).toBe('en-TZ');
+
+    useThemeStore.getState().setLanguage('sw');
+    expect(useThemeStore.getState().language).toBe('sw');
+    expect(localStorage.getItem('40labs_language')).toBe('sw');
+    expect(document.documentElement.lang).toBe('sw-TZ');
   });
 
   test('toggles theme between dark, light, and system', () => {

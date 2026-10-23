@@ -16,11 +16,16 @@ export function isUsingTauriIpc(): boolean {
  */
 export async function invokeCommand<T>(
   command: string,
-  args?: Record<string, unknown>
+  args?: Record<string, unknown>,
+  timeoutMs = 5000
 ): Promise<T> {
   if (isTauriAvailable()) {
     try {
-      return await invoke<T>(command, args);
+      const invokePromise = invoke<T>(command, args);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Tauri IPC timeout for command: ${command}`)), timeoutMs)
+      );
+      return await Promise.race([invokePromise, timeoutPromise]);
     } catch (error) {
       console.error(`[40Labs IPC Error] Command "${command}" failed:`, error);
       throw error;

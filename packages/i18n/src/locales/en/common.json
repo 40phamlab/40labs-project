@@ -1,0 +1,19 @@
+{
+  "appName": "40Labs Core",
+  "save": "Save",
+  "cancel": "Cancel",
+  "loading": "Loading...",
+  "error": "An error occurred",
+  "success": "Success",
+  "landing.theme.system": "System",
+  "landing.theme.light": "Light",
+  "landing.theme.dark": "Dark",
+  "landing.lang.sw": "Kiswahili",
+  "landing.lang.en": "English",
+  "landing.cta.start": "Start",
+  "landing.cta.newDevice": "New Device",
+  "landing.cta.signIn": "Sign In",
+  "landing.cta.haveAccount": "Already have an account?",
+  "sales.clear": "Clear",
+  "dashboard.searchPlaceholder": "Search..."
+}

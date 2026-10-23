@@ -1,0 +1,11 @@
+{
+  "home": "Home",
+  "sales": "Sales & POS",
+  "inventory": "Inventory",
+  "purchases": "Purchases",
+  "patients": "Patients",
+  "lab": "Lab",
+  "dispensary": "Dispensary",
+  "reports": "Reports",
+  "settings": "Settings"
+}

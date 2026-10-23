@@ -1,79 +1,34 @@
-// [PHASE: MVP]
-import { t, Language } from './index';
-
-export function formatDate(d: string | Date | number, lang: Language = 'sw-TZ'): string {
-  const date = new Date(d);
-  if (isNaN(date.getTime())) return '';
-  const locale = lang === 'en' ? 'en-GB' : 'sw-TZ';
-  return new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
-    month: 'short',
+export const formatDate = (date: Date | string | number, locale = 'sw'): string => {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return String(date);
+  const intlLocale = locale === 'sw' ? 'sw-TZ' : 'en-US';
+  return new Intl.DateTimeFormat(intlLocale, {
     year: 'numeric',
-  }).format(date);
-}
-
-export function formatDateTime(d: string | Date | number, lang: Language = 'sw-TZ'): string {
-  const date = new Date(d);
-  if (isNaN(date.getTime())) return '';
-  const locale = lang === 'en' ? 'en-GB' : 'sw-TZ';
-  return new Intl.DateTimeFormat(locale, {
-    day: 'numeric',
     month: 'short',
-    year: 'numeric',
+    day: 'numeric',
+  }).format(d);
+};
+
+export const formatTime = (date: Date | string | number, locale = 'sw'): string => {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return String(date);
+  const intlLocale = locale === 'sw' ? 'sw-TZ' : 'en-US';
+  return new Intl.DateTimeFormat(intlLocale, {
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
-  }).format(date);
-}
+  }).format(d);
+};
 
-export function formatRelative(d: string | Date | number, lang: Language = 'sw-TZ'): string {
-  const date = new Date(d);
-  if (isNaN(date.getTime())) return '';
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
+export const formatNumber = (value: number, locale = 'sw'): string => {
+  const intlLocale = locale === 'sw' ? 'sw-TZ' : 'en-US';
+  return new Intl.NumberFormat(intlLocale).format(value);
+};
 
-  if (diffMin < 1) {
-    return t('dashboard.timeJustNow', lang);
-  } else if (diffMin < 60) {
-    return t('dashboard.timeMinutesAgo', lang).replace('{n}', String(diffMin));
-  } else if (diffDay < 1) {
-    return t('dashboard.timeHoursAgo', lang).replace('{n}', String(diffHour));
-  } else if (diffDay === 1) {
-    return t('dashboard.timeYesterday', lang);
-  } else if (diffDay < 30) {
-    return t('dashboard.timeDaysAgo', lang).replace('{n}', String(diffDay));
-  } else {
-    return formatDate(date, lang);
-  }
-}
-
-export function formatMoney(amount: number | null | undefined): string {
-  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) {
-    return '0';
-  }
-  const num = Number(amount);
-  if (!Number.isFinite(num)) {
-    return '0';
-  }
-  return Math.round(num).toLocaleString('en-US');
-}
-
-export function formatMoneyOrUnknown(amount: number | null | undefined, currency: string = 'TZS'): string {
-  if (amount === null || amount === undefined || Number.isNaN(Number(amount))) {
-    return '—';
-  }
-  const num = Number(amount);
-  return `${currency} ${num.toLocaleString('en-US')}`;
-}
-
-export function formatNumberOrUnknown(value: number | null | undefined): string {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return '—';
-  }
-  return Number(value).toLocaleString('en-US');
-}
-
+export const formatCurrency = (amount: number, currency = 'TZS', locale = 'sw'): string => {
+  const intlLocale = locale === 'sw' ? 'sw-TZ' : 'en-US';
+  return new Intl.NumberFormat(intlLocale, {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};

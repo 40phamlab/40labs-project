@@ -2,9 +2,7 @@ import * as React from 'react';
 import { Panel } from '@40labs/ui-components';
 import type { Business } from '@40labs/types';
 import type { UpdateBusinessPayload } from '../../../hooks/useBusiness';
-import { useThemeStore, type ThemeMode } from '../../../stores/useThemeStore';
-import { useLanguageStore, type Lang } from '../../../stores/useLanguageStore';
-import type { Language } from '@40labs/i18n';
+import { useThemeStore, type ThemeMode, type Lang } from '../../../stores/useThemeStore';
 
 interface AppearancePanelProps {
   business?: Business | null;
@@ -17,8 +15,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   onToggle,
   isLoading = false,
 }) => {
-  const { theme, setTheme } = useThemeStore();
-  const { language, setLanguage } = useLanguageStore();
+  const { theme, setTheme, language, setLanguage } = useThemeStore();
 
   const handleThemeChange = async (newTheme: ThemeMode) => {
     setTheme(newTheme);
@@ -27,10 +24,10 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
     }
   };
 
-  const handleLanguageChange = async (newLang: Language) => {
-    setLanguage(newLang === 'sw-TZ' ? 'sw' : (newLang as Lang));
+  const handleLanguageChange = async (newLang: Lang) => {
+    setLanguage(newLang);
     if (onToggle) {
-      await onToggle({ language: newLang });
+      await onToggle({ language: newLang === 'sw' ? 'sw-TZ' : 'en' });
     }
   };
 
@@ -72,16 +69,16 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
 
         <div className="flex items-center gap-2 p-1 bg-panel-subtle rounded-card border border-border/50 max-w-md">
           {[
-            { id: 'sw-TZ', label: 'Kiswahili' },
+            { id: 'sw', label: 'Kiswahili' },
             { id: 'en', label: 'English' },
           ].map((lang) => {
-            const isActive = language === lang.id || (language === 'sw' && lang.id === 'sw-TZ');
+            const isActive = language === lang.id;
             return (
               <button
                 key={lang.id}
                 type="button"
                 disabled={isLoading}
-                onClick={() => handleLanguageChange(lang.id as Language)}
+                onClick={() => handleLanguageChange(lang.id as Lang)}
                 className={`flex-1 py-2 px-3 rounded-md text-xs font-medium transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-focus-ring ${
                   isActive
                     ? 'bg-surface-elevated text-text-primary font-semibold shadow-sm'

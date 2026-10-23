@@ -1,0 +1,19 @@
+{
+  "appName": "40Labs Core",
+  "save": "Hifadhi",
+  "cancel": "Ghairi",
+  "loading": "Inapakia...",
+  "error": "Kosa limetokea",
+  "success": "Imefaulu",
+  "landing.theme.system": "Mfumo",
+  "landing.theme.light": "Nuru",
+  "landing.theme.dark": "Giza",
+  "landing.lang.sw": "Kiswahili",
+  "landing.lang.en": "Kiingereza",
+  "landing.cta.start": "Anza",
+  "landing.cta.newDevice": "Kifaa Kipya",
+  "landing.cta.signIn": "Ingia",
+  "landing.cta.haveAccount": "Tayari una akaunti?",
+  "sales.clear": "Futa",
+  "dashboard.searchPlaceholder": "Tafuta..."
+}
