@@ -1,8 +1,8 @@
-// [PHASE: marketplace-preview — Deals tab fix]
+// [PHASE: marketplace-preview — Deals tab fix & scrolling alignment]
 import * as React from 'react';
 import { PurchaseOrder, CatalogProduct } from '@40labs/types';
 import { StatusBadge, Button } from '@40labs/ui-components';
-import { Tag, Package, MessageSquare, ShoppingBag, RotateCcw, ArrowRight } from 'lucide-react';
+import { Tag, Package, MessageSquare, ShoppingBag, RotateCcw } from 'lucide-react';
 import { useToast } from '../../../../hooks/useToast';
 import { normalizeToE164 } from '../../data/channels/phone';
 
@@ -117,7 +117,7 @@ export const DealsTab: React.FC<DealsTabProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-4 h-full pb-6">
+    <div className="flex flex-col gap-4 pb-6">
       {/* Summary Strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-panel-strong border border-border/30 rounded-card shrink-0 shadow-sm">
         <div className="space-y-0.5">
@@ -165,8 +165,8 @@ export const DealsTab: React.FC<DealsTabProps> = ({
         ))}
       </div>
 
-      {/* DealRow List */}
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-2.5 pr-1">
+      {/* DealRow List (Natural flow for unified storefront scrolling) */}
+      <div className="space-y-2.5">
         {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center text-text-muted gap-2">
             <p className="text-xs italic">No orders found matching this filter. / Hakuna oda zilizopatikana.</p>
