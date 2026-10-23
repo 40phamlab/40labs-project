@@ -6,9 +6,12 @@ import type { MarketplaceSupplier, CatalogProduct } from '@40labs/types';
 import { SupplierStorefrontHeader } from './SupplierStorefrontHeader';
 import { SupplierProductsTab } from './SupplierProductsTab';
 import { CartTab } from './tabs/CartTab';
+import { DealsTab } from './tabs/DealsTab';
 import { useSendOrder } from '../hooks/useSendOrder';
-import { SupplierDealsTab, SupplierDealEntry } from './SupplierDealsTab';
 import { useCatalogQuery, useCartQuery, useOrdersQuery, useMarketplaceMutations, useFollowedSuppliersQuery } from '../hooks/usePurchasesMarketplace';
+import { useQuery } from '@tanstack/react-query';
+import { templateOrderRepo } from '../data/templateRepos';
+import { usePurchasesUiStore } from '../store/purchasesUi.slice';
 import { WhatsAppChannel } from '../data/channels/WhatsAppChannel';
 import { Button, Popover } from '@40labs/ui-components';
 import { FollowButton } from './FollowButton';
@@ -27,8 +30,12 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   const [activeTab, setActiveTab] = React.useState(initialTab);
   const { data: catalog = [] } = useCatalogQuery(undefined, supplier.businessId);
   const { data: cart = { id: '', supplierBusinessId: supplier.businessId, lines: [] } } = useCartQuery(supplier.businessId);
-  const { data: supplierOrders = [] } = useOrdersQuery('recently');
+  const { data: supplierOrders = [] } = useQuery({
+    queryKey: ['supplier-orders', supplier.businessId],
+    queryFn: () => templateOrderRepo.listBySupplier(supplier.businessId),
+  });
   const { data: followedSuppliers = [] } = useFollowedSuppliersQuery();
+  const setSelectedOrderId = usePurchasesUiStore((s) => s.setSelectedOrderId);
 
   const { toggleFollow, updateCart, createOrder } = useMarketplaceMutations();
   const whatsappChannel = React.useMemo(() => new WhatsAppChannel(), []);
@@ -103,7 +110,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   const tabs = [
     { id: 'products', label: 'Products', count: catalog.length },
     { id: 'cart', label: 'Cart', count: totalCartCount },
-    { id: 'deals', label: 'Deals', count: supplierDeals.length },
+    { id: 'deals', label: 'Deals', count: supplierOrders.length },
   ];
 
   // Header scroll detection via IntersectionObserver
@@ -348,25 +355,20 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
         )}
 
         {activeTab === 'deals' && (
-          <SupplierDealsTab
+          <DealsTab
+            orders={supplierOrders}
+            catalogProducts={catalog}
             supplierName={supplier.name}
-            deals={supplierDeals}
-            onAddDealToCart={(id, price, name) => {
-              handleAddToCart({
-                id,
-                supplierBusinessId: supplier.businessId,
-                name,
-                genericName: '',
-                form: '',
-                packSize: 'Pack',
-                unitPriceTzs: price,
-                stock: 'in',
-                medicineKey: '',
+            supplierPhone={supplier.phones[0]}
+            onSelectOrder={(id) => setSelectedOrderId(id)}
+            onAddToCart={async (product, qty) => {
+              await updateCart(supplier.businessId, {
+                productId: product.id,
+                qty,
+                unitPriceTzsSnapshot: product.unitPriceTzs,
               });
-              handleTabChange('cart');
             }}
-            onCommunicate={() => {}}
-            onMoreInfo={() => {}}
+            onSwitchTab={handleTabChange}
           />
         )}
       </div>

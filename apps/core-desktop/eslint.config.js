@@ -8,6 +8,21 @@ export default tseslint.config(
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: './ProductActionCard',
+              message: 'ProductActionCard has been removed. Use ProductCard or DealRow instead.',
+            },
+            {
+              name: './SupplierDealsTab',
+              message: 'SupplierDealsTab has been removed. Use DealsTab instead.',
+            },
+          ],
+        },
+      ],
     },
   },
   {

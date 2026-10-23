@@ -13,7 +13,7 @@ import { StockIndicator } from '../features/inventory/components/StockIndicator'
 import { ConfigToggleRow } from '../features/sales/components/ConfigToggleRow';
 import { CategorySquare } from '../features/inventory/components/CategorySquare';
 import { CompactProductRow } from '../features/purchases/components/CompactProductRow';
-import { ProductActionCard } from '../features/purchases/components/ProductActionCard';
+import { ProductCard } from '../shared/commerce';
 import { useFilePreviewContext } from '../providers/FilePreviewProvider';
 import { createReportPdfBlob } from '../features/reports/utils/exportReportPdf';
 import { ThemeLogo, LoaderAnimation } from '../components/brand';
@@ -314,12 +314,16 @@ export default function ComponentLabV2() {
 
         <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {mockProducts.map((p, idx) => (
-            <ProductActionCard
+            <ProductCard
               key={idx}
-              {...p}
+              id={`mock_${idx}`}
+              name={p.productName}
+              unitPrice={2000}
+              stock="in"
+              mode="purchase"
               onAddToCart={() => console.log('Added', p.productName)}
-              onCommunicate={() => console.log('Communicate for', p.productName)}
-              onMoreInfo={() => console.log('More info for', p.productName)}
+              onChat={() => console.log('Communicate for', p.productName)}
+              onDetails={() => console.log('More info for', p.productName)}
             />
           ))}
         </div>

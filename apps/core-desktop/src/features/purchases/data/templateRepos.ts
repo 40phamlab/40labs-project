@@ -9,7 +9,7 @@ const followedSet = new Set<string>(['AFYA-DAR01', 'AFYA-ARU01']);
 const cartsMap = new Map<string, SupplierCart>();
 let ordersStore: PurchaseOrder[] = [
   {
-    id: 'po_sample_uuid_1',
+    id: 'po_dar_001',
     buyerBusinessId: 'AFYA-MYPHARMACY',
     sellerBusinessId: 'AFYA-DAR01',
     status: 'sent',
@@ -23,7 +23,47 @@ let ordersStore: PurchaseOrder[] = [
     updatedAt: new Date(Date.now() - 3600000 * 23).toISOString(),
   },
   {
-    id: 'po_sample_uuid_2',
+    id: 'po_dar_002',
+    buyerBusinessId: 'AFYA-MYPHARMACY',
+    sellerBusinessId: 'AFYA-DAR01',
+    status: 'completed',
+    lines: [
+      { productId: 'prod_dar01_2', qty: 10, unitPriceTzsSnapshot: 1500, name: 'Amoxicillin 250mg Capsules' },
+      { productId: 'prod_dar01_3', qty: 3, unitPriceTzsSnapshot: 5000, name: 'Ibuprofen 400mg Tablets' },
+    ],
+    totalTzs: 30000,
+    channel: 'whatsapp',
+    createdAt: new Date(Date.now() - 3600000 * 96).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000 * 72).toISOString(),
+  },
+  {
+    id: 'po_dar_003',
+    buyerBusinessId: 'AFYA-MYPHARMACY',
+    sellerBusinessId: 'AFYA-DAR01',
+    status: 'confirmed',
+    lines: [
+      { productId: 'prod_dar01_1', qty: 2, unitPriceTzsSnapshot: 2000, name: 'Paracetamol 500mg BP (Pack of 100)' },
+    ],
+    totalTzs: 4000,
+    channel: 'whatsapp',
+    createdAt: new Date(Date.now() - 3600000 * 12).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000 * 10).toISOString(),
+  },
+  {
+    id: 'po_dar_004',
+    buyerBusinessId: 'AFYA-MYPHARMACY',
+    sellerBusinessId: 'AFYA-DAR01',
+    status: 'draft',
+    lines: [
+      { productId: 'prod_dar01_3', qty: 4, unitPriceTzsSnapshot: 5000, name: 'Ibuprofen 400mg Tablets' },
+    ],
+    totalTzs: 20000,
+    channel: 'whatsapp',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'po_aru_001',
     buyerBusinessId: 'AFYA-MYPHARMACY',
     sellerBusinessId: 'AFYA-ARU01',
     status: 'completed',
@@ -34,6 +74,33 @@ let ordersStore: PurchaseOrder[] = [
     channel: 'inapp',
     createdAt: new Date(Date.now() - 3600000 * 72).toISOString(),
     updatedAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+  },
+  {
+    id: 'po_aru_002',
+    buyerBusinessId: 'AFYA-MYPHARMACY',
+    sellerBusinessId: 'AFYA-ARU01',
+    status: 'sent',
+    lines: [
+      { productId: 'prod_aru01_1', qty: 6, unitPriceTzsSnapshot: 3000, name: 'Artemether-Lumefantrine (Coartem)' },
+    ],
+    totalTzs: 18000,
+    channel: 'whatsapp',
+    createdAt: new Date(Date.now() - 3600000 * 36).toISOString(),
+    sentAt: new Date(Date.now() - 3600000 * 30).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000 * 30).toISOString(),
+  },
+  {
+    id: 'po_aru_003',
+    buyerBusinessId: 'AFYA-MYPHARMACY',
+    sellerBusinessId: 'AFYA-ARU01',
+    status: 'confirmed',
+    lines: [
+      { productId: 'prod_aru01_2', qty: 1, unitPriceTzsSnapshot: 25000, name: 'Amoxicillin Dispersible Tablets' },
+    ],
+    totalTzs: 25000,
+    channel: 'whatsapp',
+    createdAt: new Date(Date.now() - 3600000 * 6).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
   },
 ];
 
