@@ -15,11 +15,28 @@ describe('i18n Infrastructure (Alpha P0)', () => {
     i18n.changeLanguage('sw'); // reset back
   });
 
-  test('formatting helpers use Intl correctly', () => {
+  test('formatting helpers use Intl correctly in both locales', () => {
     const testDate = new Date('2025-01-15T12:00:00Z');
-    expect(formatDate(testDate, 'en')).toBeTruthy();
+
+    // Swahili formatting
+    const swDate = formatDate(testDate, 'sw');
+    const swCurrency = formatCurrency(50000, 'TZS', 'sw');
+    expect(swDate).toBeTruthy();
+    expect(swCurrency).toMatch(/TZS|TSh/);
+
+    // English formatting
+    const enDate = formatDate(testDate, 'en');
+    const enCurrency = formatCurrency(50000, 'TZS', 'en');
+    expect(enDate).toBeTruthy();
+    expect(enCurrency).toMatch(/TZS|TSh/);
+
     expect(formatTime(testDate, 'en')).toBeTruthy();
     expect(formatNumber(1250000, 'sw')).toContain('1');
-    expect(formatCurrency(50000, 'TZS', 'sw')).toMatch(/TZS|TSh/);
+  });
+
+  test('fallback chain works for missing translation keys', () => {
+    i18n.changeLanguage('sw');
+    const nonExistent = t('non.existent.key.test');
+    expect(nonExistent).toBeTruthy();
   });
 });

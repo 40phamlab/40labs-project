@@ -2,10 +2,18 @@
   "name": "@40labs/i18n",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "scripts": {
+    "i18n:check": "node --experimental-strip-types scripts/check-i18n.ts",
+    "test": "vitest run"
+  },
   "dependencies": {
     "i18next": "^24.2.2",
     "react-i18next": "^15.4.1"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.2"
   }
 }
