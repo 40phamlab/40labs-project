@@ -10,11 +10,21 @@ import { Save, Play, CheckCircle, AlertTriangle, Plus, Trash2, Download, Upload,
 import { labWorkflowApi } from '../../../api/labWorkflowApi';
 
 const STEP_TYPES: LabWorkflowStepType[] = [
+  'sample_reception',
+  'specimen_identification',
+  'preparation_processing',
+  'test_execution',
+  'observation_entry',
+  'qc_check',
+  'review_approval',
+  'notes_attachments',
+  'conditional_decision',
+  'repeat_rework',
+  'report_finalization',
   'registration',
   'collection',
   'receive',
   'process',
-  'qc_check',
   'result_entry',
   'review',
   'report_draft',
@@ -213,8 +223,8 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     <div className="flex h-full w-full bg-panel overflow-hidden">
       {/* Left Sidebar: Palette & Properties */}
       <div className="w-80 border-r border-border bg-panel p-4 flex flex-col gap-4 overflow-y-auto shrink-0 z-10">
-        <h3 className="font-bold text-sm text-text">Step Palette</h3>
-        <div className="grid grid-cols-2 gap-2">
+        <h3 className="font-bold text-sm text-text">Step Palette (11 Node Types)</h3>
+        <div className="grid grid-cols-1 gap-2">
           {STEP_TYPES.map((type) => (
             <Button
               key={type}
@@ -292,7 +302,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       <div className="flex-1 flex flex-col h-full min-w-0">
         <div className="flex items-center justify-between p-4 border-b border-border bg-panel-strong/30 shrink-0">
           <div className="flex items-center gap-3">
-            <h2 className="font-heading font-bold text-base text-text">Workflow Builder</h2>
+            <h2 className="font-heading font-bold text-base text-text">Workflow Designer (XYFlow)</h2>
             <Button intent="neutral" size="sm" onClick={handleValidate} leftIcon={<CheckCircle size={14} />}>
               Validate Graph
             </Button>

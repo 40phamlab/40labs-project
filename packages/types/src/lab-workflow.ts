@@ -10,7 +10,17 @@ export type LabWorkflowStepType =
   | 'review'
   | 'report_draft'
   | 'notify'
-  | 'forward_report';
+  | 'forward_report'
+  | 'sample_reception'
+  | 'specimen_identification'
+  | 'preparation_processing'
+  | 'test_execution'
+  | 'observation_entry'
+  | 'review_approval'
+  | 'notes_attachments'
+  | 'conditional_decision'
+  | 'repeat_rework'
+  | 'report_finalization';
 
 export type LabWorkflowAutoAction =
   | 'set_expiry_from_catalog'
