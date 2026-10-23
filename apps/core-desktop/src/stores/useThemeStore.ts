@@ -100,7 +100,8 @@ export const useThemeStore = create<PreferencesState>((set, get) => {
       const next: ThemeMode = current === 'dark' ? 'light' : current === 'light' ? 'system' : 'dark';
       get().setTheme(next);
     },
-    setLanguage: (language: Lang) => {
+    setLanguage: async (language: Lang) => {
+      await i18n.changeLanguage(language);
       set({ language });
       if (typeof window !== 'undefined') {
         try {
@@ -108,7 +109,6 @@ export const useThemeStore = create<PreferencesState>((set, get) => {
         } catch {
           // ignore
         }
-        i18n.changeLanguage(language);
         document.documentElement.lang = language === 'sw' ? 'sw-TZ' : 'en-TZ';
       }
     },

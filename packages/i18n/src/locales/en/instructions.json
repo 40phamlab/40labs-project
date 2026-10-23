@@ -1,0 +1,34 @@
+{
+  "title": "Dispensing Instructions",
+  "copyPrevious": "Copy Previous",
+  "dose": "Dose",
+  "freqLabel": "Frequency",
+  "timeLabel": "Timing",
+  "duration": "Duration",
+  "storeLabel": "Storage",
+  "note": "Note",
+  "save": "Save Instructions",
+  "frequency": {
+    "once": "Once daily",
+    "twice": "Twice daily",
+    "three": "Three times daily",
+    "four": "Four times daily",
+    "prn": "As needed (PRN)",
+    "custom": "Custom"
+  },
+  "timing": {
+    "beforeMeal": "Before Meal",
+    "afterMeal": "After Meal",
+    "withMeal": "With Meal",
+    "morning": "Morning",
+    "night": "Night",
+    "any": "Anytime"
+  },
+  "storage": {
+    "coolDry": "Store in a cool, dry place",
+    "refrigerate": "Refrigerate",
+    "awayLight": "Protect from light",
+    "awayChildren": "Keep out of reach of children",
+    "shakeWell": "Shake well before use"
+  }
+}

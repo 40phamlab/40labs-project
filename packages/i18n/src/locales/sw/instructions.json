@@ -1,0 +1,34 @@
+{
+  "title": "Maelekezo ya Kutoa Dawa",
+  "copyPrevious": "Nakili Iliyopita",
+  "dose": "Kipimo",
+  "freqLabel": "Mara ngapi",
+  "timeLabel": "Wakati",
+  "duration": "Muda",
+  "storeLabel": "Uhifadhi",
+  "note": "Ujumbe",
+  "save": "Hifadhi Maelekezo",
+  "frequency": {
+    "once": "Mara moja kwa siku",
+    "twice": "Mara mbili kwa siku",
+    "three": "Mara tatu kwa siku",
+    "four": "Mara nne kwa siku",
+    "prn": "Inapohitajika (PRN)",
+    "custom": "Maalum"
+  },
+  "timing": {
+    "beforeMeal": "Kabla ya Chakula",
+    "afterMeal": "Baada ya Chakula",
+    "withMeal": "Wakati wa Chakula",
+    "morning": "Asubuhi",
+    "night": "Usiku",
+    "any": "Wakati wowote"
+  },
+  "storage": {
+    "coolDry": "Hifadhi mahali pa baridi na pakavu",
+    "refrigerate": "Weka kwenye jokofu",
+    "awayLight": "Kinga na mwanga wa jua",
+    "awayChildren": "Weka mbali na watoto",
+    "shakeWell": "Tikisa vizuri kabla ya kutumia"
+  }
+}

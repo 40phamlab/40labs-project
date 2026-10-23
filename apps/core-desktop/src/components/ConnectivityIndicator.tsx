@@ -1,14 +1,15 @@
 import * as React from 'react';
 import { Wifi, WifiOff } from 'lucide-react';
 import { useConnectivityStore } from '../stores/useConnectivityStore';
-import { t } from '@40labs/i18n';
+import { useTranslation } from 'react-i18next';
 
 export const ConnectivityIndicator: React.FC = () => {
+  const { t } = useTranslation();
   const status = useConnectivityStore((s) => s.status);
   const isOnline = status === 'online';
 
-  const label = isOnline ? t('connectivity.online', 'en') : t('connectivity.offline', 'en');
-  const ariaLabel = isOnline ? t('connectivity.ariaOnline', 'en') : t('connectivity.ariaOffline', 'en');
+  const label = isOnline ? t('connectivity.online') : t('connectivity.offline');
+  const ariaLabel = isOnline ? t('connectivity.ariaOnline') : t('connectivity.ariaOffline');
 
   return (
     <div

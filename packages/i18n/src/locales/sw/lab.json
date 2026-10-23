@@ -11,5 +11,14 @@
     "newOrder": "Agizo Jipya la Maabara",
     "recordResult": "Weka Matokeo",
     "verify": "Thibitisha na Weka Sahihi"
+  },
+  "trace": {
+    "title": "Ufuatiliaji",
+    "graph": "Mtazamo wa Chati",
+    "timeline": "Mfululizo wa Muda",
+    "nodeDetails": "Maelezo ya Kituo",
+    "openResult": "Fungua Matokeo",
+    "openReport": "Fungua Ripoti",
+    "recollect": "Chukua Sampuli Tena"
   }
 }

@@ -1,0 +1,20 @@
+{
+  "cta": {
+    "start": "Anza Sasa",
+    "newDevice": "Oanisha Kifaa Kipya",
+    "haveAccount": "Una akaunti tayari?",
+    "signIn": "Ingia"
+  },
+  "badge": {
+    "soon": "Inakuja Hivi Karibuni"
+  },
+  "lang": {
+    "sw": "Kiswahili",
+    "en": "English"
+  },
+  "theme": {
+    "system": "Mfumo",
+    "light": "Nuru",
+    "dark": "Giza"
+  }
+}

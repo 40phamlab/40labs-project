@@ -9,5 +9,13 @@
     "markAllRead": "Weka Zote Kuwa Zimesomwa",
     "clearAll": "Futa Zote",
     "viewDetails": "Ona Maelezo"
+  },
+  "launchpad": {
+    "searchCustomer": "Tafuta mteja...",
+    "newChat": "Mazungumzo Mapya",
+    "attachMedia": "Ambatisha Faili"
+  },
+  "chat": {
+    "noResults": "Hakuna ujumbe uliopatikana"
   }
 }

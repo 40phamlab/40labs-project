@@ -9,5 +9,13 @@
     "markAllRead": "Mark All as Read",
     "clearAll": "Clear All",
     "viewDetails": "View Details"
+  },
+  "launchpad": {
+    "searchCustomer": "Search customer...",
+    "newChat": "New Chat",
+    "attachMedia": "Attach Media"
+  },
+  "chat": {
+    "noResults": "No messages found"
   }
 }

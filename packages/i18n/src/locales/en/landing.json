@@ -1,0 +1,20 @@
+{
+  "cta": {
+    "start": "Get Started",
+    "newDevice": "Pair New Device",
+    "haveAccount": "Already have an account?",
+    "signIn": "Sign In"
+  },
+  "badge": {
+    "soon": "Coming Soon"
+  },
+  "lang": {
+    "sw": "Kiswahili",
+    "en": "English"
+  },
+  "theme": {
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  }
+}

@@ -15,5 +15,11 @@
     "adjustStock": "Rekebisha Hisa",
     "importStock": "Leta Faili la Hisa",
     "exportStock": "Toa Ripoti ya Hisa"
+  },
+  "photo": {
+    "title": "Picha ya Dawa",
+    "dropzone": "Buruta picha ya bidhaa hapa, au bonyeza kuchagua",
+    "replace": "Badilisha Picha",
+    "remove": "Ondoa Picha"
   }
 }

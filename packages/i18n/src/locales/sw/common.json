@@ -13,6 +13,12 @@
   "confirm": "Thibitisha",
   "loading": "Inapakia...",
   "retry": "Jaribu Tena",
+  "connectivity": {
+    "online": "Mtandaoni",
+    "offline": "Nje ya Mtandao",
+    "ariaOnline": "Hali ya Mtandao: Mtandaoni",
+    "ariaOffline": "Hali ya Mtandao: Nje ya Mtandao"
+  },
   "emptystate": {
     "empty": {
       "title": "Hakuna Vitu Vilivyopatikana",

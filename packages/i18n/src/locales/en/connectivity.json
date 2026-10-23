@@ -1,0 +1,6 @@
+{
+  "online": "Online",
+  "offline": "Offline",
+  "ariaOnline": "Network Status: Online",
+  "ariaOffline": "Network Status: Offline"
+}

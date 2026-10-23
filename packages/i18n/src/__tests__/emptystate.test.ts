@@ -20,8 +20,8 @@ describe('EmptyState i18n keys and Value Rules verification', () => {
     ];
 
     for (const key of keys) {
-      expect(translations['sw-TZ'].common).toHaveProperty(key);
-      expect(translations['en'].common).toHaveProperty(key);
+      expect(translations['sw-TZ'].translation).toHaveProperty(key);
+      expect(translations['en'].translation).toHaveProperty(key);
 
       expect(t(key as any)).toBeTruthy();
     }

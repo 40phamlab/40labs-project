@@ -3,6 +3,7 @@ import { Panel } from '@40labs/ui-components';
 import type { Business } from '@40labs/types';
 import type { UpdateBusinessPayload } from '../../../hooks/useBusiness';
 import { useThemeStore, type ThemeMode, type Lang } from '../../../stores/useThemeStore';
+import { useTranslation } from 'react-i18next';
 
 interface AppearancePanelProps {
   business?: Business | null;
@@ -15,6 +16,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   onToggle,
   isLoading = false,
 }) => {
+  const { t } = useTranslation();
   const { theme, setTheme, language, setLanguage } = useThemeStore();
 
   const handleThemeChange = async (newTheme: ThemeMode) => {
@@ -25,7 +27,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   };
 
   const handleLanguageChange = async (newLang: Lang) => {
-    setLanguage(newLang);
+    await setLanguage(newLang);
     if (onToggle) {
       await onToggle({ language: newLang === 'sw' ? 'sw-TZ' : 'en' });
     }
@@ -36,7 +38,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
       {/* Theme Section */}
       <Panel variant="raised" className="p-6 space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-text-primary">Theme</h3>
+          <h3 className="text-sm font-bold text-text-primary">{t('settings.appearance')}</h3>
         </div>
 
         <div className="flex items-center gap-2 p-1 bg-panel-subtle rounded-card border border-border/50 max-w-md">
@@ -54,7 +56,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
                     : 'text-text-muted hover:text-text-primary hover:bg-surface-hover'
                 }`}
               >
-                {mode === 'light' ? 'Light' : mode === 'dark' ? 'Dark' : 'System'}
+                {t(`settings.theme.${mode}`)}
               </button>
             );
           })}
@@ -64,7 +66,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
       {/* Language Section */}
       <Panel variant="raised" className="p-6 space-y-4">
         <div>
-          <h3 className="text-sm font-bold text-text-primary">Language</h3>
+          <h3 className="text-sm font-bold text-text-primary">{t('settings.language')}</h3>
         </div>
 
         <div className="flex items-center gap-2 p-1 bg-panel-subtle rounded-card border border-border/50 max-w-md">

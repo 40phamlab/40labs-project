@@ -22,5 +22,12 @@
     "remove": "Remove",
     "clear": "Clear Cart",
     "refund": "Refund Sale"
-  }
+  },
+  "panel": {
+    "customer": "Customer",
+    "medicines": "Medicines & Catalog"
+  },
+  "clear": "Clear",
+  "hold": "Hold",
+  "confirm": "Confirm Sale"
 }

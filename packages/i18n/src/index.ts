@@ -16,6 +16,9 @@ import swPurchases from './locales/sw/purchases.json';
 import swReports from './locales/sw/reports.json';
 import swNotifications from './locales/sw/notifications.json';
 import swErrors from './locales/sw/errors.json';
+import swLanding from './locales/sw/landing.json';
+import swInstructions from './locales/sw/instructions.json';
+import swConnectivity from './locales/sw/connectivity.json';
 
 import enCommon from './locales/en/common.json';
 import enNav from './locales/en/nav.json';
@@ -30,88 +33,106 @@ import enPurchases from './locales/en/purchases.json';
 import enReports from './locales/en/reports.json';
 import enNotifications from './locales/en/notifications.json';
 import enErrors from './locales/en/errors.json';
+import enLanding from './locales/en/landing.json';
+import enInstructions from './locales/en/instructions.json';
+import enConnectivity from './locales/en/connectivity.json';
+
+function flattenKeys(obj: any, prefix = ''): Record<string, string> {
+  let keys: Record<string, string> = {};
+  for (const k of Object.keys(obj)) {
+    const fullKey = prefix ? `${prefix}.${k}` : k;
+    if (obj[k] !== null && typeof obj[k] === 'object' && !Array.isArray(obj[k])) {
+      Object.assign(keys, flattenKeys(obj[k], fullKey));
+    } else {
+      keys[fullKey] = String(obj[k]);
+    }
+  }
+  return keys;
+}
+
+const buildTranslationBundle = (nsMap: Record<string, any>) => {
+  const bundle: Record<string, any> = {};
+  for (const [ns, data] of Object.entries(nsMap)) {
+    const flattened = flattenKeys(data, ns);
+    Object.assign(bundle, flattened);
+    if (ns === 'common') {
+      const topLevel = flattenKeys(data);
+      Object.assign(bundle, topLevel);
+    }
+  }
+  return bundle;
+};
+
+const swNamespaces = {
+  common: swCommon,
+  nav: swNav,
+  settings: swSettings,
+  auth: swAuth,
+  dashboard: swDashboard,
+  sales: swSales,
+  inventory: swInventory,
+  customers: swCustomers,
+  lab: swLab,
+  purchases: swPurchases,
+  reports: swReports,
+  notifications: swNotifications,
+  errors: swErrors,
+  landing: swLanding,
+  instructions: swInstructions,
+  connectivity: swConnectivity,
+};
+
+const enNamespaces = {
+  common: enCommon,
+  nav: enNav,
+  settings: enSettings,
+  auth: enAuth,
+  dashboard: enDashboard,
+  sales: enSales,
+  inventory: enInventory,
+  customers: enCustomers,
+  lab: enLab,
+  purchases: enPurchases,
+  reports: enReports,
+  notifications: enNotifications,
+  errors: enErrors,
+  landing: enLanding,
+  instructions: enInstructions,
+  connectivity: enConnectivity,
+};
+
+const swTranslation = buildTranslationBundle(swNamespaces);
+const enTranslation = buildTranslationBundle(enNamespaces);
 
 const resources = {
-  sw: {
-    common: swCommon,
-    nav: swNav,
-    settings: swSettings,
-    auth: swAuth,
-    dashboard: swDashboard,
-    sales: swSales,
-    inventory: swInventory,
-    customers: swCustomers,
-    lab: swLab,
-    purchases: swPurchases,
-    reports: swReports,
-    notifications: swNotifications,
-    errors: swErrors,
-  },
-  'sw-TZ': {
-    common: swCommon,
-    nav: swNav,
-    settings: swSettings,
-    auth: swAuth,
-    dashboard: swDashboard,
-    sales: swSales,
-    inventory: swInventory,
-    customers: swCustomers,
-    lab: swLab,
-    purchases: swPurchases,
-    reports: swReports,
-    notifications: swNotifications,
-    errors: swErrors,
-  },
-  en: {
-    common: enCommon,
-    nav: enNav,
-    settings: enSettings,
-    auth: enAuth,
-    dashboard: enDashboard,
-    sales: enSales,
-    inventory: enInventory,
-    customers: enCustomers,
-    lab: enLab,
-    purchases: enPurchases,
-    reports: enReports,
-    notifications: enNotifications,
-    errors: enErrors,
-  },
+  sw: { translation: swTranslation },
+  'sw-TZ': { translation: swTranslation },
+  en: { translation: enTranslation },
+  'en-TZ': { translation: enTranslation },
 };
 
 export { resources as translations };
 
 if (!i18n.isInitialized) {
+  const persistedLng = typeof window !== 'undefined' ? localStorage.getItem('40labs_language') : null;
+  const initialLng = persistedLng === 'en' || persistedLng === 'en-TZ' ? 'en' : 'sw';
+
   i18n
     .use(initReactI18next)
     .init({
       resources,
-      lng: 'sw', // First launch = Swahili regardless of OS locale. No auto-detect.
-      fallbackLng: {
-        'sw-TZ': ['sw', 'en'],
-        'default': ['en'],
-      },
-      defaultNS: 'common',
-      ns: [
-        'common',
-        'nav',
-        'settings',
-        'auth',
-        'dashboard',
-        'sales',
-        'inventory',
-        'customers',
-        'lab',
-        'purchases',
-        'reports',
-        'notifications',
-        'errors',
-      ],
+      lng: initialLng,
+      fallbackLng: 'en',
+      defaultNS: 'translation',
+      ns: ['translation'],
+      keySeparator: '.',
+      nsSeparator: false,
       interpolation: {
         escapeValue: false,
       },
       react: {
         useSuspense: false,
+        bindI18n: 'languageChanged',
       },
       missingKeyHandler: (lng, ns, key) => {
         if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
@@ -119,8 +140,10 @@ if (!i18n.isInitialized) {
         }
       },
       parseMissingKeyHandler: (key) => {
-        const enVal = i18n.getResource('en', 'common', key) || i18n.getResource('en', 'settings', key) || key;
-        return typeof enVal === 'string' ? enVal : key;
+        const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
+        const enVal = i18n.getResource('en', 'translation', key);
+        if (typeof enVal === 'string') return enVal;
+        return isDev ? `⚠ ${key}` : '';
       },
     });
 }

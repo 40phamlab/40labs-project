@@ -1,6 +1,6 @@
 {
   "title": "Mauzo (POS)",
-  "cart": "K Kikapu cha Manunuzi",
+  "cart": "Kikapu cha Manunuzi",
   "scanBarcode": "Changanua msimbo au tafuta dawa...",
   "emptyCart": "Kikapu kiko wazi. Changanua bidhaa au chagua kutoka kwenye orodha.",
   "subtotal": "Jumla Ndogo",
@@ -22,5 +22,12 @@
     "remove": "Ondoa",
     "clear": "Futa Kikapu",
     "refund": "Rejesha Pesa"
-  }
+  },
+  "panel": {
+    "customer": "Mteja",
+    "medicines": "Dawa na Orodha"
+  },
+  "clear": "Futa",
+  "hold": "Weka Kando",
+  "confirm": "Thibitisha Mauzo"
 }

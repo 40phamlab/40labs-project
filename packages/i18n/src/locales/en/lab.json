@@ -11,5 +11,14 @@
     "newOrder": "New Lab Order",
     "recordResult": "Record Results",
     "verify": "Verify & Sign"
+  },
+  "trace": {
+    "title": "Traceability",
+    "graph": "Graph View",
+    "timeline": "Timeline",
+    "nodeDetails": "Node Details",
+    "openResult": "Open Result",
+    "openReport": "Open Report",
+    "recollect": "Recollect Sample"
   }
 }

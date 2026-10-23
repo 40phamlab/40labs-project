@@ -9,5 +9,48 @@
     "generate": "Generate Report",
     "exportPdf": "Export PDF",
     "exportCsv": "Export CSV"
+  },
+  "empty": {
+    "title": "No report data available for selected filters"
+  },
+  "options": {
+    "chartType": "Chart Type",
+    "granularity": "Granularity",
+    "series": "Data Series",
+    "compare": "Compare",
+    "reset": "Reset Options"
+  },
+  "type": {
+    "combo": "Combo",
+    "bars": "Bar Chart",
+    "line": "Line Chart",
+    "area": "Area Chart",
+    "stacked": "Stacked",
+    "ring": "Ring Chart"
+  },
+  "granularity": {
+    "hour": "Hourly",
+    "day": "Daily",
+    "week": "Weekly",
+    "month": "Monthly"
+  },
+  "series": {
+    "revenue": "Revenue",
+    "transactions": "Transactions",
+    "avgOrderValue": "Avg Order Value",
+    "discounts": "Discounts",
+    "stockValue": "Stock Value",
+    "unitsSold": "Units Sold",
+    "expiringSoon": "Expiring Soon",
+    "stockOuts": "Stock Outs",
+    "newCustomers": "New Patients",
+    "returningCustomers": "Returning Patients",
+    "visits": "Visits",
+    "purchaseSpend": "Purchase Spend",
+    "orders": "Orders",
+    "pending": "Pending",
+    "fiscalReceipts": "Fiscal Receipts",
+    "auditEvents": "Audit Events",
+    "pinOverrides": "PIN Overrides"
   }
 }

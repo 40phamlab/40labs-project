@@ -15,5 +15,11 @@
     "adjustStock": "Adjust Stock",
     "importStock": "Import Stock File",
     "exportStock": "Export Stock Report"
+  },
+  "photo": {
+    "title": "Medicine Photo",
+    "dropzone": "Drag and drop product image here, or click to browse",
+    "replace": "Replace Photo",
+    "remove": "Remove Photo"
   }
 }

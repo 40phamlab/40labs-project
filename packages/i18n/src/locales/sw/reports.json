@@ -9,5 +9,48 @@
     "generate": "Tengeneza Ripoti",
     "exportPdf": "Hamisha PDF",
     "exportCsv": "Hamisha CSV"
+  },
+  "empty": {
+    "title": "Hakuna taarifa za ripoti zilizopatikana kwa vichungi vilivyochaguliwa"
+  },
+  "options": {
+    "chartType": "Aina ya Chati",
+    "granularity": "Kipimo cha Muda",
+    "series": "Mfululizo wa Data",
+    "compare": "Linganisha",
+    "reset": "Weka Upya"
+  },
+  "type": {
+    "combo": "Mchanganyiko",
+    "bars": "Nguzo",
+    "line": "Mstari",
+    "area": "Eneo",
+    "stacked": "Zilizorundikwa",
+    "ring": "Duara"
+  },
+  "granularity": {
+    "hour": "Kwa Saa",
+    "day": "Kila Siku",
+    "week": "Kila Wiki",
+    "month": "Kila Mwezi"
+  },
+  "series": {
+    "revenue": "Mapato",
+    "transactions": "Miamala",
+    "avgOrderValue": "Wastani wa Thamani ya Agizo",
+    "discounts": "Punguzo",
+    "stockValue": "Thamani ya Hisa",
+    "unitsSold": "Bidhaa zilizouzwa",
+    "expiringSoon": "Zinazoisha Hivi Karibuni",
+    "stockOuts": "Zilizokosekana",
+    "newCustomers": "Wagonjwa Wapya",
+    "returningCustomers": "Wagonjwa Wanaorudi",
+    "visits": "Ziara",
+    "purchaseSpend": "Matumizi ya Manunuzi",
+    "orders": "Maagizo",
+    "pending": "Inasubiri",
+    "fiscalReceipts": "Risiti za EFD",
+    "auditEvents": "Matukio ya Ukaguzi",
+    "pinOverrides": "Uidhinishaji wa PIN"
   }
 }

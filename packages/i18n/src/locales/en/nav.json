@@ -10,5 +10,7 @@
   "scheduling": "Scheduling",
   "training": "Training",
   "notifications": "Notifications",
-  "settings": "Settings"
+  "settings": "Settings",
+  "collapseSidebar": "Collapse Sidebar",
+  "expandSidebar": "Expand Sidebar"
 }
