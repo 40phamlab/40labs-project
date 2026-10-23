@@ -325,3 +325,57 @@ pub struct CompleteWorkflowStepRequest {
     pub measurements_json: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LabStageAttachmentDb {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub run_id: String,
+    pub node_id: String,
+    pub sample_id: Option<String>,
+    pub original_filename: String,
+    pub storage_path: String,
+    pub mime_type: String,
+    pub file_size: i64,
+    pub uploaded_by: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AttachStageFileRequest {
+    pub run_id: String,
+    pub node_id: String,
+    pub sample_id: Option<String>,
+    pub original_filename: String,
+    pub mime_type: String,
+    pub file_bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReplaceStageAttachmentRequest {
+    pub attachment_id: String,
+    pub original_filename: String,
+    pub mime_type: String,
+    pub file_bytes: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkflowExecutionExportManifest {
+    pub format_version: String,
+    pub exported_at: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub run: LabWorkflowRunDb,
+    pub steps: Vec<LabWorkflowRunStepDb>,
+    pub attachments: Vec<LabStageAttachmentDb>,
+    pub reports: Vec<LabReport>,
+    pub results: Vec<LabResult>,
+    pub audit_events: Vec<crate::models::audit::AuditLogEntry>,
+}
+
+

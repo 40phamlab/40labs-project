@@ -1,7 +1,7 @@
 use crate::models::inventory::{InventoryItem, Medicine, MedicineWithInventory};
 use crate::models::lab::{
     LabOrder, LabQcData, LabQcEquipment, LabQcRecord, LabResult, LabSample, SampleEvent, TestCatalogEntry,
-    LabReport, LabReportItem, LabReportForward, LabWorkflowRunDb, LabWorkflowRunStepDb,
+    LabReport, LabReportItem, LabReportForward, LabWorkflowRunDb, LabWorkflowRunStepDb, LabStageAttachmentDb,
 };
 use sqlx::SqlitePool;
 
@@ -717,4 +717,103 @@ impl LabRepository {
         .await
         .map(|res| res.rows_affected())
     }
+
+    pub async fn create_stage_attachment(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        attachment: &LabStageAttachmentDb,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO lab_stage_attachment (
+                id, workspace_id, branch_id, run_id, node_id, sample_id,
+                original_filename, storage_path, mime_type, file_size,
+                uploaded_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&attachment.id)
+        .bind(&attachment.workspace_id)
+        .bind(&attachment.branch_id)
+        .bind(&attachment.run_id)
+        .bind(&attachment.node_id)
+        .bind(&attachment.sample_id)
+        .bind(&attachment.original_filename)
+        .bind(&attachment.storage_path)
+        .bind(&attachment.mime_type)
+        .bind(attachment.file_size)
+        .bind(&attachment.uploaded_by)
+        .bind(&attachment.created_at)
+        .bind(&attachment.updated_at)
+        .execute(executor)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn list_stage_attachments(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        run_id: &str,
+        node_id: &str,
+    ) -> Result<Vec<LabStageAttachmentDb>, sqlx::Error> {
+        sqlx::query_as::<_, LabStageAttachmentDb>(
+            "SELECT * FROM lab_stage_attachment WHERE workspace_id = ? AND branch_id = ? AND run_id = ? AND node_id = ? ORDER BY created_at DESC"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(run_id)
+        .bind(node_id)
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn list_all_stage_attachments_for_run(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        run_id: &str,
+    ) -> Result<Vec<LabStageAttachmentDb>, sqlx::Error> {
+        sqlx::query_as::<_, LabStageAttachmentDb>(
+            "SELECT * FROM lab_stage_attachment WHERE workspace_id = ? AND branch_id = ? AND run_id = ? ORDER BY created_at DESC"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(run_id)
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn get_stage_attachment(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        attachment_id: &str,
+    ) -> Result<Option<LabStageAttachmentDb>, sqlx::Error> {
+        sqlx::query_as::<_, LabStageAttachmentDb>(
+            "SELECT * FROM lab_stage_attachment WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(attachment_id)
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn delete_stage_attachment(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        workspace_id: &str,
+        branch_id: &str,
+        attachment_id: &str,
+    ) -> Result<u64, sqlx::Error> {
+        sqlx::query(
+            "DELETE FROM lab_stage_attachment WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(attachment_id)
+        .execute(executor)
+        .await
+        .map(|res| res.rows_affected())
+    }
 }
+

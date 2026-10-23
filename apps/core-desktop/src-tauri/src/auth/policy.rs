@@ -203,6 +203,13 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("start_workflow_execution", CommandPolicy::Permission("lab.order"));
     map.insert("complete_workflow_step_execution", CommandPolicy::Permission("lab.result.enter"));
     map.insert("get_workflow_execution", CommandPolicy::SessionOnly);
+    map.insert("attach_stage_attachment", CommandPolicy::Permission("lab.result.enter"));
+    map.insert("get_stage_attachments", CommandPolicy::SessionOnly);
+    map.insert("replace_stage_attachment", CommandPolicy::Permission("lab.result.enter"));
+    map.insert("remove_stage_attachment", CommandPolicy::Permission("lab.result.enter"));
+    map.insert("export_workflow_execution", CommandPolicy::SessionOnly);
+    map.insert("import_workflow_execution", CommandPolicy::Permission("lab.order"));
+    map.insert("export_lab_report_record", CommandPolicy::SessionOnly);
 
     map
 }
