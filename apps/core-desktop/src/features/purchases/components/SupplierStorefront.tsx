@@ -160,7 +160,7 @@ export const SupplierStorefront: React.FC<SupplierStorefrontProps> = ({
   const initials = supplier.name.slice(0, 2).toUpperCase();
 
   return (
-    <div className="flex flex-col gap-4 bg-panel p-5 rounded-card border border-border/50 elevation-raised min-h-full pb-6">
+    <div className="flex flex-col gap-4 p-5 min-h-full pb-6 overflow-clip">
       {/* Scroll-away area: Breadcrumb + Header */}
       <div ref={headerRef} className="flex flex-col gap-4">
         <SupplierStorefrontHeader

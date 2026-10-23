@@ -148,14 +148,14 @@ export const PurchasesScreen: React.FC = () => {
               onNavigate={handleNavigate}
             />
           ) : (
-            <div className="flex flex-col h-full overflow-hidden p-4">
+            <div className="flex flex-col min-h-full p-5 pb-6">
               <PurchasesTabs
                 activeTab={activeTab}
                 onTabChange={(tab: PurchasesTabId) => setActiveTab(tab)}
                 counts={counts}
               />
 
-              <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar pt-3">
+              <div className="flex-1 pt-3">
                 {activeTab === 'stores' && (
                   <StoresTabContent
                     followedSuppliers={followedSuppliers}

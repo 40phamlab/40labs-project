@@ -27,7 +27,7 @@ export const StoresTabContent: React.FC<StoresTabContentProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 overflow-y-auto custom-scrollbar p-1">
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-4 p-1 pb-6">
       {followedSuppliers.map((supplier) => (
         <SupplierCard
           key={supplier.businessId}

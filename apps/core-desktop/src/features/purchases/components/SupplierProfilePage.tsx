@@ -63,7 +63,7 @@ export const SupplierProfilePage: React.FC<SupplierProfilePageProps> = ({
   }, []);
 
   return (
-    <div className="flex flex-col gap-5 bg-panel p-6 rounded-card border border-border/50 elevation-raised min-h-full pb-6">
+    <div className="flex flex-col gap-5 p-6 min-h-full pb-6 overflow-clip">
       {/* Scroll-away area: Breadcrumb + Header */}
       <div ref={headerRef} className="flex flex-col gap-5">
         {/* Breadcrumb */}
