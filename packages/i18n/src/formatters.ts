@@ -38,3 +38,10 @@ export const formatMoney = (amount: number | null | undefined, locale = 'sw'): s
   const rounded = Math.round(Number(amount));
   return formatNumber(rounded, locale);
 };
+
+export const formatNumberOrUnknown = (value: number | null | undefined, locale = 'sw'): string => {
+  if (value == null || isNaN(Number(value))) {
+    return locale === 'sw' ? 'Haijulikani' : 'Unknown';
+  }
+  return formatMoney(Number(value), locale);
+};
