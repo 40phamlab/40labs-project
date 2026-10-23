@@ -195,5 +195,11 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("preview_disaster_recovery_pack", CommandPolicy::SessionOnly);
     map.insert("restore_disaster_recovery_pack", CommandPolicy::SessionOnly);
 
+    map.insert("get_workflow_templates", CommandPolicy::SessionOnly);
+    map.insert("save_workflow_draft", CommandPolicy::Permission("lab.order"));
+    map.insert("publish_workflow_template", CommandPolicy::Permission("lab.result.enter"));
+    map.insert("export_workflow_template", CommandPolicy::SessionOnly);
+    map.insert("import_workflow_template", CommandPolicy::Permission("lab.order"));
+
     map
 }

@@ -6,3 +6,4 @@ pub mod inventory_service;
 pub mod lab_service;
 pub mod lan;
 pub mod sales_service;
+pub mod workflow_service;

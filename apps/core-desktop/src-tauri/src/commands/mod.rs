@@ -15,6 +15,7 @@ pub mod registration_cmd;
 pub mod sales_cmd;
 pub mod system_cmd;
 pub mod user_cmd;
+pub mod workflow_cmd;
 
 #[cfg(test)]
 mod tests {
@@ -123,6 +124,11 @@ mod tests {
             "export_disaster_recovery_pack",
             "preview_disaster_recovery_pack",
             "restore_disaster_recovery_pack",
+            "get_workflow_templates",
+            "save_workflow_draft",
+            "publish_workflow_template",
+            "export_workflow_template",
+            "import_workflow_template",
         ];
 
         let policy_map = crate::auth::policy::get_command_policy_map();

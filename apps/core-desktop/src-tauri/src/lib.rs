@@ -183,6 +183,12 @@ pub fn run() {
             commands::backup_cmd::export_disaster_recovery_pack,
             commands::backup_cmd::preview_disaster_recovery_pack,
             commands::backup_cmd::restore_disaster_recovery_pack,
+            // Workflows
+            commands::workflow_cmd::get_workflow_templates,
+            commands::workflow_cmd::save_workflow_draft,
+            commands::workflow_cmd::publish_workflow_template,
+            commands::workflow_cmd::export_workflow_template,
+            commands::workflow_cmd::import_workflow_template,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

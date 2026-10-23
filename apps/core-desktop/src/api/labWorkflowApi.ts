@@ -1,6 +1,7 @@
 import type { LabWorkflowTemplate, LabWorkflowRun, LabWorkflowRunStep } from '@40labs/types';
 import { DEFAULT_WORKFLOW_GRAPH } from '../features/lab/workflow/engine/advance';
 import { WORKSPACE_ID, BRANCH_ID } from '../devData';
+import { isUsingTauriIpc, invokeCommand } from './client';
 
 let workflowsStore: LabWorkflowTemplate[] = [
   {
@@ -22,16 +23,31 @@ let stepsStore: LabWorkflowRunStep[] = [];
 
 export const labWorkflowApi = {
   listWorkflows: async (): Promise<LabWorkflowTemplate[]> => {
+    if (isUsingTauriIpc()) {
+      try {
+        return await invokeCommand<LabWorkflowTemplate[]>('get_workflow_templates');
+      } catch (err) {
+        console.warn('Failed to fetch workflows from Tauri backend, falling back to local store:', err);
+      }
+    }
     return [...workflowsStore];
   },
 
   getWorkflowForTest: async (testId: string): Promise<LabWorkflowTemplate | null> => {
-    const found = workflowsStore.find((w) => w.test_id === testId && w.status === 'published');
+    const list = await labWorkflowApi.listWorkflows();
+    const found = list.find((w) => w.test_id === testId && w.status === 'published');
     if (found) return found;
-    return workflowsStore.find((w) => w.is_default) || null;
+    return list.find((w) => w.is_default) || list[0] || null;
   },
 
   saveWorkflowDraft: async (testId: string | null, graphJson: string): Promise<LabWorkflowTemplate> => {
+    if (isUsingTauriIpc()) {
+      return await invokeCommand<LabWorkflowTemplate>('save_workflow_draft', {
+        testId,
+        graphJson,
+      });
+    }
+
     const existingIndex = workflowsStore.findIndex((w) => w.test_id === testId && w.status === 'draft');
     const now = new Date().toISOString();
     if (existingIndex !== -1) {
@@ -65,11 +81,16 @@ export const labWorkflowApi = {
   },
 
   publishWorkflow: async (templateId: string): Promise<LabWorkflowTemplate> => {
+    if (isUsingTauriIpc()) {
+      return await invokeCommand<LabWorkflowTemplate>('publish_workflow_template', {
+        templateId,
+      });
+    }
+
     const idx = workflowsStore.findIndex((w) => w.id === templateId);
     if (idx === -1) throw new Error('Workflow template not found');
     const now = new Date().toISOString();
 
-    // Archive or supersede previous published for this test
     const target = workflowsStore[idx];
     workflowsStore = workflowsStore.map((w) => {
       if (w.test_id === target.test_id && w.status === 'published' && w.id !== templateId) {
@@ -85,6 +106,27 @@ export const labWorkflowApi = {
     };
     workflowsStore[idx] = published;
     return published;
+  },
+
+  exportWorkflow: async (templateId: string, destinationPath: string): Promise<boolean> => {
+    if (isUsingTauriIpc()) {
+      return await invokeCommand<boolean>('export_workflow_template', {
+        templateId,
+        destinationPath,
+      });
+    }
+    throw new Error('Export workflow requires Tauri filesystem capability');
+  },
+
+  importWorkflow: async (jsonContent: string): Promise<LabWorkflowTemplate> => {
+    if (isUsingTauriIpc()) {
+      return await invokeCommand<LabWorkflowTemplate>('import_workflow_template', {
+        jsonContent,
+      });
+    }
+    const template: LabWorkflowTemplate = JSON.parse(jsonContent);
+    workflowsStore = [template, ...workflowsStore];
+    return template;
   },
 
   getOrderWorkflowRun: async (orderId: string): Promise<{ run: LabWorkflowRun; steps: LabWorkflowRunStep[] } | null> => {

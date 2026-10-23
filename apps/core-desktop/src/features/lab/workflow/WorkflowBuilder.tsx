@@ -6,7 +6,8 @@ import { validateGraph, ValidationError } from './validateGraph';
 import { DEFAULT_WORKFLOW_GRAPH } from './engine/advance';
 import type { LabWorkflowStepType, LabWorkflowAutoAction, LabWorkflowGraphJson } from '@40labs/types';
 import { requirePin } from '../../customers/components/CustomerList';
-import { Save, Play, CheckCircle, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { Save, Play, CheckCircle, AlertTriangle, Plus, Trash2, Download, Upload, Copy } from 'lucide-react';
+import { labWorkflowApi } from '../../../api/labWorkflowApi';
 
 const STEP_TYPES: LabWorkflowStepType[] = [
   'registration',
@@ -151,10 +152,61 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   const handleSaveDraftClick = async () => {
     try {
       await onSaveDraft(JSON.stringify(getGraphJson()));
-      setToastMessage('Workflow draft saved.');
+      setToastMessage('Workflow draft saved to local filesystem.');
     } catch (err: any) {
       setToastMessage(err?.message || 'Failed to save draft.');
     }
+  };
+
+  const handleExportWorkflow = async () => {
+    try {
+      const dialog = await import('@tauri-apps/plugin-dialog');
+      const selected = await dialog.save({
+        filters: [{ name: 'Workflow JSON', extensions: ['json'] }],
+        defaultPath: 'workflow_export.json',
+      });
+      if (selected && typeof selected === 'string') {
+        const saved = await onSaveDraft(JSON.stringify(getGraphJson()));
+        await labWorkflowApi.exportWorkflow((saved as any).id, selected);
+        setToastMessage('Workflow exported successfully.');
+      }
+    } catch (err: any) {
+      setToastMessage(err?.message || 'Failed to export workflow.');
+    }
+  };
+
+  const handleImportWorkflow = async () => {
+    try {
+      const dialog = await import('@tauri-apps/plugin-dialog');
+      const selected = await dialog.open({
+        filters: [{ name: 'Workflow JSON', extensions: ['json'] }],
+        multiple: false,
+      });
+      if (selected && typeof selected === 'string') {
+        const { isUsingTauriIpc, invokeCommand } = await import('../../../api/client');
+        let content = '';
+        if (isUsingTauriIpc()) {
+          content = await invokeCommand<string>('explorer_read_file_text', { path: selected });
+        }
+        const imported = await labWorkflowApi.importWorkflow(content);
+        const parsed = JSON.parse(imported.graph_json);
+        setNodes(parsed.nodes);
+        setEdges(parsed.edges);
+        setToastMessage('Workflow imported successfully.');
+      }
+    } catch (err: any) {
+      setToastMessage(err?.message || 'Failed to import workflow.');
+    }
+  };
+
+  const handleDuplicateWorkflow = () => {
+    const duplicatedNodes = nodes.map((n) => ({
+      ...n,
+      id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      position: { x: n.position.x + 30, y: n.position.y + 30 },
+    }));
+    setNodes(duplicatedNodes);
+    setToastMessage('Workflow graph duplicated on canvas.');
   };
 
   return (
@@ -244,8 +296,17 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
             <Button intent="neutral" size="sm" onClick={handleValidate} leftIcon={<CheckCircle size={14} />}>
               Validate Graph
             </Button>
+            <Button intent="neutral" size="sm" onClick={handleDuplicateWorkflow} leftIcon={<Copy size={14} />}>
+              Duplicate
+            </Button>
           </div>
           <div className="flex items-center gap-2">
+            <Button intent="neutral" size="sm" onClick={handleImportWorkflow} leftIcon={<Upload size={14} />}>
+              Import
+            </Button>
+            <Button intent="neutral" size="sm" onClick={handleExportWorkflow} leftIcon={<Download size={14} />}>
+              Export
+            </Button>
             <Button intent="neutral" size="sm" onClick={handleSaveDraftClick} leftIcon={<Save size={14} />}>
               Save Draft
             </Button>
