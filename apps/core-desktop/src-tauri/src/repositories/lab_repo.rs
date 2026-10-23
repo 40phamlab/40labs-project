@@ -1,7 +1,7 @@
 use crate::models::inventory::{InventoryItem, Medicine, MedicineWithInventory};
 use crate::models::lab::{
     LabOrder, LabQcData, LabQcEquipment, LabQcRecord, LabResult, LabSample, SampleEvent, TestCatalogEntry,
-    LabReport, LabReportItem, LabReportForward,
+    LabReport, LabReportItem, LabReportForward, LabWorkflowRunDb, LabWorkflowRunStepDb,
 };
 use sqlx::SqlitePool;
 
@@ -558,5 +558,163 @@ impl LabRepository {
         .bind(to_user_id)
         .fetch_all(pool)
         .await
+    }
+
+    pub async fn create_workflow_run(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        run: &LabWorkflowRunDb,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO lab_workflow_run (
+                id, workspace_id, branch_id, order_id, template_id, template_version, state, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&run.id)
+        .bind(&run.workspace_id)
+        .bind(&run.branch_id)
+        .bind(&run.order_id)
+        .bind(&run.template_id)
+        .bind(run.template_version)
+        .bind(&run.state)
+        .bind(&run.created_at)
+        .bind(&run.updated_at)
+        .execute(executor)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn create_workflow_run_step(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        step: &LabWorkflowRunStepDb,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query(
+            r#"
+            INSERT INTO lab_workflow_run_step (
+                id, workspace_id, branch_id, run_id, node_id, status, completed_by, completed_at, block_reason, notes, measurements_json, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&step.id)
+        .bind(&step.workspace_id)
+        .bind(&step.branch_id)
+        .bind(&step.run_id)
+        .bind(&step.node_id)
+        .bind(&step.status)
+        .bind(&step.completed_by)
+        .bind(&step.completed_at)
+        .bind(&step.block_reason)
+        .bind(&step.notes)
+        .bind(&step.measurements_json)
+        .bind(&step.created_at)
+        .bind(&step.updated_at)
+        .execute(executor)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn get_workflow_run(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        run_id: &str,
+    ) -> Result<Option<LabWorkflowRunDb>, sqlx::Error> {
+        sqlx::query_as::<_, LabWorkflowRunDb>(
+            "SELECT * FROM lab_workflow_run WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(run_id)
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn get_workflow_run_by_order(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        order_id: &str,
+    ) -> Result<Option<LabWorkflowRunDb>, sqlx::Error> {
+        sqlx::query_as::<_, LabWorkflowRunDb>(
+            "SELECT * FROM lab_workflow_run WHERE workspace_id = ? AND branch_id = ? AND order_id = ?"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(order_id)
+        .fetch_optional(pool)
+        .await
+    }
+
+    pub async fn list_workflow_run_steps(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+        run_id: &str,
+    ) -> Result<Vec<LabWorkflowRunStepDb>, sqlx::Error> {
+        sqlx::query_as::<_, LabWorkflowRunStepDb>(
+            "SELECT * FROM lab_workflow_run_step WHERE workspace_id = ? AND branch_id = ? AND run_id = ?"
+        )
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(run_id)
+        .fetch_all(pool)
+        .await
+    }
+
+    pub async fn update_workflow_run_step(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        workspace_id: &str,
+        branch_id: &str,
+        run_id: &str,
+        node_id: &str,
+        status: &str,
+        completed_by: Option<&str>,
+        completed_at: Option<&str>,
+        notes: Option<&str>,
+        measurements_json: Option<&str>,
+        updated_at: &str,
+    ) -> Result<u64, sqlx::Error> {
+        sqlx::query(
+            r#"
+            UPDATE lab_workflow_run_step
+            SET status = ?, completed_by = ?, completed_at = ?, notes = ?, measurements_json = ?, updated_at = ?
+            WHERE workspace_id = ? AND branch_id = ? AND run_id = ? AND node_id = ?
+            "#,
+        )
+        .bind(status)
+        .bind(completed_by)
+        .bind(completed_at)
+        .bind(notes)
+        .bind(measurements_json)
+        .bind(updated_at)
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(run_id)
+        .bind(node_id)
+        .execute(executor)
+        .await
+        .map(|res| res.rows_affected())
+    }
+
+    pub async fn update_workflow_run_state(
+        executor: impl sqlx::Executor<'_, Database = sqlx::Sqlite>,
+        workspace_id: &str,
+        branch_id: &str,
+        run_id: &str,
+        state: &str,
+        updated_at: &str,
+    ) -> Result<u64, sqlx::Error> {
+        sqlx::query(
+            "UPDATE lab_workflow_run SET state = ?, updated_at = ? WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+        )
+        .bind(state)
+        .bind(updated_at)
+        .bind(workspace_id)
+        .bind(branch_id)
+        .bind(run_id)
+        .execute(executor)
+        .await
+        .map(|res| res.rows_affected())
     }
 }

@@ -189,6 +189,9 @@ pub fn run() {
             commands::workflow_cmd::publish_workflow_template,
             commands::workflow_cmd::export_workflow_template,
             commands::workflow_cmd::import_workflow_template,
+            commands::workflow_cmd::start_workflow_execution,
+            commands::workflow_cmd::complete_workflow_step_execution,
+            commands::workflow_cmd::get_workflow_execution,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

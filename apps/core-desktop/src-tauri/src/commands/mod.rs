@@ -129,6 +129,9 @@ mod tests {
             "publish_workflow_template",
             "export_workflow_template",
             "import_workflow_template",
+            "start_workflow_execution",
+            "complete_workflow_step_execution",
+            "get_workflow_execution",
         ];
 
         let policy_map = crate::auth::policy::get_command_policy_map();

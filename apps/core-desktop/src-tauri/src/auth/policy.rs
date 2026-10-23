@@ -200,6 +200,9 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("publish_workflow_template", CommandPolicy::Permission("lab.result.enter"));
     map.insert("export_workflow_template", CommandPolicy::SessionOnly);
     map.insert("import_workflow_template", CommandPolicy::Permission("lab.order"));
+    map.insert("start_workflow_execution", CommandPolicy::Permission("lab.order"));
+    map.insert("complete_workflow_step_execution", CommandPolicy::Permission("lab.result.enter"));
+    map.insert("get_workflow_execution", CommandPolicy::SessionOnly);
 
     map
 }

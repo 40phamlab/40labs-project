@@ -275,3 +275,53 @@ pub struct ForwardLabReportRequest {
     pub to_user_id: String,
     pub note: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LabWorkflowRunDb {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub order_id: String,
+    pub template_id: String,
+    pub template_version: i64,
+    pub state: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LabWorkflowRunStepDb {
+    pub id: String,
+    pub workspace_id: String,
+    pub branch_id: String,
+    pub run_id: String,
+    pub node_id: String,
+    pub status: String,
+    pub completed_by: Option<String>,
+    pub completed_at: Option<String>,
+    pub block_reason: Option<String>,
+    pub notes: Option<String>,
+    pub measurements_json: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StartWorkflowRunRequest {
+    pub order_id: String,
+    pub template_id: String,
+    pub template_version: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompleteWorkflowStepRequest {
+    pub run_id: String,
+    pub node_id: String,
+    pub notes: Option<String>,
+    pub measurements_json: Option<String>,
+}
+

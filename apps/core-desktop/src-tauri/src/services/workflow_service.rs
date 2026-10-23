@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
+use sqlx::SqlitePool;
+use crate::models::lab::{LabWorkflowRunDb, LabWorkflowRunStepDb};
+use crate::repositories::lab_repo::LabRepository;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,7 +48,6 @@ pub fn list_workflows<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Ve
         }
     }
 
-    // If empty, create default workflow template file
     if list.is_empty() {
         let now = chrono::Utc::now().to_rfc3339();
         let default_graph = serde_json::json!({
@@ -123,7 +125,6 @@ pub fn publish_workflow<R: tauri::Runtime>(
 
     let target_test_id = workflows[target_idx].test_id.clone();
 
-    // Supersede other published workflows for the same test
     for w in &mut workflows {
         if w.test_id == target_test_id && w.status == "published" && w.id != template_id {
             w.status = "draft".to_string();
@@ -158,4 +159,133 @@ pub fn import_workflow<R: tauri::Runtime>(
     template.id = format!("wf_{}", uuid::Uuid::new_v4());
     template.updated_at = chrono::Utc::now().to_rfc3339();
     save_workflow(app, template)
+}
+
+pub async fn start_execution(
+    app: &tauri::AppHandle,
+    pool: &SqlitePool,
+    workspace_id: &str,
+    branch_id: &str,
+    order_id: &str,
+    template_id: &str,
+) -> Result<(LabWorkflowRunDb, Vec<LabWorkflowRunStepDb>), String> {
+    let workflows = list_workflows(app)?;
+    let template = workflows.iter().find(|w| w.id == template_id).ok_or("Workflow template not found")?;
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let run_id = format!("wfrun_{}", uuid::Uuid::new_v4());
+
+    let run = LabWorkflowRunDb {
+        id: run_id.clone(),
+        workspace_id: workspace_id.to_string(),
+        branch_id: branch_id.to_string(),
+        order_id: order_id.to_string(),
+        template_id: template.id.clone(),
+        template_version: template.version,
+        state: "running".to_string(),
+        created_at: now.clone(),
+        updated_at: now.clone(),
+    };
+
+    let graph: serde_json::Value = serde_json::from_str(&template.graph_json).map_err(|e| e.to_string())?;
+    let nodes = graph["nodes"].as_array().ok_or("Invalid graph nodes")?;
+    let edges = graph["edges"].as_array().cloned().unwrap_or_default();
+
+    let mut in_degree: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    for node in nodes {
+        if let Some(id) = node["id"].as_str() {
+            in_degree.insert(id.to_string(), 0);
+        }
+    }
+    for edge in &edges {
+        if let Some(target) = edge["target"].as_str() {
+            *in_degree.entry(target.to_string()).or_insert(0) += 1;
+        }
+    }
+
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+    LabRepository::create_workflow_run(&mut *tx, &run).await.map_err(|e| e.to_string())?;
+
+    let mut steps = Vec::new();
+    for node in nodes {
+        let node_id = node["id"].as_str().unwrap_or("").to_string();
+        let degree = in_degree.get(&node_id).copied().unwrap_or(0);
+        let status = if degree == 0 { "active" } else { "pending" };
+
+        let step = LabWorkflowRunStepDb {
+            id: format!("wfstep_{}_{}", uuid::Uuid::new_v4(), node_id),
+            workspace_id: workspace_id.to_string(),
+            branch_id: branch_id.to_string(),
+            run_id: run_id.clone(),
+            node_id,
+            status: status.to_string(),
+            completed_by: None,
+            completed_at: None,
+            block_reason: None,
+            notes: None,
+            measurements_json: None,
+            created_at: now.clone(),
+            updated_at: now.clone(),
+        };
+
+        LabRepository::create_workflow_run_step(&mut *tx, &step).await.map_err(|e| e.to_string())?;
+        steps.push(step);
+    }
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+    Ok((run, steps))
+}
+
+pub async fn complete_step(
+    pool: &SqlitePool,
+    workspace_id: &str,
+    branch_id: &str,
+    run_id: &str,
+    node_id: &str,
+    actor_user_id: &str,
+    notes: Option<String>,
+    measurements_json: Option<String>,
+) -> Result<(LabWorkflowRunDb, Vec<LabWorkflowRunStepDb>), String> {
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    LabRepository::update_workflow_run_step(
+        &mut *tx,
+        workspace_id,
+        branch_id,
+        run_id,
+        node_id,
+        "done",
+        Some(actor_user_id),
+        Some(&now),
+        notes.as_deref(),
+        measurements_json.as_deref(),
+        &now,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let steps = LabRepository::list_workflow_run_steps(pool, workspace_id, branch_id, run_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let all_done = steps.iter().all(|s| s.status == "done" || s.status == "skipped");
+    let new_state = if all_done { "completed" } else { "running" };
+
+    LabRepository::update_workflow_run_state(&mut *tx, workspace_id, branch_id, run_id, new_state, &now)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    let run = LabRepository::get_workflow_run(pool, workspace_id, branch_id, run_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("Workflow run not found")?;
+
+    let updated_steps = LabRepository::list_workflow_run_steps(pool, workspace_id, branch_id, run_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok((run, updated_steps))
 }

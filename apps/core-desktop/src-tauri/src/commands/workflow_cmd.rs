@@ -1,6 +1,8 @@
 use tauri::{AppHandle, State};
 use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
+use crate::models::lab::{LabWorkflowRunDb, LabWorkflowRunStepDb};
+use crate::repositories::lab_repo::LabRepository;
 use crate::services::workflow_service::{self, WorkflowTemplateFile};
 
 #[tauri::command]
@@ -43,7 +45,6 @@ pub async fn save_workflow_draft(
 
     let now = chrono::Utc::now().to_rfc3339();
 
-    // Check if draft exists for test_id
     let existing_draft = workflows.iter().find(|w| w.test_id == test_id && w.status == "draft");
 
     let template = if let Some(draft) = existing_draft {
@@ -138,4 +139,87 @@ pub async fn import_workflow_template(
 
     workflow_service::import_workflow(&app, json_content)
         .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn start_workflow_execution(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    order_id: String,
+    template_id: String,
+) -> Result<(LabWorkflowRunDb, Vec<LabWorkflowRunStepDb>), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("lab.order")
+        .await
+        .map_err(|e| e.to_response())?;
+
+    workflow_service::start_execution(&app, &state.pool, &ctx.workspace_id, &ctx.branch_id, &order_id, &template_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn complete_workflow_step_execution(
+    state: State<'_, AppState>,
+    run_id: String,
+    node_id: String,
+    notes: Option<String>,
+    measurements_json: Option<String>,
+) -> Result<(LabWorkflowRunDb, Vec<LabWorkflowRunStepDb>), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("lab.result.enter")
+        .await
+        .map_err(|e| e.to_response())?;
+
+    workflow_service::complete_step(
+        &state.pool,
+        &ctx.workspace_id,
+        &ctx.branch_id,
+        &run_id,
+        &node_id,
+        &ctx.user_id,
+        notes,
+        measurements_json,
+    )
+    .await
+    .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+}
+
+#[tauri::command]
+pub async fn get_workflow_execution(
+    state: State<'_, AppState>,
+    order_id: String,
+) -> Result<Option<(LabWorkflowRunDb, Vec<LabWorkflowRunStepDb>)>, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require_session()
+        .await
+        .map_err(|e| e.to_response())?;
+
+    let run = LabRepository::get_workflow_run_by_order(&state.pool, &ctx.workspace_id, &ctx.branch_id, &order_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    if let Some(r) = run {
+        let steps = LabRepository::list_workflow_run_steps(&state.pool, &ctx.workspace_id, &ctx.branch_id, &r.id)
+            .await
+            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+        Ok(Some((r, steps)))
+    } else {
+        Ok(None)
+    }
 }
