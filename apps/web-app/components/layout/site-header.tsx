@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X, ArrowRight } from 'lucide-react';
-import { darkTokens } from '@40labs/design-tokens';
 import { IconButton } from '@40labs/ui-components';
 import { AppLauncherMenu } from './app-launcher-menu';
 

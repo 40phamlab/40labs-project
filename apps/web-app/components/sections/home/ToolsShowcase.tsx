@@ -21,7 +21,9 @@ export const ToolsShowcase: React.FC = () => {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <RevealGroup>
             {TOOLS.map((tool) => {
-              const IconComponent = (Icons as any)[tool.icon.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("")] || Icons.Activity;
+              const IconComponent = (Icons as unknown as Record<string, React.ComponentType<{ size?: number; className?: string }>>)[
+                tool.icon.split("-").map(s => s.charAt(0).toUpperCase() + s.slice(1)).join("")
+              ] || Icons.Activity;
 
               return (
                 <div

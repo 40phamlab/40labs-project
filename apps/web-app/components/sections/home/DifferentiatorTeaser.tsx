@@ -13,7 +13,7 @@ export const DifferentiatorTeaser: React.FC = () => {
               Why Choose 40Labs?
             </h2>
             <p className="mt-4 max-w-2xl text-text-muted">
-              We're not just another software vendor. We're building the digital backbone for a healthier Tanzania.
+              We&apos;re not just another software vendor. We&apos;re building the digital backbone for a healthier Tanzania.
             </p>
           </div>
         </Reveal>

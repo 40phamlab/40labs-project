@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ShieldCheck, Activity, Database, Microscope, Pill, Stethoscope, Cpu, Sparkles } from 'lucide-react';
+import { ShieldCheck, Database, Microscope, Pill, Stethoscope, Cpu } from 'lucide-react';
 
 const CAPABILITIES = [
   {

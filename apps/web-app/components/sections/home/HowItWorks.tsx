@@ -25,7 +25,9 @@ export const HowItWorks: React.FC = () => {
           <div className="grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-8">
             <RevealGroup>
               {HOW_IT_WORKS.map((item) => {
-                const IconComponent = (Icons as any)[item.icon.charAt(0).toUpperCase() + item.icon.slice(1)] || Icons.Circle;
+                const IconComponent = (Icons as unknown as Record<string, React.ComponentType<{ size?: number; className?: string }>>)[
+                  item.icon.charAt(0).toUpperCase() + item.icon.slice(1)
+                ] || Icons.Circle;
 
                 return (
                   <div key={item.step} className="relative z-10 flex flex-col items-center text-center">

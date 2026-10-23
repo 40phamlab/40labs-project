@@ -192,8 +192,9 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
       const uniqueCount = new Set(values).size;
 
       const numericValues = values
-        .map((v) => Number(v))
-        .filter((n) => !isNaN(n) && String(values[rawDataRows.findIndex((r) => r[colIdx] === v)] ?? '').trim() !== '');
+        .filter((val) => val !== undefined && val !== null && String(val).trim() !== '')
+        .map((val) => Number(val))
+        .filter((n) => !isNaN(n));
 
       const isNumeric = numericValues.length > totalCount * 0.6 && totalCount > 0;
       let sum = 0;
@@ -491,7 +492,7 @@ export const SheetViewer: React.FC<SheetViewerProps> = ({
                     <TableRow key={`col_stat_${col.colIdx}`}>
                       <TableCell className="font-bold">{col.header}</TableCell>
                       <TableCell>
-                        <Badge variant={col.isNumeric ? 'success' : 'secondary'} size="sm">
+                        <Badge variant={col.isNumeric ? 'success' : 'neutral'} size="sm">
                           {col.isNumeric ? 'Numeric' : 'Text'}
                         </Badge>
                       </TableCell>

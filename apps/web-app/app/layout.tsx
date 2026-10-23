@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Sora, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -15,6 +15,24 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const sora = Sora({
+  variable: "--font-heading",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+});
+
+const inter = Inter({
+  variable: "--font-ui",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "600"],
+});
+
 export const metadata: Metadata = {
   title: "40Labs — Healthcare Redefined",
   description: "Advanced solutions for patients, pharmacies, and suppliers.",
@@ -28,7 +46,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
       style={{ backgroundColor: darkTokens.colors.bg }}
     >
       <body

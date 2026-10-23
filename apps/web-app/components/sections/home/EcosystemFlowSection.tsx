@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Users, Stethoscope, Building2, Microscope, Pill, Truck, Cpu, ArrowRight } from 'lucide-react';
-import { darkTokens } from '@40labs/design-tokens';
 
 const ECOSYSTEM_STEPS = [
   { step: '01', title: 'Patient', desc: 'Unified digital health record and care access.', icon: Users },

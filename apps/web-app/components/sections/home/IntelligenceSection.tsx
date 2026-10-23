@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Cpu, Sparkles, TrendingUp, ShieldCheck, Network } from 'lucide-react';
+import { TrendingUp, Network } from 'lucide-react';
 
 export function IntelligenceSection() {
   return (

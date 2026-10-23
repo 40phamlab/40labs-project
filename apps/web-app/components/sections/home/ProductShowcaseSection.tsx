@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Database, Microscope, Pill, Activity, ShieldCheck, CheckCircle2, ArrowUpRight } from 'lucide-react';
+import { Database, Microscope, Pill, Activity, CheckCircle2 } from 'lucide-react';
 
 const TABS = [
   { id: 'core', label: '40LabsCore ERP', icon: Database, badge: 'Pharmacy & Inventory' },

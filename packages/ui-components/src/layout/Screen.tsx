@@ -1,3 +1,5 @@
+'use client';
+
 import * as React from 'react';
 import { LoadingState, ErrorState } from '../data-display/States';
 import { EmptyState } from '../feedback/EmptyState';

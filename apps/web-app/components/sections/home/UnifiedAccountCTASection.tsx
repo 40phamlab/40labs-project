@@ -3,7 +3,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
-import { darkTokens } from '@40labs/design-tokens';
 
 export function UnifiedAccountCTASection() {
   return (

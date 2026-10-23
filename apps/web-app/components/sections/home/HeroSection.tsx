@@ -2,7 +2,6 @@ import React from "react";
 import { Reveal, NodeNetworkBg } from "../../animation";
 import { HERO_CONTENT } from "../../../mock-data/home";
 import { Button } from "@40labs/ui-components";
-import Image from "next/image";
 
 export const HeroSection: React.FC = () => {
   return (
