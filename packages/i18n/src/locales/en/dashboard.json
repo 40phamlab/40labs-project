@@ -1,1 +1,23 @@
-{}
+{
+  "title": "Dashboard",
+  "welcome": "Welcome back, {{name}}",
+  "kpi": {
+    "todaysSales": "Today's Sales",
+    "totalRevenue": "Total Revenue",
+    "lowStockItems": "Low Stock Items",
+    "activePatients": "Active Patients",
+    "pendingLabTests": "Pending Lab Tests",
+    "pendingOrders": "Pending Orders"
+  },
+  "charts": {
+    "salesTrend": "Sales Trend (7 Days)",
+    "revenueByDepartment": "Revenue by Department",
+    "stockStatus": "Stock Status Overview"
+  },
+  "actions": {
+    "newSale": "New Sale",
+    "addStock": "Add Stock",
+    "registerPatient": "Register Patient",
+    "newLabOrder": "New Lab Order"
+  }
+}

@@ -1,1 +1,23 @@
-{}
+{
+  "title": "Nyumbani",
+  "welcome": "Karibu tena, {{name}}",
+  "kpi": {
+    "todaysSales": "Mauzo ya Leo",
+    "totalRevenue": "Mapato ya Jumla",
+    "lowStockItems": "Bidhaa Zinazokaribia Kuisha",
+    "activePatients": "Wagonjwa Hai",
+    "pendingLabTests": "Vipimo vya Maabara Vinavyosubiri",
+    "pendingOrders": "Maagizo Yanayosubiri"
+  },
+  "charts": {
+    "salesTrend": "Mwenendo wa Mauzo (Siku 7)",
+    "revenueByDepartment": "Mapato kwa Idara",
+    "stockStatus": "Muhtasari wa Hali ya Hisa"
+  },
+  "actions": {
+    "newSale": "Mauzo Mapya",
+    "addStock": "Weka Hisa",
+    "registerPatient": "Sajili Mgonjwa",
+    "newLabOrder": "Agizo Jipya la Maabara"
+  }
+}

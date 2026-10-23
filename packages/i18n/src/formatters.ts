@@ -32,3 +32,9 @@ export const formatCurrency = (amount: number, currency = 'TZS', locale = 'sw'):
     maximumFractionDigits: 0,
   }).format(amount);
 };
+
+export const formatMoney = (amount: number | null | undefined, locale = 'sw'): string => {
+  if (amount == null || isNaN(Number(amount))) return '0';
+  const rounded = Math.round(Number(amount));
+  return formatNumber(rounded, locale);
+};

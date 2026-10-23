@@ -1,11 +1,24 @@
 {
   "title": "Mipangilio",
-  "appearance": "Muonekano",
-  "theme": "Mandhari",
+  "business": "Wasifu wa Biashara",
+  "users": "Watumiaji na Majukumu",
+  "appearance": "Mwonekano na Mandhari",
+  "integrations": "Miunganisho",
+  "devices": "Vifaa na Mashine",
+  "compliance": "Utiifu wa TMDA",
+  "security": "Usalama na Ukaguzi",
+  "backup": "Hifadhi Nakala na Urejeshaji",
+  "alerts": "Arifa na Viwango",
   "language": "Lugha",
-  "light": "Nuru",
-  "dark": "Giza",
-  "system": "Mfumo",
-  "kiswahili": "Kiswahili",
-  "english": "English"
+  "theme": {
+    "light": "Nuru",
+    "dark": "Giza",
+    "system": "Mfumo"
+  },
+  "actions": {
+    "save": "Hifadhi Mabadiliko",
+    "cancel": "Ghairi",
+    "delete": "Futa",
+    "confirm": "Thibitisha"
+  }
 }

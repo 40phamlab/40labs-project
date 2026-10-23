@@ -47,6 +47,21 @@ const resources = {
     notifications: swNotifications,
     errors: swErrors,
   },
+  'sw-TZ': {
+    common: swCommon,
+    nav: swNav,
+    settings: swSettings,
+    auth: swAuth,
+    dashboard: swDashboard,
+    sales: swSales,
+    inventory: swInventory,
+    customers: swCustomers,
+    lab: swLab,
+    purchases: swPurchases,
+    reports: swReports,
+    notifications: swNotifications,
+    errors: swErrors,
+  },
   en: {
     common: enCommon,
     nav: enNav,
@@ -63,6 +78,8 @@ const resources = {
     errors: enErrors,
   },
 };
+
+export { resources as translations };
 
 if (!i18n.isInitialized) {
   i18n

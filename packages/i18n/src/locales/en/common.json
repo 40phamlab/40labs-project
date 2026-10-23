@@ -1,19 +1,43 @@
 {
   "appName": "40Labs Core",
+  "search": "Search...",
+  "filter": "Filter",
+  "export": "Export",
+  "import": "Import",
+  "back": "Back",
+  "next": "Next",
+  "close": "Close",
   "save": "Save",
   "cancel": "Cancel",
+  "delete": "Delete",
+  "confirm": "Confirm",
   "loading": "Loading...",
-  "error": "An error occurred",
-  "success": "Success",
-  "landing.theme.system": "System",
-  "landing.theme.light": "Light",
-  "landing.theme.dark": "Dark",
-  "landing.lang.sw": "Kiswahili",
-  "landing.lang.en": "English",
-  "landing.cta.start": "Start",
-  "landing.cta.newDevice": "New Device",
-  "landing.cta.signIn": "Sign In",
-  "landing.cta.haveAccount": "Already have an account?",
-  "sales.clear": "Clear",
-  "dashboard.searchPlaceholder": "Search..."
+  "retry": "Try Again",
+  "emptystate": {
+    "empty": {
+      "title": "No Items Found",
+      "desc": "Get started by adding your first item."
+    },
+    "filtered": {
+      "title": "No Matching Results",
+      "desc": "Try adjusting your search or filters.",
+      "action": "Clear Filters"
+    },
+    "error": {
+      "title": "Failed to Load Data",
+      "desc": "An error occurred while loading content.",
+      "action": "Try Again"
+    },
+    "offline": {
+      "title": "You are Offline",
+      "desc": "Please check your network connection."
+    },
+    "noAccess": {
+      "title": "Access Restricted",
+      "desc": "You do not have permissions to view this section."
+    }
+  },
+  "value": {
+    "notProvided": "Not Provided"
+  }
 }

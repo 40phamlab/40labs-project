@@ -1,1 +1,16 @@
-{}
+{
+  "title": "Wagonjwa na Wateja",
+  "search": "Tafuta kwa jina, simu, namba ya NHIF...",
+  "name": "Jina Kamili",
+  "phone": "Namba ya Simu",
+  "email": "Barua Pepe",
+  "nhif": "Namba ya NHIF / Bima",
+  "history": "Historia ya Manunuzi na Ziara",
+  "importWizard": "Mchawi wa Kuleta Wagonjwa",
+  "actions": {
+    "addPatient": "Sajili Mgonjwa",
+    "editPatient": "Hariri Taarifa za Mgonjwa",
+    "importPatients": "Leta Orodha ya Wagonjwa",
+    "exportPatients": "Hamisha Wagonjwa"
+  }
+}

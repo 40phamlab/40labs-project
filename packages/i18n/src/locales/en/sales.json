@@ -1,1 +1,26 @@
-{}
+{
+  "title": "Sales POS",
+  "cart": "Shopping Cart",
+  "scanBarcode": "Scan barcode or search medicine...",
+  "emptyCart": "Cart is empty. Scan items or select from catalog.",
+  "subtotal": "Subtotal",
+  "tax": "Tax (VAT 18%)",
+  "discount": "Discount",
+  "total": "Total",
+  "checkout": "Complete Checkout",
+  "paymentMethod": "Payment Method",
+  "cash": "Cash",
+  "mobileMoney": "Mobile Money (Lipa Namba)",
+  "insurance": "Insurance",
+  "amountPaid": "Amount Paid",
+  "changeDue": "Change Due",
+  "printReceipt": "Print Fiscal Receipt",
+  "dispensingInstructions": "Dispensing Instructions",
+  "customerReport": "Customer Receipt & History",
+  "actions": {
+    "add": "Add to Cart",
+    "remove": "Remove",
+    "clear": "Clear Cart",
+    "refund": "Refund Sale"
+  }
+}

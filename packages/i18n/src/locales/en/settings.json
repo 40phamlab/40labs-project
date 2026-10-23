@@ -1,11 +1,24 @@
 {
   "title": "Settings",
-  "appearance": "Appearance",
-  "theme": "Theme",
+  "business": "Business Profile",
+  "users": "Users & Roles",
+  "appearance": "Appearance & Theme",
+  "integrations": "Integrations",
+  "devices": "Devices & Hardware",
+  "compliance": "TMDA Compliance",
+  "security": "Security & Audit",
+  "backup": "Backup & Restore",
+  "alerts": "Alerts & Thresholds",
   "language": "Language",
-  "light": "Light",
-  "dark": "Dark",
-  "system": "System",
-  "kiswahili": "Kiswahili",
-  "english": "English"
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "actions": {
+    "save": "Save Changes",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm"
+  }
 }

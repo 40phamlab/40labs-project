@@ -1,1 +1,26 @@
-{}
+{
+  "title": "Mauzo (POS)",
+  "cart": "K Kikapu cha Manunuzi",
+  "scanBarcode": "Changanua msimbo au tafuta dawa...",
+  "emptyCart": "Kikapu kiko wazi. Changanua bidhaa au chagua kutoka kwenye orodha.",
+  "subtotal": "Jumla Ndogo",
+  "tax": "Kodi (VAT 18%)",
+  "discount": "Punguzo",
+  "total": "Jumla Kuu",
+  "checkout": "Maliza Malipo",
+  "paymentMethod": "Njia ya Malipo",
+  "cash": "Fedha Taslimu",
+  "mobileMoney": "Mtandao wa Simu (Lipa Namba)",
+  "insurance": "Bima",
+  "amountPaid": "Kiasi Kilicholipwa",
+  "changeDue": "Chenji",
+  "printReceipt": "Chapisha Risiti ya Kielektroniki",
+  "dispensingInstructions": "Maelekezo ya Kutoa Dawa",
+  "customerReport": "Ripoti na Risiti ya Mteja",
+  "actions": {
+    "add": "Weka kwenye Kikapu",
+    "remove": "Ondoa",
+    "clear": "Futa Kikapu",
+    "refund": "Rejesha Pesa"
+  }
+}

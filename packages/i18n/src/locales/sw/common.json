@@ -1,19 +1,43 @@
 {
   "appName": "40Labs Core",
+  "search": "Tafuta...",
+  "filter": "Chuja",
+  "export": "Hamisha",
+  "import": "Leta",
+  "back": "Rudi",
+  "next": "Endelea",
+  "close": "Funga",
   "save": "Hifadhi",
   "cancel": "Ghairi",
+  "delete": "Futa",
+  "confirm": "Thibitisha",
   "loading": "Inapakia...",
-  "error": "Kosa limetokea",
-  "success": "Imefaulu",
-  "landing.theme.system": "Mfumo",
-  "landing.theme.light": "Nuru",
-  "landing.theme.dark": "Giza",
-  "landing.lang.sw": "Kiswahili",
-  "landing.lang.en": "Kiingereza",
-  "landing.cta.start": "Anza",
-  "landing.cta.newDevice": "Kifaa Kipya",
-  "landing.cta.signIn": "Ingia",
-  "landing.cta.haveAccount": "Tayari una akaunti?",
-  "sales.clear": "Futa",
-  "dashboard.searchPlaceholder": "Tafuta..."
+  "retry": "Jaribu Tena",
+  "emptystate": {
+    "empty": {
+      "title": "Hakuna Vitu Vilivyopatikana",
+      "desc": "Anza kwa kuongeza kipengele chako cha kwanza."
+    },
+    "filtered": {
+      "title": "Hakuna Matokeo Yanayolingana",
+      "desc": "Jaribu kurekebisha utafutaji au vichungi vyako.",
+      "action": "Futa Vichungi"
+    },
+    "error": {
+      "title": "Imeshindikana Kupakia Taarifa",
+      "desc": "Kosa limetokea wakati wa kupakia yaliyomo.",
+      "action": "Jaribu Tena"
+    },
+    "offline": {
+      "title": "Huna Mtandao",
+      "desc": "Tafadhali kagua muunganisho wako wa mtandao."
+    },
+    "noAccess": {
+      "title": "Ufikiaji Umezuiwa",
+      "desc": "Huna idhini ya kuona sehemu hii."
+    }
+  },
+  "value": {
+    "notProvided": "Haijatolewa"
+  }
 }

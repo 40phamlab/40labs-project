@@ -1,1 +1,13 @@
-{}
+{
+  "title": "Notifications & Alerts",
+  "unread": "Unread",
+  "all": "All Alerts",
+  "lowStock": "Low Stock Alert",
+  "expiryWarning": "Expiry Warning",
+  "systemAlert": "System Alert",
+  "actions": {
+    "markAllRead": "Mark All as Read",
+    "clearAll": "Clear All",
+    "viewDetails": "View Details"
+  }
+}

@@ -1,1 +1,13 @@
-{}
+{
+  "title": "Arifa na Tahadhari",
+  "unread": "Ambazo hazijasomwa",
+  "all": "Tahadhari Zote",
+  "lowStock": "Tahadhari ya Hisa Ndogo",
+  "expiryWarning": "Onyo la Kuisha Muda",
+  "systemAlert": "Tahadhari ya Mfumo",
+  "actions": {
+    "markAllRead": "Weka Zote Kuwa Zimesomwa",
+    "clearAll": "Futa Zote",
+    "viewDetails": "Ona Maelezo"
+  }
+}

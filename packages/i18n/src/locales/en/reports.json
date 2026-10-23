@@ -1,1 +1,13 @@
-{}
+{
+  "title": "Reports & Analytics",
+  "salesReport": "Sales & Revenue Report",
+  "inventoryReport": "Inventory & Stock Valuation",
+  "taxReport": "TMDA & Tax Compliance Report",
+  "auditLog": "Audit Trail & Logs",
+  "dateRange": "Date Range",
+  "actions": {
+    "generate": "Generate Report",
+    "exportPdf": "Export PDF",
+    "exportCsv": "Export CSV"
+  }
+}

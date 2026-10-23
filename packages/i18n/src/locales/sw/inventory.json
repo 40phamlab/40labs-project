@@ -1,1 +1,19 @@
-{}
+{
+  "title": "Bidhaa na Hisa",
+  "search": "Tafuta dawa, bechi, SKU...",
+  "filterCategory": "Chuja Kategoria",
+  "stockLevel": "Kiwango cha Hisa",
+  "batch": "Namba ya Bechi",
+  "expiryDate": "Tarehe ya Kuisha Muda",
+  "unitPrice": "Bei ya Kuuzia",
+  "costPrice": "Bei ya Nunuzi",
+  "supplier": "Mtoa Huduma",
+  "stockTrends": "Mwenendo wa Hisa na Uchambuzi",
+  "importWizard": "Mchawi wa Kuleta Hisa",
+  "actions": {
+    "addStock": "Ongeza Dawa Mpya",
+    "adjustStock": "Rekebisha Hisa",
+    "importStock": "Leta Faili la Hisa",
+    "exportStock": "Toa Ripoti ya Hisa"
+  }
+}

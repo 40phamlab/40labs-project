@@ -1,11 +1,14 @@
 {
   "home": "Nyumbani",
-  "sales": "Mauzo na POS",
-  "inventory": "Akiba",
-  "purchases": "Ununuzi",
+  "sales": "Mauzo",
+  "inventory": "Bidhaa",
+  "purchases": "Manunuzi",
   "patients": "Wagonjwa",
   "lab": "Maabara",
-  "dispensary": "Duka la Dawa",
+  "dispensary": "Dispensary",
   "reports": "Ripoti",
+  "scheduling": "Ratiba",
+  "training": "Mafunzo",
+  "notifications": "Arifa",
   "settings": "Mipangilio"
 }

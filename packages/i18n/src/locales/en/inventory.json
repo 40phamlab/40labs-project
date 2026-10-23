@@ -1,1 +1,19 @@
-{}
+{
+  "title": "Inventory & Stock",
+  "search": "Search medicines, batch, SKU...",
+  "filterCategory": "Filter Category",
+  "stockLevel": "Stock Level",
+  "batch": "Batch Number",
+  "expiryDate": "Expiry Date",
+  "unitPrice": "Unit Price",
+  "costPrice": "Cost Price",
+  "supplier": "Supplier",
+  "stockTrends": "Stock Trends & Analytics",
+  "importWizard": "Import Stock Wizard",
+  "actions": {
+    "addStock": "Add New Medicine",
+    "adjustStock": "Adjust Stock",
+    "importStock": "Import Stock File",
+    "exportStock": "Export Stock Report"
+  }
+}

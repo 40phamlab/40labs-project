@@ -1,1 +1,15 @@
-{}
+{
+  "title": "Moduli ya Maabara",
+  "orders": "Maagizo ya Maabara",
+  "samples": "Ukusanyaji wa Sampuli",
+  "results": "Matokeo ya Vipimo na QC",
+  "catalog": "Orodha ya Vipimo",
+  "testName": "Jina la Kipimo",
+  "patient": "Mgonjwa",
+  "status": "Hali",
+  "actions": {
+    "newOrder": "Agizo Jipya la Maabara",
+    "recordResult": "Weka Matokeo",
+    "verify": "Thibitisha na Weka Sahihi"
+  }
+}

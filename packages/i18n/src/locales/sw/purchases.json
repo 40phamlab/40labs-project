@@ -1,1 +1,14 @@
-{}
+{
+  "title": "Manunuzi na Soko",
+  "suppliers": "Wasambazaji",
+  "marketplace": "Soko la Wasambazaji",
+  "purchaseOrders": "Maagizo ya Manunuzi",
+  "orderNumber": "Namba ya Agizo",
+  "totalAmount": "Kiasi cha Jumla",
+  "deliveryStatus": "Hali ya Uwasilishaji",
+  "actions": {
+    "createOrder": "Unda Agizo la Manunuzi",
+    "receiveGoods": "Pokea Bidhaa",
+    "reorder": "Agiza Tena Haraka"
+  }
+}

@@ -1,1 +1,14 @@
-{}
+{
+  "title": "Purchases & Marketplace",
+  "suppliers": "Suppliers",
+  "marketplace": "Supplier Marketplace",
+  "purchaseOrders": "Purchase Orders",
+  "orderNumber": "Order #",
+  "totalAmount": "Total Amount",
+  "deliveryStatus": "Delivery Status",
+  "actions": {
+    "createOrder": "Create Purchase Order",
+    "receiveGoods": "Receive Goods",
+    "reorder": "Quick Reorder"
+  }
+}

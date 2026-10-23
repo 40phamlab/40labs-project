@@ -1,1 +1,15 @@
-{}
+{
+  "title": "Laboratory Module",
+  "orders": "Lab Orders",
+  "samples": "Sample Collection",
+  "results": "Test Results & QC",
+  "catalog": "Test Catalog",
+  "testName": "Test Name",
+  "patient": "Patient",
+  "status": "Status",
+  "actions": {
+    "newOrder": "New Lab Order",
+    "recordResult": "Record Results",
+    "verify": "Verify & Sign"
+  }
+}

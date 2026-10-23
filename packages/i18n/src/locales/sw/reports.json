@@ -1,1 +1,13 @@
-{}
+{
+  "title": "Ripoti na Uchambuzi",
+  "salesReport": "Ripoti ya Mauzo na Mapato",
+  "inventoryReport": "Thamani ya Hisa na Bidhaa",
+  "taxReport": "Ripoti ya TMDA na Kodi",
+  "auditLog": "Kumbukumbu za Ukaguzi na Usalama",
+  "dateRange": "Kipindi cha Tarehe",
+  "actions": {
+    "generate": "Tengeneza Ripoti",
+    "exportPdf": "Hamisha PDF",
+    "exportCsv": "Hamisha CSV"
+  }
+}

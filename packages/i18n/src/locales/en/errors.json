@@ -1,1 +1,8 @@
-{}
+{
+  "general": "An unexpected error occurred.",
+  "network": "Network connection error. Please check your internet or local network.",
+  "unauthorized": "Unauthorized access. Please log in again.",
+  "notFound": "Requested resource not found.",
+  "validation": "Please check your input and try again.",
+  "server": "Server error. Please try again later."
+}

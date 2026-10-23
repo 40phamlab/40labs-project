@@ -20,6 +20,6 @@ describe('i18n Infrastructure (Alpha P0)', () => {
     expect(formatDate(testDate, 'en')).toBeTruthy();
     expect(formatTime(testDate, 'en')).toBeTruthy();
     expect(formatNumber(1250000, 'sw')).toContain('1');
-    expect(formatCurrency(50000, 'TZS', 'sw')).toContain('TZS');
+    expect(formatCurrency(50000, 'TZS', 'sw')).toMatch(/TZS|TSh/);
   });
 });

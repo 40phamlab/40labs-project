@@ -1,1 +1,16 @@
-{}
+{
+  "title": "Patients & Customers",
+  "search": "Search by name, phone, NHIF ID...",
+  "name": "Full Name",
+  "phone": "Phone Number",
+  "email": "Email Address",
+  "nhif": "NHIF / Insurance Number",
+  "history": "Purchase & Visit History",
+  "importWizard": "Import Patients Wizard",
+  "actions": {
+    "addPatient": "Register Patient",
+    "editPatient": "Edit Patient Info",
+    "importPatients": "Import Patients List",
+    "exportPatients": "Export Patients"
+  }
+}

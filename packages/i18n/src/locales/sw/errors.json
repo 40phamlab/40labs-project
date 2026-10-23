@@ -1,1 +1,8 @@
-{}
+{
+  "general": "Kosa lisilotarajiwa limetokea.",
+  "network": "Kosa la mtandao. Tafadhali angalia intaneti yako.",
+  "unauthorized": "Huruhusiwi kufanya kitendo hiki. Tafadhali ingia tena.",
+  "notFound": "Rasilimali iliyoombwa haipatikani.",
+  "validation": "Tafadhali kagua maelezo yako na ujaribu tena.",
+  "server": "Kosa la seva. Tafadhali jaribu tena baadaye."
+}

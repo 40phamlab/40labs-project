@@ -1,11 +1,14 @@
 {
   "home": "Home",
-  "sales": "Sales & POS",
+  "sales": "Sales",
   "inventory": "Inventory",
   "purchases": "Purchases",
   "patients": "Patients",
   "lab": "Lab",
   "dispensary": "Dispensary",
   "reports": "Reports",
+  "scheduling": "Scheduling",
+  "training": "Training",
+  "notifications": "Notifications",
   "settings": "Settings"
 }
