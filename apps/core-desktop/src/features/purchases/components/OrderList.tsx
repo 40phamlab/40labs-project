@@ -25,7 +25,7 @@ export const OrderList: React.FC<OrderListProps> = ({
   }
 
   return (
-    <div className="flex flex-col gap-2.5 p-1 pb-6">
+    <div className="flex flex-col gap-2.5 p-1 pb-6 overflow-y-auto custom-scrollbar flex-1 min-h-0">
       {orders.map((order) => {
         const sup = suppliers.find((s) => s.businessId === order.sellerBusinessId);
         return (
