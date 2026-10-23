@@ -29,7 +29,7 @@ export const SupplierDealsTab: React.FC<SupplierDealsTabProps> = ({
   onMoreInfo,
 }) => {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1 overflow-y-auto custom-scrollbar flex-1 min-h-0">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-1 pb-6">
       {deals.length === 0 ? (
         <div className="col-span-full flex flex-col items-center justify-center py-16 text-text-muted gap-3">
           <Tag size={36} className="opacity-30" />

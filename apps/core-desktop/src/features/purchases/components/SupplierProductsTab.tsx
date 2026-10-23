@@ -80,7 +80,7 @@ export const SupplierProductsTab: React.FC<SupplierProductsTabProps> = ({
   };
 
   return (
-    <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-1 pb-6">
+    <div className="flex flex-col gap-4 pb-6">
       <div className={viewMode === 'grid' ? 'grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4' : 'space-y-2'}>
         {filteredProducts.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center py-20 text-center text-text-muted gap-2">
