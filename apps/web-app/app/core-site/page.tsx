@@ -1,18 +1,11 @@
 import React from 'react';
-import { HeroSearch } from '@/components/sections/hero-search';
-import { FeatureCards } from '@/components/sections/feature-cards';
-import { ToolsShowcase } from '@/components/sections/tools-showcase';
-import { TrustedBy } from '@/components/sections/trusted-by';
-import { BackgroundGrid } from '@40labs/ui-components';
+import { PlaceholderBlock } from '@/components/sections/placeholder-block';
 
-export default function CoreHomePage() {
+export default function CoreSitePage() {
   return (
-    <div className="flex flex-col w-full pb-24">
-      <BackgroundGrid />
-      <HeroSearch />
-      <FeatureCards />
-      <ToolsShowcase />
-      <TrustedBy />
+    <div className="max-w-7xl mx-auto w-full px-6 py-20">
+      <h1 className="text-4xl font-heading font-bold mb-12">40LabsCore</h1>
+      <PlaceholderBlock title="40LabsCore, coming soon" />
     </div>
   );
 }

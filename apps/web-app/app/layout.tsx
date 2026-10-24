@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Sora, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { SiteHeader } from "@/components/layout/site-header";
-import { SiteFooter } from "@/components/layout/site-footer";
 import { darkTokens } from "@40labs/design-tokens";
 
 const geistSans = Geist({
@@ -56,11 +54,9 @@ export default function RootLayout({
           color: darkTokens.colors.text,
         }}
       >
-        <SiteHeader />
         <main className="flex-1 flex flex-col">
           {children}
         </main>
-        <SiteFooter />
       </body>
     </html>
   );

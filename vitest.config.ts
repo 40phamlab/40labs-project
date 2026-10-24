@@ -31,6 +31,8 @@ export default defineConfig({
       '@40labs/ui-components': path.resolve(__dirname, 'packages/ui-components/src/index.ts'),
       '@40labs/types': path.resolve(__dirname, 'packages/types/src/index.ts'),
       '@40labs/design-tokens': path.resolve(__dirname, 'packages/design-tokens/src/index.ts'),
+      '@/': path.resolve(__dirname, 'apps/web-app/'),
+      '@': path.resolve(__dirname, 'apps/web-app'),
       'react/jsx-dev-runtime': path.join(reactPath, 'jsx-dev-runtime.js'),
       'react/jsx-runtime': path.join(reactPath, 'jsx-runtime.js'),
       'react-dom/client': path.join(reactDomPath, 'client.js'),
