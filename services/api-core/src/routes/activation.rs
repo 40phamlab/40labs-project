@@ -355,8 +355,8 @@ pub async fn register_business(
         let branch_id = format!("branch_{}", uuid::Uuid::new_v4().simple());
         sqlx::query(
             r#"
-            INSERT INTO business_registry (business_id, workspace_id, branch_id, phone_hash, terms_version, terms_locale, terms_text_sha256, terms_accepted_at, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            INSERT INTO business_registry (business_id, workspace_id, branch_id, phone_hash, terms_version, terms_locale, terms_text_sha256, terms_accepted_at, created_at, labs_verified, verification_status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, TRUE, 'pending_review')
             "#,
         )
         .bind(&business_id)

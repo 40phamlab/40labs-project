@@ -118,7 +118,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = axum::Router::new()
         .merge(activation::router(state.clone()))
-        .merge(health::health_router(state.clone()));
+        .merge(health::health_router(state.clone()))
+        .merge(api_core::sync::router(state.clone()));
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("API core server listening on {}", addr);
