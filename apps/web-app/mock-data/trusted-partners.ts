@@ -5,12 +5,10 @@ export interface Partner {
 }
 
 const partners: Partner[] = [
-  { id: 'partner-1', name: 'Mount Meru Hospital' },
-  { id: 'partner-2', name: 'Kairuki Health' },
-  { id: 'partner-3', name: 'Aga Khan Found.' },
-  { id: 'partner-4', name: 'Regency Med' },
-  { id: 'partner-5', name: 'Muhimbili Nat.' },
-  { id: 'partner-6', name: 'TMDA' },
+  { id: 'partner-1', name: 'Mount Meru Hospital', logoUrl: 'https://placehold.co/120x40/transparent/white?text=Mount+Meru' },
+  { id: 'partner-2', name: 'Kairuki Health' }, // no logoUrl -> tests empty outlined slot
+  { id: 'partner-3', name: 'Aga Khan Found.' }, // no logoUrl -> tests empty outlined slot
+  { id: 'partner-4', name: 'Regency Med' }, // no logoUrl -> tests empty outlined slot
 ];
 
 /**

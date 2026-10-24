@@ -1,15 +1,8 @@
 # Web App — Progress Log
 
-## Milestone: 40labs.com Company Landing Page (landpage.ai design match)
-- [x] Host-based routing proxy (`proxy.ts` routing `40labs.com` to `(company)` route group and `core.40labs.com` to `/core-site`)
-- [x] Company route group (`app/(company)/layout.tsx`, `app/(company)/page.tsx`) with light blue-grey background (`#E4E9EC`)
-- [x] `CompanyHeader`: rounded outlined nav bar, logo slot, nav links (Home, products, blog, pricing, publications, about), orange "logIn" button
-- [x] `HeroOverlapCards`: 3 staggered overlapping cards (Orange Telemed, Deep-Green Management, White Insights) with pill CTA buttons
-- [x] `FeatureZigZagRows`: 3 zig-zag feature rows with alternating image slots and orange accent block
-- [x] `TrustedBySection`: heading + 4 outlined logo slots
-- [x] `CompanyFooter`: large outlined rounded container footer shell with newsletter input
-- [x] Font integration (`next/font/google` for Sora, Inter, JetBrains Mono)
-- [x] Build, lint, and typecheck verified successfully (0 ESLint errors/warnings)
+- [x] `CompanyHero`: 3 staggered overlapping cards (`CompanyHero.tsx`, `HeroCard.tsx`, `HeroCardCta.tsx`, `mock-data/hero.ts`) supporting desktop staggered overlap layout and mobile stacked column with layered offset.
+- [x] `TrustedBySection`: Rebuilt "Trusted By" section featuring 4 outlined rounded logo slots in a row (4 across at ≥md, 2×2 at <md), supporting optional `logoUrl` and rendering decorative empty outlined slots without fake company names when absent (`TrustedBySection.tsx`, `mock-data/trusted-partners.ts`, `TrustedBySection.test.tsx`).
+- [x] `SiteFooter`: Restyled footer as the large rounded outlined container (`rounded-[32px]`, token border & radius), containing 4 link columns and robust newsletter email input with client-side sanitization and validation (empty, invalid format, whitespace trimming, max-length check, HTML/script injection prevention, accessible label & error text, `console.log` submission stub with no network calls, and `site-footer.test.tsx`).
 
 ## Log
 (2026-09-19) — Completed initial setup and repo hygiene. Wired shared packages (ui-components, design-tokens, types) with Next.js transpilation. Added dark/skeuomorphic theme tokens. Built shared shell (SiteHeader/SiteFooter) and Home page sections. Created stub pages for Products, Services, Blog, and About with placeholder content blocks. Verified build and workspace resolution. Implemented App Launcher Menu with dropdown tools grid.
@@ -17,6 +10,8 @@
 (2026-03-31) — Built professional website header and navigation (`SiteHeader`) featuring the 40Labs brand wordmark, ecosystem navigation structure (Platform, Solutions, Intelligence, Company), "Sign In" secondary action, "Get Started" primary CTA, App Launcher integration, responsive mobile drawer menu, and clean glass scroll transition states. Verified build passes clean.
 (2026-03-31) — Fixed all ESLint errors and warnings across `apps/web-app` (0 errors, 0 warnings). Documented pre-existing `SheetViewer.tsx` type check failure in `packages/ui-components` per instructions.
 (2026-04-01) — Rebuilt company `SiteHeader` matching design specs (rounded outlined nav bar, Title Case nav links: Home, Products, Blog, Pricing, Publications, About; separate orange "Log In" button; split into sub-components: `logo-slot.tsx`, `nav-links.tsx`, `login-button.tsx`, `mobile-menu.tsx`; navigation mock data in `mock-data/navigation.ts`). Added missing stub pages (`pricing`, `publications`) using `PlaceholderBlock`. Added active-link unit tests (`nav-links.test.ts`). Build, lint, and unit tests pass successfully.
+(2026-04-01) — Implemented `CompanyHero` section with 3 staggered overlapping cards (`CompanyHero.tsx`, `HeroCard.tsx`, `HeroCardCta.tsx`, `mock-data/hero.ts`), preserving verbatim placeholder copy and flagging known mock copy typos ("meet with Your patients Easily & Remotely", "Deliver your most best service", "Do more with us!!", and duplicate "Manage" title). Added unit tests (`CompanyHero.test.tsx`).
+(2026-04-01) — Rebuilt "Trusted By" (`TrustedBySection.tsx`) with 4 empty outlined rounded logo slots in a row (4 across at ≥md, 2×2 at <md), decorative empty slot handling without fake company names, and comprehensive unit tests (`TrustedBySection.test.tsx`). Restyled `SiteFooter` (`site-footer.tsx`) as the large rounded outlined container (`rounded-[32px]`, token radius/border) with 4 link columns and newsletter input featuring robust client-side validation, sanitization (empty, invalid format, whitespace, 1000-char, HTML/script injection), accessible label, error text, and keyboard submission tests (`site-footer.test.tsx`). Verified clean lint and successful Next.js production build.
 
 ## Open questions
-(none)
+- Mock copy typos flagged: `"meet with Your patients Easily & Remotely"`, `"Deliver your most best service"`, `"Do more with us!!"`, and duplicate `"Manage"` heading in design artboard (rendered once per requirements).
