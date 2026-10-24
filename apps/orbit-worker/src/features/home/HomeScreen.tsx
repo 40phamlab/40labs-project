@@ -38,24 +38,68 @@ export function HomeScreen() {
     return permissions.includes(key) || (permissions as any)[key] === true;
   };
 
-  const handleTilePress = (permKey: string, route: string) => {
+  const quickActionsList = [
+    {
+      title: 'Ongeza Bidhaa',
+      icon: 'cube-outline',
+      perm: 'can_update_stock',
+      route: '/stock',
+    },
+    {
+      title: 'Sajili Mgonjwa',
+      icon: 'person-add-outline',
+      perm: 'can_manage_customers',
+      route: '/stock',
+    },
+    {
+      title: 'Mauzo Mapya',
+      icon: 'cart-outline',
+      perm: 'can_create_sale',
+      route: '/pos',
+    },
+    {
+      title: 'Vipimo vya Maabara',
+      icon: 'flask-outline',
+      perm: 'can_add_lab_sample',
+      route: '/lab-sample',
+    },
+    {
+      title: 'Ona Ripoti',
+      icon: 'document-text-outline',
+      perm: 'can_record_lab_result',
+      route: '/lab-result',
+    },
+    {
+      title: 'Bidhaa',
+      icon: 'medical-outline',
+      perm: 'can_view_stock',
+      route: '/stock',
+    },
+  ];
+
+  const visibleActions = status === 'connected'
+    ? quickActionsList.filter((qa) => hasPermission(qa.perm))
+    : quickActionsList;
+
+  const handleTilePress = (route: string) => {
     if (status === 'unpaired' || status === 'revoked') {
       router.push('/pair');
       return;
     }
-    if (!hasPermission(permKey)) {
-      setBannerMessage(t('emptystate.noAccess.title') || 'No permission');
+    try {
+      router.push(route as any);
+    } catch (err: any) {
+      setBannerMessage(`Navigation error: route ${route} not found`);
       const timer = setTimeout(() => setBannerMessage(null), 3000);
       return () => clearTimeout(timer);
     }
-    router.push(route as any);
   };
 
   const headerTitle = userInfo?.name
     ? `${userInfo.name} (${userInfo.role || 'Staff'})`
     : 'Orbit Worker';
 
-  const qaColumns = columns >= 3 ? 4 : columns === 2 ? 3 : 2;
+  const qaColumns = 2;
 
   const salesVal = summary?.sales !== undefined ? `TZS ${summary.sales.toLocaleString()}` : 'TZS 0';
   const patientsVal = summary?.patients !== undefined ? summary.patients : 0;
@@ -124,55 +168,18 @@ export function HomeScreen() {
           {t('dashboard.quickActions')}
         </Text>
 
-        <View style={styles.qaGrid}>
-          <QuickActionTile
-            title={t('dashboard.addStock')}
-            icon="cube-outline"
-            locked={status === 'connected' && !hasPermission('can_update_stock')}
-            onPress={() => handleTilePress('can_update_stock', '/stock')}
-            onLockedPress={() => setBannerMessage('No permission')}
-            style={{ width: `${100 / qaColumns - 3}%` }}
-          />
-          <QuickActionTile
-            title={t('dashboard.addPatient')}
-            icon="person-add-outline"
-            locked={status === 'connected' && !hasPermission('can_manage_customers')}
-            onPress={() => handleTilePress('can_manage_customers', '/stock')}
-            onLockedPress={() => setBannerMessage('No permission')}
-            style={{ width: `${100 / qaColumns - 3}%` }}
-          />
-          <QuickActionTile
-            title={t('dashboard.newSale')}
-            icon="cart-outline"
-            locked={status === 'connected' && !hasPermission('can_create_sale')}
-            onPress={() => handleTilePress('can_create_sale', '/pos')}
-            onLockedPress={() => setBannerMessage('No permission')}
-            style={{ width: `${100 / qaColumns - 3}%` }}
-          />
-          <QuickActionTile
-            title={t('dashboard.labTests')}
-            icon="flask-outline"
-            locked={status === 'connected' && !hasPermission('can_add_lab_sample')}
-            onPress={() => handleTilePress('can_add_lab_sample', '/lab-sample')}
-            onLockedPress={() => setBannerMessage('No permission')}
-            style={{ width: `${100 / qaColumns - 3}%` }}
-          />
-          <QuickActionTile
-            title={t('dashboard.viewReports')}
-            icon="document-text-outline"
-            locked={status === 'connected' && !hasPermission('can_record_lab_result')}
-            onPress={() => handleTilePress('can_record_lab_result', '/lab-result')}
-            onLockedPress={() => setBannerMessage('No permission')}
-            style={{ width: `${100 / qaColumns - 3}%` }}
-          />
-          <QuickActionTile
-            title={t('nav.inventory')}
-            icon="medical-outline"
-            locked={status === 'connected' && !hasPermission('can_view_stock')}
-            onPress={() => handleTilePress('can_view_stock', '/stock')}
-            onLockedPress={() => setBannerMessage('No permission')}
-            style={{ width: `${100 / qaColumns - 3}%` }}
-          />
+        <View style={styles.qaGrid} onLayout={() => {}}>
+          {visibleActions.map((qa, index) => (
+            <QuickActionTile
+              key={index}
+              title={qa.title}
+              icon={qa.icon}
+              locked={false}
+              onPress={() => handleTilePress(qa.route)}
+              onLockedPress={() => {}}
+              style={{ width: '48%', minHeight: 48 }}
+            />
+          ))}
         </View>
       </ScrollView>
     </Screen>

@@ -11,7 +11,7 @@ function I18nTestComponent() {
       <Text testID="lang">{language}</Text>
       <Text testID="title">{t('nav.home')}</Text>
       <Text testID="missing">{t('non.existent.key' as any)}</Text>
-      <Text testID="param">{t('dashboard.timeMinutesAgo', { n: 5 })}</Text>
+      <Text testID="param">{t('dashboard.timeMinutesAgo', { count: 5 })}</Text>
       <TouchableOpacity testID="toggle-lang" onPress={() => setLanguage(language === 'sw-TZ' ? 'en' : 'sw-TZ')}>
         <Text>Toggle</Text>
       </TouchableOpacity>

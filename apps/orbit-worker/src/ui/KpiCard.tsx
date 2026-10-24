@@ -27,8 +27,8 @@ export function KpiCard({ label, value, style }: KpiCardProps) {
         style,
       ]}
     >
-      <Text variant="label" style={styles.label}>{label}</Text>
-      <Text variant="mono" style={styles.value}>{value}</Text>
+      <Text variant="label" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.label}>{label}</Text>
+      <Text variant="mono" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.value}>{value}</Text>
     </View>
   );
 }

@@ -52,7 +52,10 @@ export function Screen({
   );
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.container, { backgroundColor: colors.surfaceStrong }, style as any]}>
+    <SafeAreaView
+      edges={['bottom', 'left', 'right']}
+      style={[styles.container, { backgroundColor: colors.surfaceStrong }, style as any]}
+    >
       {wrapped}
     </SafeAreaView>
   );

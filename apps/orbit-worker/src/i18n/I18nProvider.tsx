@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import * as SQLite from 'expo-sqlite';
-import { t as baseT, Language, TranslationKey } from '@40labs/i18n';
+import { t as baseT, i18n, Language, TranslationKey } from '@40labs/i18n';
 
 interface I18nContextType {
   language: Language;
@@ -65,20 +65,21 @@ function saveStoredLanguage(lang: Language) {
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => getStoredLanguage());
+  const [language, setLanguageState] = useState<Language>(() => {
+    const lang = getStoredLanguage();
+    i18n.changeLanguage(lang);
+    return lang;
+  });
 
   const setLanguage = (newLang: Language) => {
     setLanguageState(newLang);
     saveStoredLanguage(newLang);
+    i18n.changeLanguage(newLang);
   };
 
   const t = (key: TranslationKey, params?: Record<string, string | number>): string => {
-    let translation = baseT(key, language);
-    if (params) {
-      Object.entries(params).forEach(([paramKey, paramVal]) => {
-        translation = translation.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), String(paramVal));
-      });
-    }
+    i18n.changeLanguage(language);
+    let translation = baseT(key, params);
     return translation;
   };
 

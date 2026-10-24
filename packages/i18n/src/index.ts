@@ -114,7 +114,7 @@ const resources = {
 export { resources as translations };
 
 if (!i18n.isInitialized) {
-  const persistedLng = typeof window !== 'undefined' ? localStorage.getItem('40labs_language') : null;
+  const persistedLng = typeof window !== 'undefined' && typeof localStorage !== 'undefined' ? localStorage.getItem('40labs_language') : null;
   const initialLng = persistedLng === 'en' || persistedLng === 'en-TZ' ? 'en' : 'sw';
 
   i18n
@@ -140,10 +140,7 @@ if (!i18n.isInitialized) {
         }
       },
       parseMissingKeyHandler: (key) => {
-        const isDev = typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production';
-        const enVal = i18n.getResource('en', 'translation', key);
-        if (typeof enVal === 'string') return enVal;
-        return isDev ? `⚠ ${key}` : '';
+        return key;
       },
     });
 }

@@ -27,7 +27,8 @@ export function AppHeader({ title, onBack, rightAction }: AppHeaderProps) {
       style={[
         styles.header,
         {
-          paddingTop: insets.top + 8,
+          paddingTop: insets.top,
+          height: 48 + insets.top,
           backgroundColor: colors.surfacePrimary,
           borderBottomColor: colors.borderSubtle,
         },

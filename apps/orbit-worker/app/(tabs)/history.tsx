@@ -75,13 +75,17 @@ export default function HistoryScreen() {
   return (
     <Screen scrollable={false}>
       <AppHeader title={t('nav.history')} />
-      <View style={styles.filterRow}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterRow}
+      >
         <Chip label="All" selected={selectedFilter === 'all'} onPress={() => setSelectedFilter('all')} />
         <Chip label={t('dashboard.metricSales')} selected={selectedFilter === 'sales'} onPress={() => setSelectedFilter('sales')} />
         <Chip label={t('dashboard.addStock')} selected={selectedFilter === 'stock'} onPress={() => setSelectedFilter('stock')} />
         <Chip label={t('dashboard.addPatient')} selected={selectedFilter === 'patients'} onPress={() => setSelectedFilter('patients')} />
         <Chip label={t('dashboard.labTests')} selected={selectedFilter === 'lab'} onPress={() => setSelectedFilter('lab')} />
-      </View>
+      </ScrollView>
 
       {cacheMeta && !activities.length && (
         <Banner title={`Offline mode - cached data as of ${cacheMeta.asOfText}`} variant="cached" />
@@ -137,10 +141,11 @@ export default function HistoryScreen() {
 
 const styles = StyleSheet.create({
   filterRow: {
-    flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 8,
     gap: 8,
+    alignItems: 'center',
+    flexDirection: 'row',
   },
   errorContainer: {
     marginHorizontal: 16,
