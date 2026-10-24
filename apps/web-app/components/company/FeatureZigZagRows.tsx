@@ -82,3 +82,5 @@ export function FeatureZigZagRows() {
     </section>
   );
 }
+
+export const FeatureRows = FeatureZigZagRows;

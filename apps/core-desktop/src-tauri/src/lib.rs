@@ -7,6 +7,7 @@ pub mod models;
 pub mod repositories;
 pub mod security;
 pub mod services;
+pub mod sync;
 
 use auth::{AuthState, RealClock};
 use db::{init_db_pool_for_app, AppState};

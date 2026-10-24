@@ -1,66 +1,29 @@
-# Web App — Design Reference
+# Web App — Design Reference (Shipped Specification)
 
 ## Direction
-Skeuomorphic, dark theme. Deep near-black background; emerald green surfaces
-with real depth (soft gradients, subtle inset/outer shadows, glossy highlight
-on pills/cards); orange accent on wordmark lettering.
+Skeuomorphic, dark theme. Deep near-black background; emerald green surfaces with real depth (soft gradients, subtle inset/outer shadows, glossy highlight on pills/cards); orange accent on wordmark lettering and login actions.
 
-## Proposed token values (add to packages/design-tokens as a new dark theme —
-these are starting values to keep the agent from inventing its own; confirm/
-adjust once reviewed, don't treat as final)
+## Shipped Architecture & Components
 
-- `--surface-dark-bg: #0B0F0D` — page background
-- `--surface-dark-raised: #14532D` — card/pill base fill (deep emerald)
-- `--surface-dark-highlight: #16A34A` — existing brand green, reused for active
-  states and borders
-- `--accent-orange: #F97316` — existing token, reused for wordmark/active nav text
-- `--text-on-dark: #F8FAFB` — primary text on dark surfaces
-- `--text-on-dark-muted: rgba(248,250,251,0.6)` — inactive nav links, placeholders
-- `--shadow-skeu-outer: 0 4px 12px rgba(0,0,0,0.45)` — card/pill drop shadow
-- `--shadow-skeu-inset: inset 0 1px 0 rgba(255,255,255,0.12)` — glossy top edge
-- `--radius-pill: 9999px`, `--radius-card: 16px`
+**Header (`SiteHeader`)** — full-width pill, rounded border, glass scroll transition. Title Case navigation links: `Home`, `Products`, `Blog`, `Pricing`, `Publications`, `About`. Active link = green highlight (`#16A34A`), weight 600; inactive = muted text. Separate orange `Log In` button (`#F97316`), App Launcher grid menu dropdown, and responsive mobile menu drawer.
 
-## Component specs (from reference screenshots)
+**Landing Page (`app/(company)/page.tsx`)** — Composed strictly of:
+1. `CompanyHero` — 3 staggered overlapping cards (orange, emerald, white) with verified mock copy and interactive CTAs.
+2. `FeatureRows` (`FeatureZigZagRows`) — 3-row zig-zag feature showcase with image slots and orange accent block.
+3. `TrustedBySection` (`TrustedBy`) — 4 outlined rounded logo slots in a row (`4 across at ≥md, 2×2 at <md`), rendering optional logo images or empty outlined slots without fake company names.
 
-**Header** — full-width pill, `--radius-pill`, `--surface-dark-highlight` fill,
-~64px tall (h-16). Nav links: Home/Products/Services/Articles/Blog/About. Active link
-= orange (`--accent-orange`), weight 600; inactive = `--text-on-dark-muted`.
-Right side actions: small icon buttons + a dark pill "Sign Up" button.
-- Sign Up button: h-10 (40px), px-5, text-sm, font-semibold, dark fill.
-- Positioning: Sign Up button is flush right; 12px (gap-3) between action items; 
-  32px (ml-8) gap between nav links group and actions group.
-- App Launcher: Grid icon button (LayoutGrid) to the left of Sign Up. Opens a 
-  dropdown grid of tool tiles. Dropdown styled with `--surface-dark-bg`, 
-  `--radius-card`, and `--shadow-skeu-outer`.
-- Vertically centered on the same baseline as nav links.
+**Footer (`SiteFooter`)** — Large rounded outlined container (`rounded-[32px]`) containing 4 link columns and newsletter input with robust client-side sanitization, validation, accessible label & error text, and `console.log` submission stub.
 
-**Hero + search** — centered "40Labs" wordmark ("40" orange, "Labs" white),
-below it a full-width pill search input (dark fill, placeholder "search...",
-disabled/no-op), below that a small muted label "Access via: Swahili".
-
-**Feature cards** — 3-column grid, gap 24px, `--radius-card`, filled with
-`--surface-dark-highlight`, white centered label text, `--shadow-skeu-outer`.
-Labels: "Med Product Suppliers", "e-Pharmacy", "Health Blog".
-
-**Tools showcase** — heading "Get Best Of Our Tools" + 3 outlined ghost pills
-(dark fill, green border, `--radius-pill`): "40LabsCore", "vLabs", "aDesk" —
-each label's first character in orange, rest in white/muted.
-
-**Trusted by** — heading "Trusted By" + 2–3 overlapping stacked cards
-(`--radius-card`, outlined, empty for now — real logos come later).
-
-**Footer** — `--surface-dark-highlight` background, 4 link columns (placeholder
-groups for now), newsletter input (dark pill, placeholder "subscribe to our
-news letter") + black "Subscribe" pill button (client-side no-op, console.log
-on submit).
-
-## Route map (design coverage)
+## Route Map (Shipped)
 | Route | Header | Footer | Content |
 |---|---|---|---|
-| `/` | ✓ | ✓ | Fully designed (all sections above) |
-| `/products` | ✓ | ✓ | One `placeholder-block` only |
-| `/services` | ✓ | ✓ | One `placeholder-block` only |
-| `/blog` | ✓ | ✓ | Full-width search/filter pill + one `placeholder-block` |
-| `/about` | ✓ | ✓ | 3-column "Related" row (empty labeled boxes) + one `placeholder-block` |
+| `/` (company root) | ✓ (`SiteHeader`) | ✓ (`SiteFooter`) | CompanyLandingPage (`CompanyHero` → `FeatureRows` → `TrustedBy`) |
+| `/products` | ✓ | ✓ | PlaceholderBlock stub |
+| `/services` | ✓ | ✓ | PlaceholderBlock stub |
+| `/pricing` | ✓ | ✓ | PlaceholderBlock stub |
+| `/publications` | ✓ | ✓ | PlaceholderBlock stub |
+| `/blog` | ✓ | ✓ | PlaceholderBlock stub |
+| `/about` | ✓ | ✓ | PlaceholderBlock stub |
+| `/core-site` | ✓ (Core) | ✓ (Core) | Core site stub |
 
-`app/layout.tsx` owns header/footer once — no page redefines them.
+`app/(company)/layout.tsx` and `app/layout.tsx` own the shared header/footer shell.

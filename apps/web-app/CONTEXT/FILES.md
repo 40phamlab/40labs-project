@@ -1,47 +1,54 @@
 # Web App — File & Folder Manifest
 
-Status legend: [existing/fix] needs correction · [existing/keep] fine as-is ·
-[new] must be created.
-
 apps/web-app/
-├── CONTEXT/                          [new] this folder — read fully each session
-│   ├── AGENT_HANDOFF.md              [new] mission, non-negotiables, done criteria
-│   ├── GOTCHAS.md                    [new] known traps, check before assuming
-│   ├── DESIGN.md                     [new] tokens, component specs, route map
-│   ├── files.md                      [new] this file
-│   └── PROGRESS.md                   [new] task checklist + log + open questions
+├── CONTEXT/
+│   ├── AGENT_HANDOFF.md
+│   ├── DESIGN.md
+│   ├── FILES.md
+│   ├── FOUNDATION.md
+│   ├── GOTCHAS.md
+│   └── PROGRESS.md
 ├── app/
-│   ├── layout.tsx                    [new] shared shell — imports site-header/footer
-│   ├── page.tsx                      [new] Home — composes sections only, no markup
-│   ├── products/page.tsx             [new]
-│   ├── services/page.tsx             [new]
-│   ├── blog/page.tsx                 [new]
-│   └── about/page.tsx                [new]
+│   ├── layout.tsx                    [new] Shared root layout (fonts, metadata, html lang)
+│   ├── (company)/
+│   │   ├── layout.tsx                [new] Company group layout (SiteHeader + main + SiteFooter)
+│   │   ├── page.tsx                  [new] Company landing page (composes CompanyHero → FeatureRows → TrustedBy)
+│   │   ├── about/page.tsx            [new] Stub page
+│   │   ├── blog/page.tsx             [new] Stub page
+│   │   ├── pricing/page.tsx          [new] Stub page
+│   │   ├── products/page.tsx         [new] Stub page
+│   │   ├── publications/page.tsx     [new] Stub page
+│   │   └── services/page.tsx         [new] Stub page
+│   └── core-site/
+│       └── page.tsx                  [new] Core site stub page
 ├── components/
+│   ├── company/
+│   │   ├── CompanyFooter.tsx         [existing]
+│   │   ├── CompanyHeader.tsx         [existing]
+│   │   ├── FeatureZigZagRows.tsx     [new] Feature rows component
+│   │   └── TrustedBySection.tsx      [new] Trusted By 4-slot component & tests
 │   ├── layout/
-│   │   ├── site-header.tsx           [new]
-│   │   ├── site-footer.tsx           [new]
-│   │   └── app-launcher-menu.tsx     [new]
+│   │   ├── app-launcher-menu.tsx     [new] App launcher dropdown tools grid
+│   │   ├── login-button.tsx          [new] Orange login action button
+│   │   ├── logo-slot.tsx             [new] Brand logo slot
+│   │   ├── mobile-menu.tsx           [new] Responsive mobile menu
+│   │   ├── nav-links.tsx             [new] Title case nav links with active state
+│   │   ├── nav-links.test.ts         [new] Active path tests
+│   │   ├── site-footer.tsx           [new] Large rounded outlined container footer & newsletter validation
+│   │   └── site-footer.test.tsx      [new] Newsletter validation tests
 │   └── sections/
-│       ├── hero-search.tsx           [new]
-│       ├── feature-cards.tsx         [new]
-│       ├── tools-showcase.tsx        [new]
-│       ├── trusted-by.tsx            [new]
-│       └── placeholder-block.tsx     [new] reusable "coming soon" block
+│       ├── home/
+│       │   ├── CompanyHero.tsx       [new] Staggered overlapping hero cards
+│       │   ├── CompanyHero.test.tsx  [new] Hero unit tests
+│       │   ├── HeroCard.tsx          [new] Hero individual card
+│       │   └── HeroCardCta.tsx       [new] Hero card CTA button
+│       └── trusted-by.tsx            [new] Trusted by wrapper
 ├── mock-data/
-│   ├── trusted-partners.ts           [new]
-│   ├── tools.ts                      [new]
-│   └── feature-cards.ts              [new]
-├── public/                           [existing/keep]
-├── package.json                      [existing/fix — verify deps vs. root workspace]
-├── next.config.ts                    [existing/keep, revisit for Vercel deploy later]
-├── eslint.config.mjs                 [existing/keep for now — packages/config is empty]
-├── postcss.config.mjs                [existing/keep]
-├── tsconfig.json                     [existing/keep]
-├── pnpm-workspace.yaml               [existing/fix — DELETE, see GOTCHAS.md #1]
-├── PROGRESS.md                       [new — top-level progress, mirrors core-desktop]
-└── README.md                         [existing/keep]
-
-Anything generic enough for another surface to reuse (a base Button/Card
-primitive, for example) belongs in packages/ui-components, NOT in this tree.
-
+│   ├── hero.ts                       [new] Hero mock data
+│   ├── navigation.ts                 [new] Navigation links mock data
+│   └── trusted-partners.ts           [new] Trusted partners mock data
+├── proxy.ts                          [new] Host-based multi-tenant routing resolver middleware
+├── proxy.test.ts                     [new] Routing unit tests
+├── package.json                      [existing]
+├── next.config.ts                    [existing]
+└── tsconfig.json                     [existing]
