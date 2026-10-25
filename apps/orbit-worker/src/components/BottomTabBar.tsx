@@ -82,6 +82,11 @@ export function BottomTabBar({ tabs, activeTabId, onTabPress, style }: BottomTab
 
 const styles = StyleSheet.create({
   bar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
     flexDirection: 'row',
     borderTopWidth: 1,
     paddingHorizontal: 8,

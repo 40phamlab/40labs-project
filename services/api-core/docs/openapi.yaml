@@ -1,0 +1,248 @@
+openapi: 3.1.0
+info:
+  title: 40Labs Core API
+  version: 0.1.0
+  description: API reference for services/api-core (Rust/Axum) backend powering pharmacy, dispensary, and sync operations in Tanzania.
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.40labs.co.tz
+    description: Cloud production server
+paths:
+  /healthz:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: Server is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /readyz:
+    get:
+      summary: Readiness check (Database connectivity)
+      responses:
+        '200':
+          description: Database connection active
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+        '503':
+          description: Database unhealthy
+  /api/v1/activation/otp/request:
+    post:
+      summary: Request activation OTP via NextSMS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                phone:
+                  type: string
+                  example: "0712345678"
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: otp_sent
+                  expires_in_secs:
+                    type: integer
+                    example: 300
+        '400':
+          description: Bad request or daily limit reached
+        '429':
+          description: Rate limit exceeded
+  /api/v1/activation/otp/verify:
+    post:
+      summary: Verify OTP code and issue verification token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - code
+              properties:
+                phone:
+                  type: string
+                  example: "0712345678"
+                code:
+                  type: string
+                  example: "123456"
+      responses:
+        '200':
+          description: Verified, returns temporary verification token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verification_token:
+                    type: string
+  /api/v1/activation/register:
+    post:
+      summary: Register business and generate Ed25519 activation grant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - verification_token
+                - business_name
+                - owner_first_name
+                - owner_last_name
+                - terms_accepted
+                - terms_version
+                - terms_locale
+                - terms_text_sha256
+              properties:
+                verification_token:
+                  type: string
+                business_name:
+                  type: string
+                  example: "Afya Bora Pharmacy"
+                owner_first_name:
+                  type: string
+                  example: "Juma"
+                owner_last_name:
+                  type: string
+                  example: "Mwinyi"
+                owner_email:
+                  type: string
+                  example: "juma@afyabora.co.tz"
+                terms_accepted:
+                  type: boolean
+                  example: true
+                terms_version:
+                  type: string
+                  example: "v1.0"
+                terms_locale:
+                  type: string
+                  example: "sw"
+                terms_text_sha256:
+                  type: string
+                  example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      responses:
+        '200':
+          description: Business registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  business_id:
+                    type: string
+                    example: "AFYA-7K9M2P"
+                  workspace_id:
+                    type: string
+                    example: "ws_123456"
+                  branch_id:
+                    type: string
+                    example: "branch_123"
+                  activation_grant:
+                    type: string
+  /v1/sync/push:
+    post:
+      summary: Push local entity changes to cloud backend
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: header
+          name: Content-Encoding
+          required: true
+          schema:
+            type: string
+            example: gzip
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - device_id
+                - app_version
+                - changes
+              properties:
+                device_id:
+                  type: string
+                app_version:
+                  type: string
+                changes:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Push processed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  acks:
+                    type: array
+                    items:
+                      type: object
+                  server_cursor:
+                    type: string
+        '409':
+          description: Device pinning mismatch
+  /v1/business/verification:
+    get:
+      summary: Get business verification and TMDA status
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Verification status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: verified
+                  labs_verified:
+                    type: boolean
+                    example: true
+                  tmda_registered:
+                    type: boolean
+                    example: true
+                  rejection_reason:
+                    type: string
+                    nullable: true
+                  updated_at:
+                    type: string
+                    nullable: true
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Device token or signing key bearer token

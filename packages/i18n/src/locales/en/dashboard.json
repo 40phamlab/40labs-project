@@ -81,6 +81,7 @@
   "comingSoon": "Coming Soon",
   "ePharmacy": "E-Pharmacy",
   "labTests": "Lab Tests",
+  "inventoryValue": "Inventory Value",
   "salesAndProfitOverview": "Sales & Profit Overview",
   "errorLoading": "Failed to load dashboard data",
   "retry": "Retry"

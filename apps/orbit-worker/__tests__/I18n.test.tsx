@@ -38,4 +38,12 @@ describe('Orbit Internationalization (i18n)', () => {
     expect(getByTestId('title').props.children).toBe('Home');
     expect(getByTestId('param').props.children).toBe('5m ago');
   });
+
+  it('verifies critical keys exist and do not return raw keys', () => {
+    const { t } = require('@40labs/i18n');
+    expect(t('nav.history')).not.toBe('nav.history');
+    expect(t('dashboard.inventoryValue')).not.toBe('dashboard.inventoryValue');
+    expect(t('dashboard.salesAndProfitOverview')).not.toBe('dashboard.salesAndProfitOverview');
+    expect(t('pairing.scan')).not.toBe('pairing.scan');
+  });
 });

@@ -1,7 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md]
 import React from 'react';
-import { Text as RNText, TextProps as RNTextProps } from 'react-native';
+import { Text as RNText, TextProps as RNTextProps, Platform } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 
 export interface TextProps extends RNTextProps {
@@ -17,7 +17,7 @@ export function Text({ style, variant = 'body', ...props }: TextProps) {
       case 'heading':
         return { fontFamily: 'Sora_600SemiBold', color: colors.textPrimary };
       case 'mono':
-        return { fontFamily: 'JetBrainsMono_500Medium', color: colors.textPrimary };
+        return { fontFamily: Platform.OS === 'web' ? 'JetBrainsMono, monospace' : 'JetBrainsMono_700Bold', color: colors.textPrimary };
       case 'label':
         return { fontFamily: 'Inter_600SemiBold', color: colors.textMuted };
       case 'body':

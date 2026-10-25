@@ -27,7 +27,7 @@ export function Screen({
   } catch {
     // fallback for test environments without SafeAreaProvider
   }
-  const bottomPadding = 64 + insets.bottom + 16;
+  const bottomPadding = 56 + insets.bottom + 16;
 
   const content = scrollable ? (
     <ScrollView
