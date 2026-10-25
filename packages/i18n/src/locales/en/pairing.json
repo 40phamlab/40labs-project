@@ -1,0 +1,22 @@
+{
+  "scanToConnect": "Scan QR to Connect Hub",
+  "scan": "Scan QR Code",
+  "or": "OR",
+  "uploadQr": "Upload QR Image",
+  "inProgress": "Pairing in progress...",
+  "failed": "Pairing failed. Please check connection.",
+  "uploadError": "Failed to decode QR code from image.",
+  "openWifiSettingsFailed": "Could not open Wi-Fi settings.",
+  "networkSetupTitle": "Connection Setup",
+  "networkSetupBody": "Make sure your phone is connected to the PC hotspot or same Wi-Fi network as the pharmacy hub.",
+  "pcHotspot": "PC Wi-Fi Hotspot",
+  "pcHotspotHelp": "Connect phone to PC's mobile hotspot network.",
+  "sameWifi": "Same Wi-Fi Router",
+  "sameWifiHelp": "Connect both PC and phone to the same Wi-Fi router.",
+  "openWifiSettings": "Open Wi-Fi Settings",
+  "retryConnection": "Retry Connection",
+  "scanAnotherQr": "Scan Another QR",
+  "cameraPermissionRequired": "Camera permission is required to scan pairing QR code.",
+  "grantPermission": "Grant Permission",
+  "code": "Pairing Code"
+}

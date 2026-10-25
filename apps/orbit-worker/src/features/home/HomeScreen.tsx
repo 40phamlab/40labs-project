@@ -81,7 +81,8 @@ export function HomeScreen() {
     ? quickActionsList.filter((qa) => hasPermission(qa.perm))
     : quickActionsList;
 
-  const handleTilePress = (route: string) => {
+  const handleTilePress = (route: string, perm: string) => {
+    console.log(`[OrbitWorker] Tile pressed: route=${route}, status=${status}, hasPermission=${hasPermission(perm)}`);
     if (status === 'unpaired' || status === 'revoked') {
       router.push('/pair');
       return;
@@ -135,32 +136,30 @@ export function HomeScreen() {
         )}
 
         {isLoading && !summary && status !== 'unpaired' ? (
-          <View style={styles.kpiGrid}>
-            <Skeleton height={80} style={{ width: '48%' }} />
-            <Skeleton height={80} style={{ width: '48%' }} />
-          </View>
+          <Skeleton height={140} style={{ width: '100%', marginBottom: 24 }} />
         ) : (
-          <View style={styles.kpiGrid}>
-            <KpiCard
-              style={{ width: '48%' }}
-              label={t('dashboard.todaysSales')}
-              value={salesVal}
-            />
-            <KpiCard
-              style={{ width: '48%' }}
-              label={t('dashboard.patientsInTrack')}
-              value={patientsVal}
-            />
-            <KpiCard
-              style={{ width: '48%' }}
-              label={t('dashboard.labTests')}
-              value={samplesVal}
-            />
-            <KpiCard
-              style={{ width: '48%' }}
-              label={t('dashboard.inventoryValue')}
-              value={stockVal}
-            />
+          <View style={[styles.overviewCard, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
+            <Text variant="heading" style={[styles.overviewTitle, { color: colors.textPrimary }]}>
+              {t('dashboard.salesAndProfitOverview')}
+            </Text>
+            <View style={styles.kpi2x2Grid}>
+              <View style={styles.kpiCell}>
+                <Text variant="label" numberOfLines={1} adjustsFontSizeToFit style={[styles.kpiLabel, { color: colors.textMuted }]}>{t('dashboard.todaysSales')}</Text>
+                <Text variant="mono" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.kpiValue, { color: colors.textPrimary }]}>{salesVal}</Text>
+              </View>
+              <View style={styles.kpiCell}>
+                <Text variant="label" numberOfLines={1} adjustsFontSizeToFit style={[styles.kpiLabel, { color: colors.textMuted }]}>{t('dashboard.patientsInTrack')}</Text>
+                <Text variant="mono" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.kpiValue, { color: colors.textPrimary }]}>{patientsVal}</Text>
+              </View>
+              <View style={styles.kpiCell}>
+                <Text variant="label" numberOfLines={1} adjustsFontSizeToFit style={[styles.kpiLabel, { color: colors.textMuted }]}>{t('dashboard.labTests')}</Text>
+                <Text variant="mono" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.kpiValue, { color: colors.textPrimary }]}>{samplesVal}</Text>
+              </View>
+              <View style={styles.kpiCell}>
+                <Text variant="label" numberOfLines={1} adjustsFontSizeToFit style={[styles.kpiLabel, { color: colors.textMuted }]}>{t('dashboard.inventoryValue')}</Text>
+                <Text variant="mono" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.kpiValue, { color: colors.textPrimary }]}>{stockVal}</Text>
+              </View>
+            </View>
           </View>
         )}
 
@@ -175,7 +174,7 @@ export function HomeScreen() {
               title={qa.title}
               icon={qa.icon}
               locked={false}
-              onPress={() => handleTilePress(qa.route)}
+              onPress={() => handleTilePress(qa.route, qa.perm)}
               onLockedPress={() => {}}
               style={{ width: '48%', minHeight: 48 }}
             />
@@ -201,6 +200,32 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     marginBottom: 24,
+  },
+  overviewCard: {
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  overviewTitle: {
+    fontSize: 16,
+    marginBottom: 12,
+  },
+  kpi2x2Grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  kpiCell: {
+    width: '48%',
+    paddingVertical: 8,
+  },
+  kpiLabel: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  kpiValue: {
+    fontSize: 22,
+    fontFamily: 'JetBrainsMono_700Bold',
   },
   sectionTitle: {
     fontSize: 16,

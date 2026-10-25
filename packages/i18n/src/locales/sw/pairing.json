@@ -1,0 +1,22 @@
+{
+  "scanToConnect": "Changanua QR ili Kuunganisha Hub",
+  "scan": "Changanua Msimbo wa QR",
+  "or": "AU",
+  "uploadQr": "Pakia Picha ya QR",
+  "inProgress": "Kuunganisha kunaendelea...",
+  "failed": "Kuunganisha kumeshindwa. Tafadhali angalia mtandao.",
+  "uploadError": "Imeshindwa kusoma QR kutoka kwenye picha.",
+  "openWifiSettingsFailed": "Imeshindwa kufungua mipangilio ya Wi-Fi.",
+  "networkSetupTitle": "Mipangilio ya Mtandao",
+  "networkSetupBody": "Hakikisha simu yako imeunganishwa kwenye hotspot ya PC au mtandao wa Wi-Fi wa hub.",
+  "pcHotspot": "Hotspot ya PC",
+  "pcHotspotHelp": "Unganisha simu kwenye mtandao wa hotspot ya PC.",
+  "sameWifi": "Wi-Fi Moja",
+  "sameWifiHelp": "Unganisha PC na simu kwenye kipanga njia kimoja cha Wi-Fi.",
+  "openWifiSettings": "Fungua Mipangilio ya Wi-Fi",
+  "retryConnection": "Jaribu Tena",
+  "scanAnotherQr": "Changanua QR Nyingine",
+  "cameraPermissionRequired": "Ruhusa ya kamera inahitajika kuchanganua QR.",
+  "grantPermission": "Toa Ruhusa",
+  "code": "Msimbo wa Kuunganisha"
+}

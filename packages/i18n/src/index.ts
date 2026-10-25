@@ -19,6 +19,7 @@ import swErrors from './locales/sw/errors.json';
 import swLanding from './locales/sw/landing.json';
 import swInstructions from './locales/sw/instructions.json';
 import swConnectivity from './locales/sw/connectivity.json';
+import swPairing from './locales/sw/pairing.json';
 
 import enCommon from './locales/en/common.json';
 import enNav from './locales/en/nav.json';
@@ -36,6 +37,7 @@ import enErrors from './locales/en/errors.json';
 import enLanding from './locales/en/landing.json';
 import enInstructions from './locales/en/instructions.json';
 import enConnectivity from './locales/en/connectivity.json';
+import enPairing from './locales/en/pairing.json';
 
 function flattenKeys(obj: any, prefix = ''): Record<string, string> {
   let keys: Record<string, string> = {};
@@ -80,6 +82,7 @@ const swNamespaces = {
   landing: swLanding,
   instructions: swInstructions,
   connectivity: swConnectivity,
+  pairing: swPairing,
 };
 
 const enNamespaces = {
@@ -99,6 +102,7 @@ const enNamespaces = {
   landing: enLanding,
   instructions: enInstructions,
   connectivity: enConnectivity,
+  pairing: enPairing,
 };
 
 const swTranslation = buildTranslationBundle(swNamespaces);

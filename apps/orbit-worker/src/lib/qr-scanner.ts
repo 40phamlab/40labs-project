@@ -35,6 +35,7 @@ export async function decodeQrFromImageUri(uri: string): Promise<string> {
       img.src = uri;
     });
   } else {
+    // Native: use image manipulator and barcode scanning via expo-camera on live view
     try {
       const manip = await ImageManipulator.manipulateAsync(
         uri,
@@ -46,37 +47,8 @@ export async function decodeQrFromImageUri(uri: string): Promise<string> {
         throw new Error('Failed to process image');
       }
 
-      return new Promise((resolve, reject) => {
-        const win = globalThis as any;
-        const ImageCtor = win.Image;
-        const img = ImageCtor ? new ImageCtor() : null;
-        if (img) {
-          img.onload = () => {
-            const documentObj = win.document;
-            const canvas = documentObj && documentObj.createElement ? documentObj.createElement('canvas') : null;
-            if (!canvas) {
-              reject(new Error('Canvas not supported'));
-              return;
-            }
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) {
-              reject(new Error('Context not supported'));
-              return;
-            }
-            ctx.drawImage(img, 0, 0);
-            const imgData = ctx.getImageData(0, 0, img.width, img.height);
-            const code = jsqr(imgData.data, imgData.width, imgData.height);
-            if (code) resolve(code.data);
-            else reject(new Error('No QR code found in image'));
-          };
-          img.onerror = () => reject(new Error('Failed to load image'));
-          img.src = `data:image/png;base64,${manip.base64}`;
-        } else {
-          reject(new Error('Image decoding requires canvas support'));
-        }
-      });
+      // For native image URI decoding without DOM canvas, return error or delegate to CameraView barcode scanner
+      throw new Error('QR image file decoding on native uses live CameraView barcode scanning');
     } catch (err: any) {
       throw new Error(err.message || 'Failed to detect QR code in image');
     }
