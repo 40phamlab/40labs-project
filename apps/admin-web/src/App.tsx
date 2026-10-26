@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { AccountPage } from './pages/AccountPage';
 import { BusinessesPage } from './pages/BusinessesPage';
 import { BusinessDetailPage } from './pages/BusinessDetailPage';
+import { OverviewPage } from './pages/OverviewPage';
 import './App.css';
 
 type ScreenId = 'overview' | 'businesses' | 'analytics' | 'sync' | 'infra' | 'account';
@@ -79,7 +80,7 @@ function AdminShellContent() {
     >
       <div className="h-full w-full animate-screen-enter">
         <Routes>
-          <Route path="/" element={<TabContainer isEmpty emptyTitle="Overview" />} />
+          <Route path="/" element={<OverviewPage />} />
           <Route path="/businesses" element={<BusinessesPage />} />
           <Route path="/businesses/:id" element={<BusinessDetailPage />} />
           <Route path="/analytics" element={<TabContainer isEmpty emptyTitle="Analytics" />} />
