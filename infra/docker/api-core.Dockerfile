@@ -22,6 +22,7 @@ WORKDIR /app
 COPY --from=builder --chown=65532:65532 /app/target/release/api-core /app/api-core
 
 COPY --from=builder --chown=65532:65532 /app/services/api-core/migrations /app/migrations
+COPY --from=builder --chown=65532:65532 /app/services/api-core/migrations /app/services/api-core/migrations
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["/app/api-core", "healthcheck"]

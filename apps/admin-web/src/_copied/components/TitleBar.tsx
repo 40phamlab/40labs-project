@@ -1,6 +1,7 @@
 // COPIED FROM: apps/core-desktop/src/components/TitleBar.tsx
 import * as React from 'react';
-import { PanelLeft, Minus, Square, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { PanelLeft, Minus, Square, X, Search } from 'lucide-react';
 import { useAppShell } from '@40labs/ui-components';
 import { HamburgerMenu } from './HamburgerMenu';
 import { BranchControl } from './BranchControl';
@@ -28,13 +29,22 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   hasUpdateAvailable = false,
 }) => {
   const shell = useAppShell();
+  const navigate = useNavigate();
   const isNavClosed = shell.navState === 'closed';
+  const [globalSearch, setGlobalSearch] = React.useState('');
 
   const handleToggle = () => {
     if (onToggleSidebar) {
       onToggleSidebar();
     } else {
       shell.toggleSidebar();
+    }
+  };
+
+  const handleGlobalSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (globalSearch.trim()) {
+      navigate(`/businesses?q=${encodeURIComponent(globalSearch.trim())}`);
     }
   };
 
@@ -72,6 +82,17 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
         <OpenFileTabs />
         <BranchControl />
+
+        <form onSubmit={handleGlobalSearchSubmit} className="relative hidden md:flex items-center ml-2">
+          <Search size={13} className="absolute left-2.5 text-text-muted" />
+          <input
+            type="text"
+            value={globalSearch}
+            onChange={(e) => setGlobalSearch(e.target.value)}
+            placeholder="Search businesses..."
+            className="w-40 lg:w-56 pl-7 pr-2 py-1 bg-surface border border-border rounded text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:border-action-primary"
+          />
+        </form>
       </div>
 
       <div className="flex-1 h-full" />

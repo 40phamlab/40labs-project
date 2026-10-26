@@ -39,25 +39,21 @@ pub async fn readiness_check(
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     }
 
-    // 2. Check required migration tables exist (admin_users, business_registry, sync_devices, etc.)
-    let table_check = sqlx::query(
-        "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = ANY($1)"
-    )
-    .bind(&vec!["admin_users", "business_registry", "sync_devices", "admin_audit_log"])
-    .fetch_all(&state.pool)
-    .await;
+    // 2. Check required migration tables exist
+    let check1 = sqlx::query("SELECT 1 FROM admin_users LIMIT 1").execute(&state.pool).await;
+    let check2 = sqlx::query("SELECT 1 FROM business_registry LIMIT 1").execute(&state.pool).await;
+    let check3 = sqlx::query("SELECT 1 FROM admin_sessions LIMIT 1").execute(&state.pool).await;
 
-    match table_check {
-        Ok(rows) if rows.len() >= 4 => Ok((
+    if check1.is_ok() && check2.is_ok() && check3.is_ok() {
+        Ok((
             StatusCode::OK,
             Json(HealthResponse {
                 status: "ready".into(),
             }),
-        )),
-        _ => {
-            tracing::error!("Readiness check failed: required migration tables missing");
-            Err(StatusCode::SERVICE_UNAVAILABLE)
-        }
+        ))
+    } else {
+        tracing::error!("Readiness check failed: required migration tables missing");
+        Err(StatusCode::SERVICE_UNAVAILABLE)
     }
 }
 

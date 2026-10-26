@@ -42,6 +42,7 @@ services:
       ACTIVATION_SIGNING_KEY_FILE: /run/secrets/activation_signing_key
       SMS_MODE: live
       PORT: 3000
+      ADMIN_DEBUG_OTP: "0"
     secrets:
       - database_url
       - nextsms_api_token

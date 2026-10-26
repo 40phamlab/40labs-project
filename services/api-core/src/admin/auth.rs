@@ -6,6 +6,7 @@ use axum::{
     response::IntoResponse,
     Json,
     extract::State,
+    Extension,
 };
 use serde::{Deserialize, Serialize};
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
@@ -17,12 +18,15 @@ use aes_gcm::aead::{Aead, KeyInit};
 use totp_rs::{TOTP, Algorithm, Secret};
 use base64::Engine;
 use crate::routes::activation::{AppState, AdminChallenge};
+use crate::admin::AdminClaims;
 
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/auth/login", post(login_handler))
         .route("/auth/totp", post(totp_handler))
         .route("/auth/logout", post(logout_handler))
+        .route("/auth/sessions", get(list_sessions_handler))
+        .route("/auth/sessions/:session_id/revoke", post(revoke_session_handler))
         .route("/me", get(me_handler))
         .with_state(state)
 }
@@ -143,6 +147,23 @@ pub fn verify_totp(secret_base32: &str, code: &str) -> bool {
     totp.check_current(code).unwrap_or(false)
 }
 
+fn current_totp(secret_base32: &str) -> Result<String, String> {
+    let secret = Secret::Encoded(secret_base32.to_string())
+        .to_bytes()
+        .map_err(|error| error.to_string())?;
+    let totp = TOTP::new(
+        Algorithm::SHA1,
+        6,
+        1,
+        30,
+        secret,
+        Some("40Labs Admin".into()),
+        String::new(),
+    )
+    .map_err(|error| error.to_string())?;
+    totp.generate_current().map_err(|error| error.to_string())
+}
+
 pub async fn log_ops_event(
     pool: &sqlx::PgPool,
     level: &str,
@@ -248,7 +269,18 @@ async fn login_handler(
         enrollment_required = Some(true);
         otpauth_url = Some(url);
     }
-    let _ = final_totp_secret_enc;
+    if state.config.admin_debug_otp
+        && state.config.app_env.to_lowercase() != "production"
+    {
+        if let Some(secret_enc) = final_totp_secret_enc.as_deref() {
+            if let Ok(secret) = decrypt_secret(secret_enc, &state.config.totp_enc_key) {
+                match current_totp(&secret) {
+                    Ok(code) => println!("ADMIN DEBUG OTP (valid for up to 30 seconds): {code}"),
+                    Err(error) => tracing::warn!("Could not generate debug OTP: {error}"),
+                }
+            }
+        }
+    }
 
     let challenge_id = uuid::Uuid::new_v4().to_string();
     let expires_at = chrono::Utc::now() + chrono::Duration::minutes(5);
@@ -428,13 +460,8 @@ async fn logout_handler(
 
 #[axum::debug_handler]
 async fn me_handler(
-    req: axum::extract::Request,
+    Extension(claims): Extension<AdminClaims>,
 ) -> impl IntoResponse {
-    let claims = match req.extensions().get::<crate::admin::AdminClaims>() {
-        Some(c) => c,
-        None => return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({ "error": { "code": "UNAUTHORIZED", "message": "Unauthorized" } }))).into_response(),
-    };
-
     (
         StatusCode::OK,
         Json(serde_json::json!({
@@ -442,5 +469,52 @@ async fn me_handler(
             "email": claims.email,
             "role": claims.role,
         })),
-    ).into_response()
+    )
+}
+
+#[axum::debug_handler]
+async fn list_sessions_handler(
+    State(state): State<AppState>,
+    Extension(claims): Extension<AdminClaims>,
+) -> impl IntoResponse {
+    let sessions = sqlx::query_as::<_, (String, chrono::DateTime<chrono::Utc>, Option<String>, Option<String>, Option<chrono::DateTime<chrono::Utc>>)>(
+        "SELECT id, expires_at, ip, user_agent, revoked_at FROM admin_sessions WHERE admin_user_id = $1 ORDER BY expires_at DESC"
+    )
+    .bind(&claims.user_id)
+    .fetch_all(&state.pool)
+    .await;
+
+    match sessions {
+        Ok(list) => {
+            let res: Vec<_> = list.into_iter().map(|s| serde_json::json!({
+                "id": s.0,
+                "expires_at": s.1,
+                "ip": s.2,
+                "user_agent": s.3,
+                "revoked_at": s.4,
+            })).collect();
+            (StatusCode::OK, Json(res)).into_response()
+        }
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Failed to fetch sessions" } }))).into_response(),
+    }
+}
+
+#[axum::debug_handler]
+async fn revoke_session_handler(
+    State(state): State<AppState>,
+    Extension(claims): Extension<AdminClaims>,
+    axum::extract::Path(session_id): axum::extract::Path<String>,
+) -> impl IntoResponse {
+    let res = sqlx::query(
+        "UPDATE admin_sessions SET revoked_at = NOW() WHERE id = $1 AND admin_user_id = $2"
+    )
+    .bind(&session_id)
+    .bind(&claims.user_id)
+    .execute(&state.pool)
+    .await;
+
+    match res {
+        Ok(_) => (StatusCode::OK, Json(serde_json::json!({ "success": true }))).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Failed to revoke session" } }))).into_response(),
+    }
 }

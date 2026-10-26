@@ -17,6 +17,7 @@ pub struct Config {
     pub port: u16,
     pub admin_web_origin: String,
     pub totp_enc_key: String,
+    pub admin_debug_otp: bool,
 }
 
 fn get_env_or_file(var_name: &str, default: &str) -> String {
@@ -67,6 +68,7 @@ impl Config {
             port: get_env_or_file("PORT", "3000").parse().unwrap_or(3000),
             admin_web_origin: get_env_or_file("ADMIN_WEB_ORIGIN", "http://localhost:5174"),
             totp_enc_key: get_env_or_file("TOTP_ENC_KEY", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+            admin_debug_otp: get_env_or_file("ADMIN_DEBUG_OTP", "0") == "1",
         }
     }
 }

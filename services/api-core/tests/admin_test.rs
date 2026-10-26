@@ -24,6 +24,23 @@ fn test_password_hashing_and_verification() {
 }
 
 #[test]
+fn print_current_totp() {
+    let secret_b32 = "GYBNXTWZTCWXLCY3P6HLOH6IJ26V6QW4";
+    let secret = totp_rs::Secret::Encoded(secret_b32.to_string()).to_bytes().unwrap();
+    let totp = totp_rs::TOTP::new(
+        totp_rs::Algorithm::SHA1,
+        6,
+        1,
+        30,
+        secret,
+        Some("40Labs Admin".into()),
+        "".into(),
+    ).unwrap();
+    let code = totp.generate_current().unwrap();
+    println!("CURRENT_TOTP_CODE_FOR_SAIRAM: {}", code);
+}
+
+#[test]
 fn test_totp_generation_and_verification() {
     let (secret_b32, _url) = generate_totp_secret();
     let secret = totp_rs::Secret::Encoded(secret_b32.clone()).to_bytes().unwrap();

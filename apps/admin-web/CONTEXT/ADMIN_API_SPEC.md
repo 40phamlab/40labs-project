@@ -10,6 +10,8 @@ Pagination: `?page=1&page_size=25` → `{ data: [], page, page_size, total }`. E
 | POST | /admin/v1/auth/login | email+password → `{ mfa_required: true, challenge_id }` |
 | POST | /admin/v1/auth/totp | challenge_id + 6-digit code → session cookie (HttpOnly, Secure, SameSite=Strict) |
 | POST | /admin/v1/auth/logout | |
+| GET | /admin/v1/auth/sessions | list active sessions for current admin |
+| POST | /admin/v1/auth/sessions/:session_id/revoke | revoke a specific session |
 | GET | /admin/v1/me | |
 Rate-limit login (5/min/IP + per email). Lock account after 10 failures for 15 min. First admin created via CLI seed command, never via API.
 
