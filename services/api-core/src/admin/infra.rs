@@ -295,6 +295,116 @@ async fn devices_handler() -> impl IntoResponse {
     Json(serde_json::json!({ "devices": [] })).into_response()
 }
 
-async fn logs_handler() -> impl IntoResponse {
-    Json(serde_json::json!({ "logs": [] })).into_response()
+pub static LOG_DROP_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+pub fn redact_text(text: &str) -> String {
+    let mut cleaned = text.to_string();
+    let sensitive = ["pin=1234", "password=", "bearer", "token", "secret", "totp", "authorization"];
+    for s in sensitive {
+        if cleaned.to_lowercase().contains(s) {
+            cleaned = cleaned.replace(s, "[REDACTED]");
+        }
+    }
+    cleaned
+}
+
+#[derive(Deserialize)]
+pub struct LogsQuery {
+    pub level: Option<String>,
+    pub source: Option<String>,
+    pub business_id: Option<String>,
+    pub since: Option<String>,
+    pub q: Option<String>,
+    pub cursor: Option<String>,
+    pub limit: Option<i64>,
+}
+
+async fn logs_handler(
+    State(state): State<AppState>,
+    Query(query): Query<LogsQuery>,
+) -> impl IntoResponse {
+    let limit = query.limit.unwrap_or(50).clamp(1, 100);
+
+    let since_dt = query.since.as_deref().and_then(|s| {
+        match s {
+            "1h" => Some(chrono::Utc::now() - chrono::Duration::hours(1)),
+            "24h" => Some(chrono::Utc::now() - chrono::Duration::hours(24)),
+            "7d" => Some(chrono::Utc::now() - chrono::Duration::days(7)),
+            _ => chrono::DateTime::parse_from_rfc3339(s).ok().map(|dt| dt.with_timezone(&chrono::Utc)),
+        }
+    });
+
+    let (cursor_ts, cursor_id) = match query.cursor.as_deref() {
+        Some(c) => {
+            let parts: Vec<&str> = c.splitn(2, '|').collect();
+            if parts.len() == 2 {
+                let dt = chrono::DateTime::parse_from_rfc3339(parts[0]).ok().map(|d| d.with_timezone(&chrono::Utc));
+                (dt, Some(parts[1].to_string()))
+            } else {
+                (None, None)
+            }
+        }
+        None => (None, None),
+    };
+
+    let levels: Option<Vec<String>> = query.level.as_deref().map(|l| l.split(',').map(|s| s.trim().to_uppercase()).collect());
+    let source = query.source.clone();
+    let biz_id = query.business_id.clone();
+    let search_q = query.q.clone().map(|s| redact_text(&s));
+
+    let rows = sqlx::query_as::<_, (String, chrono::DateTime<chrono::Utc>, String, String, String, Option<String>, Option<String>, Option<serde_json::Value>)>(
+        r#"
+        SELECT id, ts, level, source, message, business_id, device_id, meta
+        FROM ops_events
+        WHERE ($1::text[] IS NULL OR level = ANY($1))
+          AND ($2::text IS NULL OR source = $2)
+          AND ($3::text IS NULL OR business_id = $3)
+          AND ($4::timestamptz IS NULL OR ts >= $4)
+          AND ($5::text IS NULL OR message ILIKE '%' || $5 || '%')
+          AND ($6::timestamptz IS NULL OR $7::text IS NULL OR (ts, id) < ($6, $7))
+        ORDER BY ts DESC, id DESC
+        LIMIT $8
+        "#,
+    )
+    .bind(levels)
+    .bind(source)
+    .bind(biz_id)
+    .bind(since_dt)
+    .bind(search_q)
+    .bind(cursor_ts)
+    .bind(cursor_id)
+    .bind(limit + 1)
+    .fetch_all(&state.pool)
+    .await;
+
+    let mut rows = match rows {
+        Ok(r) => r,
+        Err(_) => vec![],
+    };
+
+    let mut next_cursor = None;
+    if rows.len() > limit as usize {
+        rows.pop();
+        if let Some(last) = rows.last() {
+            next_cursor = Some(format!("{}|{}", last.1.to_rfc3339(), last.0));
+        }
+    }
+
+    let data: Vec<_> = rows.into_iter().map(|(id, ts, level, source, message, business_id, device_id, meta)| {
+        serde_json::json!({
+            "id": id,
+            "ts": ts.to_rfc3339(),
+            "level": level,
+            "source": source,
+            "message": redact_text(&message),
+            "business_id": business_id,
+            "device_id": device_id,
+            "meta": meta
+        })
+    }).collect();
+
+    Json(serde_json::json!({
+        "data": data,
+        "next_cursor": next_cursor
+    })).into_response()
 }

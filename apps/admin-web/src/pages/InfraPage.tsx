@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Server, Activity, FileText, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Smartphone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Server, Activity, FileText, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Smartphone, Copy, Check } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 interface HealthCheckItem {
@@ -38,23 +39,42 @@ interface DeviceItem {
   status: 'healthy' | 'stale' | 'offline';
 }
 
+interface LogItem {
+  id: string;
+  ts: string;
+  level: string;
+  source: string;
+  message: string;
+  business_id: string | null;
+  device_id: string | null;
+  meta: any;
+}
+
+interface LogsResponse {
+  data: LogItem[];
+  next_cursor: string | null;
+}
+
 export function InfraPage() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<'health' | 'devices' | 'logs'>('health');
   const [secondsAgo, setSecondsAgo] = React.useState(0);
 
-  const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery<HealthResponse>({
-    queryKey: ['infra-health'],
-    queryFn: () => apiFetch<HealthResponse>('/admin/v1/infra/health'),
-    refetchInterval: 15000,
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-  });
+  // Logs filters & live state
+  const [selectedLevels, setSelectedLevels] = React.useState<string[]>(['INFO', 'WARN', 'ERROR']);
+  const [sourceFilter, setSourceFilter] = React.useState<string>('all');
+  const [businessFilter, setBusinessFilter] = React.useState<string>('');
+  const [searchQuery, setSearchQuery] = React.useState<string>('');
+  const [timeRange, setTimeRange] = React.useState<string>('24h');
+  const [isLive, setIsLive] = React.useState<boolean>(false);
+  const [expandedLogId, setExpandedLogId] = React.useState<string | null>(null);
+  const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
-  const { data: devicesData, isLoading: devicesLoading } = useQuery<{ devices: DeviceItem[] }>({
-    queryKey: ['infra-devices-activity'],
-    queryFn: () => apiFetch<{ devices: DeviceItem[] }>('/admin/v1/sync/devices'),
-    refetchInterval: 15000,
-  });
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const handleScroll = (_e: React.UIEvent<HTMLDivElement>) => {
+    // Scroll tracking for live stream pause behavior
+  };
 
   // Timer for "Updated Xs ago"
   React.useEffect(() => {
@@ -118,6 +138,18 @@ export function InfraPage() {
     );
   };
 
+  const renderLevelChip = (level: string) => {
+    const l = level.toUpperCase();
+    let bg = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
+    if (l === 'WARN') bg = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+    if (l === 'ERROR') bg = 'bg-rose-500/10 text-rose-500 border-rose-500/20';
+    return (
+      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-bold border ${bg}`}>
+        {l}
+      </span>
+    );
+  };
+
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return '-';
     try {
@@ -134,6 +166,22 @@ export function InfraPage() {
     }
   };
 
+  const toggleLevel = (lvl: string) => {
+    if (selectedLevels.includes(lvl)) {
+      if (selectedLevels.length > 1) {
+        setSelectedLevels(selectedLevels.filter((l) => l !== lvl));
+      }
+    } else {
+      setSelectedLevels([...selectedLevels, lvl]);
+    }
+  };
+
+  const handleCopyMeta = (id: string, meta: any) => {
+    navigator.clipboard.writeText(JSON.stringify(meta, null, 2));
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
   // Compute app version distribution
   const versionCounts = React.useMemo(() => {
     if (!devicesData?.devices) return {};
@@ -145,7 +193,7 @@ export function InfraPage() {
     return map;
   }, [devicesData]);
 
-  const hasVersionData = Object.keys(versionCounts).some(v => v !== 'Unknown');
+  const hasVersionData = Object.keys(versionCounts).some((v) => v !== 'Unknown');
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -330,8 +378,159 @@ export function InfraPage() {
       )}
 
       {activeTab === 'logs' && (
-        <div className="p-12 bg-surface rounded-xl border border-border text-center text-text-muted">
-          <p>Logs view placeholder.</p>
+        <div className="space-y-4">
+          {/* Filters & Live Toggle Bar */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-surface p-4 rounded-xl border border-border">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1 bg-surface-hover p-1 rounded-lg border border-border">
+                {['INFO', 'WARN', 'ERROR'].map((lvl) => {
+                  const active = selectedLevels.includes(lvl);
+                  return (
+                    <button
+                      key={lvl}
+                      type="button"
+                      onClick={() => toggleLevel(lvl)}
+                      className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition-colors cursor-pointer ${
+                        active ? 'bg-action-primary text-white' : 'text-text-muted hover:text-text-primary'
+                      }`}
+                    >
+                      {lvl}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <select
+                value={sourceFilter}
+                onChange={(e) => setSourceFilter(e.target.value)}
+                className="bg-surface-hover border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none"
+              >
+                <option value="all">All Sources</option>
+                <option value="auth">auth</option>
+                <option value="sync">sync</option>
+                <option value="admin">admin</option>
+                <option value="system">system</option>
+                <option value="probe">probe</option>
+              </select>
+
+              <select
+                value={timeRange}
+                onChange={(e) => setTimeRange(e.target.value)}
+                className="bg-surface-hover border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none"
+              >
+                <option value="1h">Last 1 hour</option>
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="all">All time</option>
+              </select>
+
+              <input
+                type="text"
+                placeholder="Filter by Business ID..."
+                value={businessFilter}
+                onChange={(e) => setBusinessFilter(e.target.value)}
+                className="bg-surface-hover border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none w-48"
+              />
+
+              <input
+                type="text"
+                placeholder="Search message..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-surface-hover border border-border rounded-lg px-3 py-1.5 text-xs text-text-primary focus:outline-none w-48"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-medium text-text-primary select-none">
+                <input
+                  type="checkbox"
+                  checked={isLive}
+                  onChange={(e) => setIsLive(e.target.checked)}
+                  className="rounded border-border text-action-primary focus:ring-action-primary"
+                />
+                Live (5s poll)
+              </label>
+              <button
+                type="button"
+                onClick={() => refetchLogs()}
+                className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-lg text-xs font-medium text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+              >
+                <RefreshCw size={13} /> Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* Logs Table */}
+          <div
+            ref={tableContainerRef}
+            onScroll={handleScroll}
+            className="bg-surface border border-border rounded-xl overflow-hidden max-h-[600px] overflow-y-auto"
+          >
+            {logsLoading && !logsData ? (
+              <div className="p-12 text-center text-text-muted animate-pulse">Loading important logs...</div>
+            ) : !logsData?.data || logsData.data.length === 0 ? (
+              <div className="p-12 text-center text-text-muted">No infrastructure logs found matching current filters.</div>
+            ) : (
+              <div className="divide-y divide-border">
+                {logsData.data.map((log) => {
+                  const isExpanded = expandedLogId === log.id;
+                  return (
+                    <div key={log.id} className="hover:bg-surface-hover/50 transition-colors">
+                      <div
+                        onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                        className="p-4 flex items-center justify-between cursor-pointer text-xs gap-4"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          {renderLevelChip(log.level)}
+                          <span className="px-2 py-0.5 rounded bg-surface-hover font-mono text-text-secondary uppercase text-[10px]">
+                            {log.source}
+                          </span>
+                          <span className="text-text-primary font-medium truncate" title={log.message}>
+                            {log.message}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0 text-text-muted">
+                          {log.business_id && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/businesses/${log.business_id}`);
+                              }}
+                              className="font-mono text-[11px] text-action-primary hover:underline cursor-pointer"
+                            >
+                              Biz: {log.business_id.slice(0, 8)}...
+                            </button>
+                          )}
+                          <span className="font-mono text-[11px]">{formatDate(log.ts)}</span>
+                        </div>
+                      </div>
+
+                      {isExpanded && log.meta && (
+                        <div className="px-4 pb-4 bg-surface-hover/80 border-t border-border pt-3 space-y-2">
+                          <div className="flex items-center justify-between text-[11px] text-text-muted">
+                            <span className="font-heading font-semibold uppercase">Event Metadata (Redacted)</span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyMeta(log.id, log.meta)}
+                              className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded text-text-primary hover:bg-surface transition-colors cursor-pointer font-sans"
+                            >
+                              {copiedId === log.id ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                              {copiedId === log.id ? 'Copied!' : 'Copy JSON'}
+                            </button>
+                          </div>
+                          <pre className="p-3 bg-surface rounded-lg font-mono text-[11px] text-text-primary overflow-x-auto border border-border">
+                            {JSON.stringify(log.meta, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

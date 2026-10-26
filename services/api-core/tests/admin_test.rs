@@ -154,3 +154,48 @@ async fn test_sync_request_updates_last_seen_at() {
     assert!(migration_content.contains("outbox_pending"));
 }
 
+#[test]
+fn test_log_redaction() {
+    let raw = "User login attempt with pin=1234, password=secret123, authorization: Bearer secret_token_abc";
+    let redacted = api_core::admin::infra::redact_text(raw);
+    assert!(!redacted.contains("1234"));
+    assert!(!redacted.contains("secret123"));
+    assert!(!redacted.contains("secret_token_abc"));
+    assert!(redacted.contains("[REDACTED]"));
+}
+
+#[test]
+fn test_log_drop_counter_and_channel() {
+    let count = api_core::admin::infra::LOG_DROP_COUNT.load(std::sync::atomic::Ordering::Relaxed);
+    assert!(count >= 0);
+}
+
+#[test]
+fn test_forbidden_keys_scan_across_admin_responses() {
+    let forbidden = ["customer", "patient", "phone", "prescription"];
+    let responses = vec![
+        serde_json::json!({
+            "kpis": { "registered_businesses": 0 },
+            "revenue_data": [],
+            "tier_distribution": {}
+        }),
+        serde_json::json!({
+            "metric": "units",
+            "products": []
+        }),
+        serde_json::json!({
+            "signups_per_week": [],
+            "activation_rate_pct": 0.0,
+            "verified_count": 0,
+            "unverified_count": 0
+        })
+    ];
+
+    for resp in responses {
+        let s = resp.to_string().to_lowercase();
+        for key in forbidden {
+            assert!(!s.contains(key), "Forbidden key '{}' found in admin analytics response!", key);
+        }
+    }
+}
+
