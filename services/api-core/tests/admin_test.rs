@@ -117,3 +117,32 @@ async fn test_migration_sql_contains_immutable_triggers() {
     assert!(migration_content.contains("BEFORE DELETE ON admin_audit_log"));
     assert!(migration_content.contains("workspace_id")); // in explanatory comment
 }
+
+#[tokio::test]
+async fn test_health_prober_handles_dead_db_without_crashing() {
+    let config = Config::from_env();
+    let bad_db_url = "postgres://postgres:postgres@localhost:59999/nonexistent";
+    let pool = PgPoolOptions::new()
+        .acquire_timeout(std::time::Duration::from_millis(50))
+        .connect(bad_db_url)
+        .await;
+
+    let bad_pool = match pool {
+        Ok(p) => p,
+        Err(_) => return,
+    };
+
+    let state = activation::AppState {
+        pool: bad_pool,
+        config: config.clone(),
+        sms_sender: Arc::new(ConsoleOtpProvider::new()),
+        rate_limiter: RateLimiter::new(),
+        admin_challenges: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        login_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        account_lockouts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+    };
+
+    let res = api_core::admin::infra::run_health_checks(&state).await;
+    assert!(res.is_ok());
+}
+

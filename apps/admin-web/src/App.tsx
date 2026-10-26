@@ -11,6 +11,7 @@ import { AccountPage } from './pages/AccountPage';
 import { BusinessesPage } from './pages/BusinessesPage';
 import { BusinessDetailPage } from './pages/BusinessDetailPage';
 import { OverviewPage } from './pages/OverviewPage';
+import { InfraPage } from './pages/InfraPage';
 import './App.css';
 
 type ScreenId = 'overview' | 'businesses' | 'analytics' | 'sync' | 'infra' | 'account';
@@ -85,7 +86,7 @@ function AdminShellContent() {
           <Route path="/businesses/:id" element={<BusinessDetailPage />} />
           <Route path="/analytics" element={<TabContainer isEmpty emptyTitle="Analytics" />} />
           <Route path="/sync" element={<TabContainer isEmpty emptyTitle="Sync Management" />} />
-          <Route path="/infra" element={<TabContainer isEmpty emptyTitle="Infrastructure & Health" />} />
+          <Route path="/infra" element={<InfraPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

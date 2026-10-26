@@ -204,6 +204,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         account_lockouts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     };
 
+    api_core::admin::infra::start_health_prober(state.clone());
+
     let cors = tower_http::cors::CorsLayer::new()
         .allow_origin(config.admin_web_origin.parse::<axum::http::HeaderValue>().unwrap_or_else(|_| axum::http::HeaderValue::from_static("http://localhost:5174")))
         .allow_methods([axum::http::Method::GET, axum::http::Method::POST, axum::http::Method::PUT, axum::http::Method::DELETE, axum::http::Method::OPTIONS])
