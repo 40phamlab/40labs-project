@@ -18,11 +18,20 @@ use crate::{
 };
 
 #[derive(Clone)]
+pub struct AdminChallenge {
+    pub admin_user_id: String,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Clone)]
 pub struct AppState {
     pub pool: sqlx::PgPool,
     pub config: Config,
     pub sms_sender: Arc<dyn OtpProvider>,
     pub rate_limiter: RateLimiter,
+    pub admin_challenges: Arc<std::sync::Mutex<std::collections::HashMap<String, AdminChallenge>>>,
+    pub login_failures: Arc<std::sync::Mutex<std::collections::HashMap<String, (u32, std::time::Instant)>>>,
+    pub account_lockouts: Arc<std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>>>,
 }
 
 pub fn router(state: AppState) -> Router {

@@ -1,8 +1,10 @@
 // PHASE: Admin-A
+use api_core::admin::auth::{hash_password, verify_password, generate_totp_secret, verify_totp, encrypt_secret, decrypt_secret};
 use axum::{
     body::Body,
-    http::{Request, StatusCode},
+    http::{Request, StatusCode, header},
 };
+use http_body_util::BodyExt;
 use tower::ServiceExt;
 use sqlx::postgres::PgPoolOptions;
 use api_core::{
@@ -12,6 +14,41 @@ use api_core::{
     sms::console::ConsoleOtpProvider,
 };
 use std::sync::Arc;
+
+#[test]
+fn test_password_hashing_and_verification() {
+    let password = "SecureAdminPassword#123";
+    let hash = hash_password(password).expect("Failed to hash password");
+    assert!(verify_password(password, &hash));
+    assert!(!verify_password("WrongPassword", &hash));
+}
+
+#[test]
+fn test_totp_generation_and_verification() {
+    let (secret_b32, _url) = generate_totp_secret();
+    let secret = totp_rs::Secret::Encoded(secret_b32.clone()).to_bytes().unwrap();
+    let totp = totp_rs::TOTP::new(
+        totp_rs::Algorithm::SHA1,
+        6,
+        1,
+        30,
+        secret,
+        Some("40Labs Admin".into()),
+        "".into(),
+    ).unwrap();
+    let code = totp.generate_current().unwrap();
+    assert!(verify_totp(&secret_b32, &code));
+    assert!(!verify_totp(&secret_b32, "000000"));
+}
+
+#[test]
+fn test_totp_secret_encryption_roundtrip() {
+    let key_hex = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    let secret = "JBSWY3DPEHPK3PXP";
+    let encrypted = encrypt_secret(secret, key_hex).expect("Failed to encrypt");
+    let decrypted = decrypt_secret(&encrypted, key_hex).expect("Failed to decrypt");
+    assert_eq!(secret, decrypted);
+}
 
 #[tokio::test]
 async fn test_readyz_fails_when_db_down() {
@@ -32,6 +69,9 @@ async fn test_readyz_fails_when_db_down() {
         config: config.clone(),
         sms_sender: Arc::new(ConsoleOtpProvider::new()),
         rate_limiter: RateLimiter::new(),
+        admin_challenges: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        login_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        account_lockouts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     };
 
     let app = health::health_router(state);

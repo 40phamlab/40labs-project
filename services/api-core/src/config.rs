@@ -16,6 +16,7 @@ pub struct Config {
     pub activation_signing_key: String,
     pub port: u16,
     pub admin_web_origin: String,
+    pub totp_enc_key: String,
 }
 
 fn get_env_or_file(var_name: &str, default: &str) -> String {
@@ -65,6 +66,7 @@ impl Config {
             activation_signing_key: get_env_or_file("ACTIVATION_SIGNING_KEY", ""),
             port: get_env_or_file("PORT", "3000").parse().unwrap_or(3000),
             admin_web_origin: get_env_or_file("ADMIN_WEB_ORIGIN", "http://localhost:5174"),
+            totp_enc_key: get_env_or_file("TOTP_ENC_KEY", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
         }
     }
 }

@@ -28,6 +28,91 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+
+        if arg == "admin-seed" {
+            let config = Config::from_env();
+            let pool = PgPoolOptions::new()
+                .max_connections(1)
+                .connect(&config.database_url)
+                .await
+                .expect("Failed to connect for seeding");
+
+            sqlx::migrate!("./migrations")
+                .run(&pool)
+                .await
+                .expect("Failed to run migrations during seed");
+
+            let mut email = "admin@40labs.io".to_string();
+            let mut role = "admin".to_string();
+            let mut password = String::new();
+
+            let args: Vec<String> = std::env::args().collect();
+            let mut i = 2;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--email" => {
+                        if i + 1 < args.len() {
+                            email = args[i + 1].clone();
+                            i += 1;
+                        }
+                    }
+                    "--role" => {
+                        if i + 1 < args.len() {
+                            role = args[i + 1].clone();
+                            i += 1;
+                        }
+                    }
+                    "--password" => {
+                        if i + 1 < args.len() {
+                            password = args[i + 1].clone();
+                            i += 1;
+                        }
+                    }
+                    _ => {}
+                }
+                i += 1;
+            }
+
+            if password.is_empty() {
+                password = format!("Admin#{}!", rand::Rng::gen_range(&mut rand::thread_rng(), 1000..9999));
+                println!("Generated one-time password: {}", password);
+            }
+
+            let password_hash = api_core::admin::auth::hash_password(&password).expect("Failed to hash password");
+            let (totp_secret, otpauth_url) = api_core::admin::auth::generate_totp_secret();
+            let totp_secret_enc = api_core::admin::auth::encrypt_secret(&totp_secret, &config.totp_enc_key).expect("Failed to encrypt TOTP secret");
+            let id = uuid::Uuid::new_v4().to_string();
+
+            let res = sqlx::query(
+                "INSERT INTO admin_users (id, email, password_hash, totp_secret_enc, role) \
+                 VALUES ($1, $2, $3, $4, $5) \
+                 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role \
+                 RETURNING id"
+            )
+            .bind(id)
+            .bind(&email)
+            .bind(&password_hash)
+            .bind(&totp_secret_enc)
+            .bind(&role)
+            .fetch_one(&pool)
+            .await;
+
+            match res {
+                Ok(_) => {
+                    println!("Admin seeded successfully!");
+                    println!("Email: {}", email);
+                    println!("Role: {}", role);
+                    println!("Password: {}", password);
+                    println!("TOTP Secret (Base32): {}", totp_secret);
+                    println!("OTPAuth URL: {}", otpauth_url);
+                    std::process::exit(0);
+                }
+                Err(e) => {
+                    eprintln!("Failed to seed admin: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
     }
 
     tracing_subscriber::registry()
@@ -114,6 +199,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config: config.clone(),
         sms_sender,
         rate_limiter,
+        admin_challenges: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        login_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
+        account_lockouts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     };
 
     let cors = tower_http::cors::CorsLayer::new()
