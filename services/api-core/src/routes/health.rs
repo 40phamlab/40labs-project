@@ -32,15 +32,30 @@ pub async fn liveness_check() -> (StatusCode, Json<HealthResponse>) {
 pub async fn readiness_check(
     State(state): State<AppState>,
 ) -> Result<(StatusCode, Json<HealthResponse>), StatusCode> {
-    match sqlx::query("SELECT 1").execute(&state.pool).await {
-        Ok(_) => Ok((
+    // 1. Check DB connection
+    let db_check = sqlx::query("SELECT 1").execute(&state.pool).await;
+    if db_check.is_err() {
+        tracing::error!("Readiness check failed: DB ping failed");
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    // 2. Check required migration tables exist (admin_users, business_registry, sync_devices, etc.)
+    let table_check = sqlx::query(
+        "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = ANY($1)"
+    )
+    .bind(&vec!["admin_users", "business_registry", "sync_devices", "admin_audit_log"])
+    .fetch_all(&state.pool)
+    .await;
+
+    match table_check {
+        Ok(rows) if rows.len() >= 4 => Ok((
             StatusCode::OK,
             Json(HealthResponse {
                 status: "ready".into(),
             }),
         )),
-        Err(e) => {
-            tracing::error!("Database readiness check failed: {}", e);
+        _ => {
+            tracing::error!("Readiness check failed: required migration tables missing");
             Err(StatusCode::SERVICE_UNAVAILABLE)
         }
     }

@@ -15,6 +15,7 @@ pub struct Config {
     pub otp_daily_max: i32,
     pub activation_signing_key: String,
     pub port: u16,
+    pub admin_web_origin: String,
 }
 
 fn get_env_or_file(var_name: &str, default: &str) -> String {
@@ -63,6 +64,7 @@ impl Config {
             otp_daily_max: get_env_or_file("OTP_DAILY_MAX", "200").parse().unwrap_or(200),
             activation_signing_key: get_env_or_file("ACTIVATION_SIGNING_KEY", ""),
             port: get_env_or_file("PORT", "3000").parse().unwrap_or(3000),
+            admin_web_origin: get_env_or_file("ADMIN_WEB_ORIGIN", "http://localhost:5174"),
         }
     }
 }

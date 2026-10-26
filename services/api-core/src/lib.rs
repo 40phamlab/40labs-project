@@ -7,3 +7,4 @@ pub mod routes;
 pub mod sms;
 pub mod auth;
 pub mod sync;
+pub mod admin;

@@ -116,10 +116,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         rate_limiter,
     };
 
+    let cors = tower_http::cors::CorsLayer::new()
+        .allow_origin(config.admin_web_origin.parse::<axum::http::HeaderValue>().unwrap_or_else(|_| axum::http::HeaderValue::from_static("http://localhost:5174")))
+        .allow_methods([axum::http::Method::GET, axum::http::Method::POST, axum::http::Method::PUT, axum::http::Method::DELETE, axum::http::Method::OPTIONS])
+        .allow_headers([axum::http::header::CONTENT_TYPE, axum::http::header::AUTHORIZATION])
+        .allow_credentials(true);
+
     let app = axum::Router::new()
-        .merge(activation::router(state.clone()))
         .merge(health::health_router(state.clone()))
-        .merge(api_core::sync::router(state.clone()));
+        .merge(activation::router(state.clone()))
+        .merge(api_core::sync::router(state.clone()))
+        .merge(api_core::admin::router(state.clone()))
+        .layer(cors);
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("API core server listening on {}", addr);
