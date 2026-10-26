@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "turbo run dev",
+    "dev:admin": "pnpm --filter @40labs/admin-web dev --port 5174",
     "build": "turbo run build",
     "test": "vitest run",
     "pre-push": "pnpm -F @40labs/i18n i18n:check && pnpm -F @40labs/core-desktop build && pnpm test",

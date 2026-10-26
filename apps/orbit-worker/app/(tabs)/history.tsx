@@ -1,7 +1,7 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#history]
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, TouchableOpacity, ScrollView } from 'react-native';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { Screen, AppHeader, Text, Skeleton, Banner } from '../../src/ui';
 import { useI18n } from '../../src/i18n/I18nProvider';

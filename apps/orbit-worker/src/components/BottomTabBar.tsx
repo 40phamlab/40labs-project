@@ -30,6 +30,7 @@ export function BottomTabBar({ tabs, activeTabId, onTabPress, style }: BottomTab
 
   return (
     <View
+      testID="bottom-tab-bar"
       style={[
         styles.bar,
         {

@@ -38,16 +38,40 @@ export default function PairScreen() {
     setPairingInProgress(true);
     setErrorMessage(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
     try {
       const parsed = parsePairQr(qrData);
       setPendingPairQr({ qrData, parsed });
       setNetworkSetup(false);
-      const health = await pinnedFetchFromEndpoints(
-        parsed.endpoints,
-        '/api/pairing/health',
-        { method: 'GET' },
-        parsed.fp,
-      );
+
+      let health;
+      try {
+        health = await pinnedFetchFromEndpoints(
+          parsed.endpoints,
+          '/api/pairing/health',
+          { method: 'GET', signal: controller.signal },
+          parsed.fp,
+        );
+      } catch (fetchErr: any) {
+        console.error('[OrbitWorker Pairing Raw Fetch Error]:', fetchErr);
+        const errMsg = fetchErr?.message || String(fetchErr);
+        if (errMsg.includes('aborted') || errMsg.includes('timeout')) {
+          throw new Error('TIMEOUT: Pairing request timed out after 8s. Check Wi-Fi connection.');
+        } else if (errMsg.includes('cleartext') || errMsg.includes('CLEARTEXT')) {
+          throw new Error('CLEARTEXT_BLOCKED: Cleartext HTTP traffic is blocked on Android. Use HTTPS.');
+        } else if (errMsg.includes('SSL') || errMsg.includes('TLS') || errMsg.includes('pin') || errMsg.includes('certificate')) {
+          throw new Error('TLS_FAILED: TLS handshake or fingerprint pinning failed.');
+        } else if (errMsg.includes('ECONNREFUSED') || errMsg.includes('Network request failed') || errMsg.includes('Failed to fetch')) {
+          throw new Error('REFUSED: Connection refused. Ensure desktop hub is running on hotspot.');
+        } else {
+          throw new Error(`BAD_SESSION: Unable to connect (${errMsg}).`);
+        }
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
       if (!health.response.ok) throw new Error('ORBIT_NETWORK_UNREACHABLE');
       const selectedEndpoint = health.endpoint;
 

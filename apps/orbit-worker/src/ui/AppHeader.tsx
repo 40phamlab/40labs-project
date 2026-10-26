@@ -22,13 +22,18 @@ export function AppHeader({ title, onBack, rightAction }: AppHeaderProps) {
     // fallback for test environments without SafeAreaProvider
   }
 
+  const totalHeight = 56 + insets.top;
+
   return (
     <View
+      testID="app-header"
       style={[
         styles.header,
         {
           paddingTop: insets.top,
-          minHeight: 48 + insets.top,
+          height: totalHeight,
+          minHeight: totalHeight,
+          maxHeight: totalHeight,
           backgroundColor: colors.surfacePrimary,
           borderBottomColor: colors.borderSubtle,
         },
@@ -55,8 +60,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingBottom: 12,
     borderBottomWidth: 1,
+    width: '100%',
   },
   left: {
     flexDirection: 'row',

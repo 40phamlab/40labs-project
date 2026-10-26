@@ -31,13 +31,13 @@ export function Screen({
 
   const content = scrollable ? (
     <ScrollView
-      contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentContainerStyle as any]}
+      contentContainerStyle={[{ paddingBottom: bottomPadding }, contentContainerStyle as any]}
       keyboardShouldPersistTaps="handled"
     >
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.inner, { paddingBottom: bottomPadding }, contentContainerStyle as any]}>{children}</View>
+    <View style={[{ flex: 1, paddingBottom: bottomPadding }, contentContainerStyle as any]}>{children}</View>
   );
 
   const wrapped = keyboardAvoiding ? (
@@ -63,7 +63,5 @@ export function Screen({
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { flex: 1 },
-  inner: { flex: 1, padding: 16 },
-  scrollContent: { padding: 16 },
+  container: { flex: 1, margin: 0, padding: 0 },
 });
