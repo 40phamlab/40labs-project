@@ -76,12 +76,13 @@ async fn push_handler(
         _ => {
             sqlx::query(
                 r#"
-                INSERT INTO sync_devices (workspace_id, branch_id, device_id, last_seen, app_version)
-                VALUES ($1, '', $2, NOW(), $3)
+                INSERT INTO sync_devices (workspace_id, branch_id, device_id, last_seen, last_seen_at, app_version)
+                VALUES ($1, '', $2, NOW(), NOW(), $3)
                 ON CONFLICT (device_id) DO UPDATE SET
                     workspace_id = EXCLUDED.workspace_id,
                     last_seen = NOW(),
-                    app_version = EXCLUDED.app_version
+                    last_seen_at = NOW(),
+                    app_version = COALESCE(EXCLUDED.app_version, sync_devices.app_version)
                 "#,
             )
             .bind(&claims.workspace_id)
@@ -102,6 +103,18 @@ async fn push_handler(
 
         match apply_change(&mut *tx, &claims, change).await {
             Ok(mut ack) => {
+                if ack.status == "rejected" || ack.status == "stale" {
+                    let _ = sqlx::query(
+                        "INSERT INTO ops_events (id, ts, level, source, message, business_id, device_id, meta) VALUES ($1, NOW(), 'WARN', 'sync', $2, $3, $4, $5)"
+                    )
+                    .bind(uuid::Uuid::new_v4().to_string())
+                    .bind(format!("Sync change {} status: {}", change.entity, ack.status))
+                    .bind(Some(claims.workspace_id.clone()))
+                    .bind(Some(req.device_id.clone()))
+                    .bind(serde_json::json!({ "change_id": change.change_id, "entity": change.entity, "reason": ack.reason }))
+                    .execute(&mut *tx)
+                    .await;
+                }
                 ack.change_id = change.change_id.clone();
                 acks.push(ack);
                 sqlx::query(&format!("RELEASE SAVEPOINT {}", savepoint_name))
@@ -110,6 +123,17 @@ async fn push_handler(
             }
             Err(e) => {
                 tracing::warn!(change_id = %change.change_id, error = ?e, "change_apply_error");
+                let _ = sqlx::query(
+                    "INSERT INTO ops_events (id, ts, level, source, message, business_id, device_id, meta) VALUES ($1, NOW(), 'ERROR', 'sync', $2, $3, $4, $5)"
+                )
+                .bind(uuid::Uuid::new_v4().to_string())
+                .bind(format!("Sync change apply error: {}", e))
+                .bind(Some(claims.workspace_id.clone()))
+                .bind(Some(req.device_id.clone()))
+                .bind(serde_json::json!({ "change_id": change.change_id, "entity": change.entity, "error": e.to_string() }))
+                .execute(&mut *tx)
+                .await;
+
                 sqlx::query(&format!("ROLLBACK TO SAVEPOINT {}", savepoint_name))
                     .execute(&mut *tx)
                     .await?;
@@ -122,9 +146,9 @@ async fn push_handler(
         }
     }
 
-    // 4. Update sync_devices last_seen & app_version
+    // 4. Update sync_devices last_seen, last_seen_at & app_version
     sqlx::query(
-        "UPDATE sync_devices SET last_seen = NOW(), app_version = $1 WHERE workspace_id = $2"
+        "UPDATE sync_devices SET last_seen = NOW(), last_seen_at = NOW(), app_version = COALESCE($1, app_version) WHERE workspace_id = $2"
     )
     .bind(&req.app_version)
     .bind(&claims.workspace_id)
@@ -148,13 +172,15 @@ async fn heartbeat_handler(
 ) -> Result<Json<serde_json::Value>, ApiError> {
     sqlx::query(
         r#"
-        INSERT INTO sync_devices (workspace_id, branch_id, device_id, last_seen, pending_count, app_version)
-        VALUES ($1, '', $2, NOW(), $3, $4)
+        INSERT INTO sync_devices (workspace_id, branch_id, device_id, last_seen, last_seen_at, pending_count, outbox_pending, app_version)
+        VALUES ($1, '', $2, NOW(), NOW(), $3, $3, $4)
         ON CONFLICT (device_id) DO UPDATE SET
             workspace_id = EXCLUDED.workspace_id,
             last_seen = NOW(),
-            pending_count = EXCLUDED.pending_count,
-            app_version = EXCLUDED.app_version
+            last_seen_at = NOW(),
+            pending_count = COALESCE(EXCLUDED.pending_count, sync_devices.pending_count),
+            outbox_pending = COALESCE(EXCLUDED.outbox_pending, sync_devices.outbox_pending),
+            app_version = COALESCE(EXCLUDED.app_version, sync_devices.app_version)
         "#,
     )
     .bind(&claims.workspace_id)

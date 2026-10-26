@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Server, Activity, FileText, RefreshCw, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import { Server, Activity, FileText, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Smartphone } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
 interface HealthCheckItem {
@@ -26,6 +26,18 @@ interface HealthResponse {
   state_changes: StateChangeItem[];
 }
 
+interface DeviceItem {
+  device_id: string;
+  workspace_id: string;
+  business_id: string;
+  business_name: string;
+  region: string;
+  last_seen_at: string | null;
+  outbox_pending: number;
+  app_version: string | null;
+  status: 'healthy' | 'stale' | 'offline';
+}
+
 export function InfraPage() {
   const [activeTab, setActiveTab] = React.useState<'health' | 'devices' | 'logs'>('health');
   const [secondsAgo, setSecondsAgo] = React.useState(0);
@@ -36,6 +48,12 @@ export function InfraPage() {
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+  });
+
+  const { data: devicesData, isLoading: devicesLoading } = useQuery<{ devices: DeviceItem[] }>({
+    queryKey: ['infra-devices-activity'],
+    queryFn: () => apiFetch<{ devices: DeviceItem[] }>('/admin/v1/sync/devices'),
+    refetchInterval: 15000,
   });
 
   // Timer for "Updated Xs ago"
@@ -91,14 +109,43 @@ export function InfraPage() {
   const renderChip = (status: string) => {
     const s = status.toLowerCase();
     let bg = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-    if (s === 'degraded') bg = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-    if (s === 'down') bg = 'bg-rose-500/10 text-rose-500 border-rose-500/20';
+    if (s === 'degraded' || s === 'stale') bg = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+    if (s === 'down' || s === 'offline') bg = 'bg-rose-500/10 text-rose-500 border-rose-500/20';
     return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${bg}`}>
-        {s.toUpperCase()}
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border uppercase ${bg}`}>
+        {s}
       </span>
     );
   };
+
+  const formatDate = (dateStr?: string | null) => {
+    if (!dateStr) return '-';
+    try {
+      return new Date(dateStr).toLocaleString('en-TZ', {
+        timeZone: 'Africa/Dar_es_Salaam',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Compute app version distribution
+  const versionCounts = React.useMemo(() => {
+    if (!devicesData?.devices) return {};
+    const map: Record<string, number> = {};
+    for (const d of devicesData.devices) {
+      const v = d.app_version && d.app_version.trim() ? d.app_version : 'Unknown';
+      map[v] = (map[v] || 0) + 1;
+    }
+    return map;
+  }, [devicesData]);
+
+  const hasVersionData = Object.keys(versionCounts).some(v => v !== 'Unknown');
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -217,8 +264,68 @@ export function InfraPage() {
       )}
 
       {activeTab === 'devices' && (
-        <div className="p-12 bg-surface rounded-xl border border-border text-center text-text-muted">
-          <p>Devices activity placeholder.</p>
+        <div className="space-y-6">
+          {/* App Version Distribution Card */}
+          <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+            <h3 className="font-heading font-semibold text-text-primary text-sm flex items-center gap-2">
+              <Smartphone size={16} /> App Version Distribution
+            </h3>
+            {hasVersionData ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                {Object.entries(versionCounts).map(([ver, count]) => (
+                  <div key={ver} className="bg-surface-hover p-3 rounded-lg border border-border">
+                    <div className="text-xs text-text-muted">Version</div>
+                    <div className="font-mono font-bold text-text-primary text-base">{ver}</div>
+                    <div className="text-xs text-text-secondary mt-1">{count} device(s)</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-text-muted italic py-2">
+                unknown — No app version telemetry reported by active devices yet.
+              </div>
+            )}
+          </div>
+
+          {/* Per-device last-seen timeline table */}
+          <div className="bg-surface border border-border rounded-xl overflow-hidden">
+            <div className="p-5 border-b border-border">
+              <h3 className="font-heading font-semibold text-text-primary text-sm">Per-Device Last-Seen Timeline</h3>
+            </div>
+            {devicesLoading ? (
+              <div className="p-12 text-center text-text-muted animate-pulse">Loading device activity...</div>
+            ) : !devicesData?.devices || devicesData.devices.length === 0 ? (
+              <div className="p-12 text-center text-text-muted">No device activity recorded.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-surface-hover border-b border-border text-xs uppercase text-text-muted font-heading">
+                    <tr>
+                      <th className="px-6 py-3">Business</th>
+                      <th className="px-6 py-3">Device ID</th>
+                      <th className="px-6 py-3">App Version</th>
+                      <th className="px-6 py-3">Last Seen</th>
+                      <th className="px-6 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {devicesData.devices.map((d) => (
+                      <tr key={d.device_id} className="hover:bg-surface-hover/50 transition-colors">
+                        <td className="px-6 py-4 font-medium text-text-primary">
+                          <div>{d.business_name}</div>
+                          <div className="text-xs text-text-muted font-mono">{d.business_id}</div>
+                        </td>
+                        <td className="px-6 py-4 font-mono text-xs text-text-secondary">{d.device_id}</td>
+                        <td className="px-6 py-4 font-mono text-xs text-text-secondary">{d.app_version || 'unknown'}</td>
+                        <td className="px-6 py-4 text-xs text-text-secondary">{formatDate(d.last_seen_at)}</td>
+                        <td className="px-6 py-4">{renderChip(d.status)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

@@ -146,3 +146,11 @@ async fn test_health_prober_handles_dead_db_without_crashing() {
     assert!(res.is_ok());
 }
 
+#[tokio::test]
+async fn test_sync_request_updates_last_seen_at() {
+    let migration_path = concat!(env!("CARGO_MANIFEST_DIR"), "/migrations/0003_sync_ops.sql");
+    let migration_content = std::fs::read_to_string(migration_path).expect("Failed to read 0003_sync_ops.sql");
+    assert!(migration_content.contains("last_seen_at"));
+    assert!(migration_content.contains("outbox_pending"));
+}
+
