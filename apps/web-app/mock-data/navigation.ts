@@ -9,8 +9,15 @@ export function getCompanyNavItems(): NavItem[] {
     { key: 'home', label: 'Home', href: '/' },
     { key: 'products', label: 'Products', href: '/products' },
     { key: 'blog', label: 'Blog', href: '/blog' },
-    { key: 'pricing', label: 'Pricing', href: '/pricing' },
     { key: 'publications', label: 'Publications', href: '/publications' },
     { key: 'about', label: 'About', href: '/about' },
   ];
+}
+
+export function isNavActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  if (href === '/') {
+    return pathname === '/';
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
 }

@@ -15,13 +15,15 @@
     "@40labs/ui-components": "workspace:*",
     "@40labs/design-tokens": "workspace:*",
     "@40labs/types": "workspace:*",
-    "lucide-react": "^0.475.0"
+    "lucide-react": "^0.475.0",
+    "three": "^0.160.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.160.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",

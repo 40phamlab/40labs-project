@@ -15,7 +15,6 @@ describe('isNavActive', () => {
     expect(isNavActive('/blog', '/blog')).toBe(true);
     expect(isNavActive('/blog/my-first-post', '/blog')).toBe(true);
 
-    expect(isNavActive('/pricing', '/pricing')).toBe(true);
     expect(isNavActive('/publications', '/publications')).toBe(true);
 
     expect(isNavActive('/about', '/about')).toBe(true);
