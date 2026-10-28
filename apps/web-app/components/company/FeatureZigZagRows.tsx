@@ -26,10 +26,10 @@ export function FeatureZigZagRows() {
   const placeholderText = "Streamline your entire healthcare business with Core. Connect patients, prescriptions, inventory, and analytics in one secure East African clinical ecosystem.";
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-20 flex flex-col gap-24">
+    <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-20 flex flex-col gap-24 relative z-10">
 
       {/* Row A: Image Left + Paragraph Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative">
+      <div data-scene-step className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative">
         <ImageSlot src="/media/picture/telemed_doctor.png" alt="Telemedicine consultation workflow" />
         <div className="flex flex-col gap-6 relative">
           <span className="text-xs font-bold uppercase tracking-widest text-[#16A34A]">
@@ -53,7 +53,7 @@ export function FeatureZigZagRows() {
       </div>
 
       {/* Row B: Image Left + Paragraph Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div data-scene-step className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <ImageSlot src="/media/picture/medd_accounting.png" alt="Pharmacy and accounting sync" />
         <div className="flex flex-col gap-6">
           <span className="text-xs font-bold uppercase tracking-widest text-[#16A34A]">
@@ -69,7 +69,7 @@ export function FeatureZigZagRows() {
       </div>
 
       {/* Row C: Paragraph Left + Image Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <div data-scene-step className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
         <div className="flex flex-col gap-6 order-2 lg:order-1">
           <span className="text-xs font-bold uppercase tracking-widest text-[#16A34A]">
             Genomic &amp; Diagnostic Intelligence

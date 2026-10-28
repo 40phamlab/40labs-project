@@ -12,7 +12,7 @@ export function CompanyHero() {
   const whiteCard = cards.find(c => c.tone === 'white');
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-32 lg:pt-40 pb-20 sm:pb-28 overflow-x-hidden">
+    <section data-scene-step className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-32 lg:pt-40 pb-20 sm:pb-28 overflow-x-hidden relative z-10">
       {/* Mobile view (<768px): Stacked column with layered offset */}
       <div className="flex flex-col gap-6 md:hidden">
         {greenCard && <HeroCard data={greenCard} className="z-30" />}

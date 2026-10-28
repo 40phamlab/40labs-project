@@ -19,7 +19,7 @@ export function TrustedBySection({ partners }: TrustedBySectionProps) {
   }
 
   return (
-    <section className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-20 flex flex-col items-center gap-12">
+    <section data-scene-step className="w-full max-w-7xl mx-auto px-4 sm:px-8 py-20 flex flex-col items-center gap-12 relative z-10">
       <h2
         className="font-heading font-bold text-sm uppercase tracking-widest text-[#55636E]"
         style={{ color: darkTokens.colors.text }}
