@@ -9,6 +9,7 @@ COPY apps/core-desktop/src-tauri/build.rs apps/core-desktop/src-tauri/build.rs
 COPY apps/core-desktop/src-tauri/src/lib.rs apps/core-desktop/src-tauri/src/lib.rs
 COPY apps/core-desktop/src-tauri/src/main.rs apps/core-desktop/src-tauri/src/main.rs
 COPY services/api-core/ services/api-core/
+COPY infra/db/postgres/ infra/db/postgres/
 
 ENV SQLX_OFFLINE=true
 

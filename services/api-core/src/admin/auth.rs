@@ -59,6 +59,17 @@ pub struct TotpResponse {
     pub role: String,
 }
 
+fn session_cookie_header(value: &str, max_age_seconds: i64, app_env: &str) -> String {
+    let secure = if app_env.eq_ignore_ascii_case("production") {
+        "; Secure"
+    } else {
+        ""
+    };
+    format!(
+        "admin_session={value}; HttpOnly{secure}; SameSite=Strict; Path=/; Max-Age={max_age_seconds}"
+    )
+}
+
 pub fn hash_password(password: &str) -> Result<String, String> {
     let salt = SaltString::generate(&mut OsRng);
     let argon2 = Argon2::default();
@@ -407,10 +418,7 @@ async fn totp_handler(
 
     log_ops_event(&state.pool, "info", "auth", "admin_login_success", None, None, Some(serde_json::json!({ "email": email, "role": role }))).await;
 
-    let cookie_val = format!(
-        "admin_session={}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=28800",
-        session_id
-    );
+    let cookie_val = session_cookie_header(&session_id, 8 * 60 * 60, &state.config.app_env);
 
     let mut headers = HeaderMap::new();
     headers.insert(header::SET_COOKIE, cookie_val.parse().unwrap());
@@ -447,7 +455,7 @@ async fn logout_handler(
 
     log_ops_event(&state.pool, "info", "auth", "admin_logout", None, None, None).await;
 
-    let cookie_val = "admin_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0";
+    let cookie_val = session_cookie_header("", 0, &state.config.app_env);
     let mut resp_headers = HeaderMap::new();
     resp_headers.insert(header::SET_COOKIE, cookie_val.parse().unwrap());
 

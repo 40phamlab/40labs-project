@@ -49,13 +49,13 @@ export function SyncPage() {
   const [entityFilter, setEntityFilter] = React.useState('');
   const [businessFilter, setBusinessFilter] = React.useState('');
 
-  const { data: devicesData, isLoading: devicesLoading, refetch: refetchDevices } = useQuery<{ devices: DeviceItem[] }>({
+  const { data: devicesData, isLoading: devicesLoading, error: devicesError, refetch: refetchDevices } = useQuery<{ devices: DeviceItem[] }>({
     queryKey: ['sync-devices'],
     queryFn: () => apiFetch<{ devices: DeviceItem[] }>('/admin/v1/sync/devices'),
     refetchInterval: 15000,
   });
 
-  const { data: changesData, isLoading: changesLoading, refetch: refetchChanges } = useQuery<ChangesResponse>({
+  const { data: changesData, isLoading: changesLoading, error: changesError, refetch: refetchChanges } = useQuery<ChangesResponse>({
     queryKey: ['sync-changes', entityFilter, businessFilter],
     queryFn: () => {
       const params = new URLSearchParams();
@@ -65,7 +65,7 @@ export function SyncPage() {
     },
   });
 
-  const { data: failuresData, isLoading: failuresLoading, refetch: refetchFailures } = useQuery<{ failures: FailureItem[] }>({
+  const { data: failuresData, isLoading: failuresLoading, error: failuresError, refetch: refetchFailures } = useQuery<{ failures: FailureItem[] }>({
     queryKey: ['sync-failures'],
     queryFn: () => apiFetch<{ failures: FailureItem[] }>('/admin/v1/sync/failures'),
     refetchInterval: 15000,
@@ -159,6 +159,8 @@ export function SyncPage() {
           <div className="bg-surface border border-border rounded-xl overflow-hidden">
             {devicesLoading ? (
               <div className="p-12 text-center text-text-muted animate-pulse">Loading sync devices...</div>
+            ) : devicesError ? (
+              <div className="space-y-3 p-8 text-center" role="alert"><p className="text-danger">Could not load sync devices: {(devicesError as Error).message}</p><button type="button" onClick={() => refetchDevices()} className="text-sm font-semibold text-action-primary">Retry</button></div>
             ) : !devicesData?.devices || devicesData.devices.length === 0 ? (
               <div className="p-12 text-center text-text-muted">No connected sync devices found.</div>
             ) : (
@@ -234,6 +236,8 @@ export function SyncPage() {
           <div className="bg-surface border border-border rounded-xl overflow-hidden">
             {changesLoading ? (
               <div className="p-12 text-center text-text-muted animate-pulse">Loading sync changes...</div>
+            ) : changesError ? (
+              <div className="space-y-3 p-8 text-center" role="alert"><p className="text-danger">Could not load sync changes: {(changesError as Error).message}</p><button type="button" onClick={() => refetchChanges()} className="text-sm font-semibold text-action-primary">Retry</button></div>
             ) : !changesData?.data || changesData.data.length === 0 ? (
               <div className="p-12 text-center text-text-muted">No sync changes found matching filters.</div>
             ) : (
@@ -288,6 +292,8 @@ export function SyncPage() {
           <div className="bg-surface border border-border rounded-xl overflow-hidden">
             {failuresLoading ? (
               <div className="p-12 text-center text-text-muted animate-pulse">Loading sync failures...</div>
+            ) : failuresError ? (
+              <div className="space-y-3 p-8 text-center" role="alert"><p className="text-danger">Could not load sync failures: {(failuresError as Error).message}</p><button type="button" onClick={() => refetchFailures()} className="text-sm font-semibold text-action-primary">Retry</button></div>
             ) : !failuresData?.failures || failuresData.failures.length === 0 ? (
               <div className="p-12 text-center text-text-muted">No sync failures or rejected pushes recorded.</div>
             ) : (

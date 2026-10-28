@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Building2, ShieldCheck, Clock, RefreshCcw, TrendingUp, AlertTriangle, AlertCircle } from 'lucide-react';
@@ -165,13 +164,13 @@ export function OverviewPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={signups}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, #333)" opacity={0.3} />
-                  <XAxis dataKey="date" stroke="var(--text-muted, #888)" fontSize={11} />
-                  <YAxis stroke="var(--text-muted, #888)" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-default)" opacity={0.3} />
+                  <XAxis dataKey="date" stroke="var(--color-text-muted)" fontSize={11} />
+                  <YAxis stroke="var(--color-text-muted)" fontSize={11} />
                   <Tooltip
-                    contentStyle={{ background: 'var(--surface, #1e1e1e)', borderColor: 'var(--border, #333)', color: 'var(--text-primary, #fff)' }}
+                    contentStyle={{ background: 'var(--color-surface-primary)', borderColor: 'var(--color-border-default)', color: 'var(--color-text-primary)' }}
                   />
-                  <Line type="monotone" dataKey="count" stroke="var(--action-primary, #00B4D8)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="count" stroke="var(--color-action-primary)" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -186,13 +185,13 @@ export function OverviewPage() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sales}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default, #333)" opacity={0.3} />
-                  <XAxis dataKey="date" stroke="var(--text-muted, #888)" fontSize={11} />
-                  <YAxis stroke="var(--text-muted, #888)" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-default)" opacity={0.3} />
+                  <XAxis dataKey="date" stroke="var(--color-text-muted)" fontSize={11} />
+                  <YAxis stroke="var(--color-text-muted)" fontSize={11} />
                   <Tooltip
-                    contentStyle={{ background: 'var(--surface, #1e1e1e)', borderColor: 'var(--border, #333)', color: 'var(--text-primary, #fff)' }}
+                    contentStyle={{ background: 'var(--color-surface-primary)', borderColor: 'var(--color-border-default)', color: 'var(--color-text-primary)' }}
                   />
-                  <Bar dataKey="revenue" fill="var(--accent, #7B2CBF)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" fill="var(--color-accent)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}

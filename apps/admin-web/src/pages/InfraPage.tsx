@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Server, Activity, FileText, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Smartphone, Copy, Check } from 'lucide-react';
 import { apiFetch } from '../lib/api';
@@ -72,8 +72,48 @@ export function InfraPage() {
 
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const handleScroll = (_e: React.UIEvent<HTMLDivElement>) => {
-    // Scroll tracking for live stream pause behavior
+  const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery<HealthResponse>({
+    queryKey: ['admin-infra-health'],
+    queryFn: () => apiFetch<HealthResponse>('/admin/v1/infra/health'),
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
+  });
+  const { data: devicesData, isLoading: devicesLoading, error: devicesError } = useQuery<{ devices: DeviceItem[] }>({
+    queryKey: ['admin-infra-devices'],
+    queryFn: () => apiFetch<{ devices: DeviceItem[] }>('/admin/v1/infra/devices'),
+    enabled: activeTab === 'devices',
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
+  });
+  const logsQuery = useInfiniteQuery<LogsResponse, Error, InfiniteData<LogsResponse, string | null>, readonly unknown[], string | null>({
+    queryKey: ['admin-infra-logs', selectedLevels, sourceFilter, businessFilter, searchQuery, timeRange],
+    initialPageParam: null,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: '50' });
+      if (selectedLevels.length) params.set('level', selectedLevels.join(','));
+      if (sourceFilter !== 'all') params.set('source', sourceFilter);
+      if (businessFilter.trim()) params.set('business_id', businessFilter.trim());
+      if (searchQuery.trim()) params.set('q', searchQuery.trim());
+      if (timeRange) params.set('since', timeRange);
+      if (pageParam) params.set('cursor', pageParam);
+      return apiFetch<LogsResponse>(`/admin/v1/infra/logs?${params.toString()}`);
+    },
+    getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
+    enabled: activeTab === 'logs',
+    refetchInterval: isLive ? 5000 : false,
+    refetchIntervalInBackground: false,
+  });
+  const logsData: LogsResponse | undefined = logsQuery.data
+    ? { data: logsQuery.data.pages.flatMap((page) => page.data), next_cursor: logsQuery.data.pages[logsQuery.data.pages.length - 1]?.next_cursor || null }
+    : undefined;
+  const logsLoading = logsQuery.isLoading;
+  const logsError = logsQuery.error;
+  const refetchLogs = () => logsQuery.refetch();
+
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const element = event.currentTarget;
+    const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 120;
+    if (nearBottom && logsQuery.hasNextPage && !logsQuery.isFetchingNextPage) void logsQuery.fetchNextPage();
   };
 
   // Timer for "Updated Xs ago"
@@ -342,6 +382,8 @@ export function InfraPage() {
             </div>
             {devicesLoading ? (
               <div className="p-12 text-center text-text-muted animate-pulse">Loading device activity...</div>
+            ) : devicesError ? (
+              <div className="space-y-3 p-8 text-center" role="alert"><p className="text-danger">Could not load device activity: {(devicesError as Error).message}</p></div>
             ) : !devicesData?.devices || devicesData.devices.length === 0 ? (
               <div className="p-12 text-center text-text-muted">No device activity recorded.</div>
             ) : (
@@ -469,6 +511,8 @@ export function InfraPage() {
           >
             {logsLoading && !logsData ? (
               <div className="p-12 text-center text-text-muted animate-pulse">Loading important logs...</div>
+            ) : logsError ? (
+              <div className="space-y-3 p-8 text-center" role="alert"><p className="text-danger">Could not load infrastructure logs: {logsError.message}</p><button type="button" onClick={() => refetchLogs()} className="text-sm font-semibold text-action-primary">Retry</button></div>
             ) : !logsData?.data || logsData.data.length === 0 ? (
               <div className="p-12 text-center text-text-muted">No infrastructure logs found matching current filters.</div>
             ) : (

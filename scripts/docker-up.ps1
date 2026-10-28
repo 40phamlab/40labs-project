@@ -27,5 +27,5 @@ Write-Host "Use API_BASE_URL=http://127.0.0.1:$apiHostPort when starting the des
 
 docker compose -f infra/docker/compose.dev.yml --env-file $envFile up --build
 if ($LASTEXITCODE -ne 0) {
-    throw "Docker Compose failed to start. Check whether localhost port $apiHostPort is already in use, or set API_HOST_PORT in infra/docker/.env."
+    throw "Docker Compose failed. Review the build or startup error above. If the error reports that localhost port $apiHostPort is already in use, set API_HOST_PORT in infra/docker/.env."
 }

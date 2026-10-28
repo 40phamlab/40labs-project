@@ -11,7 +11,7 @@ interface LoginResponse {
 }
 
 interface TotpResponse {
-  success: bool;
+  success: boolean;
   role: string;
 }
 
@@ -67,15 +67,15 @@ export function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--color-surface,#F8FAFB)] px-4">
-      <div className="w-full max-w-md rounded-[12px] bg-white p-8 shadow-[0_10px_25px_-5px_rgba(0,0,0,0.05)] border border-[var(--color-border,#e5e4e7)] dark:bg-[#16171d] dark:border-[#2e303a]">
+    <div className="flex min-h-screen items-center justify-center bg-app-bg px-4">
+      <div className="w-full max-w-md rounded-card border border-border bg-surface-primary p-8 shadow-elevation-raised">
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold text-[var(--color-text-h,#08060d)] m-0">40Labs Admin</h1>
-          <p className="text-sm text-[var(--color-text,#6b6375)] mt-1">Platform Operations & Oversight</p>
+          <h1 className="m-0 text-2xl font-semibold text-text-primary">40Labs Admin</h1>
+          <p className="mt-1 text-sm text-text-muted">Platform Operations & Oversight</p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-[8px] bg-red-50 p-3 text-sm text-red-600 border border-red-200 dark:bg-red-950/30 dark:border-red-900">
+          <div className="mb-4 rounded-lg border border-danger-border bg-danger-bg p-3 text-sm text-danger">
             {error}
           </div>
         )}
@@ -83,31 +83,31 @@ export function LoginPage() {
         {step === 'credentials' ? (
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text,#6b6375)] mb-1">Email Address</label>
+              <label className="mb-1 block text-xs font-medium text-text-secondary">Email Address</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-[8px] border border-[var(--color-border,#e5e4e7)] px-3 py-2 text-sm bg-transparent text-[var(--color-text-h,#08060d)] focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
+                className="w-full rounded-input border border-border bg-surface-disabled px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 placeholder="admin@40labs.io"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text,#6b6375)] mb-1">Password</label>
+              <label className="mb-1 block text-xs font-medium text-text-secondary">Password</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-[8px] border border-[var(--color-border,#e5e4e7)] px-3 py-2 text-sm bg-transparent text-[var(--color-text-h,#08060d)] focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
+                className="w-full rounded-input border border-border bg-surface-disabled px-3 py-2 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 placeholder="••••••••"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-[8px] bg-[#16A34A] py-2.5 text-sm font-medium text-white hover:bg-[#15803d] transition-colors disabled:opacity-50"
+              className="w-full rounded-lg bg-action-primary py-2.5 text-sm font-medium text-text-inverse transition-colors hover:bg-action-primary-hover disabled:opacity-50"
             >
               {loading ? 'Authenticating...' : 'Continue'}
             </button>
@@ -115,30 +115,30 @@ export function LoginPage() {
         ) : (
           <form onSubmit={handleTotp} className="space-y-4">
             {enrollmentRequired && (
-              <div className="rounded-[8px] bg-amber-50 p-3 text-xs text-amber-800 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900 space-y-2">
+              <div className="space-y-2 rounded-lg border border-warning-border bg-warning-bg p-3 text-xs text-warning">
                 <p className="font-semibold">First-time TOTP Enrollment Required</p>
                 <p>Scan this URI with your authenticator app (Google Authenticator, Authy, etc.):</p>
-                <div className="p-2 bg-white rounded font-mono text-[11px] break-all border dark:bg-black/40">
+                <div className="break-all rounded border border-border bg-surface-elevated p-2 font-mono text-[11px] text-text-primary">
                   {otpUrl}
                 </div>
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text,#6b6375)] mb-1">6-Digit TOTP Code</label>
+              <label className="mb-1 block text-xs font-medium text-text-secondary">6-Digit TOTP Code</label>
               <input
                 type="text"
                 required
                 maxLength={6}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full rounded-[8px] border border-[var(--color-border,#e5e4e7)] px-3 py-2 text-center text-lg font-mono tracking-widest bg-transparent text-[var(--color-text-h,#08060d)] focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
+                className="w-full rounded-input border border-border bg-surface-disabled px-3 py-2 text-center font-mono text-lg tracking-widest text-text-primary focus:outline-none focus:ring-2 focus:ring-focus-ring"
                 placeholder="123456"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-[8px] bg-[#16A34A] py-2.5 text-sm font-medium text-white hover:bg-[#15803d] transition-colors disabled:opacity-50"
+              className="w-full rounded-lg bg-action-primary py-2.5 text-sm font-medium text-text-inverse transition-colors hover:bg-action-primary-hover disabled:opacity-50"
             >
               {loading ? 'Verifying...' : 'Verify TOTP & Sign In'}
             </button>

@@ -41,6 +41,7 @@ services:
       NEXTSMS_API_TOKEN_FILE: /run/secrets/nextsms_api_token
       ACTIVATION_SIGNING_KEY_FILE: /run/secrets/activation_signing_key
       SMS_MODE: live
+      APP_ENV: production
       PORT: 3000
       ADMIN_DEBUG_OTP: "0"
     secrets:

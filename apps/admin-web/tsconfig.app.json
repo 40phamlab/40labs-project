@@ -13,7 +13,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["node", "react"],
+    "types": ["node", "react", "vite/client"],
 
     /* Linting */
     "strict": true,
@@ -22,5 +22,4 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
 }

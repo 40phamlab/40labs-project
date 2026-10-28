@@ -291,8 +291,33 @@ async fn history_handler(
     })).into_response()
 }
 
-async fn devices_handler() -> impl IntoResponse {
-    Json(serde_json::json!({ "devices": [] })).into_response()
+async fn devices_handler(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let rows = sqlx::query_as::<_, (String, String, String, Option<chrono::DateTime<chrono::Utc>>, Option<i32>, Option<String>, Option<String>, Option<String>)>(
+        "SELECT d.device_id, d.workspace_id, COALESCE(b.business_id, d.workspace_id), \
+         COALESCE(d.last_seen_at, d.last_seen), COALESCE(d.outbox_pending, d.pending_count), \
+         d.app_version, b.name, b.address_region \
+         FROM sync_devices d LEFT JOIN business_registry b ON d.workspace_id = b.workspace_id \
+         ORDER BY COALESCE(d.last_seen_at, d.last_seen) DESC"
+    ).fetch_all(&state.pool).await;
+    match rows {
+        Ok(rows) => {
+            let now = chrono::Utc::now();
+            let devices: Vec<_> = rows.into_iter().map(|(device_id, workspace_id, business_id, last_seen, pending, app_version, business_name, region)| {
+                let age_seconds = last_seen.map(|seen| (now - seen).num_seconds()).unwrap_or(i64::MAX);
+                let status = if age_seconds < 3600 { "healthy" } else if age_seconds < 172800 { "stale" } else { "offline" };
+                serde_json::json!({ "device_id": device_id, "workspace_id": workspace_id, "business_id": business_id,
+                    "last_seen_at": last_seen.map(|seen| seen.to_rfc3339()), "outbox_pending": pending.unwrap_or(0),
+                    "app_version": app_version, "business_name": business_name.unwrap_or_else(|| "Unknown Business".into()),
+                    "region": region.unwrap_or_else(|| "Unknown".into()), "status": status })
+            }).collect();
+            Json(serde_json::json!({ "devices": devices })).into_response()
+        }
+        Err(_) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+            "error": { "code": "INTERNAL", "message": "Could not load infrastructure devices" }
+        }))).into_response(),
+    }
 }
 
 pub static LOG_DROP_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);

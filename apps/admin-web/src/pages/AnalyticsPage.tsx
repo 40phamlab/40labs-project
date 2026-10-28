@@ -286,7 +286,7 @@ export function AnalyticsPage() {
                         <Tooltip
                           contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '8px' }}
                         />
-                        <Bar dataKey="count" fill="#10B981" radius={[0, 4, 4, 0]} />
+                        <Bar dataKey="count" fill="var(--color-success)" radius={[0, 4, 4, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -378,7 +378,7 @@ export function AnalyticsPage() {
                         contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '8px' }}
                         formatter={(val: any) => [metric === 'revenue' ? formatMoney(Number(val) || 0) : val, metric.toUpperCase()]}
                       />
-                      <Bar dataKey={metric === 'revenue' ? 'revenue' : metric === 'stockouts' ? 'stockouts' : 'units'} fill="#F59E0B" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey={metric === 'revenue' ? 'revenue' : metric === 'stockouts' ? 'stockouts' : 'units'} fill="var(--color-warning)" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -482,7 +482,7 @@ export function AnalyticsPage() {
                         <Tooltip
                           contentStyle={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)', borderRadius: '8px' }}
                         />
-                        <Bar dataKey="signups" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="signups" fill="var(--color-info)" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

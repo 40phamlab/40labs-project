@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Search, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 
@@ -34,15 +35,13 @@ export function BusinessesPage() {
   const direction = searchParams.get('direction') || 'desc';
   const page = parseInt(searchParams.get('page') || '1', 10);
 
-  const [searchInput, setSearchInput] = React.useState(q);
-  const [data, setData] = React.useState<ListResponse | null>(null);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  // Sync search input with URL search param when changed externally (e.g. top-bar search)
-  React.useEffect(() => {
-    setSearchInput(q);
-  }, [q]);
+  const [searchState, setSearchState] = React.useState({ query: q, value: q });
+  const searchInput = searchState.query === q ? searchState.value : q;
+  const queryString = searchParams.toString();
+  const { data, isLoading: loading, error, refetch: fetchBusinesses } = useQuery<ListResponse>({
+    queryKey: ['admin-businesses', queryString],
+    queryFn: () => apiFetch<ListResponse>(`/admin/v1/businesses${queryString ? `?${queryString}` : ''}`),
+  });
 
   // Debounced search effect
   React.useEffect(() => {
@@ -60,24 +59,6 @@ export function BusinessesPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchInput, q, searchParams, setSearchParams]);
-
-  const fetchBusinesses = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const queryStr = searchParams.toString();
-      const res = await apiFetch<ListResponse>(`/admin/v1/businesses?${queryStr}`);
-      setData(res);
-      setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load businesses');
-    } finally {
-      setLoading(false);
-    }
-  }, [searchParams]);
-
-  React.useEffect(() => {
-    fetchBusinesses();
-  }, [fetchBusinesses]);
 
   const handleTabChange = (newStatus: string) => {
     const newParams = new URLSearchParams(searchParams);
@@ -126,8 +107,14 @@ export function BusinessesPage() {
     }
   };
 
+  const [nowMs, setNowMs] = React.useState(() => Date.now());
+  React.useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const getRelativeTime = (date: Date) => {
-    const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+    const diffSec = Math.floor((nowMs - date.getTime()) / 1000);
     if (diffSec < 60) return 'Just now';
     const diffMin = Math.floor(diffSec / 60);
     if (diffMin < 60) return `${diffMin}m ago`;
@@ -208,7 +195,7 @@ export function BusinessesPage() {
           <input
             type="text"
             value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(e) => setSearchState({ query: q, value: e.target.value })}
             placeholder="Search by name, ID, or TMDA..."
             className="w-full pl-9 pr-4 py-2 bg-app-bg border border-border rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-action-primary"
           />
@@ -264,10 +251,10 @@ export function BusinessesPage() {
           </div>
         ) : error ? (
           <div className="p-12 text-center space-y-4">
-            <p className="text-rose-500 font-medium">Error: {error}</p>
+            <p className="text-rose-500 font-medium">Error: {error.message}</p>
             <button
               type="button"
-              onClick={fetchBusinesses}
+              onClick={() => fetchBusinesses()}
               className="px-4 py-2 bg-action-primary text-white rounded-lg text-sm font-medium hover:opacity-90 cursor-pointer"
             >
               Retry

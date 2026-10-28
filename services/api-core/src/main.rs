@@ -1,4 +1,5 @@
 use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use std::sync::Arc;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -8,6 +9,16 @@ use api_core::{
     routes::{activation, health},
     sms::{console::ConsoleOtpProvider, nextsms::NextSmsProvider, OtpProvider},
 };
+
+async fn apply_database_migrations(pool: &PgPool) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // The shared Postgres sync schema is maintained centrally and must exist
+    // before the API's admin migrations add columns and indexes to its tables.
+    sqlx::raw_sql(include_str!("../../../infra/db/postgres/0001_sync_foundation.sql"))
+        .execute(pool)
+        .await?;
+    sqlx::migrate!("./migrations").run(pool).await?;
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -37,8 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await
                 .expect("Failed to connect for seeding");
 
-            sqlx::migrate!("./migrations")
-                .run(&pool)
+            apply_database_migrations(&pool)
                 .await
                 .expect("Failed to run migrations during seed");
 
@@ -86,7 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let res = sqlx::query(
                 "INSERT INTO admin_users (id, email, password_hash, totp_secret_enc, role) \
                  VALUES ($1, $2, $3, $4, $5) \
-                 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role \
+                 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, totp_secret_enc = EXCLUDED.totp_secret_enc, role = EXCLUDED.role \
                  RETURNING id"
             )
             .bind(id)
@@ -113,17 +123,133 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+
+        if arg == "admin-demo-seed" {
+            let config = Config::from_env();
+            if config.app_env.to_lowercase() == "production" {
+                eprintln!("Refusing to run demo seed in production environment!");
+                std::process::exit(1);
+            }
+            let pool = PgPoolOptions::new()
+                .max_connections(1)
+                .connect(&config.database_url)
+                .await
+                .expect("Failed to connect for demo seeding");
+
+            apply_database_migrations(&pool)
+                .await
+                .expect("Failed to run migrations during demo seed");
+
+            let regions = ["Dar es Salaam", "Arusha", "Mwanza", "Dodoma", "Mbeya"];
+            let tiers = ["free", "pro", "enterprise"];
+            let statuses = ["verified", "pending", "rejected"];
+
+            for i in 1..=15 {
+                let business_id = format!("biz_demo_{:03}", i);
+                let workspace_id = format!("ws_demo_{:03}", i);
+                let name = format!("Demo Pharmacy {}", i);
+                let region = regions[i % regions.len()];
+                let tier = tiers[i % tiers.len()];
+                let status = statuses[i % statuses.len()];
+                let phone_hash = format!("phone_hash_{}", i);
+
+                let _ = sqlx::query(
+                    r#"
+                    INSERT INTO business_registry (business_id, workspace_id, branch_id, phone_hash, terms_version, terms_locale, terms_text_sha256, terms_accepted_at, name, address_region, tier, tmda_number)
+                    VALUES ($1, $2, 'branch_1', $3, '1.0', 'en', 'hash', NOW()::text, $4, $5, $6, $7)
+                    ON CONFLICT (business_id) DO UPDATE SET name = EXCLUDED.name, address_region = EXCLUDED.address_region, tier = EXCLUDED.tier
+                    "#
+                )
+                .bind(&business_id)
+                .bind(&workspace_id)
+                .bind(&phone_hash)
+                .bind(&name)
+                .bind(region)
+                .bind(tier)
+                .bind(format!("TMDA-REG-{}", i))
+                .execute(&pool)
+                .await;
+
+                let _ = sqlx::query(
+                    r#"
+                    INSERT INTO business_verification (business_id, status, reason, decided_by, decided_at)
+                    VALUES ($1, $2, $3, 'admin@40labs.io', NOW())
+                    ON CONFLICT (business_id) DO UPDATE SET status = EXCLUDED.status, reason = EXCLUDED.reason
+                    "#
+                )
+                .bind(&business_id)
+                .bind(status)
+                .bind(if status == "rejected" { Some(String::from("Incomplete documentation")) } else { None })
+                .execute(&pool)
+                .await;
+
+                let _ = sqlx::query(
+                    r#"
+                    INSERT INTO sync_devices (workspace_id, branch_id, device_id, last_seen, last_seen_at, pending_count, outbox_pending, app_version)
+                    VALUES ($1, 'branch_1', $2, NOW(), NOW(), 0, 0, '0.1.0')
+                    ON CONFLICT (device_id) DO UPDATE SET last_seen = NOW()
+                    "#
+                )
+                .bind(&workspace_id)
+                .bind(format!("dev_demo_{:03}", i))
+                .execute(&pool)
+                .await;
+
+                for day_offset in 0..90 {
+                    let summary_date = chrono::Utc::now().date_naive() - chrono::Duration::days(day_offset);
+                    let revenue = (i as i64 * 150_000) + (day_offset * 12_000);
+                    let _ = sqlx::query(
+                        r#"
+                        INSERT INTO cloud_daily_summaries (id, workspace_id, branch_id, summary_date, revenue_total, tx_count, items_sold, version, source_device_id)
+                        VALUES ($1, $2, 'branch_1', $3, $4, 25, 45, 1, $5)
+                        ON CONFLICT (workspace_id, branch_id, summary_date) DO UPDATE SET revenue_total = EXCLUDED.revenue_total
+                        "#
+                    )
+                    .bind(format!("ds_{}_{}", i, day_offset))
+                    .bind(&workspace_id)
+                    .bind(summary_date)
+                    .bind(revenue as i64)
+                    .bind(format!("dev_demo_{:03}", i))
+                    .execute(&pool)
+                    .await;
+                }
+
+                if i % 3 == 0 {
+                    let _ = sqlx::query(
+                        r#"
+                        INSERT INTO ops_events (id, ts, level, source, message, business_id, device_id, meta)
+                        VALUES ($1, NOW(), 'WARN', 'sync', $2, $3, $4, $5)
+                        "#
+                    )
+                    .bind(uuid::Uuid::new_v4().to_string())
+                    .bind("Sync push rejected: workspace_mismatch")
+                    .bind(&workspace_id)
+                    .bind(format!("dev_demo_{:03}", i))
+                    .bind(serde_json::json!({ "reason": "workspace_mismatch" }))
+                    .execute(&pool)
+                    .await;
+                }
+            }
+
+            println!("Demo seed completed successfully: 15 businesses, 90 days of summaries, devices, and test logs seeded.");
+            std::process::exit(0);
+        }
     }
+
+    let config = Config::from_env();
+    let default_log = if config.app_env.to_lowercase() == "production" {
+        "api_core=info,tower_http=info".into()
+    } else {
+        "api_core=debug,tower_http=debug".into()
+    };
 
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "api_core=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| default_log),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-
-    let config = Config::from_env();
 
     if config.app_env.to_lowercase() == "production" && config.otp_provider.to_lowercase() == "console" {
         tracing::error!("Refusing to start: Cannot use console OTP provider in production environment.");
@@ -154,8 +280,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .expect("Failed to connect to Postgres");
 
     tracing::info!("Running database migrations...");
-    sqlx::migrate!("./migrations")
-        .run(&pool)
+    apply_database_migrations(&pool)
         .await
         .expect("Failed to run migrations");
 

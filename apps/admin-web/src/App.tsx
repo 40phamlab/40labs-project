@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { Home, Building2, BarChart3, RefreshCw, Server, UserCog } from 'lucide-react';
 import { AppShell, AppSidebarNav, type NavItem, type NavigationState } from '@40labs/ui-components';
 import { TitleBar } from './_copied/components/TitleBar';
-import { TabContainer } from './_copied/components/TabContainer';
 import { AuthGuard } from './components/AuthGuard';
 import { LoginPage } from './pages/LoginPage';
 import { AccountPage } from './pages/AccountPage';
@@ -13,6 +12,7 @@ import { BusinessDetailPage } from './pages/BusinessDetailPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { InfraPage } from './pages/InfraPage';
+import { SyncPage } from './pages/SyncPage';
 import './App.css';
 
 type ScreenId = 'overview' | 'businesses' | 'analytics' | 'sync' | 'infra' | 'account';
@@ -49,10 +49,7 @@ function AdminShellContent() {
   const topBarElement = (
     <TitleBar
       brandName="40Labs Admin"
-      onHelpClick={() => console.log('Help')}
-      onUpdateClick={() => console.log('Update')}
       onSettingsClick={() => navigate('/account')}
-      onExplorerClick={() => {}}
     />
   );
 
@@ -86,7 +83,7 @@ function AdminShellContent() {
           <Route path="/businesses" element={<BusinessesPage />} />
           <Route path="/businesses/:id" element={<BusinessDetailPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="/sync" element={<TabContainer isEmpty emptyTitle="Sync Management" />} />
+          <Route path="/sync" element={<SyncPage />} />
           <Route path="/infra" element={<InfraPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

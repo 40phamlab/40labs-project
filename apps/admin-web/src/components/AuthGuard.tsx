@@ -1,5 +1,4 @@
 // PHASE: Admin-A
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, Outlet } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
@@ -20,8 +19,8 @@ export function AuthGuard() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[var(--color-surface,#F8FAFB)] text-[var(--color-text,#6b6375)]">
-        <div className="text-sm font-mono">Authenticating admin session...</div>
+      <div className="flex h-screen w-screen items-center justify-center bg-app-bg text-text-muted">
+        <div className="w-72 space-y-3" aria-label="Authenticating admin session"><div className="h-6 w-2/3 animate-pulse rounded bg-surface-hover" /><div className="h-4 animate-pulse rounded bg-surface-hover" /></div>
       </div>
     );
   }

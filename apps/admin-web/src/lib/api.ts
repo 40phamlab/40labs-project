@@ -1,15 +1,24 @@
 // PHASE: Admin-A
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+// Keep the API on the same loopback interface in local development. In hosted
+// environments the API origin must be configured explicitly.
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      credentials: 'include',
+      headers: {
+        Accept: 'application/json',
+        ...(options.body == null ? {} : { 'Content-Type': 'application/json' }),
+        ...options.headers,
+      },
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    throw new Error(`Cannot reach the admin API at ${API_BASE}. Check that api-core is running and VITE_API_BASE_URL is correct.`);
+  }
 
   if (res.status === 401) {
     if (!window.location.pathname.includes('/login')) {
@@ -18,10 +27,12 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     throw new Error('Unauthorized');
   }
 
-  const data = await res.json().catch(() => ({}));
+  const data = res.status === 204 ? {} : await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    const message = data.error?.message || data.message || `Request failed with status ${res.status}`;
+    const message = (typeof data.error === 'string' ? data.error : data.error?.message)
+      || data.message
+      || `Request failed with status ${res.status}`;
     throw new Error(message);
   }
 

@@ -1,8 +1,30 @@
 -- 40LabsCloud — Postgres Migration 0001: Sync Foundation
 
--- 1. Business Registry license columns (aligns with 1C activation migration business_registry)
-ALTER TABLE IF EXISTS business_registry ADD COLUMN IF NOT EXISTS tmda_number TEXT;
-ALTER TABLE IF EXISTS business_registry ADD COLUMN IF NOT EXISTS pharmacy_council_no TEXT;
+-- 1. Business registry (shared activation and admin fields)
+CREATE TABLE IF NOT EXISTS business_registry (
+  business_id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  branch_id TEXT NOT NULL,
+  phone_hash TEXT UNIQUE NOT NULL,
+  terms_version TEXT NOT NULL,
+  terms_locale TEXT NOT NULL,
+  terms_text_sha256 TEXT NOT NULL,
+  terms_accepted_at TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  name TEXT,
+  address_region TEXT,
+  tier TEXT DEFAULT 'free',
+  updated_at TIMESTAMPTZ,
+  tmda_number TEXT,
+  pharmacy_council_no TEXT
+);
+
+ALTER TABLE business_registry ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE business_registry ADD COLUMN IF NOT EXISTS address_region TEXT;
+ALTER TABLE business_registry ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'free';
+ALTER TABLE business_registry ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+ALTER TABLE business_registry ADD COLUMN IF NOT EXISTS tmda_number TEXT;
+ALTER TABLE business_registry ADD COLUMN IF NOT EXISTS pharmacy_council_no TEXT;
 
 -- 2. Cloud Inventory Items
 CREATE TABLE IF NOT EXISTS cloud_inventory_items (

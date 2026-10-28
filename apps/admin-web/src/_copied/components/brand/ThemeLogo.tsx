@@ -1,5 +1,4 @@
 // COPIED FROM: apps/core-desktop/src/components/brand/ThemeLogo.tsx
-import * as React from 'react';
 
 export interface ThemeLogoProps {
   variant: 'full' | 'mark';
