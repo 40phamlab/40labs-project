@@ -28,6 +28,7 @@ export const ProductRow: React.FC<ProductRowProps> = ({
       unitPrice={price}
       stock={stock}
       mode="sale"
+      viewMode="list"
       disabled={disabled}
       onAddToCart={onAdd}
       className={className}
