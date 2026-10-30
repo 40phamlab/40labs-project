@@ -86,7 +86,7 @@ describe('AuthGate Boundary and States', () => {
     await waitFor(
       () => {
         expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument();
-        expect(screen.getByText(/Afya Bora Pharmacy/i)).toBeInTheDocument();
+        expect(screen.getByText(/Karibu Afya Bora Pharmacy/i)).toBeInTheDocument();
       },
       { timeout: 3000 }
     );

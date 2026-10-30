@@ -279,7 +279,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                     {isDone ? '✓' : s.num}
                   </div>
                   <div>
-                    <h4 className={`text-xs font-semibold ${isCurrent ? 'text-foreground' : ''}`}>{s.title}</h4>
+                    <div className={`text-xs font-semibold ${isCurrent ? 'text-foreground' : ''}`}>{s.title}</div>
                     <p className="text-[11px] text-muted-foreground">{s.desc}</p>
                   </div>
                 </div>

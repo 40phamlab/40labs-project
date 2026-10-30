@@ -26,7 +26,7 @@ describe('Auth Module Tests', () => {
   test('renders RegistrationWizard step 1', async () => {
     renderWithProviders(<RegistrationWizard onComplete={() => {}} />);
 
-    expect(screen.getByRole('heading', { name: /^Biashara$/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: /^Biashara$/i })[0]).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Jina la biashara/i)).toBeInTheDocument();
   });
 

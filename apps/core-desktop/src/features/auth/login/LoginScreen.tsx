@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { Button, Input, PasswordInput, Card } from '@40labs/ui-components';
-import { Store, AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, Zap } from 'lucide-react';
 import { authApi } from '../../../api/authApi';
 import { resolveLogoUrl } from '../../../api/businessApi';
 import { parseAuthError } from '../../../api/authErrors';
@@ -71,54 +71,64 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
     }
   };
 
+  const getInitials = (name?: string) => {
+    if (!name) return '40';
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row select-none">
-      {/* Left Info Panel (Split screen on wide screens) */}
-      <div className="hidden lg:flex lg:w-1/2 bg-surface border-r border-border p-12 flex-col justify-between relative overflow-hidden">
+      {/* Left Info Panel */}
+      <div className="hidden lg:flex lg:w-1/2 bg-surface-primary p-12 lg:p-16 flex-col justify-between relative overflow-hidden">
         <div className="space-y-6">
           <ThemeLogo variant="full" height={44} />
           <div className="space-y-3 pt-6">
-            <h2 className="text-2xl font-bold font-sora text-foreground">
+            <h2 className="text-2xl font-bold font-heading text-text-primary tracking-tight">
               {businessName ? `Karibu ${businessName}` : 'Usimamizi Salama wa Biashara'}
             </h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p className="text-sm text-text-muted leading-relaxed max-w-lg">
               Ingia kwenye mfumo wako kudhibiti mauzo, stoo, na huduma kwa wateja kwa usalama wa hali ya juu na kasi isiyo na kifani.
             </p>
           </div>
         </div>
 
         <div className="space-y-4 pt-8">
-          <div className="flex items-center space-x-3 text-xs text-muted-foreground">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <div className="flex items-center space-x-3 text-xs text-text-muted">
+            <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
               <ShieldCheck size={16} className="text-primary" />
             </div>
             <span>Ulinzi thabiti wa data na uthibitishaji salama wa mtumiaji.</span>
           </div>
-          <div className="flex items-center space-x-3 text-xs text-muted-foreground">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <div className="flex items-center space-x-3 text-xs text-text-muted">
+            <div className="w-8 h-8 rounded-full bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
               <Zap size={16} className="text-primary" />
             </div>
             <span>Utendaji wa haraka na uwezo wa kufanya kazi hata bila mtandao.</span>
           </div>
         </div>
 
-        <div className="text-[11px] text-muted-foreground font-mono">
+        <div className="text-[11px] text-text-muted font-mono">
           © 40Labs Core • Enterprise Health & Business Suite
         </div>
       </div>
 
       {/* Right Form Panel */}
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-background">
-        <Card className="w-full max-w-md p-8 space-y-6 shadow-lg border border-border rounded-xl bg-surface">
+        <Card className="w-full max-w-md p-8 space-y-6 shadow-lg border border-border rounded-card bg-surface-elevated">
           <div className="flex flex-col items-center text-center space-y-3 lg:hidden">
             <ThemeLogo variant="full" height={36} />
-            <h1 className="text-xl font-bold font-sora text-foreground">
+            <h1 className="text-xl font-bold font-heading text-text-primary">
               {businessName || '40Labs Core'}
             </h1>
           </div>
 
           <div className="flex flex-col items-center text-center space-y-3">
-            <div className="w-16 h-16 rounded-full border border-border flex items-center justify-center overflow-hidden bg-muted shadow-sm">
+            <div className="w-16 h-16 rounded-full border border-border flex items-center justify-center overflow-hidden bg-surface-secondary shadow-xs">
               {resolvedLogo && !logoError ? (
                 <img
                   src={resolvedLogo}
@@ -127,24 +137,26 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
                   onError={() => setLogoError(true)}
                 />
               ) : (
-                <Store size={30} className="text-muted-foreground" />
+                <span className="text-base font-bold font-heading text-primary">
+                  {getInitials(businessName)}
+                </span>
               )}
             </div>
             <div>
-              <h2 className="text-lg font-bold font-sora text-foreground">Ingia kwenye Akaunti</h2>
-              <p className="text-xs text-muted-foreground">Weka jina la mtumiaji na nenosiri lako</p>
+              <h2 className="text-lg font-bold font-heading text-text-primary">Ingia kwenye Akaunti</h2>
+              <p className="text-xs text-text-muted">Weka jina la mtumiaji na nenosiri lako</p>
             </div>
           </div>
 
           {isHardLocked && (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-3 rounded-lg flex items-start space-x-2">
+            <div className="bg-danger/10 border border-danger/30 text-danger text-xs p-3 rounded-card flex items-start space-x-2">
               <AlertTriangle size={16} className="shrink-0 mt-0.5" />
               <span>Akaunti imefungwa kabisa baada ya majaribio mengi. Wasiliana na msimamizi (SUDO).</span>
             </div>
           )}
 
           {errorCode && !isHardLocked && (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive text-xs p-2.5 rounded-lg text-center">
+            <div className="bg-danger/10 border border-danger/30 text-danger text-xs p-2.5 rounded-card text-center">
               {errorCode === 'LOCKED' && retryAfterSecs
                 ? `Akaunti imefungwa kwa muda. Jaribu tena baada ya sekunde ${retryAfterSecs}.`
                 : 'Jina la mtumiaji au nenosiri si sahihi.'}
@@ -153,7 +165,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-foreground block mb-1">Jina la mtumiaji</label>
+              <label className="text-xs font-semibold text-text-primary block mb-1">Jina la mtumiaji</label>
               <Input
                 autoComplete="username"
                 value={username}
@@ -164,10 +176,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
             </div>
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-medium text-foreground">Nenosiri</label>
+                <label className="text-xs font-semibold text-text-primary">Nenosiri</label>
                 <button
                   type="button"
-                  className="text-xs text-primary hover:underline font-medium"
+                  className="text-xs text-primary hover:underline font-medium cursor-pointer"
                   onClick={() => setForgotModalOpen(true)}
                 >
                   Umesahau nenosiri?
@@ -183,7 +195,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
             </div>
             <Button
               type="submit"
-              className="w-full py-2.5"
+              className="w-full py-2.5 cursor-pointer"
               disabled={loading || !username || !password || isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
             >
               {loading ? 'Inaingia...' : retryAfterSecs ? `Subiri (${retryAfterSecs}s)` : 'Ingia'}
