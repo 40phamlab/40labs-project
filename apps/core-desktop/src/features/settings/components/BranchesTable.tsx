@@ -95,8 +95,9 @@ export const BranchesTable: React.FC<BranchesTableProps> = ({
     {
       key: 'branch_code',
       header: 'Branch Code',
-      accessorKey: 'branch_code',
-      className: 'font-mono text-xs',
+      render: (branch) => (
+        <span className="font-mono text-xs text-text-primary">{branch.branch_code}</span>
+      ),
     },
     {
       key: 'status',

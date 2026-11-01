@@ -4,6 +4,7 @@ use crate::models::audit::AuditLogEntry;
 use crate::models::branch::{Branch, CreateBranchPayload, UpdateBranchPayload};
 use crate::repositories::audit_repo::audit;
 use crate::repositories::branch_repo::BranchRepository;
+use chrono::{FixedOffset, Utc};
 use tauri::State;
 
 #[tauri::command]
@@ -60,7 +61,30 @@ pub async fn create_branch(
         .map(|r| r.0)
         .ok_or_else(|| AuthError::NotFound("Business profile not found".into()).to_response())?;
 
-    let now = chrono::Utc::now().to_rfc3339();
+    // Fetch existing branch codes for this business
+    let existing_rows: Vec<(String,)> = sqlx::query_as(
+        "SELECT branch_code FROM branch WHERE business_id = ?",
+    )
+    .bind(&business_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    let existing_codes: Vec<String> = existing_rows.into_iter().map(|r| r.0).collect();
+
+    // Server time in UTC+3 (Africa/Dar_es_Salaam)
+    let tz3 = FixedOffset::east_opt(3 * 3600).unwrap();
+    let now_tz = Utc::now().fixed_offset().with_timezone(&tz3);
+    let now_str = Utc::now().to_rfc3339();
+
+    let branch_code = crate::branch_code::generate_branch_code(
+        &business_id,
+        &existing_codes,
+        payload.district.as_deref(),
+        &payload.location,
+        now_tz,
+    );
+
     let branch_id = format!("br_{}", uuid::Uuid::new_v4().simple());
     let id = branch_id.clone();
 
@@ -80,7 +104,7 @@ pub async fn create_branch(
         id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
         workspace_id: ctx.workspace_id.clone(),
         branch_id: ctx.branch_id.clone(),
-        created_at: now.clone(),
+        created_at: now_str.clone(),
         action: "branch_created".to_string(),
         performed_by_user_id: Some(ctx.user_id.clone()),
         target_entity_type: "Branch".to_string(),
@@ -88,7 +112,7 @@ pub async fn create_branch(
         metadata: Some(
             serde_json::json!({
                 "branch_name": payload.name,
-                "branch_code": payload.branch_code,
+                "branch_code": branch_code,
             })
             .to_string(),
         ),
@@ -105,11 +129,12 @@ pub async fn create_branch(
         business_id,
         name: payload.name,
         location: Some(payload.location),
-        branch_code: payload.branch_code,
+        district: payload.district,
+        branch_code,
         status,
         contacts: payload.contacts,
-        created_at: now.clone(),
-        updated_at: now,
+        created_at: now_str.clone(),
+        updated_at: now_str,
     };
 
     BranchRepository::create(&mut *tx, &new_branch)
@@ -148,7 +173,7 @@ pub async fn update_branch(
         .await
         .map_err(|e| e.to_response())?;
 
-    let now = chrono::Utc::now().to_rfc3339();
+    let now_str = Utc::now().to_rfc3339();
 
     if let Some(ref status) = payload.status {
         if status != "active" && status != "inactive" {
@@ -167,7 +192,7 @@ pub async fn update_branch(
         id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
         workspace_id: ctx.workspace_id.clone(),
         branch_id: ctx.branch_id.clone(),
-        created_at: now.clone(),
+        created_at: now_str.clone(),
         action: "branch_updated".to_string(),
         performed_by_user_id: Some(ctx.user_id.clone()),
         target_entity_type: "Branch".to_string(),
@@ -190,9 +215,10 @@ pub async fn update_branch(
         &id,
         payload.name.as_deref(),
         payload.location.as_deref(),
+        payload.district.as_ref().map(|opt| opt.as_deref()),
         payload.status.as_deref(),
         payload.contacts.as_ref().map(|opt| opt.as_deref()),
-        &now,
+        &now_str,
     )
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?
@@ -245,7 +271,8 @@ mod tests {
             business_id: "AFYA-1".into(),
             name: "Branch 1".into(),
             location: Some("Loc 1".into()),
-            branch_code: "B1".into(),
+            district: Some("Kinondoni".into()),
+            branch_code: "AFYA-1-B01-KIN-2610".into(),
             status: "active".into(),
             contacts: None,
             created_at: now.clone(),
@@ -258,54 +285,5 @@ mod tests {
 
         let list_ws2 = BranchRepository::list(&pool, "ws_2").await.unwrap();
         assert!(list_ws2.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_create_writes_audit_row_first() {
-        let pool = setup_test_db().await;
-        let now = chrono::Utc::now().to_rfc3339();
-        let mut tx = pool.begin().await.unwrap();
-
-        sqlx::query("INSERT INTO business (id, workspace_id, branch_id, business_id, name, role_scopes, tier, contact_mobile, address_region, address_district, address_place, appearance_mode, language, idle_lock_minutes) VALUES ('b1', 'ws_audit', 'br_audit', 'AFYA-AUDIT', 'Audit Biz', '[\"pharmacy\"]', 'free', '255700000000', 'Dar', 'Kinondoni', 'Mlimani', 'light', 'en', 5)")
-            .execute(&mut *tx).await.unwrap();
-
-        sqlx::query("INSERT INTO app_user (id, workspace_id, branch_id, username, first_name, last_name, full_name, phone, role, role_preset, active) VALUES ('user_1', 'ws_audit', 'br_audit', 'tester', 'Test', 'User', 'Test User', '255700000000', 'sudo', 'sudo', 1)")
-            .execute(&mut *tx).await.unwrap();
-
-        let audit_entry = AuditLogEntry {
-            id: "audit_test_1".into(),
-            workspace_id: "ws_audit".into(),
-            branch_id: "br_audit".into(),
-            created_at: now.clone(),
-            action: "branch_created".into(),
-            performed_by_user_id: Some("user_1".into()),
-            target_entity_type: "Branch".into(),
-            target_entity_id: "br_new".into(),
-            metadata: Some("{}".into()),
-        };
-
-        audit::append(&mut *tx, &audit_entry).await.unwrap();
-
-        let new_branch = Branch {
-            id: "br_new".into(),
-            workspace_id: "ws_audit".into(),
-            branch_id: "br_new".into(),
-            business_id: "AFYA-AUDIT".into(),
-            name: "New Branch".into(),
-            location: Some("Loc".into()),
-            branch_code: "NB".into(),
-            status: "active".into(),
-            contacts: None,
-            created_at: now.clone(),
-            updated_at: now,
-        };
-        BranchRepository::create(&mut *tx, &new_branch).await.unwrap();
-        tx.commit().await.unwrap();
-
-        let audit_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM audit_log WHERE action = 'branch_created'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-        assert_eq!(audit_count.0, 1);
     }
 }

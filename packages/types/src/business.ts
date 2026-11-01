@@ -53,6 +53,7 @@ export interface Branch extends BaseEntity {
   business_id: BusinessId;
   name: string;
   location: string;
+  district?: string | null;
   branch_code: string;
   status: 'active' | 'inactive';
   contacts: string | null;

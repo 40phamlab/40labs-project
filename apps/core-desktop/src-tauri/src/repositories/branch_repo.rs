@@ -35,8 +35,8 @@ impl BranchRepository {
             r#"
             INSERT INTO branch (
                 id, workspace_id, branch_id, business_id, name, location,
-                branch_code, status, contacts, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                district, branch_code, status, contacts, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&branch.id)
@@ -45,6 +45,7 @@ impl BranchRepository {
         .bind(&branch.business_id)
         .bind(&branch.name)
         .bind(&branch.location)
+        .bind(&branch.district)
         .bind(&branch.branch_code)
         .bind(&branch.status)
         .bind(&branch.contacts)
@@ -62,6 +63,7 @@ impl BranchRepository {
         id: &str,
         name: Option<&str>,
         location: Option<&str>,
+        district: Option<Option<&str>>,
         status: Option<&str>,
         contacts: Option<Option<&str>>,
         updated_at: &str,
@@ -73,6 +75,10 @@ impl BranchRepository {
 
         let new_name = name.unwrap_or(&existing.name);
         let new_location = location.map(|s| Some(s.to_string())).unwrap_or(existing.location);
+        let new_district = match district {
+            Some(opt) => opt.map(|s| s.to_string()),
+            None => existing.district,
+        };
         let new_status = status.unwrap_or(&existing.status);
         let new_contacts = match contacts {
             Some(opt) => opt.map(|s| s.to_string()),
@@ -84,6 +90,7 @@ impl BranchRepository {
             UPDATE branch SET
                 name = ?,
                 location = ?,
+                district = ?,
                 status = ?,
                 contacts = ?,
                 updated_at = ?
@@ -92,6 +99,7 @@ impl BranchRepository {
         )
         .bind(new_name)
         .bind(new_location)
+        .bind(new_district)
         .bind(new_status)
         .bind(new_contacts)
         .bind(updated_at)

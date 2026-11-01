@@ -9,6 +9,7 @@ pub struct Branch {
     pub business_id: String,
     pub name: String,
     pub location: Option<String>,
+    pub district: Option<String>,
     pub branch_code: String,
     pub status: String,
     pub contacts: Option<String>,
@@ -21,7 +22,7 @@ pub struct Branch {
 pub struct CreateBranchPayload {
     pub name: String,
     pub location: String,
-    pub branch_code: String,
+    pub district: Option<String>,
     pub status: Option<String>,
     pub contacts: Option<String>,
     pub step_up_token: Option<String>,
@@ -32,6 +33,7 @@ pub struct CreateBranchPayload {
 pub struct UpdateBranchPayload {
     pub name: Option<String>,
     pub location: Option<String>,
+    pub district: Option<Option<String>>,
     pub status: Option<String>,
     pub contacts: Option<Option<String>>,
     pub step_up_token: Option<String>,

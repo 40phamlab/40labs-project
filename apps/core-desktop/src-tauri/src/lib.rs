@@ -1,5 +1,6 @@
 pub mod activation;
 pub mod auth;
+pub mod branch_code;
 pub mod commands;
 pub mod db;
 pub mod debug;

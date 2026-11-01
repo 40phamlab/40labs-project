@@ -192,6 +192,7 @@ export const SettingsScreen: React.FC = () => {
           branch={selectedBranchForEdit}
           onSave={handleSaveBranch}
           isLoading={isCreatingBranch || isUpdatingBranch}
+          existingBranches={branches}
         />
       }
     >
