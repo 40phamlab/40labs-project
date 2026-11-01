@@ -9,7 +9,6 @@ describe('ProductRow Regression Test (Cart/Mauzo Search Panel)', () => {
     render(
       <ProductRow
         name="Paracetamol 500mg"
-        sku="PARA-500"
         stock={150}
         price={5000}
         onAdd={handleAdd}

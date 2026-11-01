@@ -160,10 +160,11 @@ export const MedicineSearchPanel: React.FC<MedicineSearchPanelProps> = ({
             <ProductRow
               key={item.id}
               name={item.medicine.name}
-              sku={item.medicine.generic_name ?? undefined}
               stock={item.quantity}
               price={item.sell_price}
+              unitType={item.medicine.unit}
               onAdd={() => onAdd(item)}
+              disabled={item.quantity <= 0}
             />
           ))
         )}
