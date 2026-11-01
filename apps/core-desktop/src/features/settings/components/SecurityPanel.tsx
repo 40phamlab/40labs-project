@@ -24,6 +24,15 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
   const [pinSuccess, setPinSuccess] = React.useState(false);
   const [pinError, setPinError] = React.useState<string | null>(null);
 
+  // Forgot PIN state
+  const [isForgotPinMode, setIsForgotPinMode] = React.useState(false);
+  const [forgotPinForm, setForgotPinForm] = React.useState({
+    password: '',
+    newPin: '',
+    confirmPin: '',
+  });
+  const [forgotPinLoading, setForgotPinLoading] = React.useState(false);
+
   // Password state
   const [passForm, setPassForm] = React.useState({
     currentPassword: '',
@@ -70,6 +79,37 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
       setPinForm({ currentPin: '', newPin: '', confirmPin: '' });
     } catch (err: any) {
       setPinError(err?.code || 'Failed to update PIN.');
+    }
+  };
+
+  const handleForgotPinSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError(null);
+    setPinSuccess(false);
+
+    if (!forgotPinForm.password) {
+      setPinError('Current password is required.');
+      return;
+    }
+    if (forgotPinForm.newPin.length !== 6) {
+      setPinError('PIN must be 6 digits.');
+      return;
+    }
+    if (forgotPinForm.newPin !== forgotPinForm.confirmPin) {
+      setPinError('New PINs do not match.');
+      return;
+    }
+
+    setForgotPinLoading(true);
+    try {
+      await authApi.resetOwnPin(forgotPinForm.password, forgotPinForm.newPin);
+      setPinSuccess(true);
+      setIsForgotPinMode(false);
+      setForgotPinForm({ password: '', newPin: '', confirmPin: '' });
+    } catch (err: any) {
+      setPinError(err?.code || 'Failed to reset PIN with password.');
+    } finally {
+      setForgotPinLoading(false);
     }
   };
 
@@ -133,21 +173,36 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
   return (
     <div className="flex flex-col gap-6 pb-8 max-w-3xl">
       <div className="grid grid-cols-2 gap-6">
-        {/* Card 1: Change PIN */}
+        {/* Card 1: Change PIN / Forgot PIN */}
         <Panel variant="raised" className="p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Lock size={16} />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <Lock size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-text-primary">
+                  {isForgotPinMode ? 'Reset PIN' : 'Change PIN'}
+                </h3>
+              </div>
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-text-primary">Change PIN</h3>
-            </div>
+            <button
+              type="button"
+              className="text-xs text-primary hover:underline font-medium cursor-pointer"
+              onClick={() => {
+                setIsForgotPinMode(!isForgotPinMode);
+                setPinError(null);
+                setPinSuccess(false);
+              }}
+            >
+              {isForgotPinMode ? 'Use Current PIN' : 'Forgot PIN?'}
+            </button>
           </div>
 
           {pinSuccess && (
             <div className="p-3 bg-success/10 text-success text-xs rounded-card flex items-center gap-2 font-medium">
               <CheckCircle2 size={14} className="shrink-0" />
-              <span>PIN successfully updated!</span>
+              <span>{isForgotPinMode ? 'PIN successfully reset!' : 'PIN successfully updated!'}</span>
             </div>
           )}
 
@@ -157,47 +212,90 @@ export const SecurityPanel: React.FC<SecurityPanelProps> = ({ onNavigateToDevice
             </div>
           )}
 
-          <form onSubmit={handlePinSubmit} className="space-y-3">
-            <Field>
-              <FieldLabel required>Current PIN</FieldLabel>
-              <PasswordInput
-                maxLength={6}
-                value={pinForm.currentPin}
-                onChange={(e: any) => setPinForm((p) => ({ ...p, currentPin: e.target.value }))}
-                placeholder="Current PIN"
-              />
-            </Field>
+          {isForgotPinMode ? (
+            <form onSubmit={handleForgotPinSubmit} className="space-y-3">
+              <Field>
+                <FieldLabel required>Current Password</FieldLabel>
+                <PasswordInput
+                  value={forgotPinForm.password}
+                  onChange={(e: any) => setForgotPinForm((p) => ({ ...p, password: e.target.value }))}
+                  placeholder="Password"
+                />
+              </Field>
 
-            <Field>
-              <FieldLabel required>New PIN (6 digits)</FieldLabel>
-              <PasswordInput
-                maxLength={6}
-                value={pinForm.newPin}
-                onChange={(e: any) => setPinForm((p) => ({ ...p, newPin: e.target.value }))}
-                placeholder="New 6-digit PIN"
-              />
-            </Field>
+              <Field>
+                <FieldLabel required>New PIN (6 digits)</FieldLabel>
+                <PasswordInput
+                  maxLength={6}
+                  value={forgotPinForm.newPin}
+                  onChange={(e: any) => setForgotPinForm((p) => ({ ...p, newPin: e.target.value }))}
+                  placeholder="New 6-digit PIN"
+                />
+              </Field>
 
-            <Field>
-              <FieldLabel required>Confirm New PIN</FieldLabel>
-              <PasswordInput
-                maxLength={6}
-                value={pinForm.confirmPin}
-                onChange={(e: any) => setPinForm((p) => ({ ...p, confirmPin: e.target.value }))}
-                placeholder="Confirm PIN"
-              />
-            </Field>
+              <Field>
+                <FieldLabel required>Confirm New PIN</FieldLabel>
+                <PasswordInput
+                  maxLength={6}
+                  value={forgotPinForm.confirmPin}
+                  onChange={(e: any) => setForgotPinForm((p) => ({ ...p, confirmPin: e.target.value }))}
+                  placeholder="Confirm PIN"
+                />
+              </Field>
 
-            <Button
-              type="submit"
-              intent="primary"
-              size="sm"
-              className="w-full"
-              disabled={isChangingPin || !pinForm.currentPin || pinForm.newPin.length !== 6}
-            >
-              {isChangingPin ? 'Updating PIN...' : 'Update PIN'}
-            </Button>
-          </form>
+              <Button
+                type="submit"
+                intent="primary"
+                size="sm"
+                className="w-full"
+                disabled={forgotPinLoading || !forgotPinForm.password || forgotPinForm.newPin.length !== 6}
+              >
+                {forgotPinLoading ? 'Resetting PIN...' : 'Reset PIN'}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={handlePinSubmit} className="space-y-3">
+              <Field>
+                <FieldLabel required>Current PIN</FieldLabel>
+                <PasswordInput
+                  maxLength={6}
+                  value={pinForm.currentPin}
+                  onChange={(e: any) => setPinForm((p) => ({ ...p, currentPin: e.target.value }))}
+                  placeholder="Current PIN"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel required>New PIN (6 digits)</FieldLabel>
+                <PasswordInput
+                  maxLength={6}
+                  value={pinForm.newPin}
+                  onChange={(e: any) => setPinForm((p) => ({ ...p, newPin: e.target.value }))}
+                  placeholder="New 6-digit PIN"
+                />
+              </Field>
+
+              <Field>
+                <FieldLabel required>Confirm New PIN</FieldLabel>
+                <PasswordInput
+                  maxLength={6}
+                  value={pinForm.confirmPin}
+                  onChange={(e: any) => setPinForm((p) => ({ ...p, confirmPin: e.target.value }))}
+                  placeholder="Confirm PIN"
+                />
+              </Field>
+
+              <Button
+                type="submit"
+                intent="primary"
+                size="sm"
+                className="w-full"
+                disabled={isChangingPin || !pinForm.currentPin || pinForm.newPin.length !== 6}
+              >
+                {isChangingPin ? 'Updating PIN...' : 'Update PIN'}
+              </Button>
+            </form>
+          )}
         </Panel>
 
         {/* Card 2: Change Password */}

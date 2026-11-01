@@ -42,6 +42,7 @@ mod tests {
             "user_update",
             "user_set_active",
             "user_reset_credentials",
+            "user_reset_pin",
             "recovery_redeem",
             "recovery_regenerate",
             "recovery_generate_initial",

@@ -32,6 +32,10 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
         "user_reset_credentials",
         CommandPolicy::Permission("users.manage"),
     );
+    map.insert(
+        "user_reset_pin",
+        CommandPolicy::Permission("users.manage"),
+    );
 
     map.insert("recovery_redeem", CommandPolicy::Public);
     map.insert(

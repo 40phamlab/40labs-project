@@ -31,6 +31,7 @@ export interface AuthApi {
   changePassword(oldPassword: string, newPassword: string): Promise<void>;
   changePin(oldPin: string, newPin: string): Promise<void>;
   resetOwnPin(password: string, newPin: string): Promise<void>;
+  userResetPin(userId: string): Promise<void>;
   usersList(): Promise<Array<User>>;
   userCreate(payload: Record<string, unknown>): Promise<User>;
   userUpdate(userId: string, payload: Record<string, unknown>): Promise<User>;
@@ -70,6 +71,7 @@ export const tauriAuthApi: AuthApi = {
   changePassword: (oldPassword, newPassword) => invokeCommand<void>('auth_change_password', { oldPassword, newPassword }),
   changePin: (oldPin, newPin) => invokeCommand<void>('auth_change_pin', { oldPin, newPin }),
   resetOwnPin: (password, newPin) => invokeCommand<void>('auth_reset_own_pin', { password, newPin }),
+  userResetPin: (userId) => invokeCommand<void>('user_reset_pin', { userId }),
   usersList: () => invokeCommand<Array<User>>('user_list'),
   userCreate: (payload) => invokeCommand<User>('user_create', { payload }),
   userUpdate: (userId, payload) => invokeCommand<User>('user_update', { userId, payload }),
@@ -166,6 +168,7 @@ export const mockAuthApi: AuthApi = {
   changePassword: async () => {},
   changePin: async () => {},
   resetOwnPin: async () => {},
+  userResetPin: async () => {},
   usersList: async () => [],
   userCreate: async (p) => p as unknown as User,
   userUpdate: async (_id, p) => p as unknown as User,

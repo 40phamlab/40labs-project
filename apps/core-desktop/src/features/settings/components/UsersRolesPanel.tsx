@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   Panel,
 } from '@40labs/ui-components';
-import { MoreVertical, Plus, Edit, Power, Key } from 'lucide-react';
+import { MoreVertical, Plus, Edit, Power, Key, Lock } from 'lucide-react';
 import type { User } from '@40labs/types';
 import { useUsers } from '../../../hooks/useUsers';
 import { useBusiness } from '../../../hooks/useBusiness';
@@ -20,12 +20,14 @@ const RowActions = ({
   onEdit,
   onToggleActive,
   onResetCreds,
+  onResetPin,
   isLastSudo,
 }: {
   user: User;
   onEdit: (user: User) => void;
   onToggleActive: (user: User) => void;
   onResetCreds: (user: User) => void;
+  onResetPin: (user: User) => void;
   isLastSudo: boolean;
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -54,14 +56,24 @@ const RowActions = ({
         }}
       />
       {!isSudo && (
-        <DropdownMenuItem
-          label="Weka Upya Kitambulisho (Reset Credentials)"
-          icon={<Key size={14} />}
-          onClick={() => {
-            onResetCreds(user);
-            setIsOpen(false);
-          }}
-        />
+        <>
+          <DropdownMenuItem
+            label="Weka Upya Nenosiri (Reset Password)"
+            icon={<Key size={14} />}
+            onClick={() => {
+              onResetCreds(user);
+              setIsOpen(false);
+            }}
+          />
+          <DropdownMenuItem
+            label="Weka Upya PIN (Reset PIN)"
+            icon={<Lock size={14} />}
+            onClick={() => {
+              onResetPin(user);
+              setIsOpen(false);
+            }}
+          />
+        </>
       )}
       <DropdownMenuItem
         label={user.active ? 'Zima (Deactivate)' : 'Washa (Activate)'}
@@ -89,6 +101,7 @@ export const UsersRolesPanel: React.FC = () => {
     updateUser,
     setUserActive,
     resetCredentials,
+    resetPin,
     isCreatingUser,
     isUpdatingUser,
     isUserModalOpen,
@@ -99,7 +112,7 @@ export const UsersRolesPanel: React.FC = () => {
   } = useUsers();
 
   const { branches } = useBusiness();
-  const [tempPassResult, setTempPassResult] = React.useState<{ username: string; pass: string } | null>(null);
+  const [noticeResult, setNoticeResult] = React.useState<{ title: string; message: string; copyText?: string } | null>(null);
 
   const activeSudoCount = users.filter((u) => u.role === 'sudo' && u.active).length;
 
@@ -109,7 +122,11 @@ export const UsersRolesPanel: React.FC = () => {
     } else {
       const res: any = await createUser(payload);
       if (res?.tempPassword) {
-        setTempPassResult({ username: payload.username, pass: res.tempPassword });
+        setNoticeResult({
+          title: `Kitambulisho Kipya cha Mtumiaji (@${payload.username})`,
+          message: 'Nenosiri la muda (Onyesha mara moja tu):',
+          copyText: res.tempPassword,
+        });
       }
     }
   };
@@ -128,7 +145,23 @@ export const UsersRolesPanel: React.FC = () => {
       return;
     }
     const newTemp = await resetCredentials(user.id);
-    setTempPassResult({ username: user.username, pass: newTemp || 'temp-pass-123' });
+    setNoticeResult({
+      title: `Kitambulisho Kipya cha Nenosiri (@${user.username})`,
+      message: 'Nenosiri la muda (Onyesha mara moja tu):',
+      copyText: newTemp || 'temp-pass-123',
+    });
+  };
+
+  const handleResetPinAction = async (user: User) => {
+    if (user.role === 'sudo') {
+      alert('SUDO cannot reset their own PIN via administrative reset.');
+      return;
+    }
+    await resetPin(user.id);
+    setNoticeResult({
+      title: `PIN Imewekwa Upya (@${user.username})`,
+      message: 'PIN imefutwa. Mtumiaji atalazimishwa kuweka PIN mpya atakapoingia tena.',
+    });
   };
 
   const columns: ColumnDefinition<User>[] = [
@@ -207,6 +240,7 @@ export const UsersRolesPanel: React.FC = () => {
             onEdit={openEditUserModal}
             onToggleActive={handleToggleActive}
             onResetCreds={handleResetCreds}
+            onResetPin={handleResetPinAction}
             isLastSudo={activeSudoCount <= 1}
           />
         </div>
@@ -216,17 +250,33 @@ export const UsersRolesPanel: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6 pb-8">
-      {tempPassResult && (
+      {noticeResult && (
         <div className="p-4 bg-success/10 border border-success/20 text-success rounded-lg space-y-2">
           <div className="flex items-center gap-2 font-bold text-sm">
-            <Key size={16} /> Kitambulisho Kipya cha Mtumiaji (@{tempPassResult.username})
+            <Key size={16} /> {noticeResult.title}
           </div>
-          <p className="text-xs">Nenosiri la muda ni:</p>
-          <div className="p-2 bg-background font-mono text-sm font-bold rounded border border-success/30 select-all inline-block">
-            {tempPassResult.pass}
-          </div>
+          <p className="text-xs">{noticeResult.message}</p>
+          {noticeResult.copyText && (
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-background font-mono text-sm font-bold rounded border border-success/30 select-all inline-block">
+                {noticeResult.copyText}
+              </div>
+              <Button
+                intent="neutral"
+                size="sm"
+                onClick={() => {
+                  if (noticeResult.copyText) {
+                    navigator.clipboard.writeText(noticeResult.copyText);
+                    alert('Imekopishwa kwenye ubao wa kunakili (Copied)!');
+                  }
+                }}
+              >
+                Nakili (Copy)
+              </Button>
+            </div>
+          )}
           <div className="pt-2">
-            <Button intent="neutral" size="sm" onClick={() => setTempPassResult(null)}>
+            <Button intent="neutral" size="sm" onClick={() => setNoticeResult(null)}>
               Funga Taarifa Hii
             </Button>
           </div>

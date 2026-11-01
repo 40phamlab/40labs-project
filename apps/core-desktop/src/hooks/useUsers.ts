@@ -63,6 +63,17 @@ export function useUsers() {
     },
   });
 
+  const resetPinMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      return await requestStepUp(async (_grantToken) => {
+        return await authApi.userResetPin(userId);
+      }, 'users.manage');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users_list'] });
+    },
+  });
+
   const changePinMutation = useMutation({
     mutationFn: async ({ currentPin, newPin }: { currentPin: string; newPin: string }) => {
       return await authApi.changePin(currentPin, newPin);
@@ -104,12 +115,14 @@ export function useUsers() {
     updateUser: (userId: string, payload: any) => updateUserMutation.mutateAsync({ userId, payload }),
     setUserActive: (userId: string, active: boolean) => setUserActiveMutation.mutateAsync({ userId, active }),
     resetCredentials: (userId: string) => resetCredentialsMutation.mutateAsync(userId),
+    resetPin: (userId: string) => resetPinMutation.mutateAsync(userId),
 
     changePin: (currentPin: string, newPin: string) => changePinMutation.mutateAsync({ currentPin, newPin }),
     changePassword: (currentPassword: string, newPassword: string) => changePasswordMutation.mutateAsync({ currentPassword, newPassword }),
 
     isCreatingUser: createUserMutation.isPending,
     isUpdatingUser: updateUserMutation.isPending,
+    isResettingPin: resetPinMutation.isPending,
     isChangingPin: changePinMutation.isPending,
     isChangingPassword: changePasswordMutation.isPending,
 

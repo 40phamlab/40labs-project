@@ -84,6 +84,7 @@ pub fn run() {
             commands::user_cmd::user_update,
             commands::user_cmd::user_set_active,
             commands::user_cmd::user_reset_credentials,
+            commands::user_cmd::user_reset_pin,
             // Business & Integrations
             commands::business_cmd::get_business,
             commands::branch_cmd::get_branches,

@@ -24,7 +24,7 @@ pub async fn user_list(state: State<'_, AppState>) -> Result<Vec<AppUser>, AuthE
 pub async fn user_create(
     state: State<'_, AppState>,
     payload: serde_json::Value,
-) -> Result<AppUser, AuthErrorResponse> {
+) -> Result<serde_json::Value, AuthErrorResponse> {
     let engine = AuthEngine::new(
         state.auth_state.clone(),
         state.pool.clone(),
@@ -88,6 +88,18 @@ pub async fn user_create(
         updated_at: now.clone(),
     };
 
+    let temp_pass = format!(
+        "Temp{}!",
+        uuid::Uuid::new_v4()
+            .simple()
+            .to_string()
+            .chars()
+            .take(8)
+            .collect::<String>()
+    );
+    let password_hash = crate::security::hashing::hash_password(&temp_pass)
+        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+
     let mut tx = state
         .pool
         .begin()
@@ -97,8 +109,6 @@ pub async fn user_create(
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
-    let password_hash = crate::security::hashing::hash_password("Temporary123!")
-        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
     let cred = crate::models::auth::UserCredential {
         user_id: id.clone(),
         workspace_id: ctx.workspace_id.clone(),
@@ -120,7 +130,76 @@ pub async fn user_create(
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
-    Ok(user)
+    let mut val = serde_json::to_value(&user).unwrap();
+    if let Some(obj) = val.as_object_mut() {
+        obj.insert("tempPassword".to_string(), serde_json::json!(temp_pass));
+    }
+    Ok(val)
+}
+
+#[tauri::command]
+pub async fn user_reset_pin(
+    state: State<'_, AppState>,
+    user_id: String,
+) -> Result<(), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("users.manage")
+        .await
+        .map_err(|e| e.to_response())?;
+
+    if user_id == ctx.user_id {
+        return Err(AuthError::PolicyViolation(
+            "Cannot reset your own PIN via administrative reset".into(),
+        )
+        .to_response());
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    // AUDIT FIRST (GOTCHAS #9)
+    let audit_entry = crate::models::audit::AuditLogEntry {
+        id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+        workspace_id: ctx.workspace_id.clone(),
+        branch_id: ctx.branch_id.clone(),
+        created_at: now.clone(),
+        action: "user_reset_pin".to_string(),
+        performed_by_user_id: Some(ctx.user_id.clone()),
+        target_entity_type: "AppUser".to_string(),
+        target_entity_id: user_id.clone(),
+        metadata: Some(serde_json::json!({ "target_user_id": user_id }).to_string()),
+    };
+    crate::repositories::audit_repo::audit::append(&mut tx, &audit_entry)
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    sqlx::query(
+        r#"
+        UPDATE user_credential
+        SET pin_hash = NULL, pin_changed_at = NULL, failed_pin_attempts = 0, locked_until = NULL, updated_at = ?
+        WHERE user_id = ?
+        "#,
+    )
+    .bind(&now)
+    .bind(&user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    tx.commit()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    Ok(())
 }
 
 #[tauri::command]
