@@ -21,6 +21,7 @@ export interface AuthStatusResponse {
 export interface AuthApi {
   status(): Promise<AuthStatusResponse>;
   login(username: string, password: string): Promise<void>;
+  loginPin(username: string, pin: string): Promise<void>;
   logout(): Promise<void>;
   lock(): Promise<void>;
   unlockPin(pin: string): Promise<void>;
@@ -59,6 +60,7 @@ let mockLockoutUntil = 0;
 export const tauriAuthApi: AuthApi = {
   status: () => invokeCommand<AuthStatusResponse>('auth_status'),
   login: (username, password) => invokeCommand<void>('auth_login', { username, password }),
+  loginPin: (username, pin) => invokeCommand<void>('auth_login_pin', { payload: { username, pin } }),
   logout: () => invokeCommand<void>('auth_logout'),
   lock: () => invokeCommand<void>('auth_lock'),
   unlockPin: (pin) => invokeCommand<void>('auth_unlock_pin', { pin }),
@@ -87,6 +89,20 @@ export const mockAuthApi: AuthApi = {
   status: async () => ({ ...mockState }),
   login: async (username, password) => {
     if (!username || !password) {
+      throw { code: 'INVALID_CREDENTIALS' };
+    }
+    mockState.session = {
+      userId: 'user-mock-1',
+      displayName: username,
+      role: username.includes('sudo') ? 'sudo' : 'staff',
+      locked: false,
+      mustChangeCredentials: false,
+      pinSet: true,
+      hasRecoveryCodes: true,
+    };
+  },
+  loginPin: async (username, pin) => {
+    if (!username || pin !== '123456') {
       throw { code: 'INVALID_CREDENTIALS' };
     }
     mockState.session = {

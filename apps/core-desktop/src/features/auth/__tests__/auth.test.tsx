@@ -1,26 +1,33 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, test, expect } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LoginScreen } from '../LoginScreen';
+import { LoginScreen } from '../login/LoginScreen';
 import { RegistrationWizard } from '../RegistrationWizard';
 import { parseAuthError, getAuthErrorI18nKey } from '../../../api/authErrors';
 import { renderWithProviders } from '../../../../../../tests/test-utils';
 
 describe('Auth Module Tests', () => {
-  test('renders LoginScreen and handles input typing', async () => {
+  test('renders LoginScreen with default PIN tab', async () => {
     renderWithProviders(<LoginScreen businessName="Afya Bora" onLoginSuccess={() => {}} />);
 
     expect(screen.getByText(/Karibu Afya Bora/i)).toBeInTheDocument();
+    const pinTabBtn = screen.getByRole('button', { name: /^PIN$/i });
+    expect(pinTabBtn).toBeInTheDocument();
 
-    const usernameInput = screen.getByPlaceholderText(/username/i);
-    const passwordInput = screen.getByPlaceholderText(/password/i);
-
+    const usernameInput = screen.getByPlaceholderText(/Jina la mtumiaji/i);
     await userEvent.type(usernameInput, 'sudo_user');
-    await userEvent.type(passwordInput, 'SecurePass123!');
-
     expect(usernameInput).toHaveValue('sudo_user');
-    expect(passwordInput).toHaveValue('SecurePass123!');
+  });
+
+  test('switches between PIN and Password tabs', async () => {
+    renderWithProviders(<LoginScreen businessName="Afya Bora" onLoginSuccess={() => {}} />);
+
+    const passwordTabBtn = screen.getByRole('button', { name: /^Nenosiri$/i });
+    fireEvent.click(passwordTabBtn);
+
+    const passwordInput = screen.getByPlaceholderText(/Weka nenosiri/i);
+    expect(passwordInput).toBeInTheDocument();
   });
 
   test('renders RegistrationWizard step 1', async () => {

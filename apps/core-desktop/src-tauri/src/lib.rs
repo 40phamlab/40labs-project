@@ -68,6 +68,7 @@ pub fn run() {
             // Auth
             commands::auth_cmd::auth_status,
             commands::auth_cmd::auth_login,
+            commands::auth_cmd::auth_login_pin,
             commands::auth_cmd::auth_logout,
             commands::auth_cmd::auth_lock,
             commands::auth_cmd::auth_unlock_pin,

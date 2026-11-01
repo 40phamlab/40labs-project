@@ -27,6 +27,7 @@ mod tests {
             "frontend_log",
             "auth_status",
             "auth_login",
+            "auth_login_pin",
             "auth_logout",
             "auth_lock",
             "auth_unlock_pin",

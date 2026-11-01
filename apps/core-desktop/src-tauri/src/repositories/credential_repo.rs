@@ -134,16 +134,18 @@ impl CredentialRepository {
         conn: &mut SqliteConnection,
         user_id: &str,
         attempts: i64,
+        locked_until: Option<&str>,
         updated_at: &str,
     ) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             UPDATE user_credential
-            SET failed_pin_attempts = ?, updated_at = ?
+            SET failed_pin_attempts = ?, locked_until = ?, updated_at = ?
             WHERE user_id = ?
             "#,
         )
         .bind(attempts)
+        .bind(locked_until)
         .bind(updated_at)
         .bind(user_id)
         .execute(conn)

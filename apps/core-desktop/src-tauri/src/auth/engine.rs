@@ -323,7 +323,7 @@ impl AuthEngine {
                     target_entity_type: "AppUser".to_string(),
                     target_entity_id: u.id.clone(),
                     metadata: Some(
-                        serde_json::json!({ "reason": "login_failed", "username": norm_username })
+                        serde_json::json!({ "reason": "login_failed", "username": norm_username, "method": "password" })
                             .to_string(),
                     ),
                     created_at: now_iso.clone(),
@@ -359,7 +359,7 @@ impl AuthEngine {
                 performed_by_user_id: Some(u.id.clone()),
                 target_entity_type: "AppUser".to_string(),
                 target_entity_id: u.id.clone(),
-                metadata: Some(serde_json::json!({ "reason": "login_success" }).to_string()),
+                metadata: Some(serde_json::json!({ "reason": "login_success", "method": "password" }).to_string()),
                 created_at: now_iso.clone(),
             };
             audit::append(&mut tx, &audit)
@@ -391,7 +391,263 @@ impl AuthEngine {
             performed_by_user_id: None,
             target_entity_type: "AppUser".to_string(),
             target_entity_id: "unknown".to_string(),
-            metadata: Some(serde_json::json!({ "reason": "login_failed_unknown_user", "username": norm_username }).to_string()),
+            metadata: Some(serde_json::json!({ "reason": "login_failed_unknown_user", "username": norm_username, "method": "password" }).to_string()),
+            created_at: now_iso,
+        };
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        Err(AuthError::InvalidCredentials {
+            retry_after_secs: None,
+        })
+    }
+
+    pub async fn login_pin(
+        &self,
+        username: &str,
+        pin: &str,
+    ) -> Result<(), AuthError> {
+        let norm_username =
+            policy::validate_username(username).map_err(|_| AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            })?;
+
+        let user_opt = UserRepository::get_by_username(&self.pool, &norm_username)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        let now = self.state.clock.now_secs();
+        let now_iso = self.state.clock.now_iso();
+
+        let business = BusinessRepository::get(&self.pool).await.ok().flatten();
+        let (ws_id, branch_id) = match business {
+            Some(ref b) => (b.workspace_id.clone(), b.branch_id.clone()),
+            None => ("ws_default".to_string(), "br_default".to_string()),
+        };
+
+        let (user, cred) = match user_opt {
+            Some(u) => {
+                let c = CredentialRepository::get_by_user_id(&self.pool, &u.id)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?
+                    .ok_or_else(|| AuthError::InvalidCredentials {
+                        retry_after_secs: None,
+                    })?;
+                (Some(u), Some(c))
+            }
+            None => {
+                let _ = hashing::verify_pin("dummy_user", pin, self.keystore.pin_pepper(), hashing::get_dummy_hash());
+                (None, None)
+            }
+        };
+
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        if let (Some(u), Some(c)) = (&user, &cred) {
+            if u.active != 1 {
+                let audit = AuditLogEntry {
+                    id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: u.workspace_id.clone(),
+                    branch_id: u.branch_id.clone(),
+                    action: AuditAction::LoginFailed.as_str().to_string(),
+                    performed_by_user_id: None,
+                    target_entity_type: "AppUser".to_string(),
+                    target_entity_id: u.id.clone(),
+                    metadata: Some(
+                        serde_json::json!({ "reason": "user_inactive", "username": norm_username, "method": "pin" })
+                            .to_string(),
+                    ),
+                    created_at: now_iso.clone(),
+                };
+                audit::append(&mut tx, &audit)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+            }
+
+            if u.must_change_credentials != 0 {
+                let audit = AuditLogEntry {
+                    id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: u.workspace_id.clone(),
+                    branch_id: u.branch_id.clone(),
+                    action: AuditAction::LoginFailed.as_str().to_string(),
+                    performed_by_user_id: None,
+                    target_entity_type: "AppUser".to_string(),
+                    target_entity_id: u.id.clone(),
+                    metadata: Some(
+                        serde_json::json!({ "reason": "password_required", "username": norm_username, "method": "pin" })
+                            .to_string(),
+                    ),
+                    created_at: now_iso.clone(),
+                };
+                audit::append(&mut tx, &audit)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                return Err(AuthError::PasswordRequired);
+            }
+
+            if let Some(locked_until) = &c.locked_until {
+                if let Ok(locked_dt) = chrono::DateTime::parse_from_rfc3339(locked_until) {
+                    let locked_epoch = locked_dt.timestamp() as u64;
+                    if now < locked_epoch {
+                        let retry = locked_epoch - now;
+                        return Err(AuthError::Locked {
+                            retry_after_secs: Some(retry),
+                        });
+                    }
+                }
+            }
+
+            let pin_hash = match &c.pin_hash {
+                Some(h) if !h.is_empty() => h,
+                _ => {
+                    let audit = AuditLogEntry {
+                        id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                        workspace_id: u.workspace_id.clone(),
+                        branch_id: u.branch_id.clone(),
+                        action: AuditAction::LoginFailed.as_str().to_string(),
+                        performed_by_user_id: None,
+                        target_entity_type: "AppUser".to_string(),
+                        target_entity_id: u.id.clone(),
+                        metadata: Some(
+                            serde_json::json!({ "reason": "no_pin_set", "username": norm_username, "method": "pin" })
+                                .to_string(),
+                        ),
+                        created_at: now_iso.clone(),
+                    };
+                    audit::append(&mut tx, &audit)
+                        .await
+                        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                    tx.commit()
+                        .await
+                        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                    return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+                }
+            };
+
+            let valid = hashing::verify_pin(&u.id, pin, self.keystore.pin_pepper(), pin_hash);
+            if !valid {
+                let new_fails = c.failed_pin_attempts + 1;
+                let lockout_duration = match new_fails {
+                    1..=4 => 0,
+                    5..=7 => 30,
+                    8..=9 => 300,
+                    _ => 900,
+                };
+                let lock_until_str = if lockout_duration > 0 {
+                    Some(
+                        (chrono::Utc::now() + chrono::Duration::seconds(lockout_duration as i64))
+                            .to_rfc3339(),
+                    )
+                } else {
+                    None
+                };
+
+                CredentialRepository::increment_pin_failures(
+                    &mut tx,
+                    &u.id,
+                    new_fails,
+                    lock_until_str.as_deref(),
+                    &now_iso,
+                )
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                let audit = AuditLogEntry {
+                    id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: u.workspace_id.clone(),
+                    branch_id: u.branch_id.clone(),
+                    action: AuditAction::LoginFailed.as_str().to_string(),
+                    performed_by_user_id: None,
+                    target_entity_type: "AppUser".to_string(),
+                    target_entity_id: u.id.clone(),
+                    metadata: Some(
+                        serde_json::json!({ "reason": "login_failed", "username": norm_username, "method": "pin" })
+                            .to_string(),
+                    ),
+                    created_at: now_iso.clone(),
+                };
+                audit::append(&mut tx, &audit)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: if lockout_duration > 0 {
+                        Some(lockout_duration)
+                    } else {
+                        None
+                    },
+                });
+            }
+
+            CredentialRepository::reset_pin_failures(&mut tx, &u.id, &now_iso)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            UserRepository::update_last_login(&mut *tx, &u.id, &now_iso)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+            let audit = AuditLogEntry {
+                id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                workspace_id: u.workspace_id.clone(),
+                branch_id: u.branch_id.clone(),
+                action: AuditAction::LoginSuccess.as_str().to_string(),
+                performed_by_user_id: Some(u.id.clone()),
+                target_entity_type: "AppUser".to_string(),
+                target_entity_id: u.id.clone(),
+                metadata: Some(serde_json::json!({ "reason": "login_success", "method": "pin" }).to_string()),
+                created_at: now_iso.clone(),
+            };
+            audit::append(&mut tx, &audit)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            tx.commit()
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+            let mut session_guard = self.state.session.write().await;
+            *session_guard = Some(Session {
+                user_id: u.id.clone(),
+                workspace_id: u.workspace_id.clone(),
+                branch_id: u.branch_id.clone(),
+                role: u.role.clone(),
+                started_at: now,
+                last_activity: now,
+                locked: false,
+            });
+
+            return Ok(());
+        }
+
+        let audit = AuditLogEntry {
+            id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+            workspace_id: ws_id,
+            branch_id,
+            action: AuditAction::LoginFailedUnknownUser.as_str().to_string(),
+            performed_by_user_id: None,
+            target_entity_type: "AppUser".to_string(),
+            target_entity_id: "unknown".to_string(),
+            metadata: Some(serde_json::json!({ "reason": "login_failed_unknown_user", "username": norm_username, "method": "pin" }).to_string()),
             created_at: now_iso,
         };
         audit::append(&mut tx, &audit)
@@ -445,7 +701,7 @@ impl AuthEngine {
         let valid = hashing::verify_pin(&user_id, pin, self.keystore.pin_pepper(), pin_hash);
         if !valid {
             let new_fails = cred.failed_pin_attempts + 1;
-            CredentialRepository::increment_pin_failures(&mut tx, &user_id, new_fails, &now_iso)
+            CredentialRepository::increment_pin_failures(&mut tx, &user_id, new_fails, None, &now_iso)
                 .await
                 .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
@@ -975,6 +1231,7 @@ impl AuthEngine {
                         &mut tx,
                         &verifying_user_id,
                         new_fails,
+                        None,
                         &now_iso,
                     )
                     .await
@@ -990,6 +1247,7 @@ impl AuthEngine {
                     &mut tx,
                     &verifying_user_id,
                     new_fails,
+                    None,
                     &now_iso,
                 )
                 .await

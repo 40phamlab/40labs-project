@@ -13,6 +13,7 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("frontend_log", CommandPolicy::Public);
     map.insert("auth_status", CommandPolicy::Public);
     map.insert("auth_login", CommandPolicy::Public);
+    map.insert("auth_login_pin", CommandPolicy::Public);
     map.insert("auth_logout", CommandPolicy::SessionOnly);
     map.insert("auth_lock", CommandPolicy::SessionOnly);
     map.insert("auth_unlock_pin", CommandPolicy::SessionOnly);

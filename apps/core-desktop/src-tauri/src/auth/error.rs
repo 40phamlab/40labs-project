@@ -10,6 +10,7 @@ pub enum AuthErrorCode {
     Forbidden,
     StepUpRequired,
     PinSetupRequired,
+    PasswordRequired,
     PolicyViolation,
     NotConfigured,
     NetworkRequired,
@@ -41,6 +42,8 @@ pub enum AuthError {
     StepUpRequired,
     #[error("PIN setup required")]
     PinSetupRequired,
+    #[error("Password required")]
+    PasswordRequired,
     #[error("Policy violation: {0}")]
     PolicyViolation(String),
     #[error("Not configured")]
@@ -84,6 +87,10 @@ impl AuthError {
             },
             AuthError::PinSetupRequired => AuthErrorResponse {
                 code: AuthErrorCode::PinSetupRequired,
+                retry_after_secs: None,
+            },
+            AuthError::PasswordRequired => AuthErrorResponse {
+                code: AuthErrorCode::PasswordRequired,
                 retry_after_secs: None,
             },
             AuthError::PolicyViolation(_) => AuthErrorResponse {

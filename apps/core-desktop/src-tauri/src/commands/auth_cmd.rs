@@ -1,5 +1,6 @@
 use tauri::State;
 use zeroize::Zeroizing;
+use serde::Deserialize;
 
 use crate::auth::session::ApproverInfo;
 use crate::auth::{AuthEngine, AuthErrorResponse};
@@ -136,6 +137,29 @@ pub async fn auth_set_pin(
         state.keystore.clone(),
     );
     engine.set_pin(&pin).await.map_err(|e| e.to_response())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginPinRequest {
+    pub username: String,
+    pub pin: String,
+}
+
+#[tauri::command]
+pub async fn auth_login_pin(
+    state: State<'_, AppState>,
+    payload: LoginPinRequest,
+) -> Result<(), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    engine
+        .login_pin(&payload.username, &payload.pin)
+        .await
+        .map_err(|e| e.to_response())
 }
 
 #[tauri::command]

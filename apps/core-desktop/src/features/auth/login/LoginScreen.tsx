@@ -6,6 +6,8 @@ import { resolveLogoUrl } from '../../../api/businessApi';
 import { parseAuthError } from '../../../api/authErrors';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { ThemeLogo } from '../../../components/brand';
+import { PinField } from '../pin/PinField';
+import { useLanguageStore } from '../../../stores/useLanguageStore';
 
 interface LoginScreenProps {
   businessName?: string;
@@ -14,8 +16,19 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, businessLogo, onLoginSuccess }) => {
-  const [username, setUsername] = React.useState('');
+  const { language } = useLanguageStore();
+  const isSwahili = language === 'sw-TZ' || !language || language.startsWith('sw');
+
+  const [mode, setMode] = React.useState<'pin' | 'password'>('pin');
+  const [username, setUsername] = React.useState(() => {
+    try {
+      return localStorage.getItem('40labs_last_username') || '';
+    } catch {
+      return '';
+    }
+  });
   const [password, setPassword] = React.useState('');
+  const [pin, setPin] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [errorCode, setErrorCode] = React.useState<string | null>(null);
   const [retryAfterSecs, setRetryAfterSecs] = React.useState<number | null>(null);
@@ -24,6 +37,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
 
   const [resolvedLogo, setResolvedLogo] = React.useState<string | null>(null);
   const [logoError, setLogoError] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      if (username) {
+        localStorage.setItem('40labs_last_username', username.trim());
+      }
+    } catch {}
+  }, [username]);
 
   React.useEffect(() => {
     let active = true;
@@ -45,19 +66,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
     }
   }, [retryAfterSecs]);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username || !password || (retryAfterSecs !== null && retryAfterSecs > 0) || isHardLocked) return;
+  const executeLogin = async (loginMode: 'pin' | 'password', currentPin: string, currentPass: string) => {
+    if (!username || (retryAfterSecs !== null && retryAfterSecs > 0) || isHardLocked) return;
+    if (loginMode === 'pin' && currentPin.length !== 6) return;
+    if (loginMode === 'password' && !currentPass) return;
 
     setLoading(true);
     setErrorCode(null);
     setRetryAfterSecs(null);
     try {
-      await authApi.login(username.trim().toLowerCase(), password);
+      if (loginMode === 'pin') {
+        await authApi.loginPin(username.trim().toLowerCase(), currentPin);
+      } else {
+        await authApi.login(username.trim().toLowerCase(), currentPass);
+      }
       onLoginSuccess();
     } catch (err: any) {
       const parsed = parseAuthError(err);
-      setErrorCode(parsed.code);
+      if (parsed.code === 'PASSWORD_REQUIRED') {
+        setMode('password');
+        setErrorCode('PASSWORD_REQUIRED');
+      } else {
+        setErrorCode(parsed.code);
+      }
       if (parsed.retryAfterSecs) {
         setRetryAfterSecs(parsed.retryAfterSecs);
         if (parsed.retryAfterSecs > 900) {
@@ -69,6 +100,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await executeLogin('password', '', password);
+  };
+
+  const handlePinComplete = async (completedPin: string) => {
+    await executeLogin('pin', completedPin, '');
   };
 
   const getInitials = (name?: string) => {
@@ -144,8 +184,35 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
             </div>
             <div>
               <h2 className="text-lg font-bold font-heading text-text-primary">Ingia kwenye Akaunti</h2>
-              <p className="text-xs text-text-muted">Weka jina la mtumiaji na nenosiri lako</p>
             </div>
+          </div>
+
+          {/* Segmented Control: PIN | Password */}
+          <div className="flex rounded-lg bg-surface-secondary p-1 border border-border">
+            <button
+              type="button"
+              className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                mode === 'pin' ? 'bg-surface-elevated text-text-primary shadow-xs' : 'text-text-muted hover:text-text-primary'
+              }`}
+              onClick={() => {
+                setMode('pin');
+                setErrorCode(null);
+              }}
+            >
+              PIN
+            </button>
+            <button
+              type="button"
+              className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                mode === 'password' ? 'bg-surface-elevated text-text-primary shadow-xs' : 'text-text-muted hover:text-text-primary'
+              }`}
+              onClick={() => {
+                setMode('password');
+                setErrorCode(null);
+              }}
+            >
+              {isSwahili ? 'Nenosiri' : 'Password'}
+            </button>
           </div>
 
           {isHardLocked && (
@@ -159,48 +226,94 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
             <div className="bg-danger/10 border border-danger/30 text-danger text-xs p-2.5 rounded-card text-center">
               {errorCode === 'LOCKED' && retryAfterSecs
                 ? `Akaunti imefungwa kwa muda. Jaribu tena baada ya sekunde ${retryAfterSecs}.`
-                : 'Jina la mtumiaji au nenosiri si sahihi.'}
+                : errorCode === 'PASSWORD_REQUIRED'
+                ? (isSwahili ? 'Nenosiri linahitajika kwa sababu mabadiliko ya usalama yametokea.' : 'Password required due to security update.')
+                : (isSwahili ? 'Jina la mtumiaji au PIN si sahihi.' : 'Invalid username or PIN/password.')}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="text-xs font-semibold text-text-primary block mb-1">Jina la mtumiaji</label>
-              <Input
-                autoComplete="username"
-                value={username}
-                onChange={(e: any) => setUsername(e.target.value)}
-                placeholder="Username"
-                disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
-              />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-text-primary">Nenosiri</label>
-                <button
-                  type="button"
-                  className="text-xs text-primary hover:underline font-medium cursor-pointer"
-                  onClick={() => setForgotModalOpen(true)}
-                >
-                  Umesahau nenosiri?
-                </button>
+          {mode === 'pin' ? (
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-text-primary block mb-1">
+                  {isSwahili ? 'Jina la mtumiaji' : 'Username'}
+                </label>
+                <Input
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e: any) => setUsername(e.target.value)}
+                  placeholder={isSwahili ? 'Weka jina la mtumiaji' : 'Username'}
+                  disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+                />
               </div>
-              <PasswordInput
-                autoComplete="current-password"
-                value={password}
-                onChange={(e: any) => setPassword(e.target.value)}
-                placeholder="Password"
-                disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
-              />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-text-primary">PIN</label>
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline font-medium cursor-pointer"
+                    onClick={() => setMode('password')}
+                  >
+                    {isSwahili ? 'Umesahau PIN?' : 'Forgot PIN?'}
+                  </button>
+                </div>
+                <PinField
+                  value={pin}
+                  onChange={setPin}
+                  onComplete={handlePinComplete}
+                  error={Boolean(errorCode)}
+                />
+              </div>
+              {loading && (
+                <div className="text-center text-xs text-text-muted animate-pulse pt-2">
+                  {isSwahili ? 'Inaingia...' : 'Logging in...'}
+                </div>
+              )}
             </div>
-            <Button
-              type="submit"
-              className="w-full py-2.5 cursor-pointer"
-              disabled={loading || !username || !password || isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
-            >
-              {loading ? 'Inaingia...' : retryAfterSecs ? `Subiri (${retryAfterSecs}s)` : 'Ingia'}
-            </Button>
-          </form>
+          ) : (
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-text-primary block mb-1">
+                  {isSwahili ? 'Jina la mtumiaji' : 'Username'}
+                </label>
+                <Input
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e: any) => setUsername(e.target.value)}
+                  placeholder={isSwahili ? 'Weka jina la mtumiaji' : 'Username'}
+                  disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-text-primary">
+                    {isSwahili ? 'Nenosiri' : 'Password'}
+                  </label>
+                  <button
+                    type="button"
+                    className="text-xs text-primary hover:underline font-medium cursor-pointer"
+                    onClick={() => setForgotModalOpen(true)}
+                  >
+                    {isSwahili ? 'Umesahau nenosiri?' : 'Forgot password?'}
+                  </button>
+                </div>
+                <PasswordInput
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e: any) => setPassword(e.target.value)}
+                  placeholder={isSwahili ? 'Weka nenosiri' : 'Password'}
+                  disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+                />
+              </div>
+              <Button
+                type="submit"
+                className="w-full py-2.5 cursor-pointer"
+                disabled={loading || !username || !password || isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+              >
+                {loading ? (isSwahili ? 'Inaingia...' : 'Logging in...') : retryAfterSecs ? `Subiri (${retryAfterSecs}s)` : (isSwahili ? 'Ingia' : 'Login')}
+              </Button>
+            </form>
+          )}
         </Card>
       </div>
 
