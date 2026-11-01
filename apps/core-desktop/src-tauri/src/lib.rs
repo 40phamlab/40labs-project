@@ -22,6 +22,7 @@ pub fn run() {
     debug::init();
 
     let keystore = Arc::new(Keystore::init().expect("Failed to initialize security keystore"));
+    tracing::info!("keystore: security keystore initialized successfully");
     let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
 
     let api_base_url = std::env::var("API_BASE_URL").ok();
