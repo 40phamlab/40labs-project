@@ -8,6 +8,7 @@ export interface CreateBranchPayload {
   branch_code: string;
   status: 'active' | 'inactive';
   contacts: string | null;
+  step_up_token?: string;
 }
 
 export interface UpdateBranchPayload {
@@ -16,6 +17,7 @@ export interface UpdateBranchPayload {
   branch_code?: string;
   status?: 'active' | 'inactive';
   contacts?: string | null;
+  step_up_token?: string;
 }
 
 let branchesStore: Branch[] = [...initialBranches];

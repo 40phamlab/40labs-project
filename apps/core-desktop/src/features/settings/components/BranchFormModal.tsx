@@ -76,20 +76,13 @@ export const BranchFormModal: React.FC<BranchFormModalProps> = ({
 
     try {
       await requestStepUp(async (grantToken) => {
-        await auditApi.recordEntry({
-          action: isEditing ? 'branch_updated' : 'branch_created',
-          performed_by_user_id: null,
-          target_entity_type: 'Branch',
-          target_entity_id: branch?.id || 'new',
-          metadata: { branch_name: formData.name, step_up_token: grantToken },
-        });
-
         await onSave({
           name: formData.name.trim(),
           location: formData.location.trim(),
           branch_code: formData.branch_code.trim(),
           status: formData.status,
           contacts: formData.contacts.trim() || null,
+          step_up_token: grantToken,
         });
       }, 'branches.manage');
       onClose();

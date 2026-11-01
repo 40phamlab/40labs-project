@@ -1,4 +1,5 @@
 pub mod audit_repo;
+pub mod branch_repo;
 pub mod business_repo;
 pub mod credential_repo;
 pub mod customer_repo;

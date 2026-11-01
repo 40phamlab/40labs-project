@@ -381,6 +381,24 @@ pub async fn registration_commit(
     .await
     .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
+    sqlx::query(
+        r#"
+        INSERT INTO branch (id, workspace_id, branch_id, business_id, name, location, branch_code, status, contacts, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 'Main Branch', ?, 'MAIN', 'active', ?, ?, ?)
+        "#,
+    )
+    .bind(&reg_resp.branch_id)
+    .bind(&reg_resp.workspace_id)
+    .bind(&reg_resp.branch_id)
+    .bind(&reg_resp.business_id)
+    .bind(if region.is_empty() { None } else { Some(region) })
+    .bind(&business_phone)
+    .bind(&now)
+    .bind(&now)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
     tx.commit()
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;

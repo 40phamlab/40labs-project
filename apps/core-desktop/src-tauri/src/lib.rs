@@ -83,6 +83,9 @@ pub fn run() {
             commands::user_cmd::user_reset_credentials,
             // Business & Integrations
             commands::business_cmd::get_business,
+            commands::branch_cmd::get_branches,
+            commands::branch_cmd::create_branch,
+            commands::branch_cmd::update_branch,
             commands::business_cmd::update_business,
             commands::business_cmd::upload_business_logo,
             commands::integrations_cmd::get_integrations_config,

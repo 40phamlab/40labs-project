@@ -135,7 +135,7 @@ export const SettingsScreen: React.FC = () => {
             onEditBranch={openEditBranchModal}
             onDeactivateBranch={handleDeactivateBranch}
             loading={isLoadingBranches}
-            error={isErrorBranches ? 'Failed to load branches.' : null}
+            error={isErrorBranches ? (branchesError instanceof Error ? branchesError.message : String(branchesError)) : null}
             onRetry={() => refetchBranches()}
           />
         </div>

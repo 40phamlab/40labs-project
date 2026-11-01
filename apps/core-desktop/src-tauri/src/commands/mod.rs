@@ -1,6 +1,7 @@
 pub mod audit_cmd;
 pub mod auth_cmd;
 pub mod backup_cmd;
+pub mod branch_cmd;
 pub mod business_cmd;
 pub mod customer_cmd;
 pub mod devices_cmd;
@@ -49,6 +50,9 @@ mod tests {
             "onboarding_advance",
             "business_set_idle_lock",
             "get_business",
+            "get_branches",
+            "create_branch",
+            "update_branch",
             "upload_business_logo",
             "update_business",
             "get_integrations_config",
