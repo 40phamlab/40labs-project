@@ -22,6 +22,8 @@ pub enum AuditAction {
     SessionDestroyedPinLockout,
     CustomerExport,
     CustomerArchive,
+    StepUpGranted,
+    StepUpFailed,
     Custom(String),
 }
 
@@ -47,6 +49,8 @@ impl AuditAction {
             AuditAction::SessionDestroyedPinLockout => "session_destroyed_pin_lockout",
             AuditAction::CustomerExport => "customer_export",
             AuditAction::CustomerArchive => "customer_archive",
+            AuditAction::StepUpGranted => "step_up_granted",
+            AuditAction::StepUpFailed => "step_up_failed",
             AuditAction::Custom(s) => s.as_str(),
         }
     }

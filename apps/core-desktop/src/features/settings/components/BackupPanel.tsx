@@ -229,7 +229,7 @@ export const BackupPanel: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 pb-8 max-w-3xl">
       {/* Disaster Recovery Pack Section */}
-      <Panel variant="raised" className="p-6 space-y-5 border-l-4 border-l-primary">
+      <Panel variant="raised" className="p-6 space-y-5">
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">

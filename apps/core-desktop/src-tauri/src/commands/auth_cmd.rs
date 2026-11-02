@@ -3,7 +3,7 @@ use zeroize::Zeroizing;
 use serde::Deserialize;
 
 use crate::auth::session::ApproverInfo;
-use crate::auth::{AuthEngine, AuthErrorResponse};
+use crate::auth::{AuthEngine, AuthError, AuthErrorResponse};
 use crate::AppState;
 
 #[tauri::command]
@@ -166,7 +166,9 @@ pub async fn auth_login_pin(
 pub async fn auth_step_up(
     state: State<'_, AppState>,
     permission: String,
-    pin: String,
+    method: Option<String>,
+    secret: Option<String>,
+    pin: Option<String>,
     approver_user_id: Option<String>,
     target: Option<String>,
 ) -> Result<String, AuthErrorResponse> {
@@ -175,8 +177,13 @@ pub async fn auth_step_up(
         state.pool.clone(),
         state.keystore.clone(),
     );
+    let method_str = method.as_deref().unwrap_or("pin");
+    let actual_secret = secret.or(pin).ok_or_else(|| {
+        AuthError::PolicyViolation("Secret or PIN required".to_string()).to_response()
+    })?;
+
     engine
-        .step_up(&permission, &pin, approver_user_id, target)
+        .step_up(&permission, Some(method_str), &actual_secret, approver_user_id, target)
         .await
         .map_err(|e| e.to_response())
 }

@@ -26,7 +26,7 @@ export interface AuthApi {
   lock(): Promise<void>;
   unlockPin(pin: string): Promise<void>;
   setPin(pin: string): Promise<void>;
-  stepUp(permission: string, pin: string, approverUserId?: string): Promise<string>;
+  stepUp(permission: string, secret: string, method?: 'pin' | 'password', approverUserId?: string, target?: string): Promise<string>;
   listApprovers(permission: string): Promise<Array<{ userId: string; displayName: string; role: string }>>;
   changePassword(oldPassword: string, newPassword: string): Promise<void>;
   changePin(oldPin: string, newPin: string): Promise<void>;
@@ -66,7 +66,7 @@ export const tauriAuthApi: AuthApi = {
   lock: () => invokeCommand<void>('auth_lock'),
   unlockPin: (pin) => invokeCommand<void>('auth_unlock_pin', { pin }),
   setPin: (pin) => invokeCommand<void>('auth_set_pin', { pin }),
-  stepUp: (permission, pin, approverUserId) => invokeCommand<string>('auth_step_up', { permission, pin, approverUserId }),
+  stepUp: (permission, secret, method = 'pin', approverUserId, target) => invokeCommand<string>('auth_step_up', { permission, method, secret, approverUserId, target }),
   listApprovers: (permission) => invokeCommand<Array<{ userId: string; displayName: string; role: string }>>('auth_list_approvers', { permission }),
   changePassword: (oldPassword, newPassword) => invokeCommand<void>('auth_change_password', { oldPassword, newPassword }),
   changePin: (oldPin, newPin) => invokeCommand<void>('auth_change_pin', { oldPin, newPin }),
@@ -156,8 +156,8 @@ export const mockAuthApi: AuthApi = {
       mockState.session.pinSet = true;
     }
   },
-  stepUp: async (_permission, pin) => {
-    if (pin !== '123456') {
+  stepUp: async (_permission, secret, method = 'pin', _approverUserId, _target) => {
+    if (!secret) {
       throw { code: 'INVALID_CREDENTIALS' };
     }
     return `grant-${Math.random().toString(36).substring(2, 9)}`;

@@ -1150,10 +1150,12 @@ impl AuthEngine {
     pub async fn step_up(
         &self,
         permission: &str,
-        pin: &str,
+        method: Option<&str>,
+        secret: &str,
         approver_user_id: Option<String>,
         target: Option<String>,
     ) -> Result<String, AuthError> {
+        let method = method.unwrap_or("pin");
         let session_guard = self.state.session.read().await;
         let session = session_guard.as_ref().ok_or(AuthError::SessionRequired)?;
         let actor_id = session.user_id.clone();
@@ -1197,74 +1199,121 @@ impl AuthEngine {
             (app_id, true)
         };
 
+        let verifying_user = UserRepository::get_by_id(&self.pool, &verifying_user_id)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?
+            .ok_or_else(|| AuthError::NotFound("Verifying user not found".to_string()))?;
+
         let cred = CredentialRepository::get_by_user_id(&self.pool, &verifying_user_id)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?
             .ok_or_else(|| AuthError::PolicyViolation("User has no credentials set".to_string()))?;
 
-        if cred.pin_hash.is_none() || cred.pin_hash.as_ref().unwrap().is_empty() {
-            return Err(AuthError::PinSetupRequired);
-        }
-
-        let pin_hash = cred.pin_hash.as_ref().unwrap();
         let now_iso = self.state.clock.now_iso();
-        let mut tx = self
-            .pool
-            .begin()
-            .await
-            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let now = self.state.clock.now_secs();
 
-        let valid = hashing::verify_pin(
-            &verifying_user_id,
-            pin,
-            self.keystore.pin_pepper(),
-            pin_hash,
-        );
+        if method == "password" {
+            if verifying_user.must_change_credentials != 0 {
+                return Err(AuthError::PasswordRequired);
+            }
 
-        if !valid {
-            if !is_approver {
-                let new_fails = cred.failed_pin_attempts + 1;
-                if new_fails >= 5 {
-                    let mut session_guard = self.state.session.write().await;
-                    *session_guard = None;
-                    CredentialRepository::increment_pin_failures(
+            if let Some(locked_until) = &cred.locked_until {
+                if let Ok(locked_dt) = chrono::DateTime::parse_from_rfc3339(locked_until) {
+                    let locked_epoch = locked_dt.timestamp() as u64;
+                    if now < locked_epoch {
+                        let retry = locked_epoch - now;
+                        return Err(AuthError::Locked {
+                            retry_after_secs: Some(retry),
+                        });
+                    }
+                }
+            }
+
+            let valid = hashing::verify_password(secret, &cred.password_hash);
+            let mut tx = self
+                .pool
+                .begin()
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+            if !valid {
+                let retry_after = if !is_approver {
+                    let new_fails = cred.failed_password_attempts + 1;
+                    let lockout_duration = match new_fails {
+                        1..=4 => 0,
+                        5..=7 => 30,
+                        8..=9 => 300,
+                        _ => 900,
+                    };
+                    let lock_until_str = if lockout_duration > 0 {
+                        Some(
+                            (chrono::Utc::now() + chrono::Duration::seconds(lockout_duration as i64))
+                                .to_rfc3339(),
+                        )
+                    } else {
+                        None
+                    };
+                    CredentialRepository::increment_password_failures(
                         &mut tx,
                         &verifying_user_id,
                         new_fails,
-                        None,
+                        lock_until_str.as_deref(),
                         &now_iso,
                     )
                     .await
                     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-                    tx.commit()
-                        .await
-                        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-                    return Err(AuthError::InvalidCredentials {
-                        retry_after_secs: None,
-                    });
-                }
-                CredentialRepository::increment_pin_failures(
-                    &mut tx,
-                    &verifying_user_id,
-                    new_fails,
-                    None,
-                    &now_iso,
-                )
+                    if lockout_duration > 0 { Some(lockout_duration) } else { None }
+                } else {
+                    None
+                };
+
+                let audit_entry = AuditLogEntry {
+                    id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: actor_user.workspace_id.clone(),
+                    branch_id: actor_user.branch_id.clone(),
+                    action: AuditAction::StepUpFailed.as_str().to_string(),
+                    performed_by_user_id: Some(actor_id.clone()),
+                    target_entity_type: "Permission".to_string(),
+                    target_entity_id: permission.to_string(),
+                    metadata: Some(
+                        serde_json::json!({
+                            "reason": "wrong_password",
+                            "method": "password",
+                            "permission": permission,
+                            "target": target,
+                            "approver_user_id": if is_approver { Some(verifying_user_id.clone()) } else { None }
+                        })
+                        .to_string(),
+                    ),
+                    created_at: now_iso.clone(),
+                };
+                audit::append(&mut tx, &audit_entry)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: retry_after,
+                });
+            }
+
+            CredentialRepository::reset_password_failures(&mut tx, &verifying_user_id, &now_iso)
                 .await
                 .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-            }
 
             let audit_entry = AuditLogEntry {
                 id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
                 workspace_id: actor_user.workspace_id.clone(),
                 branch_id: actor_user.branch_id.clone(),
-                action: "step_up_failed".to_string(),
+                action: AuditAction::StepUpGranted.as_str().to_string(),
                 performed_by_user_id: Some(actor_id.clone()),
                 target_entity_type: "Permission".to_string(),
                 target_entity_id: permission.to_string(),
                 metadata: Some(
                     serde_json::json!({
-                        "reason": "wrong_pin",
+                        "method": "password",
                         "permission": permission,
                         "target": target,
                         "approver_user_id": if is_approver { Some(verifying_user_id.clone()) } else { None }
@@ -1279,18 +1328,145 @@ impl AuthEngine {
             tx.commit()
                 .await
                 .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        } else {
+            if cred.pin_hash.is_none() || cred.pin_hash.as_ref().unwrap().is_empty() {
+                return Err(AuthError::PinSetupRequired);
+            }
 
-            return Err(AuthError::InvalidCredentials {
-                retry_after_secs: None,
-            });
+            let pin_hash = cred.pin_hash.as_ref().unwrap();
+            let valid = hashing::verify_pin(
+                &verifying_user_id,
+                secret,
+                self.keystore.pin_pepper(),
+                pin_hash,
+            );
+
+            let mut tx = self
+                .pool
+                .begin()
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+            if !valid {
+                if !is_approver {
+                    let new_fails = cred.failed_pin_attempts + 1;
+                    if new_fails >= 5 {
+                        let mut session_guard = self.state.session.write().await;
+                        *session_guard = None;
+                        CredentialRepository::increment_pin_failures(
+                            &mut tx,
+                            &verifying_user_id,
+                            new_fails,
+                            None,
+                            &now_iso,
+                        )
+                        .await
+                        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                        let audit_entry = AuditLogEntry {
+                            id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                            workspace_id: actor_user.workspace_id.clone(),
+                            branch_id: actor_user.branch_id.clone(),
+                            action: AuditAction::StepUpFailed.as_str().to_string(),
+                            performed_by_user_id: Some(actor_id.clone()),
+                            target_entity_type: "Permission".to_string(),
+                            target_entity_id: permission.to_string(),
+                            metadata: Some(
+                                serde_json::json!({
+                                    "reason": "wrong_pin_lockout",
+                                    "method": "pin",
+                                    "permission": permission,
+                                    "target": target,
+                                    "approver_user_id": if is_approver { Some(verifying_user_id.clone()) } else { None }
+                                })
+                                .to_string(),
+                            ),
+                            created_at: now_iso.clone(),
+                        };
+                        audit::append(&mut tx, &audit_entry)
+                            .await
+                            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                        tx.commit()
+                            .await
+                            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                        return Err(AuthError::InvalidCredentials {
+                            retry_after_secs: None,
+                        });
+                    }
+                    CredentialRepository::increment_pin_failures(
+                        &mut tx,
+                        &verifying_user_id,
+                        new_fails,
+                        None,
+                        &now_iso,
+                    )
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                }
+
+                let audit_entry = AuditLogEntry {
+                    id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: actor_user.workspace_id.clone(),
+                    branch_id: actor_user.branch_id.clone(),
+                    action: AuditAction::StepUpFailed.as_str().to_string(),
+                    performed_by_user_id: Some(actor_id.clone()),
+                    target_entity_type: "Permission".to_string(),
+                    target_entity_id: permission.to_string(),
+                    metadata: Some(
+                        serde_json::json!({
+                            "reason": "wrong_pin",
+                            "method": "pin",
+                            "permission": permission,
+                            "target": target,
+                            "approver_user_id": if is_approver { Some(verifying_user_id.clone()) } else { None }
+                        })
+                        .to_string(),
+                    ),
+                    created_at: now_iso.clone(),
+                };
+                audit::append(&mut tx, &audit_entry)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: None,
+                });
+            }
+
+            CredentialRepository::reset_pin_failures(&mut tx, &verifying_user_id, &now_iso)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+            let audit_entry = AuditLogEntry {
+                id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                workspace_id: actor_user.workspace_id.clone(),
+                branch_id: actor_user.branch_id.clone(),
+                action: AuditAction::StepUpGranted.as_str().to_string(),
+                performed_by_user_id: Some(actor_id.clone()),
+                target_entity_type: "Permission".to_string(),
+                target_entity_id: permission.to_string(),
+                metadata: Some(
+                    serde_json::json!({
+                        "method": "pin",
+                        "permission": permission,
+                        "target": target,
+                        "approver_user_id": if is_approver { Some(verifying_user_id.clone()) } else { None }
+                    })
+                    .to_string(),
+                ),
+                created_at: now_iso.clone(),
+            };
+            audit::append(&mut tx, &audit_entry)
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            tx.commit()
+                .await
+                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
         }
-
-        CredentialRepository::reset_pin_failures(&mut tx, &verifying_user_id, &now_iso)
-            .await
-            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit()
-            .await
-            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let token = format!("stepup_{}", uuid::Uuid::new_v4());
         let expires_at = self.state.clock.now_secs() + policy.ttl_secs;
