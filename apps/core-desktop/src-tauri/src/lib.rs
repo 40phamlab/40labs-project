@@ -78,11 +78,14 @@ pub fn run() {
             commands::auth_cmd::auth_change_password,
             commands::auth_cmd::auth_change_pin,
             commands::auth_cmd::auth_reset_own_pin,
+            commands::auth_cmd::auth_totp_status,
+            commands::auth_cmd::auth_step_up_policies,
             // Users
             commands::user_cmd::user_list,
             commands::user_cmd::user_create,
             commands::user_cmd::user_update,
             commands::user_cmd::user_set_active,
+            commands::user_cmd::user_block,
             commands::user_cmd::user_reset_credentials,
             commands::user_cmd::user_reset_pin,
             // Business & Integrations

@@ -43,6 +43,8 @@ export interface AuthApi {
   registrationCommit(payload: Record<string, unknown>): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>;
   otpRequest(phone: string): Promise<void>;
   otpVerify(phone: string, code: string): Promise<string>;
+  totpStatus(): Promise<{ status: string }>;
+  stepUpPolicies(): Promise<Array<{ permission: string; tier: string; ttlSecs: number; maxUses: number }>>;
   onboardingAdvance(state: string): Promise<void>;
   businessSetIdleLock(minutes: number): Promise<void>;
 }
@@ -85,6 +87,8 @@ export const tauriAuthApi: AuthApi = {
   otpVerify: (phone, code) => invokeCommand<string>('otp_verify', { phone, code }),
   onboardingAdvance: (state) => invokeCommand<void>('onboarding_advance', { stateName: state }),
   businessSetIdleLock: (minutes) => invokeCommand<void>('business_set_idle_lock', { minutes }),
+  totpStatus: () => invokeCommand<{ status: string }>('auth_totp_status'),
+  stepUpPolicies: () => invokeCommand<Array<{ permission: string; tier: string; ttlSecs: number; maxUses: number }>>('auth_step_up_policies'),
 };
 
 export const mockAuthApi: AuthApi = {
@@ -165,6 +169,8 @@ export const mockAuthApi: AuthApi = {
   listApprovers: async () => [
     { userId: 'user-sudo-1', displayName: 'Juma Mwanga (SUDO)', role: 'sudo' },
   ],
+  totpStatus: async () => ({ status: 'not_configured' }),
+  stepUpPolicies: async () => [],
   changePassword: async () => {},
   changePin: async () => {},
   resetOwnPin: async () => {},

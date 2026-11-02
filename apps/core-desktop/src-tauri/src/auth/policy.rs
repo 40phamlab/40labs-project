@@ -28,6 +28,9 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("user_create", CommandPolicy::Permission("users.manage"));
     map.insert("user_update", CommandPolicy::Permission("users.manage"));
     map.insert("user_set_active", CommandPolicy::Permission("users.manage"));
+    map.insert("user_block", CommandPolicy::Permission("users.manage"));
+    map.insert("auth_totp_status", CommandPolicy::SessionOnly);
+    map.insert("auth_step_up_policies", CommandPolicy::SessionOnly);
     map.insert(
         "user_reset_credentials",
         CommandPolicy::Permission("users.manage"),

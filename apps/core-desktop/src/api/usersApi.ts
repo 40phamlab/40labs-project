@@ -117,6 +117,30 @@ export const usersApi = {
 
   listPairedDevices: (): PairedDevice[] => [...devicesStore],
 
+  block: async (userId: string, reason?: string): Promise<void> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<void>('user_block', { userId, reason });
+    }
+    const user = usersStore.find((u) => u.id === userId);
+    if (user) {
+      user.active = false;
+      (user as any).blocked_at = new Date().toISOString();
+      (user as any).blocked_reason = reason || 'Administrative block';
+    }
+  },
+
+  unblock: async (userId: string): Promise<void> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<void>('user_set_active', { userId, active: true });
+    }
+    const user = usersStore.find((u) => u.id === userId);
+    if (user) {
+      user.active = true;
+      (user as any).blocked_at = null;
+      (user as any).blocked_reason = null;
+    }
+  },
+
   // Backwards compatibility aliases
   getUsers: (): User[] => [...usersStore],
   getPairedDevices: (): PairedDevice[] => [...devicesStore],

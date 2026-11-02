@@ -276,25 +276,137 @@ pub async fn user_set_active(
         state.pool.clone(),
         state.keystore.clone(),
     );
-    let _ctx = engine
+    let ctx = engine
         .require("users.manage")
         .await
         .map_err(|e| e.to_response())?;
 
     let now = chrono::Utc::now().to_rfc3339();
-    let active_i64 = if active { 1 } else { 0 };
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    let audit_entry = crate::models::audit::AuditLogEntry {
+        id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+        workspace_id: ctx.workspace_id.clone(),
+        branch_id: ctx.branch_id.clone(),
+        created_at: now.clone(),
+        action: if active { "user_unblock".to_string() } else { "user_set_active".to_string() },
+        performed_by_user_id: Some(ctx.user_id.clone()),
+        target_entity_type: "AppUser".to_string(),
+        target_entity_id: user_id.clone(),
+        metadata: Some(serde_json::json!({ "active": active }).to_string()),
+    };
+    crate::repositories::audit_repo::audit::append(&mut tx, &audit_entry)
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    if active {
+        sqlx::query("UPDATE app_user SET active = 1, blocked_at = NULL, blocked_reason = NULL, updated_at = ? WHERE id = ?")
+            .bind(&now)
+            .bind(&user_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    } else {
+        UserRepository::update_active(&mut tx, &user_id, 0, &now)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn user_block(
+    state: State<'_, AppState>,
+    user_id: String,
+    reason: Option<String>,
+) -> Result<(), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("users.manage")
+        .await
+        .map_err(|e| e.to_response())?;
+
+    if user_id == ctx.user_id {
+        return Err(AuthError::PolicyViolation("Cannot block yourself".into()).to_response());
+    }
+
+    let target_user = UserRepository::get_by_id(&state.pool, &user_id)
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?
+        .ok_or_else(|| AuthError::NotFound("User not found".into()).to_response())?;
+
+    if target_user.role == "sudo" {
+        let active_sudo_count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM app_user WHERE role = 'sudo' AND active = 1 AND id != ?"
+        )
+        .bind(&user_id)
+        .fetch_one(&state.pool)
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+        if active_sudo_count.0 <= 0 {
+            return Err(AuthError::PolicyViolation("Cannot block the last active SUDO user".into()).to_response());
+        }
+    }
+
+    let now = chrono::Utc::now().to_rfc3339();
+    let reason_str = reason.unwrap_or_else(|| "Administrative block".into());
 
     let mut tx = state
         .pool
         .begin()
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
-    UserRepository::update_active(&mut tx, &user_id, active_i64, &now)
+
+    let audit_entry = crate::models::audit::AuditLogEntry {
+        id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+        workspace_id: ctx.workspace_id.clone(),
+        branch_id: ctx.branch_id.clone(),
+        created_at: now.clone(),
+        action: "user_block".to_string(),
+        performed_by_user_id: Some(ctx.user_id.clone()),
+        target_entity_type: "AppUser".to_string(),
+        target_entity_id: user_id.clone(),
+        metadata: Some(serde_json::json!({ "reason": reason_str }).to_string()),
+    };
+    crate::repositories::audit_repo::audit::append(&mut tx, &audit_entry)
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    sqlx::query(
+        "UPDATE app_user SET active = 0, blocked_at = ?, blocked_reason = ?, updated_at = ? WHERE id = ?"
+    )
+    .bind(&now)
+    .bind(&reason_str)
+    .bind(&now)
+    .bind(&user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
     tx.commit()
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+
+    let mut session_guard = state.auth_state.session.write().await;
+    if let Some(s) = &*session_guard {
+        if s.user_id == user_id {
+            *session_guard = None;
+        }
+    }
 
     Ok(())
 }

@@ -283,6 +283,25 @@ pub async fn recovery_generate_initial(
 }
 
 #[tauri::command]
+pub async fn auth_totp_status(
+    _state: State<'_, AppState>,
+) -> Result<serde_json::Value, AuthErrorResponse> {
+    Ok(serde_json::json!({ "status": "not_configured" }))
+}
+
+#[tauri::command]
+pub async fn auth_step_up_policies(
+    _state: State<'_, AppState>,
+) -> Result<serde_json::Value, AuthErrorResponse> {
+    let policies = serde_json::json!([
+        { "permission": "users.manage", "tier": "sudo", "ttlSecs": 300, "maxUses": 1 },
+        { "permission": "settings.manage:idle", "tier": "sudo", "ttlSecs": 300, "maxUses": 1 },
+        { "permission": "inventory.delete", "tier": "sudo", "ttlSecs": 300, "maxUses": 1 },
+    ]);
+    Ok(policies)
+}
+
+#[tauri::command]
 pub async fn onboarding_advance(
     state: State<'_, AppState>,
     state_name: String,
