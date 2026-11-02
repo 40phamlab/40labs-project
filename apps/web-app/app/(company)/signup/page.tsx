@@ -90,7 +90,7 @@ export default function SignupPage() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Dr. Juma Mwinyi"
-              className="font-comfortaa w-full h-12 px-4 text-sm bg-[#0B0F0D] border border-white/10 rounded-[12px] text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
+              className="font-comfortaa w-full h-12 px-4 text-[16px] bg-[#0B0F0D] border border-white/10 rounded-[12px] text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A] min-h-[44px]"
               style={{ borderRadius: '12px' }}
             />
           </div>
@@ -106,7 +106,7 @@ export default function SignupPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="juma@pharmacy.co.tz"
-              className="font-comfortaa w-full h-12 px-4 text-sm bg-[#0B0F0D] border border-white/10 rounded-[12px] text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
+              className="font-comfortaa w-full h-12 px-4 text-[16px] bg-[#0B0F0D] border border-white/10 rounded-[12px] text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A] min-h-[44px]"
               style={{ borderRadius: '12px' }}
             />
           </div>
@@ -122,7 +122,7 @@ export default function SignupPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="font-comfortaa w-full h-12 px-4 text-sm bg-[#0B0F0D] border border-white/10 rounded-[12px] text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
+              className="font-comfortaa w-full h-12 px-4 text-[16px] bg-[#0B0F0D] border border-white/10 rounded-[12px] text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A] min-h-[44px]"
               style={{ borderRadius: '12px' }}
             />
           </div>
@@ -138,7 +138,7 @@ export default function SignupPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
-              className="font-comfortaa w-full h-12 px-4 text-sm bg-[#0B0F0D] border border-white/10 rounded-[12px] text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A]"
+              className="font-comfortaa w-full h-12 px-4 text-[16px] bg-[#0B0F0D] border border-white/10 rounded-[12px] text-white focus:outline-none focus:ring-2 focus:ring-[#16A34A] min-h-[44px]"
               style={{ borderRadius: '12px' }}
             />
           </div>
