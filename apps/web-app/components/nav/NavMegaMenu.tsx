@@ -13,12 +13,10 @@ interface NavMegaMenuProps {
 export function NavMegaMenu({ isOpen, onClose, id = 'products-mega-menu' }: NavMegaMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
   useEffect(() => {
     if (!isOpen) return;
     const handleOutsideClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        // Check if click was on the trigger button (handled by trigger click handler)
         const triggerBtn = document.getElementById('products-nav-trigger');
         if (triggerBtn && triggerBtn.contains(e.target as Node)) {
           return;
@@ -36,21 +34,30 @@ export function NavMegaMenu({ isOpen, onClose, id = 'products-mega-menu' }: NavM
     <div
       id={id}
       ref={menuRef}
-      className="absolute top-full left-0 right-0 pt-3 z-50 animate-in fade-in slide-in-from-top-1.5 duration-180 ease-out"
+      className="absolute top-full left-0 right-0 mt-3 z-50 hidden lg:block animate-in fade-in slide-in-from-top-1.5 duration-180 ease-out"
       style={{
         animationDuration: '180ms',
       }}
     >
+      {/* Transparent hover bridge */}
+      <div className="absolute -top-3 h-3 w-full" aria-hidden="true" />
+
       <div
-        className="w-full max-w-7xl mx-auto rounded-2xl bg-[#121815]/95 backdrop-blur-md border border-white/10 p-8 shadow-2xl"
+        className="w-full rounded-2xl bg-[#0e1413]/95 backdrop-blur-xl border border-white/10 p-8 xl:p-10 shadow-2xl max-h-[min(70vh,640px)] overflow-y-auto"
         style={{
           boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
         }}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {navProductColumns.map((col) => (
-            <NavMegaMenuColumn key={col.title} column={col} onSelect={onClose} />
-          ))}
+        <div className="grid grid-cols-12 gap-x-10 gap-y-8">
+          {navProductColumns.map((col, index) => {
+            const isPlatform = index === 0;
+            const spanClass = isPlatform ? 'col-span-12 lg:col-span-6' : 'col-span-12 lg:col-span-3';
+            return (
+              <div key={col.title} className={spanClass}>
+                <NavMegaMenuColumn column={col} onSelect={onClose} />
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

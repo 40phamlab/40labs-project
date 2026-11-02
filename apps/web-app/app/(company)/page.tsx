@@ -11,13 +11,6 @@ export default function CompanyLandingPage() {
       {/* 1. HERO SECTION */}
       <section data-scene-step className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-32 lg:pt-36 pb-20 flex flex-col items-start text-left gap-6 sm:gap-8 relative z-10 bg-gradient-to-b lg:bg-gradient-to-r from-[#0b0f0e]/95 via-[#0b0f0e]/80 lg:from-[#0b0f0e]/90 lg:via-[#0b0f0e]/60 to-transparent min-h-[100svh] justify-center overflow-hidden">
         <div className="w-full lg:max-w-[58%] flex flex-col items-start gap-6 sm:gap-8 min-w-0">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse shrink-0" />
-            <span className="text-[11px] sm:text-xs font-medium uppercase tracking-wider text-gray-300 font-mono truncate">
-              Biomedical Science &amp; Digital Healthcare Platform
-            </span>
-          </div>
-
           <h1 className="font-display font-bold tracking-tight text-[clamp(1.85rem,4.5vw,4.75rem)] leading-[1.08] sm:leading-[1.05] tracking-[-0.02em] text-[#F8FAFB]">
             Advancing Biomedical Science &amp; <span className="font-accent italic font-normal text-[#16A34A]">Clinical</span> Infrastructure
           </h1>

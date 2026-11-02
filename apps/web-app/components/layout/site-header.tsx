@@ -43,12 +43,13 @@ export function SiteHeader() {
       }}
     >
       <div
-        className="w-full max-w-7xl h-16 px-6 sm:px-8 flex items-center justify-between"
+        className="w-full max-w-7xl h-16 px-6 sm:px-8 flex items-center justify-between relative"
         style={{
           backgroundColor: darkTokens.colors.surfaceSecondary,
           borderRadius: darkTokens.radius.pill,
           boxShadow: `${darkTokens.elevation.skeuOuter}, ${darkTokens.elevation.skeuInset}`,
           border: `1px solid ${darkTokens.colors.border}`,
+          isolation: 'isolate',
         }}
       >
         {/* Logo Slot */}

@@ -98,7 +98,7 @@ export function NavLinks({ onNavigate, mobile = false }: NavLinksProps) {
           return (
             <div
               key={item.key}
-              className="relative py-2"
+              className="py-2"
               onMouseEnter={handleMouseEnter}
             >
               <button
