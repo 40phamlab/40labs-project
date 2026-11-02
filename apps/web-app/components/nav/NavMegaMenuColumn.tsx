@@ -23,8 +23,8 @@ export function NavMegaMenuColumn({ column, onSelect }: NavMegaMenuColumnProps) 
           {column.items.map((item) => {
             const cardContent = (
               <div className="rounded-xl p-4 hover:bg-white/5 transition-colors flex flex-col justify-between min-w-0 group h-full border border-white/5 hover:border-white/10">
-                <div className="flex items-start justify-between gap-3 min-w-0">
-                  <span className="font-display text-lg sm:text-xl font-semibold text-white group-hover:text-[#16A34A] transition-colors leading-snug">
+                <div className="flex items-start justify-between gap-3 w-full min-w-0">
+                  <span className="font-display text-base sm:text-lg lg:text-xl font-semibold text-white group-hover:text-[#16A34A] transition-colors leading-snug break-words flex-1 min-w-0">
                     {item.title}
                   </span>
                   {item.badge && (
@@ -33,7 +33,7 @@ export function NavMegaMenuColumn({ column, onSelect }: NavMegaMenuColumnProps) 
                     </div>
                   )}
                 </div>
-                <p className="font-sans text-sm text-gray-400 line-clamp-2 mt-2 leading-relaxed">
+                <p className="font-sans text-xs sm:text-sm text-gray-400 line-clamp-2 mt-2 leading-relaxed">
                   {item.description}
                 </p>
                 {item.external && (
