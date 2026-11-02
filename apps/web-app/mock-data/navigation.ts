@@ -1,3 +1,5 @@
+import { BOARD_NAME } from '@/config/board';
+
 export interface NavItem {
   key: string;
   label: string;
@@ -8,7 +10,7 @@ export function getCompanyNavItems(): NavItem[] {
   return [
     { key: 'home', label: 'Home', href: '/' },
     { key: 'products', label: 'Products', href: '/products' },
-    { key: 'blog', label: 'Blog', href: '/blog' },
+    { key: 'blog', label: BOARD_NAME, href: '/blog' },
     { key: 'publications', label: 'Publications', href: '/publications' },
     { key: 'about', label: 'About', href: '/about' },
   ];
