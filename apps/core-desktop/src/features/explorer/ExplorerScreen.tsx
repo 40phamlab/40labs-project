@@ -3,28 +3,23 @@ import {
   Folder,
   FolderPlus,
   Search,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
   RotateCw,
-  Grid as GridIcon,
-  List as ListIcon,
-  Trash2,
-  Edit3,
-  ExternalLink,
-  ChevronRight,
-  ChevronDown,
-  HardDrive,
-  CheckSquare,
-  Square,
   AlertTriangle,
   X
 } from 'lucide-react';
-import { Dialog, Button, FileTypeIcon } from '@40labs/ui-components';
+import { Button, FileTypeIcon } from '@40labs/ui-components';
 import { explorerApi, type ExplorerItemMetadata, type ExplorerDirectoryContent } from '../../api/explorerApi';
 import { useFilePreviewContext } from '../../providers/FilePreviewProvider';
 import { useToast } from '../../hooks/useToast';
 import { isUsingTauriIpc } from '../../api/client';
+
+import { ExplorerBreadcrumb } from './components/ExplorerBreadcrumb';
+import { ExplorerToolbar } from './components/ExplorerToolbar';
+import { ExplorerSidebarTree } from './components/ExplorerSidebarTree';
+import { ExplorerListView } from './components/ExplorerListView';
+import { ExplorerGridView } from './components/ExplorerGridView';
+import { ExplorerContextMenu } from './components/ExplorerContextMenu';
+import { ExplorerModals } from './components/ExplorerModals';
 
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -79,7 +74,7 @@ export function getFileTypeLabel(item: ExplorerItemMetadata): string {
 }
 
 export function getFileIcon(item: ExplorerItemMetadata) {
-  if (item.is_dir) return <Folder className="text-warning shrink-0" size={18} />;
+  if (item.is_dir) return <Folder className="text-[var(--color-warning)] shrink-0" size={18} />;
   return <FileTypeIcon fileName={item.name} size={18} />;
 }
 
@@ -276,7 +271,6 @@ export const ExplorerScreen: React.FC = () => {
           blob,
         });
       } else {
-        // Unknown binary file: reveal in file manager
         await explorerApi.revealInFileManager(item.path);
         toast.info(`Opened location for ${item.name}`);
       }
@@ -443,82 +437,84 @@ export const ExplorerScreen: React.FC = () => {
     return directoryData.items.find((i) => i.path === path) || null;
   }, [selectedPaths, directoryData]);
 
+  const handleSortChange = (field: 'name' | 'modified_at' | 'size_bytes' | 'extension') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
   return (
-    <div className="h-full w-full flex flex-col bg-app-bg text-text-primary select-none overflow-hidden font-sans">
+    <div className="h-full w-full flex flex-col bg-[var(--color-app-bg)] text-[var(--color-text-primary)] select-none overflow-hidden font-sans">
       {/* Top Header / Breadcrumb Bar */}
-      <div className="h-11 px-3 border-b border-border-muted/50 flex items-center justify-between gap-2 bg-surface-card shrink-0">
+      <div className="h-12 px-3 border-b border-[var(--color-border-default)] flex items-center justify-between gap-3 bg-[var(--color-surface-primary)] shrink-0 elevation-raised">
+        {/* Navigation History & Refresh */}
         <div className="flex items-center gap-1">
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={handleBack}
             disabled={historyIndex <= 0}
-            className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+            className="p-1.5 h-7 w-7 flex items-center justify-center rounded-md"
             title="Go Back"
           >
-            <ArrowLeft size={16} />
-          </button>
-          <button
-            type="button"
+            ←
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={handleForward}
             disabled={historyIndex >= history.length - 1}
-            className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+            className="p-1.5 h-7 w-7 flex items-center justify-center rounded-md"
             title="Go Forward"
           >
-            <ArrowRight size={16} />
-          </button>
-          <button
-            type="button"
+            →
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={handleUp}
             disabled={!directoryData?.parent_path}
-            className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-hover disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+            className="p-1.5 h-7 w-7 flex items-center justify-center rounded-md"
             title="Go to Parent Folder"
           >
-            <ArrowUp size={16} />
-          </button>
-          <button
-            type="button"
+            ↑
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => loadDirectory(currentPath)}
-            className="p-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors cursor-pointer"
+            className="p-1.5 h-7 w-7 flex items-center justify-center rounded-md"
             title="Refresh Directory"
           >
-            <RotateCw size={15} className={loading ? 'animate-spin' : ''} />
-          </button>
+            <RotateCw size={14} className={loading ? 'animate-spin' : ''} />
+          </Button>
         </div>
 
-        {/* Breadcrumbs Path Bar */}
-        <div className="flex-1 flex items-center gap-1 px-2.5 py-1 bg-app-bg border border-border-muted rounded-md text-xs font-mono overflow-x-auto whitespace-nowrap scrollbar-thin">
-          <HardDrive size={14} className="text-action-primary shrink-0 mr-1" />
-          {breadcrumbSegments.map((segment, idx) => (
-            <React.Fragment key={segment.path}>
-              {idx > 0 && <span className="text-text-muted/40 font-sans">/</span>}
-              <button
-                type="button"
-                onClick={() => navigateTo(segment.path)}
-                className={`hover:text-action-primary hover:underline transition-colors cursor-pointer ${
-                  idx === breadcrumbSegments.length - 1 ? 'font-bold text-text-primary' : 'text-text-muted'
-                }`}
-              >
-                {segment.name}
-              </button>
-            </React.Fragment>
-          ))}
-        </div>
+        {/* Breadcrumb Path Bar */}
+        <ExplorerBreadcrumb
+          currentPath={currentPath}
+          breadcrumbSegments={breadcrumbSegments}
+          onNavigate={navigateTo}
+        />
 
         {/* Search Bar */}
         <div className="relative flex items-center w-64 shrink-0">
-          <Search size={14} className="absolute left-2.5 text-text-muted pointer-events-none" />
+          <Search size={14} className="absolute left-3 text-[var(--color-text-muted)] pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search folder..."
-            className="w-full pl-8 pr-7 py-1 bg-app-bg border border-border-muted rounded-md text-xs text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-1 focus:ring-focus-ring"
+            className="w-full pl-8 pr-7 py-1.5 bg-[var(--color-app-bg)] border border-[var(--color-border-default)] rounded-[var(--radius-input)] text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-focus-ring)] elevation-inset"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 text-text-muted hover:text-text-primary"
+              className="absolute right-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] cursor-pointer"
             >
               <X size={13} />
             </button>
@@ -529,200 +525,62 @@ export const ExplorerScreen: React.FC = () => {
       {/* Main Workspace split */}
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* Left Collapsible Directory Tree */}
-        <div className="w-56 border-r border-border-muted/50 bg-surface-card flex flex-col shrink-0 overflow-hidden">
-          <div className="p-2 border-b border-border-muted/40 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-text-muted px-1">Locations</span>
-            <button
-              type="button"
-              onClick={handlePickDirectory}
-              className="text-[11px] px-1.5 py-0.5 rounded bg-app-bg hover:bg-surface-hover text-action-primary hover:underline transition-colors cursor-pointer"
-              title="Open native directory picker"
-            >
-              Browse...
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5 scrollbar-thin text-xs">
-            {/* Quick Access Items */}
-            <div
-              onClick={() => {
-                explorerApi.getDefaultDirectory().then(navigateTo);
-              }}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors ${
-                currentPath.endsWith('40Labs') ? 'bg-action-primary/15 text-action-primary font-medium' : 'hover:bg-surface-hover text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <Folder size={15} className="text-warning shrink-0" />
-              <span className="truncate">40Labs Root</span>
-            </div>
-
-            {/* Subtree node renderer */}
-            {directoryData && (
-              <div className="mt-2 pt-2 border-t border-border-muted/30 space-y-1">
-                <div className="px-2 py-1 flex items-center justify-between text-text-muted font-bold text-[11px] uppercase tracking-wider">
-                  <span>Folder Structure</span>
-                </div>
-                {directoryData.items
-                  .filter((i) => i.is_dir)
-                  .map((sub) => {
-                    const isExp = treeState[sub.path]?.isExpanded;
-                    return (
-                      <div key={sub.path} className="space-y-0.5">
-                        <div
-                          className={`flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-colors text-xs ${
-                            currentPath === sub.path ? 'bg-action-primary/15 text-action-primary font-bold' : 'hover:bg-surface-hover text-text-primary'
-                          }`}
-                          onClick={() => navigateTo(sub.path)}
-                        >
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleTreeNode(sub.path);
-                            }}
-                            className="p-0.5 text-text-muted hover:text-text-primary"
-                          >
-                            {isExp ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                          </button>
-                          <Folder size={14} className="text-warning shrink-0" />
-                          <span className="truncate">{sub.name}</span>
-                        </div>
-
-                        {/* Expanded sub-folders */}
-                        {isExp && treeState[sub.path]?.subdirs && (
-                          <div className="pl-5 space-y-0.5 border-l border-border-muted/30 ml-2">
-                            {treeState[sub.path].subdirs.map((child) => (
-                              <div
-                                key={child.path}
-                                onClick={() => navigateTo(child.path)}
-                                className={`flex items-center gap-1.5 px-2 py-0.5 rounded cursor-pointer text-[11px] ${
-                                  currentPath === child.path ? 'bg-action-primary/15 text-action-primary font-bold' : 'hover:bg-surface-hover text-text-muted hover:text-text-primary'
-                                }`}
-                              >
-                                <Folder size={12} className="text-warning/80 shrink-0" />
-                                <span className="truncate">{child.name}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        </div>
+        <ExplorerSidebarTree
+          currentPath={currentPath}
+          directoryData={directoryData}
+          treeState={treeState}
+          onNavigate={navigateTo}
+          onToggleTreeNode={toggleTreeNode}
+          onPickDirectory={handlePickDirectory}
+          onGetDefaultDirectory={explorerApi.getDefaultDirectory}
+        />
 
         {/* Right Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 bg-app-bg overflow-hidden" onClick={handleClearSelection}>
+        <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-app-bg)] overflow-hidden" onClick={handleClearSelection}>
           {/* Action Toolbar */}
-          <div className="h-10 px-3 border-b border-border-muted/50 bg-surface-card flex items-center justify-between gap-2 shrink-0">
-            <div className="flex items-center gap-1.5">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setModalInput('');
-                  setModalMode('new_folder');
-                }}
-                className="h-7 text-xs flex items-center gap-1.5"
-              >
-                <FolderPlus size={14} className="text-warning" />
-                <span>New Folder</span>
-              </Button>
-
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={selectedPaths.size !== 1}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (selectedItem) {
-                    setTargetItem(selectedItem);
-                    setModalInput(selectedItem.name);
-                    setModalMode('rename');
-                  }
-                }}
-                className="h-7 text-xs flex items-center gap-1.5"
-              >
-                <Edit3 size={14} />
-                <span>Rename</span>
-              </Button>
-
-              <Button
-                size="sm"
-                variant="danger"
-                disabled={selectedPaths.size === 0}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setModalMode('delete_confirm');
-                }}
-                className="h-7 text-xs flex items-center gap-1.5"
-              >
-                <Trash2 size={14} />
-                <span>Delete</span>
-              </Button>
-
-              {selectedItem && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    explorerApi.revealInFileManager(selectedItem.path);
-                  }}
-                  className="h-7 text-xs flex items-center gap-1.5"
-                  title="Reveal in OS File Manager"
-                >
-                  <ExternalLink size={14} />
-                  <span>Reveal</span>
-                </Button>
-              )}
-            </div>
-
-            {/* View Mode & Selection count */}
-            <div className="flex items-center gap-3">
-              {selectedPaths.size > 0 && (
-                <span className="text-xs text-action-primary font-medium">
-                  {selectedPaths.size} item(s) selected
-                </span>
-              )}
-
-              <div className="flex items-center bg-app-bg border border-border-muted rounded-md p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('list')}
-                  className={`p-1 rounded ${viewMode === 'list' ? 'bg-surface-hover text-action-primary' : 'text-text-muted hover:text-text-primary'}`}
-                  title="List View"
-                >
-                  <ListIcon size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1 rounded ${viewMode === 'grid' ? 'bg-surface-hover text-action-primary' : 'text-text-muted hover:text-text-primary'}`}
-                  title="Grid View"
-                >
-                  <GridIcon size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
+          <ExplorerToolbar
+            historyIndex={historyIndex}
+            historyLength={history.length}
+            hasParentPath={!!directoryData?.parent_path}
+            loading={loading}
+            selectedPaths={selectedPaths}
+            selectedItem={selectedItem}
+            viewMode={viewMode}
+            onBack={handleBack}
+            onForward={handleForward}
+            onUp={handleUp}
+            onRefresh={() => loadDirectory(currentPath)}
+            onNewFolder={() => {
+              setModalInput('');
+              setModalMode('new_folder');
+            }}
+            onRename={() => {
+              if (selectedItem) {
+                setTargetItem(selectedItem);
+                setModalInput(selectedItem.name);
+                setModalMode('rename');
+              }
+            }}
+            onDelete={() => setModalMode('delete_confirm')}
+            onReveal={() => {
+              if (selectedItem) explorerApi.revealInFileManager(selectedItem.path);
+            }}
+            onViewModeChange={setViewMode}
+          />
 
           {/* Main List Area */}
-          <div className="flex-1 overflow-y-auto p-3 min-h-0 scrollbar-thin" onContextMenu={(e) => handleContextMenu(e)}>
+          <div className="flex-1 overflow-y-auto p-3.5 min-h-0 custom-scrollbar" onContextMenu={(e) => handleContextMenu(e)}>
             {loading ? (
-              <div className="h-full flex items-center justify-center flex-col gap-2 text-text-muted text-xs">
-                <RotateCw size={24} className="animate-spin text-action-primary" />
+              <div className="h-full flex items-center justify-center flex-col gap-2.5 text-[var(--color-text-muted)] text-xs">
+                <RotateCw size={24} className="animate-spin text-[var(--color-action-primary)]" />
                 <span>Loading directory content...</span>
               </div>
             ) : error ? (
               <div className="h-full flex items-center justify-center flex-col gap-3 p-6 text-center">
-                <AlertTriangle size={32} className="text-danger" />
+                <AlertTriangle size={32} className="text-[var(--color-danger)]" />
                 <div className="space-y-1 max-w-md">
-                  <p className="text-sm font-bold text-text-primary">Unable to Access Folder</p>
-                  <p className="text-xs text-text-muted">{error}</p>
+                  <p className="text-sm font-bold text-[var(--color-text-primary)]">Unable to Access Folder</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{error}</p>
                 </div>
                 <Button
                   size="sm"
@@ -734,9 +592,9 @@ export const ExplorerScreen: React.FC = () => {
                 </Button>
               </div>
             ) : displayedItems.length === 0 ? (
-              <div className="h-full flex items-center justify-center flex-col gap-3 text-text-muted text-xs py-12">
-                <Folder size={40} className="text-text-muted/30" />
-                <p className="font-medium text-text-primary">This folder is empty</p>
+              <div className="h-full flex items-center justify-center flex-col gap-3.5 text-[var(--color-text-muted)] text-xs py-12">
+                <Folder size={44} className="text-[var(--color-text-muted)]/30" />
+                <p className="font-medium text-sm text-[var(--color-text-primary)]">This folder is empty</p>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -752,344 +610,67 @@ export const ExplorerScreen: React.FC = () => {
                 </Button>
               </div>
             ) : viewMode === 'list' ? (
-              /* Table List View */
-              <table className="w-full text-left text-xs border-collapse select-none">
-                <thead>
-                  <tr className="border-b border-border-muted/50 text-text-muted text-[11px] font-bold uppercase tracking-wider h-8">
-                    <th className="w-8 px-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (selectedPaths.size === displayedItems.length) {
-                            handleClearSelection();
-                          } else {
-                            handleSelectAll();
-                          }
-                        }}
-                        className="text-text-muted hover:text-text-primary cursor-pointer"
-                      >
-                        {selectedPaths.size > 0 && selectedPaths.size === displayedItems.length ? (
-                          <CheckSquare size={14} className="text-action-primary" />
-                        ) : (
-                          <Square size={14} />
-                        )}
-                      </button>
-                    </th>
-                    <th
-                      className="px-2 cursor-pointer hover:text-text-primary"
-                      onClick={() => {
-                        if (sortField === 'name') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        else {
-                          setSortField('name');
-                          setSortOrder('asc');
-                        }
-                      }}
-                    >
-                      Name {sortField === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
-                    </th>
-                    <th
-                      className="px-2 w-36 cursor-pointer hover:text-text-primary"
-                      onClick={() => {
-                        if (sortField === 'extension') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        else {
-                          setSortField('extension');
-                          setSortOrder('asc');
-                        }
-                      }}
-                    >
-                      Type {sortField === 'extension' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
-                    </th>
-                    <th
-                      className="px-2 w-28 text-right cursor-pointer hover:text-text-primary"
-                      onClick={() => {
-                        if (sortField === 'size_bytes') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        else {
-                          setSortField('size_bytes');
-                          setSortOrder('asc');
-                        }
-                      }}
-                    >
-                      Size {sortField === 'size_bytes' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
-                    </th>
-                    <th
-                      className="px-2 w-44 text-right cursor-pointer hover:text-text-primary"
-                      onClick={() => {
-                        if (sortField === 'modified_at') setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                        else {
-                          setSortField('modified_at');
-                          setSortOrder('asc');
-                        }
-                      }}
-                    >
-                      Date Modified {sortField === 'modified_at' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-muted/30">
-                  {displayedItems.map((item) => {
-                    const isSelected = selectedPaths.has(item.path);
-                    return (
-                      <tr
-                        key={item.path}
-                        onClick={(e) => handleSelectItem(item, e)}
-                        onDoubleClick={() => handleOpenFile(item)}
-                        onContextMenu={(e) => handleContextMenu(e, item)}
-                        className={`h-9 hover:bg-surface-hover/80 cursor-pointer transition-colors ${
-                          isSelected ? 'bg-action-primary/15 font-medium' : ''
-                        }`}
-                      >
-                        <td className="px-2 text-center" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={(e) => handleSelectItem(item, e)}
-                            className="text-text-muted hover:text-text-primary"
-                          >
-                            {isSelected ? <CheckSquare size={14} className="text-action-primary" /> : <Square size={14} />}
-                          </button>
-                        </td>
-                        <td className="px-2">
-                          <div className="flex items-center gap-2">
-                            {item.is_dir ? <Folder className="text-warning shrink-0" size={18} /> : <FileTypeIcon fileName={item.name} size={18} />}
-                            <span className="truncate">{item.name}</span>
-                          </div>
-                        </td>
-                        <td className="px-2 text-text-muted">{getFileTypeLabel(item)}</td>
-                        <td className="px-2 text-right font-mono text-text-muted">
-                          {item.is_dir ? '—' : formatBytes(item.size_bytes)}
-                        </td>
-                        <td className="px-2 text-right text-text-muted font-mono text-[11px]">
-                          {formatDate(item.modified_at)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <ExplorerListView
+                displayedItems={displayedItems}
+                selectedPaths={selectedPaths}
+                sortField={sortField}
+                sortOrder={sortOrder}
+                onSelectItem={handleSelectItem}
+                onSelectAll={handleSelectAll}
+                onClearSelection={handleClearSelection}
+                onOpenFile={handleOpenFile}
+                onContextMenu={handleContextMenu}
+                onSortChange={handleSortChange}
+                formatBytes={formatBytes}
+                formatDate={formatDate}
+                getFileTypeLabel={getFileTypeLabel}
+              />
             ) : (
-              /* Grid Card View */
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3">
-                {displayedItems.map((item) => {
-                  const isSelected = selectedPaths.has(item.path);
-                  return (
-                    <div
-                      key={item.path}
-                      onClick={(e) => handleSelectItem(item, e)}
-                      onDoubleClick={() => handleOpenFile(item)}
-                      onContextMenu={(e) => handleContextMenu(e, item)}
-                      className={`p-3 rounded-lg border flex flex-col items-center justify-center text-center gap-2 cursor-pointer transition-all ${
-                        isSelected
-                          ? 'border-action-primary bg-action-primary/15 shadow-sm'
-                          : 'border-border-muted/60 bg-surface-card hover:bg-surface-hover hover:border-border-muted'
-                      }`}
-                    >
-                      <div className="p-2 rounded bg-app-bg/50">
-                        {item.is_dir ? (
-                          <Folder size={32} className="text-warning" />
-                        ) : (
-                          <FileTypeIcon fileName={item.name} size={32} />
-                        )}
-                      </div>
-                      <span className="text-xs font-medium truncate w-full px-1">{item.name}</span>
-                      <span className="text-[10px] text-text-muted font-mono">
-                        {item.is_dir ? 'Folder' : formatBytes(item.size_bytes)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+              <ExplorerGridView
+                displayedItems={displayedItems}
+                selectedPaths={selectedPaths}
+                onSelectItem={handleSelectItem}
+                onOpenFile={handleOpenFile}
+                onContextMenu={handleContextMenu}
+                formatBytes={formatBytes}
+              />
             )}
           </div>
         </div>
       </div>
 
       {/* Context Menu Popup */}
-      {contextMenu && (
-        <div
-          style={{ top: contextMenu.y, left: contextMenu.x }}
-          className="fixed z-50 w-48 bg-surface-card border border-border-muted rounded-lg shadow-xl py-1 text-xs text-text-primary animate-in fade-in zoom-in-95 duration-100"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {contextMenu.item ? (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setContextMenu(null);
-                  handleOpenFile(contextMenu.item!);
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-surface-hover flex items-center gap-2 cursor-pointer"
-              >
-                {contextMenu.item.is_dir ? <Folder size={14} /> : <ExternalLink size={14} />}
-                <span>{contextMenu.item.is_dir ? 'Open Folder' : 'Open Preview'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setContextMenu(null);
-                  setTargetItem(contextMenu.item!);
-                  setModalInput(contextMenu.item!.name);
-                  setModalMode('rename');
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-surface-hover flex items-center gap-2 cursor-pointer"
-              >
-                <Edit3 size={14} />
-                <span>Rename</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setContextMenu(null);
-                  explorerApi.revealInFileManager(contextMenu.item!.path);
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-surface-hover flex items-center gap-2 cursor-pointer"
-              >
-                <ExternalLink size={14} />
-                <span>Reveal in File Manager</span>
-              </button>
-              <div className="my-1 border-t border-border-muted/50" />
-              <button
-                type="button"
-                onClick={() => {
-                  setContextMenu(null);
-                  setModalMode('delete_confirm');
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-danger/10 text-danger flex items-center gap-2 cursor-pointer"
-              >
-                <Trash2 size={14} />
-                <span>Delete Permanently</span>
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => {
-                  setContextMenu(null);
-                  setModalInput('');
-                  setModalMode('new_folder');
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-surface-hover flex items-center gap-2 cursor-pointer"
-              >
-                <FolderPlus size={14} className="text-warning" />
-                <span>New Folder</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setContextMenu(null);
-                  loadDirectory(currentPath);
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-surface-hover flex items-center gap-2 cursor-pointer"
-              >
-                <RotateCw size={14} />
-                <span>Refresh Folder</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setContextMenu(null);
-                  handleSelectAll();
-                }}
-                className="w-full text-left px-3 py-1.5 hover:bg-surface-hover flex items-center gap-2 cursor-pointer"
-              >
-                <CheckSquare size={14} />
-                <span>Select All</span>
-              </button>
-            </>
-          )}
-        </div>
-      )}
+      <ExplorerContextMenu
+        contextMenu={contextMenu}
+        onClose={() => setContextMenu(null)}
+        onOpenFile={handleOpenFile}
+        onRename={(item) => {
+          setTargetItem(item);
+          setModalInput(item.name);
+          setModalMode('rename');
+        }}
+        onReveal={(path) => explorerApi.revealInFileManager(path)}
+        onDeleteConfirm={() => setModalMode('delete_confirm')}
+        onNewFolder={() => {
+          setModalInput('');
+          setModalMode('new_folder');
+        }}
+        onRefresh={() => loadDirectory(currentPath)}
+        onSelectAll={handleSelectAll}
+      />
 
-      {/* New Folder Modal */}
-      <Dialog
-        isOpen={modalMode === 'new_folder'}
+      {/* Modals */}
+      <ExplorerModals
+        modalMode={modalMode}
+        modalInput={modalInput}
+        isSubmitting={isSubmitting}
+        selectedCount={selectedPaths.size}
         onClose={() => setModalMode('none')}
-        title="Create New Folder"
-      >
-        <div className="space-y-4 text-xs text-text-primary pt-1">
-          <div className="space-y-1.5">
-            <label className="text-text-muted font-medium">Folder Name</label>
-            <input
-              type="text"
-              autoFocus
-              value={modalInput}
-              onChange={(e) => setModalInput(e.target.value)}
-              placeholder="New Folder"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleCreateFolder();
-              }}
-              className="w-full px-3 py-1.5 bg-app-bg border border-border-muted rounded-md text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-focus-ring"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button size="sm" variant="secondary" onClick={() => setModalMode('none')}>
-              Cancel
-            </Button>
-            <Button size="sm" disabled={!modalInput.trim() || isSubmitting} onClick={handleCreateFolder}>
-              {isSubmitting ? 'Creating...' : 'Create Folder'}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
-
-      {/* Rename Modal */}
-      <Dialog
-        isOpen={modalMode === 'rename'}
-        onClose={() => setModalMode('none')}
-        title="Rename Item"
-      >
-        <div className="space-y-4 text-xs text-text-primary pt-1">
-          <div className="space-y-1.5">
-            <label className="text-text-muted font-medium">New Name</label>
-            <input
-              type="text"
-              autoFocus
-              value={modalInput}
-              onChange={(e) => setModalInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRenameItem();
-              }}
-              className="w-full px-3 py-1.5 bg-app-bg border border-border-muted rounded-md text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-focus-ring"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button size="sm" variant="secondary" onClick={() => setModalMode('none')}>
-              Cancel
-            </Button>
-            <Button size="sm" disabled={!modalInput.trim() || isSubmitting} onClick={handleRenameItem}>
-              {isSubmitting ? 'Renaming...' : 'Save Name'}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
-
-      {/* Delete Confirmation Modal */}
-      <Dialog
-        isOpen={modalMode === 'delete_confirm'}
-        onClose={() => setModalMode('none')}
-        title="Confirm Delete"
-      >
-        <div className="space-y-4 text-xs text-text-primary pt-1">
-          <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg flex items-start gap-3">
-            <AlertTriangle size={20} className="text-danger shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-bold text-danger">Permanent Deletion Warning</p>
-              <p className="text-text-muted">
-                Are you sure you want to delete {selectedPaths.size} selected item(s)? This operation cannot be undone.
-              </p>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button size="sm" variant="secondary" onClick={() => setModalMode('none')}>
-              Cancel
-            </Button>
-            <Button size="sm" variant="danger" disabled={isSubmitting} onClick={handleDeleteItem}>
-              {isSubmitting ? 'Deleting...' : 'Delete Permanently'}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+        onInputChange={setModalInput}
+        onCreateFolder={handleCreateFolder}
+        onRenameItem={handleRenameItem}
+        onDeleteItem={handleDeleteItem}
+      />
     </div>
   );
 };

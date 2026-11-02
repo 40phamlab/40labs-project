@@ -1,0 +1,7 @@
+- `[x]` Step 1: Create ExplorerBreadcrumb.tsx
+- `[x]` Step 2: Create ExplorerToolbar.tsx
+- `[x]` Step 3: Create ExplorerSidebarTree.tsx
+- `[x]` Step 4: Create ExplorerListView.tsx & ExplorerGridView.tsx
+- `[x]` Step 5: Create ExplorerContextMenu.tsx & ExplorerModals.tsx
+- `[x]` Step 6: Refactor ExplorerScreen.tsx to compose all modular components with 40Labs design tokens & tactile elevation
+- `[x]` Step 7: Run vitest / unit tests (`ExplorerScreen.test.tsx`) to verify correctness
