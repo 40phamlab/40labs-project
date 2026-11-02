@@ -1,34 +1,35 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Sora, Inter, JetBrains_Mono } from "next/font/google";
+import { Sora, Inter, JetBrains_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { darkTokens } from "@40labs/design-tokens";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const display = Sora({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["600", "700"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const sora = Sora({
-  variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-});
-
-const inter = Inter({
-  variable: "--font-ui",
+const sans = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const mono = JetBrains_Mono({
   variable: "--font-mono",
   subsets: ["latin"],
-  weight: ["400", "600"],
+  weight: ["500"],
+  display: "swap",
+});
+
+const accent = Instrument_Serif({
+  variable: "--font-accent",
+  subsets: ["latin"],
+  weight: "400",
+  style: "italic",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -44,7 +45,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${display.variable} ${sans.variable} ${mono.variable} ${accent.variable} h-full antialiased`}
       style={{ backgroundColor: darkTokens.colors.bg }}
     >
       <body

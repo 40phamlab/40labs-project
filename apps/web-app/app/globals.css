@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @import "@40labs/design-tokens/tokens.css";
 
+@theme {
+  --font-display: var(--font-display), "Sora", sans-serif;
+  --font-sans: var(--font-sans), "Inter", sans-serif;
+  --font-mono: var(--font-mono), "JetBrains Mono", monospace;
+  --font-accent: var(--font-accent), "Instrument Serif", serif;
+  --font-heading: var(--font-display);
+  --font-ui: var(--font-sans);
+}
+
 /* ==========================================================================
    40Labs Public Website — Visual & Structural Foundation
    ================================================================---------- */

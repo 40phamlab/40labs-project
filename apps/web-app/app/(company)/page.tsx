@@ -9,38 +9,40 @@ export default function CompanyLandingPage() {
     <div className="flex flex-col w-full text-[#F8FAFB]">
 
       {/* 1. HERO SECTION */}
-      <section data-scene-step className="w-full max-w-7xl mx-auto px-6 sm:px-8 pt-24 sm:pt-36 pb-20 flex flex-col items-center text-center gap-8 relative z-10">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-sm">
-          <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
-          <span className="text-xs font-semibold uppercase tracking-wider text-gray-300">
-            Biomedical Science &amp; Digital Healthcare Platform
-          </span>
-        </div>
+      <section data-scene-step className="w-full max-w-7xl mx-auto px-6 sm:px-8 pt-24 sm:pt-36 pb-20 flex flex-col items-start text-left gap-8 relative z-10 bg-gradient-to-r from-[#0b0f0e]/90 via-[#0b0f0e]/60 to-transparent min-h-[85vh] justify-center">
+        <div className="w-full lg:max-w-[58%] flex flex-col items-start gap-8">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-[#16A34A] animate-pulse" />
+            <span className="text-xs font-medium uppercase tracking-wider text-gray-300 font-mono">
+              Biomedical Science &amp; Digital Healthcare Platform
+            </span>
+          </div>
 
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-heading font-bold tracking-tight max-w-4xl leading-[1.08]">
-          Advancing Biomedical Science &amp; Clinical Infrastructure
-        </h1>
+          <h1 className="font-display font-bold tracking-tight text-[clamp(2.5rem,5.2vw,4.75rem)] leading-[1.05] tracking-[-0.02em] text-[#F8FAFB]">
+            Advancing Biomedical Science &amp; <span className="font-accent italic font-normal text-[#16A34A]">Clinical</span> Infrastructure
+          </h1>
 
-        <p className="text-lg sm:text-xl text-gray-300 max-w-2xl leading-relaxed font-normal">
-          40Labs builds foundational digital operating systems, diagnostic workflows, and genomic sequencing platforms for clinical networks and researchers across East Africa.
-        </p>
+          <p className="text-lg sm:text-xl text-gray-300 leading-relaxed font-normal font-sans">
+            40Labs builds foundational digital operating systems, diagnostic workflows, and genomic sequencing platforms for clinical networks and researchers across East Africa.
+          </p>
 
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-          <Link
-            href="/products"
-            className="px-8 py-4 rounded-full text-sm font-bold bg-[#16A34A] text-white hover:bg-[#12803b] transition-transform active:scale-95 shadow-lg inline-flex items-center gap-2"
-            style={{ borderRadius: '9999px' }}
-          >
-            <span>Explore Products</span>
-            <ArrowRight size={16} />
-          </Link>
-          <Link
-            href="/about"
-            className="px-8 py-4 rounded-full text-sm font-bold bg-white/10 text-white hover:bg-white/20 transition-transform active:scale-95 border border-white/10 backdrop-blur-md"
-            style={{ borderRadius: '9999px' }}
-          >
-            <span>About Our Mission</span>
-          </Link>
+          <div className="flex flex-wrap items-center justify-start gap-4 pt-4">
+            <Link
+              href="/products"
+              className="px-8 py-4 rounded-full text-sm font-bold bg-[#16A34A] text-white hover:bg-[#12803b] transition-transform active:scale-95 shadow-lg inline-flex items-center gap-2 font-sans"
+              style={{ borderRadius: '9999px' }}
+            >
+              <span>Explore Products</span>
+              <ArrowRight size={16} />
+            </Link>
+            <Link
+              href="/about"
+              className="px-8 py-4 rounded-full text-sm font-bold bg-white/10 text-white hover:bg-white/20 transition-transform active:scale-95 border border-white/10 backdrop-blur-md font-sans"
+              style={{ borderRadius: '9999px' }}
+            >
+              <span>About Our Mission</span>
+            </Link>
+          </div>
         </div>
       </section>
 
