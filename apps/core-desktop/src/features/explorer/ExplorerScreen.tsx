@@ -598,15 +598,15 @@ export const ExplorerScreen: React.FC = () => {
                 <Button
                   size="sm"
                   variant="secondary"
+                  leftIcon={<FolderPlus size={14} />}
                   onClick={(e) => {
                     e.stopPropagation();
                     setModalInput('');
                     setModalMode('new_folder');
                   }}
-                  className="flex items-center gap-1.5"
+                  className="elevation-raised"
                 >
-                  <FolderPlus size={14} />
-                  <span>Create New Subfolder</span>
+                  Create New Subfolder
                 </Button>
               </div>
             ) : viewMode === 'list' ? (
