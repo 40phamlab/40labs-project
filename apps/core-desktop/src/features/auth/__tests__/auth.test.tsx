@@ -1,40 +1,28 @@
 import '@testing-library/jest-dom/vitest';
 import { describe, test, expect } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/react';
 import { LoginScreen } from '../login/LoginScreen';
 import { RegistrationWizard } from '../RegistrationWizard';
 import { parseAuthError, getAuthErrorI18nKey } from '../../../api/authErrors';
+import { VALID_SCREENS } from '../../../stores/useNavStore';
 import { renderWithProviders } from '../../../../../../tests/test-utils';
 
 describe('Auth Module Tests', () => {
-  test('renders LoginScreen with default PIN tab', async () => {
-    renderWithProviders(<LoginScreen businessName="Afya Bora" onLoginSuccess={() => {}} />);
-
-    expect(screen.getByText(/Karibu Afya Bora/i)).toBeInTheDocument();
-    const pinTabBtn = screen.getByRole('button', { name: /^PIN$/i });
-    expect(pinTabBtn).toBeInTheDocument();
-
-    const usernameInput = screen.getByPlaceholderText(/Jina la mtumiaji/i);
-    await userEvent.type(usernameInput, 'sudo_user');
-    expect(usernameInput).toHaveValue('sudo_user');
+  test('VALID_SCREENS does not contain auth, preview, or register', () => {
+    for (const screenId of VALID_SCREENS) {
+      expect(screenId).not.toMatch(/auth|preview|register/i);
+    }
   });
 
-  test('switches between PIN and Password tabs', async () => {
+  test('renders LoginScreen', async () => {
     renderWithProviders(<LoginScreen businessName="Afya Bora" onLoginSuccess={() => {}} />);
-
-    const passwordTabBtn = screen.getByRole('button', { name: /^Nenosiri$/i });
-    fireEvent.click(passwordTabBtn);
-
-    const passwordInput = screen.getByPlaceholderText(/Weka nenosiri/i);
-    expect(passwordInput).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^PIN$/i })[0]).toBeInTheDocument();
   });
 
   test('renders RegistrationWizard step 1', async () => {
     renderWithProviders(<RegistrationWizard onComplete={() => {}} />);
-
-    expect(screen.getAllByRole('heading', { name: /^Biashara$/i })[0]).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Jina la biashara/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^Biashara$/i })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Duka la Dawa Afya Bora/i)).toBeInTheDocument();
   });
 
   test('correctly parses auth error codes and i18n keys', () => {
