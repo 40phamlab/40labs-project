@@ -1,16 +1,14 @@
-import React from 'react';
+"use client";
+
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { getCompanyNavItems } from '@/mock-data/navigation';
+import { ChevronDown } from 'lucide-react';
+import { getCompanyNavItems, isNavActive } from '@/mock-data/navigation';
 import { darkTokens } from '@40labs/design-tokens';
+import { NavMegaMenu } from '@/components/nav/NavMegaMenu';
 
-export function isNavActive(pathname: string | null, href: string): boolean {
-  if (!pathname) return false;
-  if (href === '/') {
-    return pathname === '/';
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+export { isNavActive };
 
 interface NavLinksProps {
   onNavigate?: () => void;
@@ -20,6 +18,51 @@ interface NavLinksProps {
 export function NavLinks({ onNavigate, mobile = false }: NavLinksProps) {
   const pathname = usePathname();
   const items = getCompanyNavItems();
+  const [productsOpen, setProductsOpen] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Close on route change
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    if (productsOpen) {
+      setProductsOpen(false);
+    }
+  }
+
+  const handleMouseEnter = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (min-width: 1024px)').matches) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+      setProductsOpen(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (min-width: 1024px)').matches) {
+      timeoutRef.current = setTimeout(() => {
+        setProductsOpen(false);
+      }, 150);
+    }
+  };
+
+  const handleTriggerClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setProductsOpen((prev) => !prev);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      setProductsOpen(true);
+    } else if (e.key === 'Escape') {
+      setProductsOpen(false);
+      triggerRef.current?.focus();
+    }
+  };
 
   if (mobile) {
     return (
@@ -46,9 +89,45 @@ export function NavLinks({ onNavigate, mobile = false }: NavLinksProps) {
   }
 
   return (
-    <nav className="hidden md:flex items-center gap-8 ml-8">
+    <nav className="hidden md:flex items-center gap-6 ml-8 relative" onMouseLeave={handleMouseLeave}>
       {items.map((item) => {
         const active = isNavActive(pathname, item.href);
+        const isProducts = item.key === 'products';
+
+        if (isProducts) {
+          return (
+            <div
+              key={item.key}
+              className="relative py-2"
+              onMouseEnter={handleMouseEnter}
+            >
+              <button
+                ref={triggerRef}
+                id="products-nav-trigger"
+                onClick={handleTriggerClick}
+                onKeyDown={handleKeyDown}
+                aria-expanded={productsOpen}
+                aria-controls="products-mega-menu"
+                className={`text-sm font-medium transition-colors duration-200 hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] rounded-lg px-2.5 py-1.5 outline-none inline-flex items-center gap-1.5 ${
+                  productsOpen ? 'bg-white/5 text-white' : ''
+                }`}
+                style={{
+                  color: active || productsOpen ? darkTokens.colors.accent : darkTokens.colors.textMuted,
+                  fontWeight: active ? 600 : 500,
+                }}
+              >
+                <span>{item.label}</span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform duration-200 ${productsOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              <NavMegaMenu isOpen={productsOpen} onClose={() => setProductsOpen(false)} />
+            </div>
+          );
+        }
+
         return (
           <Link
             key={item.href}
