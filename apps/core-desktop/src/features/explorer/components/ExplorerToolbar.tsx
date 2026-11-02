@@ -50,57 +50,57 @@ export const ExplorerToolbar: React.FC<ExplorerToolbarProps> = ({
         <Button
           size="sm"
           variant="secondary"
+          leftIcon={<FolderPlus size={14} className="text-[var(--color-warning)]" />}
           onClick={(e) => {
             e.stopPropagation();
             onNewFolder();
           }}
-          className="h-7 text-xs flex items-center gap-1.5 elevation-raised hover:bg-[var(--color-surface-hover)] active:bg-[var(--color-surface-active)]"
+          className="h-7 text-xs elevation-raised hover:bg-[var(--color-surface-hover)] active:bg-[var(--color-surface-active)]"
         >
-          <FolderPlus size={14} className="text-[var(--color-warning)]" />
-          <span>New Folder</span>
+          New Folder
         </Button>
 
         <Button
           size="sm"
           variant="secondary"
           disabled={selectedPaths.size !== 1}
+          leftIcon={<Edit3 size={14} />}
           onClick={(e) => {
             e.stopPropagation();
             onRename();
           }}
-          className="h-7 text-xs flex items-center gap-1.5 elevation-raised disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:bg-[var(--color-surface-hover)]"
+          className="h-7 text-xs elevation-raised disabled:opacity-40 disabled:cursor-not-allowed hover:enabled:bg-[var(--color-surface-hover)]"
         >
-          <Edit3 size={14} />
-          <span>Rename</span>
+          Rename
         </Button>
 
         <Button
           size="sm"
           variant="danger"
           disabled={selectedPaths.size === 0}
+          leftIcon={<Trash2 size={14} />}
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
-          className="h-7 text-xs flex items-center gap-1.5 elevation-raised disabled:opacity-40 disabled:cursor-not-allowed"
+          className="h-7 text-xs elevation-raised disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Trash2 size={14} />
-          <span>Delete</span>
+          Delete
         </Button>
 
         {selectedItem && (
           <Button
             size="sm"
             variant="secondary"
+            leftIcon={<ExternalLink size={14} />}
             onClick={(e) => {
               e.stopPropagation();
               onReveal();
             }}
-            className="h-7 text-xs flex items-center gap-1.5 elevation-raised hover:bg-[var(--color-surface-hover)]"
+            className="h-7 text-xs elevation-raised hover:bg-[var(--color-surface-hover)]"
             title="Reveal in OS File Manager"
           >
-            <ExternalLink size={14} />
-            <span>Reveal</span>
+            Reveal
           </Button>
         )}
       </div>
