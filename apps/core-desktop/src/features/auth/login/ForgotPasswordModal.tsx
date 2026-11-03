@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Modal, Button, Input, PasswordInput } from '@40labs/ui-components';
 import { authApi } from '../../../api/authApi';
+import { PinOtpInput } from '../components/PinOtpInput';
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -9,9 +10,10 @@ interface ForgotPasswordModalProps {
 }
 
 export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const [tab, setTab] = React.useState<'withCode' | 'noCode'>('withCode');
+  const [tab, setTab] = React.useState<'withCode' | 'totp' | 'noCode'>('withCode');
   const [username, setUsername] = React.useState('');
   const [recoveryCode, setRecoveryCode] = React.useState('');
+  const [totpCode, setTotpCode] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [loading, setLoading] = React.useState(false);
@@ -21,6 +23,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
     if (!isOpen) {
       setUsername('');
       setRecoveryCode('');
+      setTotpCode('');
       setNewPassword('');
       setConfirmPassword('');
       setError(null);
@@ -37,7 +40,16 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
     setLoading(true);
     setError(null);
     try {
-      await authApi.recoveryRedeem(username.trim().toLowerCase(), recoveryCode.trim(), newPassword);
+      if (tab === 'withCode') {
+        await authApi.recoveryRedeem(username.trim().toLowerCase(), recoveryCode.trim(), newPassword);
+      } else {
+        if (totpCode.length !== 6) {
+          setError('Tafadhali weka msimbo sahihi wa tarakimu 6 kutoka kwenye programu ya uthibitishaji.');
+          setLoading(false);
+          return;
+        }
+        await authApi.recoveryRedeemTotp(username.trim().toLowerCase(), totpCode.trim(), newPassword);
+      }
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -50,20 +62,29 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Kurejesha Nenosiri" size="sm">
       <div className="space-y-6">
-        <div className="flex border-b border-border">
+        <div className="flex border-b border-border text-xs">
           <button
             type="button"
-            className={`flex-1 pb-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'withCode' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
+            className={`flex-1 pb-2 font-medium border-b-2 transition-colors ${
+              tab === 'withCode' ? 'border-primary text-primary font-bold' : 'border-transparent text-muted-foreground'
             }`}
             onClick={() => setTab('withCode')}
           >
-            Nina msimbo wa kurejesha
+            Recovery Code
           </button>
           <button
             type="button"
-            className={`flex-1 pb-2 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'noCode' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'
+            className={`flex-1 pb-2 font-medium border-b-2 transition-colors ${
+              tab === 'totp' ? 'border-primary text-primary font-bold' : 'border-transparent text-muted-foreground'
+            }`}
+            onClick={() => setTab('totp')}
+          >
+            Authenticator App
+          </button>
+          <button
+            type="button"
+            className={`flex-1 pb-2 font-medium border-b-2 transition-colors ${
+              tab === 'noCode' ? 'border-primary text-primary font-bold' : 'border-transparent text-muted-foreground'
             }`}
             onClick={() => setTab('noCode')}
           >
@@ -72,12 +93,12 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
         </div>
 
         {error && (
-          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-lg text-center">
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-lg text-center font-medium">
             {error}
           </div>
         )}
 
-        {tab === 'withCode' ? (
+        {tab === 'withCode' || tab === 'totp' ? (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Jina la mtumiaji</label>
@@ -88,16 +109,29 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
                 required
               />
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground block mb-1">Msimbo wa kurejesha (Recovery Code)</label>
-              <Input
-                value={recoveryCode}
-                onChange={(e: any) => setRecoveryCode(e.target.value)}
-                placeholder="XXXXX-XXXXX"
-                className="font-mono uppercase"
-                required
-              />
-            </div>
+
+            {tab === 'withCode' ? (
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">Msimbo wa kurejesha (Recovery Code)</label>
+                <Input
+                  value={recoveryCode}
+                  onChange={(e: any) => setRecoveryCode(e.target.value)}
+                  placeholder="XXXXX-XXXXX"
+                  className="font-mono uppercase"
+                  required
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="text-sm font-medium text-foreground block mb-1">Msimbo wa Authenticator (Tarakimu 6)</label>
+                <PinOtpInput
+                  value={totpCode}
+                  onChange={setTotpCode}
+                  onComplete={(c) => setTotpCode(c)}
+                />
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium text-foreground block mb-1">Nenosiri jipya</label>
               <PasswordInput
@@ -118,7 +152,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
               <Button type="button" intent="neutral" onClick={onClose}>
                 Ghairi
               </Button>
-              <Button type="submit" disabled={loading || !username || !recoveryCode || !newPassword || !confirmPassword}>
+              <Button type="submit" disabled={loading || !username || (tab === 'withCode' && !recoveryCode) || (tab === 'totp' && totpCode.length !== 6) || !newPassword || !confirmPassword}>
                 {loading ? 'Inatuma...' : 'Rejesha Akaunti'}
               </Button>
             </div>
@@ -126,7 +160,7 @@ export const ForgotPasswordModal: React.FC<ForgotPasswordModalProps> = ({ isOpen
         ) : (
           <div className="space-y-4 py-4 text-center">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Tafadhali wasiliana na msimamizi wa biashara (SUDO) ili kupata nsimbo mpya wa kurejesha au kuweka upya siri yako.
+              Tafadhali wasiliana na msimamizi wa biashara (SUDO) ili kupata msimbo mpya wa kurejesha au kuweka upya siri yako.
             </p>
             <div className="flex justify-end pt-4">
               <Button onClick={onClose}>Funga</Button>

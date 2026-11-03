@@ -7,6 +7,7 @@ import { parseAuthError } from '../../../api/authErrors';
 import { ForgotPasswordModal } from './ForgotPasswordModal';
 import { ThemeLogo } from '../../../components/brand';
 import { PinField } from '../pin/PinField';
+import { PinOtpInput } from '../components/PinOtpInput';
 import { useLanguageStore } from '../../../stores/useLanguageStore';
 
 interface LoginScreenProps {
@@ -29,6 +30,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
   });
   const [password, setPassword] = React.useState('');
   const [pin, setPin] = React.useState('');
+  const [totpPendingToken, setTotpPendingToken] = React.useState<string | null>(null);
+  const [totpCode, setTotpCode] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [errorCode, setErrorCode] = React.useState<string | null>(null);
   const [retryAfterSecs, setRetryAfterSecs] = React.useState<number | null>(null);
@@ -56,7 +59,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
     };
   }, [businessLogo]);
 
-  // Countdown timer for LOCKED error
   React.useEffect(() => {
     if (retryAfterSecs !== null && retryAfterSecs > 0) {
       const timer = setInterval(() => {
@@ -83,12 +85,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
       onLoginSuccess();
     } catch (err: any) {
       const parsed = parseAuthError(err);
-      if (parsed.code === 'PASSWORD_REQUIRED') {
+      const errObj = err as Record<string, unknown>;
+      const pendingToken = typeof errObj.pendingToken === 'string' ? errObj.pendingToken : null;
+
+      if (parsed.code === 'TOTP_REQUIRED' || pendingToken) {
+        setTotpPendingToken(pendingToken || 'pending_token');
+        setErrorCode('TOTP_REQUIRED');
+      } else if (parsed.code === 'PASSWORD_REQUIRED') {
         setMode('password');
         setErrorCode('PASSWORD_REQUIRED');
       } else {
         setErrorCode(parsed.code);
       }
+
       if (parsed.retryAfterSecs) {
         setRetryAfterSecs(parsed.retryAfterSecs);
         if (parsed.retryAfterSecs > 900) {
@@ -97,6 +106,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
       } else if (parsed.code === 'LOCKED') {
         setIsHardLocked(true);
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTotpComplete = async (code: string) => {
+    if (!totpPendingToken || code.length !== 6) return;
+    setLoading(true);
+    setErrorCode(null);
+    try {
+      await authApi.loginTotp(totpPendingToken, code);
+      onLoginSuccess();
+    } catch (err: any) {
+      const parsed = parseAuthError(err);
+      setErrorCode(parsed.code);
+      setTotpCode('');
     } finally {
       setLoading(false);
     }
@@ -187,33 +212,34 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
             </div>
           </div>
 
-          {/* Segmented Control: PIN | Password */}
-          <div className="flex rounded-lg bg-surface-secondary p-1 border border-border">
-            <button
-              type="button"
-              className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                mode === 'pin' ? 'bg-surface-elevated text-text-primary shadow-xs' : 'text-text-muted hover:text-text-primary'
-              }`}
-              onClick={() => {
-                setMode('pin');
-                setErrorCode(null);
-              }}
-            >
-              PIN
-            </button>
-            <button
-              type="button"
-              className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
-                mode === 'password' ? 'bg-surface-elevated text-text-primary shadow-xs' : 'text-text-muted hover:text-text-primary'
-              }`}
-              onClick={() => {
-                setMode('password');
-                setErrorCode(null);
-              }}
-            >
-              {isSwahili ? 'Nenosiri' : 'Password'}
-            </button>
-          </div>
+          {!totpPendingToken && (
+            <div className="flex rounded-lg bg-surface-secondary p-1 border border-border">
+              <button
+                type="button"
+                className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                  mode === 'pin' ? 'bg-surface-elevated text-text-primary shadow-xs' : 'text-text-muted hover:text-text-primary'
+                }`}
+                onClick={() => {
+                  setMode('pin');
+                  setErrorCode(null);
+                }}
+              >
+                PIN
+              </button>
+              <button
+                type="button"
+                className={`flex-1 py-2 text-xs font-semibold rounded-md transition-colors cursor-pointer ${
+                  mode === 'password' ? 'bg-surface-elevated text-text-primary shadow-xs' : 'text-text-muted hover:text-text-primary'
+                }`}
+                onClick={() => {
+                  setMode('password');
+                  setErrorCode(null);
+                }}
+              >
+                {isSwahili ? 'Nenosiri' : 'Password'}
+              </button>
+            </div>
+          )}
 
           {isHardLocked && (
             <div className="bg-danger/10 border border-danger/30 text-danger text-xs p-3 rounded-card flex items-start space-x-2">
@@ -228,11 +254,39 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
                 ? `Akaunti imefungwa kwa muda. Jaribu tena baada ya sekunde ${retryAfterSecs}.`
                 : errorCode === 'PASSWORD_REQUIRED'
                 ? (isSwahili ? 'Nenosiri linahitajika kwa sababu mabadiliko ya usalama yametokea.' : 'Password required due to security update.')
+                : errorCode === 'TOTP_REQUIRED'
+                ? 'Please enter the 6-digit code from your Authenticator app.'
                 : (isSwahili ? 'Jina la mtumiaji au PIN si sahihi.' : 'Invalid username or PIN/password.')}
             </div>
           )}
 
-          {mode === 'pin' ? (
+          {totpPendingToken ? (
+            <div className="space-y-4 text-center py-4">
+              <div>
+                <h3 className="text-sm font-bold text-text-primary">Two-Factor Authentication (2FA)</h3>
+                <p className="text-xs text-text-muted mt-1">
+                  Enter the 6-digit code from your authenticator app.
+                </p>
+              </div>
+              <div className="pt-2">
+                <PinOtpInput
+                  value={totpCode}
+                  onChange={setTotpCode}
+                  onComplete={handleTotpComplete}
+                  error={!!errorCode}
+                />
+              </div>
+              <Button
+                intent="primary"
+                size="md"
+                className="w-full mt-2"
+                disabled={totpCode.length !== 6 || loading}
+                onClick={() => handleTotpComplete(totpCode)}
+              >
+                {loading ? 'Verifying...' : 'Verify Code'}
+              </Button>
+            </div>
+          ) : mode === 'pin' ? (
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-semibold text-text-primary block mb-1">
@@ -248,27 +302,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-text-primary">PIN</label>
+                  <label className="text-xs font-semibold text-text-primary">
+                    {isSwahili ? 'Weka PIN ya tarakimu 6' : 'Enter 6-Digit PIN'}
+                  </label>
                   <button
                     type="button"
+                    onClick={() => setForgotModalOpen(true)}
                     className="text-xs text-primary hover:underline font-medium cursor-pointer"
-                    onClick={() => setMode('password')}
                   >
-                    {isSwahili ? 'Umesahau PIN?' : 'Forgot PIN?'}
+                    {isSwahili ? 'Umesahau nenosiri?' : 'Forgot password?'}
                   </button>
                 </div>
                 <PinField
                   value={pin}
                   onChange={setPin}
                   onComplete={handlePinComplete}
-                  error={Boolean(errorCode)}
+                  error={!!errorCode}
                 />
               </div>
-              {loading && (
-                <div className="text-center text-xs text-text-muted animate-pulse pt-2">
-                  {isSwahili ? 'Inaingia...' : 'Logging in...'}
-                </div>
-              )}
             </div>
           ) : (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
@@ -282,6 +333,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
                   onChange={(e: any) => setUsername(e.target.value)}
                   placeholder={isSwahili ? 'Weka jina la mtumiaji' : 'Username'}
                   disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+                  required
                 />
               </div>
               <div>
@@ -291,8 +343,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
                   </label>
                   <button
                     type="button"
-                    className="text-xs text-primary hover:underline font-medium cursor-pointer"
                     onClick={() => setForgotModalOpen(true)}
+                    className="text-xs text-primary hover:underline font-medium cursor-pointer"
                   >
                     {isSwahili ? 'Umesahau nenosiri?' : 'Forgot password?'}
                   </button>
@@ -301,16 +353,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ businessName, business
                   autoComplete="current-password"
                   value={password}
                   onChange={(e: any) => setPassword(e.target.value)}
-                  placeholder={isSwahili ? 'Weka nenosiri' : 'Password'}
+                  placeholder={isSwahili ? 'Weka nenosiri' : 'Enter password'}
                   disabled={isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
+                  required
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full py-2.5 cursor-pointer"
+                intent="primary"
+                size="md"
+                className="w-full"
                 disabled={loading || !username || !password || isHardLocked || (retryAfterSecs !== null && retryAfterSecs > 0)}
               >
-                {loading ? (isSwahili ? 'Inaingia...' : 'Logging in...') : retryAfterSecs ? `Subiri (${retryAfterSecs}s)` : (isSwahili ? 'Ingia' : 'Login')}
+                {loading ? (isSwahili ? 'Inaingia...' : 'Signing in...') : (isSwahili ? 'Ingia' : 'Sign In')}
               </Button>
             </form>
           )}

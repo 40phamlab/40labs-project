@@ -15,6 +15,7 @@ pub mod purchases_cmd;
 pub mod registration_cmd;
 pub mod sales_cmd;
 pub mod system_cmd;
+pub mod totp_cmd;
 pub mod user_cmd;
 pub mod workflow_cmd;
 
@@ -28,6 +29,8 @@ mod tests {
             "auth_status",
             "auth_login",
             "auth_login_pin",
+            "auth_login_totp",
+            "recovery_redeem_totp",
             "auth_logout",
             "auth_lock",
             "auth_unlock_pin",
@@ -37,6 +40,10 @@ mod tests {
             "auth_change_password",
             "auth_change_pin",
             "auth_reset_own_pin",
+            "auth_totp_begin",
+            "auth_totp_confirm",
+            "auth_totp_disable",
+            "auth_totp_status",
             "user_list",
             "user_create",
             "user_update",

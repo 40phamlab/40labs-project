@@ -3,7 +3,8 @@ use std::sync::Arc;
 use zeroize::Zeroizing;
 
 use crate::auth::error::AuthError;
-use crate::auth::session::{ApproverInfo, AuthState, Session, StepUpGrant};
+use crate::auth::session::{ApproverInfo, AuthState, Session, StepUpGrant, PendingTotp};
+use crate::auth::totp;
 use crate::models::audit::{AuditAction, AuditLogEntry};
 use crate::models::auth::{AppUser, RecoveryCode};
 use crate::models::business::OnboardingState;
@@ -350,6 +351,29 @@ impl AuthEngine {
             UserRepository::update_last_login(&mut *tx, &u.id, &now_iso)
                 .await
                 .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+            let totp_rec = crate::repositories::totp_repo::TotpRepository::get_by_user_id(&self.pool, &u.id)
+                .await
+                .ok()
+                .flatten();
+            if let Some(tr) = totp_rec {
+                if tr.enabled_at.is_some() {
+                    let pending_token = format!("totp_{}", uuid::Uuid::new_v4());
+                    let expires_at = now + 300;
+                    let mut pending = self.state.pending_totps.write().await;
+                    pending.insert(
+                        pending_token.clone(),
+                        PendingTotp {
+                            user_id: u.id.clone(),
+                            expires_at,
+                        },
+                    );
+                    tx.commit()
+                        .await
+                        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                    return Err(AuthError::TotpRequired);
+                }
+            }
 
             let audit = AuditLogEntry {
                 id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
@@ -1549,6 +1573,164 @@ impl AuthEngine {
             .collect();
 
         Ok(approvers)
+    }
+
+    pub async fn login_totp(&self, pending_token: &str, code: &str) -> Result<(), AuthError> {
+        let mut pending_guard = self.state.pending_totps.write().await;
+        let pending = pending_guard.remove(pending_token).ok_or(AuthError::InvalidCredentials { retry_after_secs: None })?;
+        let now = self.state.clock.now_secs();
+        if now > pending.expires_at {
+            return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+        }
+        drop(pending_guard);
+
+        let user = UserRepository::get_by_id(&self.pool, &pending.user_id)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?
+            .ok_or_else(|| AuthError::InvalidCredentials { retry_after_secs: None })?;
+
+        let totp_rec = crate::repositories::totp_repo::TotpRepository::get_by_user_id(&self.pool, &pending.user_id)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?
+            .ok_or_else(|| AuthError::InvalidCredentials { retry_after_secs: None })?;
+
+        let encryption_key = self.keystore.derive_key(b"totp_secret_v1");
+        let secret_base32 = totp::decrypt_secret(&totp_rec.secret_enc, &encryption_key)
+            .map_err(|e| AuthError::InternalError(e))?;
+
+        let step = totp::verify_totp(&secret_base32, code, totp_rec.last_used_step as u64)
+            .map_err(|_| AuthError::InvalidCredentials { retry_after_secs: None })?;
+
+        let now_iso = self.state.clock.now_iso();
+        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        crate::repositories::totp_repo::TotpRepository::update_last_used_step(&self.pool, &pending.user_id, step, &now_iso)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        let audit = AuditLogEntry {
+            id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+            workspace_id: user.workspace_id.clone(),
+            branch_id: user.branch_id.clone(),
+            action: AuditAction::LoginSuccess.as_str().to_string(),
+            performed_by_user_id: Some(user.id.clone()),
+            target_entity_type: "AppUser".to_string(),
+            target_entity_id: user.id.clone(),
+            metadata: Some(serde_json::json!({ "reason": "login_success", "method": "totp" }).to_string()),
+            created_at: now_iso.clone(),
+        };
+        audit::append(&mut tx, &audit)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        let mut session_guard = self.state.session.write().await;
+        *session_guard = Some(Session {
+            user_id: user.id.clone(),
+            workspace_id: user.workspace_id.clone(),
+            branch_id: user.branch_id.clone(),
+            role: user.role.clone(),
+            started_at: now,
+            last_activity: now,
+            locked: false,
+        });
+
+        Ok(())
+    }
+
+    pub async fn recovery_redeem_totp(
+        &self,
+        username: &str,
+        code: &str,
+        new_password: &str,
+    ) -> Result<(), AuthError> {
+        let norm_username = username.trim().to_lowercase();
+        let user = UserRepository::get_by_username(&self.pool, &norm_username)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        let now_iso = self.state.clock.now_iso();
+        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        if let Some(u) = user {
+            let totp_rec = crate::repositories::totp_repo::TotpRepository::get_by_user_id(&self.pool, &u.id)
+                .await
+                .ok()
+                .flatten();
+
+            if let Some(tr) = totp_rec {
+                if tr.enabled_at.is_some() {
+                    let encryption_key = self.keystore.derive_key(b"totp_secret_v1");
+                    if let Ok(secret_base32) = totp::decrypt_secret(&tr.secret_enc, &encryption_key) {
+                        if let Ok(step) = totp::verify_totp(&secret_base32, code, tr.last_used_step as u64) {
+                            crate::repositories::totp_repo::TotpRepository::update_last_used_step(&self.pool, &u.id, step, &now_iso)
+                                .await
+                                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                            crate::security::policy::validate_password(new_password, &u.username)
+                                .map_err(|e| AuthError::PolicyViolation(e.to_string()))?;
+                            let password_hash = hashing::hash_password(new_password)
+                                .map_err(|e| AuthError::InternalError(e.to_string()))?;
+
+                            let audit = AuditLogEntry {
+                                id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                                workspace_id: u.workspace_id.clone(),
+                                branch_id: u.branch_id.clone(),
+                                action: AuditAction::PasswordChange.as_str().to_string(),
+                                performed_by_user_id: Some(u.id.clone()),
+                                target_entity_type: "AppUser".to_string(),
+                                target_entity_id: u.id.clone(),
+                                metadata: Some(serde_json::json!({ "reason": "totp_password_reset" }).to_string()),
+                                created_at: now_iso.clone(),
+                            };
+                            audit::append(&mut tx, &audit)
+                                .await
+                                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                            sqlx::query(
+                                "UPDATE user_credential SET password_hash = ?, password_changed_at = ?, updated_at = ? WHERE user_id = ?"
+                            )
+                            .bind(&password_hash)
+                            .bind(&now_iso)
+                            .bind(&now_iso)
+                            .bind(&u.id)
+                            .execute(&mut *tx)
+                            .await
+                            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                            sqlx::query(
+                                "UPDATE app_user SET must_change_credentials = 0, updated_at = ? WHERE id = ?"
+                            )
+                            .bind(&now_iso)
+                            .bind(&u.id)
+                            .execute(&mut *tx)
+                            .await
+                            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                            tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+        }
+
+        let _ = hashing::hash_password("dummy_password");
+        let audit = AuditLogEntry {
+            id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+            workspace_id: "ws_default".to_string(),
+            branch_id: "br_default".to_string(),
+            created_at: now_iso.clone(),
+            action: AuditAction::LoginFailed.as_str().to_string(),
+            performed_by_user_id: None,
+            target_entity_type: "AppUser".to_string(),
+            target_entity_id: "unknown".to_string(),
+            metadata: Some(serde_json::json!({ "reason": "totp_recovery_failed" }).to_string()),
+        };
+        let _ = audit::append(&mut tx, &audit).await;
+        let _ = tx.commit().await;
+
+        Err(AuthError::InvalidCredentials { retry_after_secs: None })
     }
 }
 

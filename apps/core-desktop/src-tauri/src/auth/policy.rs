@@ -14,6 +14,8 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("auth_status", CommandPolicy::Public);
     map.insert("auth_login", CommandPolicy::Public);
     map.insert("auth_login_pin", CommandPolicy::Public);
+    map.insert("auth_login_totp", CommandPolicy::Public);
+    map.insert("recovery_redeem_totp", CommandPolicy::Public);
     map.insert("auth_logout", CommandPolicy::SessionOnly);
     map.insert("auth_lock", CommandPolicy::SessionOnly);
     map.insert("auth_unlock_pin", CommandPolicy::SessionOnly);
@@ -23,6 +25,9 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("auth_change_password", CommandPolicy::SessionOnly);
     map.insert("auth_change_pin", CommandPolicy::SessionOnly);
     map.insert("auth_reset_own_pin", CommandPolicy::SessionOnly);
+    map.insert("auth_totp_begin", CommandPolicy::SessionOnly);
+    map.insert("auth_totp_confirm", CommandPolicy::SessionOnly);
+    map.insert("auth_totp_disable", CommandPolicy::SessionOnly);
 
     map.insert("user_list", CommandPolicy::Permission("users.manage"));
     map.insert("user_create", CommandPolicy::Permission("users.manage"));

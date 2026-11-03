@@ -49,4 +49,5 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-log = "0.1"
 aes-gcm = "0.10"
+totp-rs = { version = "5.5", default-features = false, features = ["otpauth"] }
 zip = { version = "2.2", default-features = false, features = ["deflate"] }

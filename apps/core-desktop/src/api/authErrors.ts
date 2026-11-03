@@ -8,6 +8,7 @@ export type AuthErrorCode =
   | 'STEP_UP_REQUIRED'
   | 'POLICY_VIOLATION'
   | 'NOT_CONFIGURED'
+  | 'TOTP_REQUIRED'
   | 'NETWORK_UNAVAILABLE';
 
 export interface AuthErrorDetails {
@@ -27,6 +28,7 @@ const ERROR_KEY_MAP: Record<string, string> = {
   STEP_UP_REQUIRED: 'auth.error.stepUpRequired',
   POLICY_VIOLATION: 'auth.error.policyViolation',
   NOT_CONFIGURED: 'auth.error.notConfigured',
+  TOTP_REQUIRED: 'auth.error.totpRequired',
   NETWORK_UNAVAILABLE: 'auth.error.networkUnavailable',
 };
 

@@ -14,4 +14,5 @@ pub mod purchases_repo;
 pub mod recovery_repo;
 pub mod sales_repo;
 pub mod staff_notification_repo;
+pub mod totp_repo;
 pub mod user_repo;

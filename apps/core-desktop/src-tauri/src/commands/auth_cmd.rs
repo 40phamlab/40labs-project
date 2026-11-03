@@ -283,13 +283,6 @@ pub async fn recovery_generate_initial(
 }
 
 #[tauri::command]
-pub async fn auth_totp_status(
-    _state: State<'_, AppState>,
-) -> Result<serde_json::Value, AuthErrorResponse> {
-    Ok(serde_json::json!({ "status": "not_configured" }))
-}
-
-#[tauri::command]
 pub async fn auth_step_up_policies(
     _state: State<'_, AppState>,
 ) -> Result<serde_json::Value, AuthErrorResponse> {
@@ -313,6 +306,53 @@ pub async fn onboarding_advance(
     );
     engine
         .onboarding_advance(&state_name)
+        .await
+        .map_err(|e| e.to_response())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginTotpRequest {
+    pub pending_token: String,
+    pub code: String,
+}
+
+#[tauri::command]
+pub async fn auth_login_totp(
+    state: State<'_, AppState>,
+    payload: LoginTotpRequest,
+) -> Result<(), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    engine
+        .login_totp(&payload.pending_token, &payload.code)
+        .await
+        .map_err(|e| e.to_response())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecoveryRedeemTotpRequest {
+    pub username: String,
+    pub code: String,
+    pub new_password: String,
+}
+
+#[tauri::command]
+pub async fn recovery_redeem_totp(
+    state: State<'_, AppState>,
+    payload: RecoveryRedeemTotpRequest,
+) -> Result<(), AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    engine
+        .recovery_redeem_totp(&payload.username, &payload.code, &payload.new_password)
         .await
         .map_err(|e| e.to_response())
 }

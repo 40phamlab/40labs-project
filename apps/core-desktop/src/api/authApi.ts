@@ -43,7 +43,12 @@ export interface AuthApi {
   registrationCommit(payload: Record<string, unknown>): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>;
   otpRequest(phone: string): Promise<void>;
   otpVerify(phone: string, code: string): Promise<string>;
-  totpStatus(): Promise<{ status: string }>;
+  totpStatus(): Promise<{ status: string; enabled: boolean }>;
+  totpBegin(): Promise<{ uri: string; secret: string }>;
+  totpConfirm(code: string): Promise<void>;
+  totpDisable(password: string, code: string): Promise<void>;
+  loginTotp(pendingToken: string, code: string): Promise<void>;
+  recoveryRedeemTotp(username: string, code: string, newPassword: string): Promise<void>;
   stepUpPolicies(): Promise<Array<{ permission: string; tier: string; ttlSecs: number; maxUses: number }>>;
   onboardingAdvance(state: string): Promise<void>;
   businessSetIdleLock(minutes: number): Promise<void>;
@@ -87,7 +92,12 @@ export const tauriAuthApi: AuthApi = {
   otpVerify: (phone, code) => invokeCommand<string>('otp_verify', { phone, code }),
   onboardingAdvance: (state) => invokeCommand<void>('onboarding_advance', { stateName: state }),
   businessSetIdleLock: (minutes) => invokeCommand<void>('business_set_idle_lock', { minutes }),
-  totpStatus: () => invokeCommand<{ status: string }>('auth_totp_status'),
+  totpStatus: () => invokeCommand<{ status: string; enabled: boolean }>('auth_totp_status'),
+  totpBegin: () => invokeCommand<{ uri: string; secret: string }>('auth_totp_begin'),
+  totpConfirm: (code) => invokeCommand<void>('auth_totp_confirm', { code }),
+  totpDisable: (password, code) => invokeCommand<void>('auth_totp_disable', { password, code }),
+  loginTotp: (pendingToken, code) => invokeCommand<void>('auth_login_totp', { payload: { pendingToken, code } }),
+  recoveryRedeemTotp: (username, code, newPassword) => invokeCommand<void>('recovery_redeem_totp', { payload: { username, code, newPassword } }),
   stepUpPolicies: () => invokeCommand<Array<{ permission: string; tier: string; ttlSecs: number; maxUses: number }>>('auth_step_up_policies'),
 };
 
@@ -169,7 +179,16 @@ export const mockAuthApi: AuthApi = {
   listApprovers: async () => [
     { userId: 'user-sudo-1', displayName: 'Juma Mwanga (SUDO)', role: 'sudo' },
   ],
-  totpStatus: async () => ({ status: 'not_configured' }),
+  totpStatus: async () => ({ status: 'not_configured', enabled: false }),
+  totpBegin: async () => ({ uri: 'otpauth://totp/40Labs:admin@40Labs?secret=JBSWY3DPEHPK3PXP&issuer=40Labs', secret: 'JBSWY3DPEHPK3PXP' }),
+  totpConfirm: async (_code) => {},
+  totpDisable: async (_password, _code) => {},
+  loginTotp: async (_pendingToken, code) => {
+    if (code !== '123456') throw { code: 'INVALID_CREDENTIALS' };
+  },
+  recoveryRedeemTotp: async (username, code, newPassword) => {
+    if (!username || !code || !newPassword) throw { code: 'INVALID_CREDENTIALS' };
+  },
   stepUpPolicies: async () => [],
   changePassword: async () => {},
   changePin: async () => {},

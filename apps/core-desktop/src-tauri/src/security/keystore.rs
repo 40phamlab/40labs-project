@@ -121,6 +121,13 @@ impl Keystore {
         &*self.pin_pepper
     }
 
+    pub fn derive_key(&self, info: &[u8]) -> [u8; 32] {
+        let hk = Hkdf::<Sha256>::new(Some(b"40labs_totp_salt_v1"), self.master_secret.as_ref());
+        let mut key = [0u8; 32];
+        hk.expand(info, &mut key).expect("HKDF expand should succeed");
+        key
+    }
+
     pub fn verifying_key(&self) -> &VerifyingKey {
         &self.verifying_key
     }

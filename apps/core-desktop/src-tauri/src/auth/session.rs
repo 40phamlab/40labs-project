@@ -41,6 +41,12 @@ pub struct StepUpGrant {
     pub expires_at: u64,
 }
 
+#[derive(Debug, Clone)]
+pub struct PendingTotp {
+    pub user_id: String,
+    pub expires_at: u64,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApproverInfo {
@@ -51,6 +57,7 @@ pub struct ApproverInfo {
 pub struct AuthState {
     pub session: RwLock<Option<Session>>,
     pub step_ups: RwLock<HashMap<String, StepUpGrant>>, // token -> grant
+    pub pending_totps: RwLock<HashMap<String, PendingTotp>>, // token -> pending totp
     pub clock: Arc<dyn Clock>,
 }
 
@@ -59,6 +66,7 @@ impl AuthState {
         Self {
             session: RwLock::new(None),
             step_ups: RwLock::new(HashMap::new()),
+            pending_totps: RwLock::new(HashMap::new()),
             clock,
         }
     }
