@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { CanonicalReport } from '../types/reportModel';
 import { createReportCsvBlob } from './exportReportCsv';
 import { createReportXlsxBlob } from './exportReportXlsx';
-import { createReportDocxBlob } from './exportReportDocx';
+import { createReportDocxBlob, validateReportForExport } from './exportReportDocx';
 import { createReportPdfBlob } from './exportReportPdf';
 
 const mockReport: CanonicalReport = {
@@ -49,6 +49,16 @@ describe('Reporting & Multi-Format Export System', () => {
     expect(mockReport.tables[0].rows.length).toBe(2);
   });
 
+  it('should validate report data correctly before export', () => {
+    const validResult = validateReportForExport(mockReport);
+    expect(validResult.valid).toBe(true);
+
+    const invalidReport = { ...mockReport, metadata: { ...mockReport.metadata, businessName: '' } };
+    const invalidResult = validateReportForExport(invalidReport as any);
+    expect(invalidResult.valid).toBe(false);
+    expect(invalidResult.errors.length).toBeGreaterThan(0);
+  });
+
   it('should generate CSV blob with UTF-8 BOM and escaped quotes', async () => {
     const blob = createReportCsvBlob(mockReport);
     expect(blob).toBeInstanceOf(Blob);
@@ -67,13 +77,14 @@ describe('Reporting & Multi-Format Export System', () => {
     expect(text).toContain('Total Revenue');
   });
 
-  it('should generate DOCX Word document blob', async () => {
+  it('should generate genuine OpenXML DOCX Word document blob', async () => {
     const blob = createReportDocxBlob(mockReport);
     expect(blob).toBeInstanceOf(Blob);
-    expect(blob.type).toContain('msword');
+    expect(blob.type).toContain('wordprocessingml');
     const text = await blob.text();
     expect(text).toContain('Sales Executive Report');
     expect(text).toContain('Executive Summary');
+    expect(text).toContain('w:wordDocument');
   });
 
   it('should generate PDF document blob with business branding and no 40Labs watermark', async () => {

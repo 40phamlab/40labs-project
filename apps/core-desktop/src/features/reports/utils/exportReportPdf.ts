@@ -18,6 +18,24 @@ export interface ReportPdfData {
   rows: Record<string, unknown>[];
 }
 
+export function validateReportForExport(data: ReportPdfData | CanonicalReport): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!data) {
+    errors.push('Report data object is null or undefined.');
+    return { valid: false, errors };
+  }
+  const title = 'metadata' in data ? data.metadata?.title : data.title;
+  const bizName = 'metadata' in data ? data.metadata?.businessName : data.businessName;
+
+  if (!title) {
+    errors.push('Report title is missing.');
+  }
+  if (!bizName) {
+    errors.push('Business name is required for official PDF export.');
+  }
+  return { valid: errors.length === 0, errors };
+}
+
 const esc = (str: string): string =>
   String(str ?? '')
     .replace(/\\/g, '\\\\')
@@ -33,6 +51,11 @@ export function createReportPdfBlob(
   layoutConfig?: Partial<ReportLayoutConfig>,
   business?: Business | null
 ): Blob {
+  const validation = validateReportForExport(data);
+  if (!validation.valid) {
+    throw new Error(`Report PDF export validation failed: ${validation.errors.join(', ')}`);
+  }
+
   const cfg: ReportLayoutConfig = { ...DEFAULT_REPORT_LAYOUT, ...layoutConfig };
 
   // Determine Page Dimensions (in points)
@@ -231,7 +254,6 @@ export function createReportPdfBlob(
     summaryLines.push('/F2 8 Tf');
     summaryLines.push('11 TL');
 
-    // Wrap text lines
     const words = execSummary.split(' ');
     let currentLine = '';
     words.forEach((w) => {
@@ -304,7 +326,6 @@ export function createReportPdfBlob(
     pagesLines[currentPage].push(tblHeaderLines.join('\n'));
     currentY -= 32;
 
-    // Render ALL rows without clipping or truncation
     rows.forEach((row) => {
       checkPageBreak(12);
 
@@ -338,14 +359,6 @@ export function createReportPdfBlob(
     pStream.push(footerLine);
   });
 
-  // Construct PDF binary object graph
-  // Obj 1: Catalog
-  // Obj 2: Pages
-  // Obj 3..N+2: Page objects
-  // Obj N+3..2N+2: Content Stream objects
-  // Obj 2N+3: Font F1 (Courier-Bold)
-  // Obj 2N+4: Font F2 (Courier)
-
   const numPages = pagesLines.length;
   const pageObjIds = Array.from({ length: numPages }, (_, i) => 3 + i * 2);
   const streamObjIds = Array.from({ length: numPages }, (_, i) => 4 + i * 2);
@@ -354,20 +367,17 @@ export function createReportPdfBlob(
 
   const pdfObjects: { id: number; content: string }[] = [];
 
-  // Obj 1: Catalog
   pdfObjects.push({
     id: 1,
     content: '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
   });
 
-  // Obj 2: Pages
   const kidsStr = pageObjIds.map((id) => `${id} 0 R`).join(' ');
   pdfObjects.push({
     id: 2,
     content: `2 0 obj\n<< /Type /Pages /Kids [${kidsStr}] /Count ${numPages} >>\nendobj\n`,
   });
 
-  // Page and Stream objects
   for (let i = 0; i < numPages; i++) {
     const pageObjId = pageObjIds[i];
     const streamObjId = streamObjIds[i];
@@ -385,7 +395,6 @@ export function createReportPdfBlob(
     });
   }
 
-  // Fonts
   pdfObjects.push({
     id: font1ObjId,
     content: `${font1ObjId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >>\nendobj\n`,
@@ -396,10 +405,8 @@ export function createReportPdfBlob(
     content: `${font2ObjId} 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>\nendobj\n`,
   });
 
-  // Sort objects by ID
   pdfObjects.sort((a, b) => a.id - b.id);
 
-  // Build binary string with XRef table
   const headerStr = '%PDF-1.4\n';
   let offset = headerStr.length;
   const offsets: number[] = [0];
@@ -430,6 +437,10 @@ export function downloadReportPdf(
   layoutConfig?: Partial<ReportLayoutConfig>,
   business?: Business | null
 ): void {
+  const validation = validateReportForExport(data);
+  if (!validation.valid) {
+    throw new Error(`Report PDF export validation failed: ${validation.errors.join(', ')}`);
+  }
   try {
     const blob = createReportPdfBlob(data, layoutConfig, business);
     const url = URL.createObjectURL(blob);
@@ -458,5 +469,6 @@ export function downloadReportPdf(
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (err) {
     console.error('Failed to download report PDF:', err);
+    throw err;
   }
 }

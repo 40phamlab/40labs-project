@@ -1,90 +1,131 @@
 import { CanonicalReport } from '../types/reportModel';
 
+export function validateReportForExport(report: CanonicalReport): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+  if (!report) {
+    errors.push('Report object is null or undefined.');
+    return { valid: false, errors };
+  }
+  if (!report.metadata || !report.metadata.title) {
+    errors.push('Report metadata or title is missing.');
+  }
+  if (!report.metadata?.businessName) {
+    errors.push('Business name is required for official report export.');
+  }
+  return { valid: errors.length === 0, errors };
+}
+
 /**
- * Generates an editable Word document blob (`.docx` WordprocessingML / RTF-XML format)
- * with professional typography, headers, executive summary, KPI metrics, and detailed tables.
+ * Generates a genuine professional Word document blob (WordprocessingML / OpenXML format)
+ * ensuring full editability in Microsoft Word, LibreOffice, and Google Docs.
  */
 export function createReportDocxBlob(report: CanonicalReport): Blob {
+  const validation = validateReportForExport(report);
+  if (!validation.valid) {
+    throw new Error(`Report export validation failed: ${validation.errors.join(', ')}`);
+  }
+
   const title = escapeXml(report.metadata.title);
   const subtitle = report.metadata.subtitle ? escapeXml(report.metadata.subtitle) : '';
   const category = escapeXml(report.metadata.categoryLabel);
   const period = escapeXml(report.metadata.periodLabel);
   const generated = escapeXml(report.metadata.generatedAt);
+  const businessName = escapeXml(report.metadata.businessName);
+  const businessTin = escapeXml(report.metadata.businessTin || '');
 
-  let kpiListHtml = '';
+  let kpiListXml = '';
   if (report.kpis && report.kpis.length > 0) {
-    kpiListHtml = '<ul>' + report.kpis.map((k) => `<li><b>${escapeXml(k.label)}:</b> ${escapeXml(String(k.value))} ${k.subtext ? '(' + escapeXml(k.subtext) + ')' : ''}</li>`).join('') + '</ul>';
+    kpiListXml = report.kpis
+      .map(
+        (k) =>
+          `<w:p><w:r><w:rPr><w:b/><w:color w:val="0F172A"/></w:rPr><w:t>${escapeXml(k.label)}: </w:t></w:r><w:r><w:rPr><w:color w:val="334155"/></w:rPr><w:t>${escapeXml(String(k.value))}${k.subtext ? ' (' + escapeXml(k.subtext) + ')' : ''}</w:t></w:r></w:p>`
+      )
+      .join('');
   }
 
-  let tablesHtml = '';
+  let tablesXml = '';
   if (report.tables && report.tables.length > 0) {
     report.tables.forEach((table, idx) => {
       const tableTitle = escapeXml(table.title || `Table ${idx + 1}`);
-      const headers = table.columns.map((c) => `<th style="background: #0f172a; color: white; padding: 6px; border: 1px solid #94a3b8;">${escapeXml(c.header)}</th>`).join('');
-      const rows = table.rows
-        .map((row) => {
-          const cells = table.columns
-            .map((col) => {
-              const val = row[col.key];
-              return `<td style="padding: 5px; border: 1px solid #cbd5e1;">${escapeXml(val !== undefined && val !== null ? String(val) : '—')}</td>`;
-            })
-            .join('');
-          return `<tr>${cells}</tr>`;
-        })
+
+      const headerCells = table.columns
+        .map(
+          (c) =>
+            `<w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="0F172A"/></w:tcPr><w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="20"/></w:rPr><w:t>${escapeXml(c.header)}</w:t></w:r></w:p></w:tc>`
+        )
         .join('');
 
-      tablesHtml += `
-        <h3>${tableTitle}</h3>
-        <table style="border-collapse: collapse; width: 100%; margin-bottom: 20px; font-size: 10pt;">
-          <thead><tr>${headers}</tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
+      let rowsXml = `<w:tr><w:trPr><w:tblHeader/></w:trPr>${headerCells}</w:tr>`;
+
+      table.rows.forEach((row) => {
+        const rowCells = table.columns
+          .map((col) => {
+            const val = row[col.key];
+            const valStr = val !== undefined && val !== null ? String(val) : '—';
+            return `<w:tc><w:tcPr><w:shd w:val="clear" w:color="auto" w:fill="FFFFFF"/></w:tcPr><w:p><w:pPr><w:jc w:val="left"/></w:pPr><w:r><w:rPr><w:color w:val="1E293B"/><w:sz w:val="18"/></w:rPr><w:t>${escapeXml(valStr)}</w:t></w:r></w:p></w:tc>`;
+          })
+          .join('');
+        rowsXml += `<w:tr>${rowCells}</w:tr>`;
+      });
+
+      tablesXml += `
+        <w:p><w:pPr><w:spacing w:before="240" w:after="120"/><w:outlineLvl w:val="1"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="24"/><w:color w:val="0F172A"/></w:rPr><w:t>${tableTitle}</w:t></w:r></w:p>
+        <w:tbl>
+          <w:tblPr>
+            <w:tblW w:w="5000" w:type="pct"/>
+            <w:tblBorders>
+              <w:top w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+              <w:left w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+              <w:bottom w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+              <w:right w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/>
+              <w:insideH w:val="single" w:sz="4" w:space="0" w:color="E2E8F0"/>
+              <w:insideV w:val="single" w:sz="4" w:space="0" w:color="E2E8F0"/>
+            </w:tblBorders>
+          </w:tblPr>
+          ${rowsXml}
+        </w:tbl>
       `;
     });
   }
 
-  const docxHtml = `
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="utf-8" />
-<title>${title}</title>
-<style>
-  body { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; line-height: 1.5; margin: 1in; }
-  h1 { font-size: 20pt; color: #0f172a; margin-bottom: 2px; }
-  .subtitle { font-size: 12pt; color: #475569; margin-bottom: 12px; }
-  .meta { font-size: 9pt; color: #64748b; border-bottom: 2px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 20px; }
-  h2 { font-size: 14pt; color: #0f172a; margin-top: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
-  h3 { font-size: 12pt; color: #334155; margin-top: 15px; }
-  p { font-size: 11pt; margin-bottom: 10px; }
-  ul { margin-top: 5px; margin-bottom: 15px; }
-  li { font-size: 10.5pt; margin-bottom: 4px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-  th, td { border: 1px solid #cbd5e1; padding: 6px; text-align: left; font-size: 10pt; }
-  th { background-color: #0f172a; color: #ffffff; }
-  .footer { margin-top: 40px; font-size: 8.5pt; color: #94a3b8; border-top: 1px solid #e2e8f0; pt: 8px; }
-</style>
-</head>
-<body>
-  <h1>${title}</h1>
-  ${subtitle ? `<div class="subtitle">${subtitle}</div>` : ''}
-  <div class="meta">
-    <b>Category:</b> ${category} &nbsp;|&nbsp; <b>Period:</b> ${period} &nbsp;|&nbsp; <b>Generated:</b> ${generated}
-  </div>
+  const wordXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<?mso-application progid="Word.Document"?>
+<w:wordDocument xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+                xmlns:o="urn:schemas-microsoft-com:office:office"
+                xmlns:v="urn:schemas-microsoft-com:vml"
+                xmlns:w10="urn:schemas-microsoft-com:office:word"
+                xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>
+    <w:p>
+      <w:pPr><w:pStyle w:val="Title"/><w:spacing w:after="100"/></w:pPr>
+      <w:r><w:rPr><w:b/><w:sz w:val="36"/><w:color w:val="0F172A"/></w:rPr><w:t>${title}</w:t></w:r>
+    </w:p>
+    ${subtitle ? `<w:p><w:pPr><w:spacing w:after="150"/></w:pPr><w:r><w:rPr><w:i/><w:sz w:val="24"/><w:color w:val="475569"/></w:rPr><w:t>${subtitle}</w:t></w:r></w:p>` : ''}
+    <w:p>
+      <w:pPr><w:pBdr><w:bottom w:val="single" w:sz="12" w:space="4" w:color="CBD5E1"/></w:pBdr><w:spacing w:after="200"/></w:pPr>
+      <w:r><w:rPr><w:sz w:val="18"/><w:color w:val="64748B"/></w:rPr><w:t>Business: ${businessName} | Category: ${category} | Period: ${period} | Generated: ${generated}${businessTin ? ' | TIN: ' + businessTin : ''}</w:t></w:r>
+    </w:p>
 
-  ${report.executiveSummary ? `<h2>Executive Summary</h2><p>${escapeXml(report.executiveSummary)}</p>` : ''}
+    ${report.executiveSummary ? `
+      <w:p><w:pPr><w:spacing w:before="120" w:after="60"/><w:outlineLvl w:val="0"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="26"/><w:color w:val="0F172A"/></w:rPr><w:t>Executive Summary</w:t></w:r></w:p>
+      <w:p><w:pPr><w:spacing w:after="200"/></w:pPr><w:r><w:rPr><w:sz w:val="20"/><w:color w:val="334155"/></w:rPr><w:t>${escapeXml(report.executiveSummary)}</w:t></w:r></w:p>
+    ` : ''}
 
-  ${kpiListHtml ? `<h2>Key Performance Indicators</h2>${kpiListHtml}` : ''}
+    ${report.kpis && report.kpis.length > 0 ? `
+      <w:p><w:pPr><w:spacing w:before="120" w:after="60"/><w:outlineLvl w:val="0"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="26"/><w:color w:val="0F172A"/></w:rPr><w:t>Key Performance Indicators</w:t></w:r></w:p>
+      ${kpiListXml}
+    ` : ''}
 
-  ${tablesHtml ? `<h2>Detailed Breakdown</h2>${tablesHtml}` : ''}
+    ${tablesXml}
 
-  <div class="footer">
-    40Labs Core Desktop Enterprise Document &mdash; Confidential Internal Report
-  </div>
-</body>
-</html>
-  `;
+    <w:p>
+      <w:pPr><w:pBdr><w:top w:val="single" w:sz="6" w:space="8" w:color="E2E8F0"/></w:pBdr><w:spacing w:before="400"/></w:pPr>
+      <w:r><w:rPr><w:i/><w:sz w:val="16"/><w:color w:val="94A3B8"/></w:rPr><w:t>40Labs Core Desktop Enterprise Document &mdash; Confidential Internal Report (${businessName})</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:wordDocument>`;
 
-  return new Blob([docxHtml], { type: 'application/msword;charset=utf-8;' });
+  return new Blob([wordXml], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
 }
 
 function escapeXml(str: string): string {
@@ -97,6 +138,10 @@ function escapeXml(str: string): string {
 }
 
 export function downloadReportDocx(report: CanonicalReport): void {
+  const validation = validateReportForExport(report);
+  if (!validation.valid) {
+    throw new Error(`Report export validation failed: ${validation.errors.join(', ')}`);
+  }
   try {
     const blob = createReportDocxBlob(report);
     const url = URL.createObjectURL(blob);
@@ -111,5 +156,6 @@ export function downloadReportDocx(report: CanonicalReport): void {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   } catch (err) {
     console.error('Failed to export Word document:', err);
+    throw err;
   }
 }
