@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { businessApi } from '../../../api/businessApi';
 
 export interface ReceiptItem {
   name: string;
@@ -8,54 +9,113 @@ export interface ReceiptItem {
 }
 
 export interface ReceiptPreviewProps {
-  businessName: string;
-  businessAddress: string;
-  businessPhone: string;
+  businessName?: string;
+  businessAddress?: string;
+  businessPhone?: string;
+  businessEmail?: string | null;
+  businessTin?: string | null;
+  businessTmdaNumber?: string | null;
+  businessLogoUrl?: string | null;
   orderId: string;
   date: string;
   items: ReceiptItem[];
   subtotal: number;
   tax: number;
   total: number;
+  paymentMethod?: string;
+  servedBy?: string;
   footerMessage?: string;
   className?: string;
 }
 
 export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
-  businessName,
-  businessAddress,
-  businessPhone,
+  businessName: propBusinessName,
+  businessAddress: propBusinessAddress,
+  businessPhone: propBusinessPhone,
+  businessEmail: propBusinessEmail,
+  businessTin: propBusinessTin,
+  businessTmdaNumber: propBusinessTmdaNumber,
+  businessLogoUrl: propBusinessLogoUrl,
   orderId,
   date,
   items,
   subtotal,
   tax,
   total,
+  paymentMethod = 'cash',
+  servedBy,
   footerMessage = 'Thank you for your business!',
   className = '',
 }) => {
+  const [bizInfo, setBizInfo] = React.useState({
+    name: propBusinessName || 'Pharmacy POS',
+    address: propBusinessAddress || 'Tanzania',
+    phone: propBusinessPhone || '',
+    email: propBusinessEmail || null,
+    tin: propBusinessTin || null,
+    tmdaNumber: propBusinessTmdaNumber || null,
+    logoUrl: propBusinessLogoUrl || null,
+  });
+
+  React.useEffect(() => {
+    if (!propBusinessName) {
+      businessApi.get().then((biz) => {
+        const addr = [biz.address?.place, biz.address?.district, biz.address?.region].filter(Boolean).join(', ') || 'Tanzania';
+        setBizInfo({
+          name: biz.name || 'Pharmacy POS',
+          address: addr,
+          phone: biz.contacts?.mobile || '',
+          email: biz.contacts?.email || null,
+          tin: biz.tin || null,
+          tmdaNumber: biz.tmda_number || null,
+          logoUrl: biz.logo_url || null,
+        });
+      }).catch(() => {});
+    }
+  }, [propBusinessName, propBusinessAddress, propBusinessPhone]);
+
+  const name = propBusinessName || bizInfo.name;
+  const address = propBusinessAddress || bizInfo.address;
+  const phone = propBusinessPhone || bizInfo.phone;
+  const email = propBusinessEmail !== undefined ? propBusinessEmail : bizInfo.email;
+  const tin = propBusinessTin !== undefined ? propBusinessTin : bizInfo.tin;
+  const tmdaNumber = propBusinessTmdaNumber !== undefined ? propBusinessTmdaNumber : bizInfo.tmdaNumber;
+  const logoUrl = propBusinessLogoUrl !== undefined ? propBusinessLogoUrl : bizInfo.logoUrl;
+
   return (
     <div
       className={`p-6 w-[320px] mx-auto font-mono text-xs rounded-card border border-border bg-white text-black shadow-md ${className}`}
-      style={{
-        lineHeight: '1.3',
-      }}
+      style={{ lineHeight: '1.3' }}
     >
-      <div className="text-center mb-4 border-b border-dashed border-black/40 pb-3">
-        <h2 className="font-bold text-sm uppercase tracking-wider text-black">{businessName}</h2>
-        <p className="text-[10px] leading-tight text-black/80 mt-0.5">{businessAddress}</p>
-        <p className="text-[10px] text-black/80">Tel: {businessPhone}</p>
+      <div className="text-center mb-4 border-b border-dashed border-black/40 pb-3 flex flex-col items-center">
+        {logoUrl && (
+          <div className="mb-2 max-w-[80px] max-h-[80px] flex items-center justify-center overflow-hidden">
+            <img src={logoUrl} alt={name} className="object-contain max-h-16" />
+          </div>
+        )}
+        <h2 className="font-bold text-sm uppercase tracking-wider text-black break-words max-w-full px-1">{name}</h2>
+        <p className="text-[10px] leading-tight text-black/80 mt-0.5">{address}</p>
+        {phone && <p className="text-[10px] text-black/80">Tel: {phone}</p>}
+        {email && <p className="text-[10px] text-black/80">Email: {email}</p>}
+        {tin && <p className="text-[10px] font-mono text-black/80">TIN: {tin}</p>}
+        {tmdaNumber && <p className="text-[10px] font-mono text-black/80">TMDA: {tmdaNumber}</p>}
       </div>
 
       <div className="mb-3 text-[10px] flex flex-col gap-0.5 text-black">
         <div className="flex justify-between">
           <span className="font-bold">RECEIPT #:</span>
-          <span>{orderId}</span>
+          <span className="font-mono">{orderId}</span>
         </div>
         <div className="flex justify-between">
           <span className="font-bold">DATE:</span>
           <span>{date}</span>
         </div>
+        {servedBy && (
+          <div className="flex justify-between">
+            <span className="font-bold">SERVED BY:</span>
+            <span>{servedBy}</span>
+          </div>
+        )}
       </div>
 
       <div className="mb-4">
@@ -83,13 +143,19 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
           <span>SUBTOTAL:</span>
           <span className="font-mono">{(subtotal ?? 0).toLocaleString()}</span>
         </div>
-        <div className="flex justify-between">
-          <span>TAX (VAT):</span>
-          <span className="font-mono">{(tax ?? 0).toLocaleString()}</span>
-        </div>
+        {tax > 0 && (
+          <div className="flex justify-between">
+            <span>TAX (VAT):</span>
+            <span className="font-mono">{(tax ?? 0).toLocaleString()}</span>
+          </div>
+        )}
         <div className="flex justify-between font-bold text-xs border-t border-black pt-1 mt-1">
           <span>GRAND TOTAL:</span>
           <span className="font-mono">TZS {(total ?? 0).toLocaleString()}</span>
+        </div>
+        <div className="flex justify-between text-[10px] text-black/80 pt-0.5">
+          <span>PAYMENT:</span>
+          <span className="uppercase">{paymentMethod}</span>
         </div>
       </div>
 

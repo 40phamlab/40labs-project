@@ -22,7 +22,7 @@ export async function createReceiptPdfBlob(options: ReceiptPdfOptions): Promise<
   lines.push('BT');
   lines.push('/F1 12 Tf');
   lines.push('15 TL');
-  lines.push('30 560 Td');
+  lines.push('30 550 Td');
 
   lines.push(`(${esc(biz.name.toUpperCase())}) Tj T*`);
   lines.push('/F2 9 Tf');
@@ -31,13 +31,16 @@ export async function createReceiptPdfBlob(options: ReceiptPdfOptions): Promise<
   if (biz.phone) lines.push(`(Tel: ${esc(biz.phone)}) Tj T*`);
   if (biz.email) lines.push(`(Email: ${esc(biz.email)}) Tj T*`);
   if (biz.tin) lines.push(`(TIN: ${esc(biz.tin)}) Tj T*`);
+  if (biz.tmdaNumber) lines.push(`(TMDA Reg: ${esc(biz.tmdaNumber)}) Tj T*`);
   lines.push('(----------------------------------------) Tj T*');
 
   lines.push('/F1 9 Tf');
   lines.push(`(RECEIPT #: ${esc(sale.id.substring(0, 12))}) Tj T*`);
   lines.push(`(DATE: ${esc(new Date(sale.created_at).toLocaleString('en-GB', { timeZone: 'Africa/Dar_es_Salaam' }))}) Tj T*`);
   lines.push(`(SERVED BY: ${esc(servedBy)}) Tj T*`);
-  lines.push(`(CUSTOMER: ${esc(customerLabel)} (${esc(phone)})) Tj T*`);
+  if (customerLabel) {
+    lines.push(`(CUSTOMER: ${esc(customerLabel)}${phone ? ' (' + esc(phone) + ')' : ''}) Tj T*`);
+  }
   lines.push('(----------------------------------------) Tj T*');
 
   lines.push('(QTY  ITEM                        TOTAL) Tj T*');
@@ -52,11 +55,14 @@ export async function createReceiptPdfBlob(options: ReceiptPdfOptions): Promise<
   });
 
   lines.push('(----------------------------------------) Tj T*');
-  lines.push(`(SUBTOTAL: TZS ${(sale.grand_total + sale.discount_amount).toLocaleString()}) Tj T*`);
+  const subtotal = sale.grand_total + sale.discount_amount - sale.tax_amount;
+  lines.push(`(SUBTOTAL: TZS ${subtotal.toLocaleString()}) Tj T*`);
   if (sale.discount_amount > 0) {
     lines.push(`(DISCOUNT: TZS ${sale.discount_amount.toLocaleString()}) Tj T*`);
   }
-  lines.push(`(TAX (VAT): TZS ${sale.tax_amount.toLocaleString()}) Tj T*`);
+  if (sale.tax_amount > 0) {
+    lines.push(`(TAX (VAT): TZS ${sale.tax_amount.toLocaleString()}) Tj T*`);
+  }
   lines.push('/F1 10 Tf');
   lines.push(`(GRAND TOTAL: TZS ${sale.grand_total.toLocaleString()}) Tj T*`);
   lines.push('/F2 9 Tf');

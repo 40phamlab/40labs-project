@@ -6,6 +6,8 @@ export interface BusinessIdentity {
   phone: string;
   email?: string | null;
   tin?: string | null;
+  tmdaNumber?: string | null;
+  logoUrl?: string | null;
 }
 
 export async function getBusinessIdentity(): Promise<BusinessIdentity> {
@@ -18,6 +20,8 @@ export async function getBusinessIdentity(): Promise<BusinessIdentity> {
       phone: biz.contacts?.mobile || '',
       email: biz.contacts?.email || null,
       tin: biz.tin || null,
+      tmdaNumber: biz.tmda_number || null,
+      logoUrl: biz.logo_url || null,
     };
   } catch {
     return {
@@ -26,6 +30,8 @@ export async function getBusinessIdentity(): Promise<BusinessIdentity> {
       phone: '',
       email: null,
       tin: null,
+      tmdaNumber: null,
+      logoUrl: null,
     };
   }
 }

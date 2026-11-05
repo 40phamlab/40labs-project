@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Modal, Button } from '@40labs/ui-components';
 import { Download } from 'lucide-react';
 import { ReceiptPreview, ReceiptItem } from './ReceiptPreview';
-import { pharmaciesApi } from '../../../api';
+import { getBusinessIdentity, BusinessIdentity } from '../documents/shared/documentHeader';
 import { useToast } from '../../../hooks/useToast';
 import { saveReceiptPdf } from '../utils/generateReceiptPdf';
 
@@ -17,6 +17,7 @@ export interface ReceiptModalProps {
     subtotal: number;
     tax: number;
     total: number;
+    servedBy?: string;
   } | null;
 }
 
@@ -26,25 +27,49 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   saleData,
 }) => {
   const { toast } = useToast();
-  if (!saleData) return null;
+  const [biz, setBiz] = React.useState<BusinessIdentity | null>(null);
 
-  const biz = pharmaciesApi.getBusiness();
-  const formattedAddress = `${biz.address.place}, ${biz.address.district}, ${biz.address.region}`;
-  const formattedPhone = biz.contacts.mobile;
+  React.useEffect(() => {
+    if (isOpen) {
+      getBusinessIdentity().then(setBiz).catch(() => {});
+    }
+  }, [isOpen]);
+
+  if (!saleData) return null;
 
   const handleSaveAndPrint = () => {
     try {
       saveReceiptPdf({
-        businessName: biz.name,
-        businessAddress: formattedAddress,
-        businessPhone: formattedPhone,
-        orderId: saleData.saleId,
-        date: saleData.date,
+        sale: {
+          id: saleData.saleId,
+          workspace_id: 'ws_1',
+          branch_id: 'br_1',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          customer_id: null,
+          lines: saleData.items.map((item, idx) => ({
+            id: `l_${idx}`,
+            inventory_item_id: `inv_${idx}`,
+            medicine_id: `med_${idx}`,
+            medicine_name: item.name,
+            quantity: item.qty,
+            unit_price: item.price,
+            subtotal: item.total,
+            dispensed_by_user_id: 'u_1',
+            is_prescription_dispense: false,
+          })),
+          payment_method: 'cash',
+          discount_amount: 0,
+          discount_authorized_by_user_id: null,
+          tax_amount: saleData.tax,
+          grand_total: saleData.total,
+          currency: 'TZS',
+          synced_at: null,
+        },
         customerLabel: saleData.customerLabel,
-        items: saleData.items,
-        subtotal: saleData.subtotal,
-        tax: saleData.tax,
-        total: saleData.total,
+        phone: '',
+        servedBy: saleData.servedBy || 'Pharmacist',
+        fiscalReceipt: null,
       });
 
       const sanitizedId = saleData.saleId.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -53,7 +78,6 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
       toast.error('Failed to generate receipt PDF');
     }
 
-    // Safely attempt direct window.print without throwing unhandled UI errors
     try {
       if (typeof window !== 'undefined' && typeof window.print === 'function') {
         window.print();
@@ -89,15 +113,20 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     >
       <div className="flex justify-center p-2 bg-panel rounded-card border border-border/20">
         <ReceiptPreview
-          businessName={biz.name}
-          businessAddress={formattedAddress}
-          businessPhone={formattedPhone}
+          businessName={biz?.name}
+          businessAddress={biz?.addressLine}
+          businessPhone={biz?.phone}
+          businessEmail={biz?.email}
+          businessTin={biz?.tin}
+          businessTmdaNumber={biz?.tmdaNumber}
+          businessLogoUrl={biz?.logoUrl}
           orderId={saleData.saleId}
           date={saleData.date}
           items={saleData.items}
           subtotal={saleData.subtotal}
           tax={saleData.tax}
           total={saleData.total}
+          servedBy={saleData.servedBy}
         />
       </div>
     </Modal>
