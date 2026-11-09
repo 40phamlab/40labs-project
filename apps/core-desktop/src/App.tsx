@@ -35,6 +35,7 @@ import { useAlertToasts } from './features/alerts/useAlertToasts';
 import { useAlertSound } from './features/alerts/useAlertSound';
 import { AuthGate } from './features/auth/AuthGate';
 import { FilePreviewProvider, useFilePreviewContext } from './providers/FilePreviewProvider';
+import { ContextMenuProvider } from './components/context-menu/ContextMenuProvider';
 import './App.css';
 
 function MainWorkspaceContent() {
@@ -192,16 +193,18 @@ export default function App() {
     <ToastProvider>
       <FilePreviewProvider>
         <AuthGate>
-          <AppShell
-            variant="floating"
-            topBar={topBarElement}
-            sidebar={sidebarElement}
-            navState={sidebarState}
-            lastNonClosedState={lastNonClosedState}
-            onNavStateChange={setSidebarState}
-          >
-            <MainWorkspaceContent />
-          </AppShell>
+          <ContextMenuProvider>
+            <AppShell
+              variant="floating"
+              topBar={topBarElement}
+              sidebar={sidebarElement}
+              navState={sidebarState}
+              lastNonClosedState={lastNonClosedState}
+              onNavStateChange={setSidebarState}
+            >
+              <MainWorkspaceContent />
+            </AppShell>
+          </ContextMenuProvider>
         </AuthGate>
       </FilePreviewProvider>
     </ToastProvider>

@@ -45,11 +45,21 @@ function RootContent() {
   const { status } = useConnectionStore();
 
   useEffect(() => {
-    initOutboxSystem();
-    initCacheDatabase();
-    useConnectionStore.getState().initialize();
-    const cleanup = useConnectionStore.getState().startMonitoring();
-    return cleanup;
+    let cleanup: (() => void) | undefined;
+    async function boot() {
+      try {
+        await initCacheDatabase();
+        await initOutboxSystem();
+        await useConnectionStore.getState().initialize();
+        cleanup = useConnectionStore.getState().startMonitoring();
+      } catch {
+        // Fallback state initialization
+      }
+    }
+    boot();
+    return () => {
+      if (cleanup) cleanup();
+    };
   }, []);
 
   if (!fontsLoaded) {

@@ -1,10 +1,12 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#notifications]
-import { getServerCredential } from '../../lib/secure-store';
-import { pinnedServerFetch } from '../../lib/pinned-transport';
+import { getLanClient } from '../../lib/lan-client';
 import { StaffNotificationItem, StaffRosterMember } from './types';
 
 function generateUuid(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
@@ -13,26 +15,13 @@ function generateUuid(): string {
 }
 
 export async function fetchNotificationsApi(businessId: string, cursor?: string): Promise<{ items: StaffNotificationItem[]; nextCursor: string | null }> {
-  const server = await getServerCredential(businessId);
-  if (!server) throw new Error('No server credential');
-
-  let url = `${server.endpoint}/api/v1/staff-notifications`;
+  const client = await getLanClient(businessId);
+  let path = '/api/v1/staff-notifications';
   if (cursor) {
-    url += `?cursor=${encodeURIComponent(cursor)}`;
+    path += `?cursor=${encodeURIComponent(cursor)}`;
   }
 
-  const response = await pinnedServerFetch(server, url, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${server.credential}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch notifications: ${response.status}`);
-  }
-
-  const data = await response.json();
+  const data = await client.get<any>(path);
   return {
     items: data.items || [],
     nextCursor: data.nextCursor || null,
@@ -40,19 +29,8 @@ export async function fetchNotificationsApi(businessId: string, cursor?: string)
 }
 
 export async function markNotificationReadApi(businessId: string, notificationId: string): Promise<void> {
-  const server = await getServerCredential(businessId);
-  if (!server) throw new Error('No server credential');
-
-  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/staff-notifications/${notificationId}/read`, {
-    method: 'PATCH',
-    headers: {
-      Authorization: `Bearer ${server.credential}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to mark notification read: ${response.status}`);
-  }
+  const client = await getLanClient(businessId);
+  await client.post<void>(`/api/v1/staff-notifications/${notificationId}/read`);
 }
 
 export async function sendNotificationApi(
@@ -66,43 +44,15 @@ export async function sendNotificationApi(
     body: string;
   }
 ): Promise<StaffNotificationItem> {
-  const server = await getServerCredential(businessId);
-  if (!server) throw new Error('No server credential');
-
+  const client = await getLanClient(businessId);
   const idempotencyKey = generateUuid();
-
-  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/staff-notifications`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${server.credential}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': idempotencyKey,
-    },
-    body: JSON.stringify(payload),
+  return await client.post<StaffNotificationItem>('/api/v1/staff-notifications', payload, {
+    'Idempotency-Key': idempotencyKey,
   });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Failed to send notification (${response.status}): ${errText}`);
-  }
-
-  return await response.json();
 }
 
 export async function fetchStaffRosterApi(businessId: string): Promise<StaffRosterMember[]> {
-  const server = await getServerCredential(businessId);
-  if (!server) throw new Error('No server credential');
-
-  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/staff/roster`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${server.credential}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch staff roster: ${response.status}`);
-  }
-
-  return await response.json();
+  const client = await getLanClient(businessId);
+  const data = await client.get<any>('/api/v1/staff/roster');
+  return Array.isArray(data) ? data : data.items || [];
 }

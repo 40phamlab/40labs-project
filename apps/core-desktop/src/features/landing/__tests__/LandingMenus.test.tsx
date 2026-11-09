@@ -8,12 +8,12 @@ import { useLanguageStore } from '../../../stores/useLanguageStore';
 describe('Landing Dropdown Menus', () => {
   it('ThemeMenu updates theme when selected', () => {
     render(<ThemeMenu />);
-    const trigger = screen.getByRole('button', { name: /system|mfumo|mwanga|light|giza|dark/i });
+    const trigger = screen.getByRole('button', { name: /system|mfumo|nuru|mwanga|light|giza|dark/i });
     expect(trigger).toBeDefined();
 
     fireEvent.click(trigger);
 
-    const lightOption = screen.getByRole('menuitem', { name: /mwanga|light/i });
+    const lightOption = screen.getByRole('menuitem', { name: /nuru|mwanga|light/i });
     fireEvent.click(lightOption);
 
     expect(useThemeStore.getState().theme).toBe('light');

@@ -1,7 +1,6 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
-import { getServerCredential } from '../../lib/secure-store';
-import { pinnedServerFetch } from '../../lib/pinned-transport';
+import { getLanClient } from '../../lib/lan-client';
 import { SaleResponse, CartItem } from './types';
 
 function generateUuid(): string {
@@ -25,26 +24,12 @@ export async function createSaleApi(
   },
   idempotencyKey?: string
 ): Promise<{ sale: SaleResponse; idempotencyKey: string }> {
-  const server = await getServerCredential(businessId);
-  if (!server) throw new Error('No server credential available (offline or unpaired).');
-
+  const client = await getLanClient(businessId);
   const key = idempotencyKey || generateUuid();
 
-  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/sales`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${server.credential}`,
-      'Content-Type': 'application/json',
-      'Idempotency-Key': key,
-    },
-    body: JSON.stringify(payload),
+  const sale = await client.post<SaleResponse>('/api/v1/sales', payload, {
+    'Idempotency-Key': key,
   });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Sale failed (${response.status}): ${errText}`);
-  }
-
-  const sale = await response.json();
   return { sale, idempotencyKey: key };
 }

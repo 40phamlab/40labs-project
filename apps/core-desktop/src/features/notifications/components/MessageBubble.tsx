@@ -23,7 +23,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, previousM
       : 'rounded-2xl rounded-bl-none';
 
   return (
-    <div className={`flex w-full ${marginClass} ${isOutgoing ? 'justify-end' : 'justify-start'}`}>
+    <div
+      data-ctx="message"
+      data-ctx-id={message.id}
+      data-message-body={message.body}
+      className={`flex w-full ${marginClass} ${isOutgoing ? 'justify-end' : 'justify-start'}`}
+    >
       <div
         className={`max-w-[65%] ${roundingClass} px-4 py-2.5 shadow-xs text-xs space-y-1.5 ${
           isOutgoing

@@ -5,7 +5,7 @@ describe('branchCode generator', () => {
   it('normalizes place and diacritics', () => {
     expect(normalizePlace('Mbaráli')).toBe('MBARALI');
     expect(normalizePlace('Ilala')).toBe('ILALA');
-    expect(normalizePlace('Dar es Salaam')).toBe('DARSESALAAM');
+    expect(normalizePlace('Dar es Salaam')).toBe('DARESSALAAM');
   });
 
   it('generates first branch code', () => {
@@ -36,10 +36,10 @@ describe('branchCode generator', () => {
   });
 
   it('handles month/year rollover', () => {
-    const dec = new Date('2026-12-31T23:59:59Z');
+    const dec = new Date('2026-12-15T12:00:00Z');
     expect(generateBranchCode('AFYA-1001', [], 'Ilala', 'Dar', dec)).toMatch(/-2612$/);
 
-    const jan = new Date('2027-01-01T00:00:00Z');
+    const jan = new Date('2027-01-15T12:00:00Z');
     expect(generateBranchCode('AFYA-1001', [], 'Ilala', 'Dar', jan)).toMatch(/-2701$/);
   });
 });

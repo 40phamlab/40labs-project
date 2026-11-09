@@ -1,7 +1,6 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/03_SCREENS.md#home]
-import { getServerCredential } from '../../lib/secure-store';
-import { pinnedServerFetch } from '../../lib/pinned-transport';
+import { getLanClient } from '../../lib/lan-client';
 import { StockItem } from './types';
 import { enqueue } from '../../lib/outbox-sync';
 
@@ -10,46 +9,20 @@ export async function fetchStockListApi(
   search?: string,
   lowStock?: boolean
 ): Promise<StockItem[]> {
-  const server = await getServerCredential(businessId);
-  if (!server) throw new Error('No server credential');
-
-  let url = `${server.endpoint}/api/v1/stock?`;
+  const client = await getLanClient(businessId);
+  let path = '/api/v1/inventory';
   const params = new URLSearchParams();
   if (search) params.append('search', search);
   if (lowStock) params.append('lowStock', 'true');
-  url += params.toString();
+  if (params.toString()) path += `?${params.toString()}`;
 
-  const response = await pinnedServerFetch(server, url, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${server.credential}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch stock: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data || [];
+  const data = await client.get<any>(path);
+  return Array.isArray(data) ? data : data.items || [];
 }
 
 export async function fetchStockItemApi(businessId: string, id: string): Promise<StockItem> {
-  const server = await getServerCredential(businessId);
-  if (!server) throw new Error('No server credential');
-
-  const response = await pinnedServerFetch(server, `${server.endpoint}/api/v1/stock/${id}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${server.credential}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch stock item: ${response.status}`);
-  }
-
-  return await response.json();
+  const client = await getLanClient(businessId);
+  return await client.get<StockItem>(`/api/v1/inventory/${id}`);
 }
 
 export async function enqueueStockReceipt(payload: {

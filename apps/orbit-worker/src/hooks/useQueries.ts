@@ -4,6 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import { getLanClient } from '../lib/lan-client';
 import { useConnectionStore } from '../stores/connection';
 import { getCache, putCache, CacheResult } from '../db/cache';
+import { fetchStockListApi } from '../features/stock/api';
+import { fetchCustomersApi } from '../features/customers/api';
+import { fetchLabOrdersApi } from '../features/lab/api';
+import { fetchNotificationsApi } from '../features/notifications/api';
 
 export function useSummary() {
   const activeBusinessId = useConnectionStore((s) => s.activeBusinessId);
@@ -59,15 +63,7 @@ export function useStock(search?: string, lowStock?: boolean) {
     queryKey: ['stock', activeBusinessId, search, lowStock],
     queryFn: async () => {
       if (!activeBusinessId) throw new Error('No active business');
-      const client = await getLanClient(activeBusinessId);
-      let path = '/api/v1/inventory';
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (lowStock) params.append('lowStock', 'true');
-      if (params.toString()) path += `?${params.toString()}`;
-
-      const data = await client.get(path);
-      const items = Array.isArray(data) ? data : data.items || [];
+      const items = await fetchStockListApi(activeBusinessId, search, lowStock);
       putCache(cacheKey, items);
       return items;
     },
@@ -89,11 +85,7 @@ export function useCustomers(search?: string) {
     queryKey: ['customers', activeBusinessId, search],
     queryFn: async () => {
       if (!activeBusinessId) throw new Error('No active business');
-      const client = await getLanClient(activeBusinessId);
-      let path = '/api/v1/customers';
-      if (search) path += `?search=${encodeURIComponent(search)}`;
-      const data = await client.get(path);
-      const items = Array.isArray(data) ? data : data.items || [];
+      const items = await fetchCustomersApi(activeBusinessId, search);
       putCache(cacheKey, items);
       return items;
     },
@@ -114,9 +106,7 @@ export function useLabOrders() {
     queryKey: ['lab_orders', activeBusinessId],
     queryFn: async () => {
       if (!activeBusinessId) throw new Error('No active business');
-      const client = await getLanClient(activeBusinessId);
-      const data = await client.get('/api/v1/lab/orders');
-      const items = Array.isArray(data) ? data : data.items || [];
+      const items = await fetchLabOrdersApi(activeBusinessId);
       putCache('lab_orders', items);
       return items;
     },
@@ -137,9 +127,8 @@ export function useStaffNotifications() {
     queryKey: ['notifications', activeBusinessId],
     queryFn: async () => {
       if (!activeBusinessId) throw new Error('No active business');
-      const client = await getLanClient(activeBusinessId);
-      const data = await client.get('/api/v1/notifications');
-      const items = Array.isArray(data) ? data : data.items || [];
+      const res = await fetchNotificationsApi(activeBusinessId);
+      const items = res.items || [];
       putCache('notifications', items);
       return items;
     },

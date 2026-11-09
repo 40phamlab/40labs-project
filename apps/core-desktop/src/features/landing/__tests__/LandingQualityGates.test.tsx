@@ -62,7 +62,7 @@ describe('Landing Quality Gates & Unit Tests', () => {
         <LangMenu />
       </div>
     );
-    const themeBtn = screen.getByRole('button', { name: /system|mfumo|mwanga|light|giza|dark/i });
+    const themeBtn = screen.getByRole('button', { name: /system|mfumo|nuru|mwanga|light|giza|dark/i });
     fireEvent.click(themeBtn);
     const darkOption = screen.getByRole('menuitem', { name: /giza|dark/i });
     fireEvent.click(darkOption);
