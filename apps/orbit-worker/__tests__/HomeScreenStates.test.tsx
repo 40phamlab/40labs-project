@@ -37,7 +37,7 @@ describe('HomeScreen states and quick actions presence', () => {
         </QueryClientProvider>
       );
 
-      // Verify quick actions are always rendered in all states (Swahili default per PRD P0-12)
+      // Verify quick actions are always rendered in all states
       expect(getByText('Ongeza Bidhaa')).toBeTruthy();
       expect(getByText('Mauzo Mapya')).toBeTruthy();
     });

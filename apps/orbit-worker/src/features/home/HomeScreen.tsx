@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { radius } from '../../theme/rn-tokens';
-import { Screen, AppHeader, Text, Skeleton, Banner, KpiCard } from '../../ui';
+import { Screen, AppHeader, Text, Skeleton, Banner } from '../../ui';
 import { useI18n } from '../../i18n/I18nProvider';
 import { StatusDot, CountBadge } from '../../components';
 import { QuickActionTile } from './QuickActionTile';
@@ -13,19 +13,17 @@ import { useConnectionStore } from '../../stores/connection';
 import { useSummary, getCachedMeta } from '../../hooks/useQueries';
 import { useResponsive } from '../../theme/useResponsive';
 import { useRouter } from 'expo-router';
-import { AddCustomerModal } from '../customers/AddCustomerModal';
 
 export function HomeScreen() {
   const { colors } = useTheme();
   const { t } = useI18n();
   const router = useRouter();
-  const { status, permissions, userInfo, activeBusinessId } = useConnectionStore();
-  const { isCompact, contentMaxWidth, columns } = useResponsive();
+  const { status, permissions, userInfo } = useConnectionStore();
+  const { contentMaxWidth } = useResponsive();
 
-  const { data: summary, isLoading, isError, error, refetch, isRefetching } = useSummary();
+  const { data: summary, isLoading, refetch, isRefetching } = useSummary();
   const cacheMeta = getCachedMeta('home_summary');
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
-  const [customerModalVisible, setCustomerModalVisible] = useState(false);
 
   useEffect(() => {
     if (status === 'connected' && userInfo?.name) {
@@ -45,13 +43,13 @@ export function HomeScreen() {
       title: 'Ongeza Bidhaa',
       icon: 'cube-outline',
       perm: 'can_update_stock',
-      route: '/stock',
+      route: '/stock-add',
     },
     {
       title: 'Sajili Mgonjwa',
       icon: 'person-add-outline',
       perm: 'can_manage_customers',
-      route: 'customer_modal',
+      route: '/patient-add',
     },
     {
       title: 'Mauzo Mapya',
@@ -60,19 +58,19 @@ export function HomeScreen() {
       route: '/pos',
     },
     {
-      title: 'Vipimo vya Maabara',
+      title: 'Kusanya Sampuli',
       icon: 'flask-outline',
       perm: 'can_add_lab_sample',
       route: '/lab-sample',
     },
     {
-      title: 'Ona Ripoti',
+      title: 'Rekodi Matokeo',
       icon: 'document-text-outline',
       perm: 'can_record_lab_result',
       route: '/lab-result',
     },
     {
-      title: 'Bidhaa',
+      title: 'Ona Bidhaa',
       icon: 'medical-outline',
       perm: 'can_view_stock',
       route: '/stock',
@@ -83,19 +81,14 @@ export function HomeScreen() {
     ? quickActionsList.filter((qa) => hasPermission(qa.perm))
     : quickActionsList;
 
-  const handleTilePress = (route: string, perm: string) => {
-    console.log(`[OrbitWorker] Tile pressed: route=${route}, status=${status}, hasPermission=${hasPermission(perm)}`);
+  const handleTilePress = (route: string) => {
     if (status === 'unpaired' || status === 'revoked') {
       router.push('/pair');
       return;
     }
-    if (route === 'customer_modal') {
-      setCustomerModalVisible(true);
-      return;
-    }
     try {
       router.push(route as any);
-    } catch (err: any) {
+    } catch {
       setBannerMessage(`Navigation error: route ${route} not found`);
       const timer = setTimeout(() => setBannerMessage(null), 3000);
       return () => clearTimeout(timer);
@@ -106,15 +99,13 @@ export function HomeScreen() {
     ? `${userInfo.name} (${userInfo.role || 'Staff'})`
     : 'Orbit Worker';
 
-  const qaColumns = 2;
-
   const salesVal = summary?.sales !== undefined ? `TZS ${summary.sales.toLocaleString()}` : 'TZS 0';
   const patientsVal = summary?.patients !== undefined ? summary.patients : 0;
   const samplesVal = summary?.samples !== undefined ? summary.samples : 0;
   const stockVal = summary?.stockValue !== undefined ? `TZS ${summary.stockValue.toLocaleString()}` : 'TZS 0';
 
   return (
-    <Screen scrollable={false}>
+    <Screen scrollable={false} hasTabBar={true}>
       <AppHeader
         title={headerTitle}
         rightAction={
@@ -173,25 +164,20 @@ export function HomeScreen() {
           {t('dashboard.quickActions')}
         </Text>
 
-        <View style={styles.qaGrid} onLayout={() => {}}>
+        <View style={styles.qaGrid}>
           {visibleActions.map((qa, index) => (
             <QuickActionTile
               key={index}
               title={qa.title}
               icon={qa.icon}
               locked={false}
-              onPress={() => handleTilePress(qa.route, qa.perm)}
+              onPress={() => handleTilePress(qa.route)}
               onLockedPress={() => {}}
               style={{ width: '48%', minHeight: 48 }}
             />
           ))}
         </View>
       </ScrollView>
-      <AddCustomerModal
-        visible={customerModalVisible}
-        onClose={() => setCustomerModalVisible(false)}
-        onSuccess={() => setBannerMessage('Customer registered successfully')}
-      />
     </Screen>
   );
 }
@@ -205,12 +191,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
-  },
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
   },
   overviewCard: {
     padding: 16,

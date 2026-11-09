@@ -9,6 +9,7 @@ interface ScreenProps {
   children?: ReactNode;
   scrollable?: boolean;
   keyboardAvoiding?: boolean;
+  hasTabBar?: boolean;
   style?: ViewStyle | ViewStyle[];
   contentContainerStyle?: ViewStyle | ViewStyle[];
 }
@@ -17,6 +18,7 @@ export function Screen({
   children,
   scrollable = true,
   keyboardAvoiding = true,
+  hasTabBar = false,
   style,
   contentContainerStyle,
 }: ScreenProps) {
@@ -27,7 +29,7 @@ export function Screen({
   } catch {
     // fallback for test environments without SafeAreaProvider
   }
-  const bottomPadding = 56 + insets.bottom + 16;
+  const bottomPadding = hasTabBar ? 56 + insets.bottom + 16 : insets.bottom + 16;
 
   const content = scrollable ? (
     <ScrollView
