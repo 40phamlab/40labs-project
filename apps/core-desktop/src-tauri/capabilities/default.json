@@ -10,16 +10,16 @@
       "identifier": "opener:allow-open-path",
       "allow": [
         { "path": "$DOCUMENT/40Labs/**" },
-        { "path": "$APPDATA/attachments/**" },
-        { "path": "**" }
+        { "path": "$APPDATA/40Labs/**" },
+        { "path": "$APPDATA/attachments/**" }
       ]
     },
     {
       "identifier": "opener:allow-reveal-item-in-dir",
       "allow": [
         { "path": "$DOCUMENT/40Labs/**" },
-        { "path": "$APPDATA/attachments/**" },
-        { "path": "**" }
+        { "path": "$APPDATA/40Labs/**" },
+        { "path": "$APPDATA/attachments/**" }
       ]
     },
     "dialog:allow-open",
@@ -27,7 +27,11 @@
     "fs:default",
     {
       "identifier": "fs:allow-read",
-      "allow": ["**"]
+      "allow": [
+        { "path": "$DOCUMENT/40Labs/**" },
+        { "path": "$APPDATA/40Labs/**" },
+        { "path": "$APPDATA/attachments/**" }
+      ]
     },
     "core:window:allow-toggle-maximize",
     "core:window:allow-maximize",
