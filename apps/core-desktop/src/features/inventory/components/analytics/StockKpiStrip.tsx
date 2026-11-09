@@ -24,17 +24,17 @@ export const StockKpiStrip: React.FC<StockKpiStripProps> = ({ analytics, isLoadi
 
   return (
     <div className="grid grid-cols-4 gap-2.5 shrink-0">
-      {/* 1. Stock Value (Sell) */}
+      {/* 1. Stock Value (Buy / Cost Valuation) */}
       <div
         className="bg-surface-elevated rounded-card p-2.5 border border-border/40 flex flex-col justify-between shadow-xs relative group"
-        title={`Thamani ya Mauzo: ${formatTZS(kpis.totalValue)}`}
+        title={`Thamani ya Stock: ${formatTZS(kpis.stock_value_buy ?? kpis.totalValue)}`}
       >
         <div className="flex items-center justify-between text-text-muted text-[11px] font-ui">
-          <span className="uppercase tracking-wider font-bold">Thamani ya Mauzo</span>
+          <span className="uppercase tracking-wider font-bold">Thamani ya Stock</span>
           <Package size={14} className="text-primary" />
         </div>
         <div className="font-mono text-sm font-bold text-text truncate">
-          {formatTZS(kpis.totalValue)}
+          {formatTZS(kpis.stock_value_buy ?? kpis.totalValue)}
         </div>
       </div>
 

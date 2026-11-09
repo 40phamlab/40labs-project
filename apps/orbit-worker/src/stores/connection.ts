@@ -19,6 +19,8 @@ interface ConnectionStore {
   startMonitoring: () => () => void;
 }
 
+let isHeartbeating = false;
+
 export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   status: 'unpaired',
   permissions: [],
@@ -40,23 +42,26 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
   },
 
   heartbeat: async () => {
-    const { activeBusinessId, status } = get();
-    if (!activeBusinessId) {
-      set({ status: 'unpaired' });
-      return;
-    }
-
-    const server = await getServerCredential(activeBusinessId);
-    if (!server) {
-      set({ status: 'unpaired' });
-      return;
-    }
-
-    if (status !== 'connected' && status !== 'unreachable') {
-      set({ status: 'connecting' });
-    }
+    if (isHeartbeating) return;
+    isHeartbeating = true;
 
     try {
+      const { activeBusinessId, status } = get();
+      if (!activeBusinessId) {
+        set({ status: 'unpaired' });
+        return;
+      }
+
+      const server = await getServerCredential(activeBusinessId);
+      if (!server) {
+        set({ status: 'unpaired' });
+        return;
+      }
+
+      if (status !== 'connected' && status !== 'unreachable') {
+        set({ status: 'connecting' });
+      }
+
       const client = new ApiClient({
         baseUrl: server.endpoint,
         transport: {
@@ -108,6 +113,8 @@ export const useConnectionStore = create<ConnectionStore>((set, get) => ({
         return;
       }
       set({ status: 'unreachable' });
+    } finally {
+      isHeartbeating = false;
     }
   },
 

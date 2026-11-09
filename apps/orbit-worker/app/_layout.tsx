@@ -1,6 +1,6 @@
 // [PHASE: MVP]
 // [SPEC: apps/orbit-worker/CONTEXT/00_OVERVIEW.md]
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
@@ -10,6 +10,8 @@ import { useAppFonts } from '../src/theme/fonts';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import { I18nProvider } from '../src/i18n/I18nProvider';
 import { useConnectionStore } from '../src/stores/connection';
+import { initOutboxSystem } from '../src/lib/outbox-sync';
+import { initCacheDatabase } from '../src/db/cache';
 import { Screen, AppHeader, Text, Button } from '../src/ui';
 
 const queryClient = new QueryClient();
@@ -41,6 +43,14 @@ function RootContent() {
   const fontsLoaded = useAppFonts();
   const { colors, theme } = useTheme();
   const { status } = useConnectionStore();
+
+  useEffect(() => {
+    initOutboxSystem();
+    initCacheDatabase();
+    useConnectionStore.getState().initialize();
+    const cleanup = useConnectionStore.getState().startMonitoring();
+    return cleanup;
+  }, []);
 
   if (!fontsLoaded) {
     return (

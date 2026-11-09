@@ -13,6 +13,7 @@ import { useConnectionStore } from '../../stores/connection';
 import { useSummary, getCachedMeta } from '../../hooks/useQueries';
 import { useResponsive } from '../../theme/useResponsive';
 import { useRouter } from 'expo-router';
+import { AddCustomerModal } from '../customers/AddCustomerModal';
 
 export function HomeScreen() {
   const { colors } = useTheme();
@@ -24,6 +25,7 @@ export function HomeScreen() {
   const { data: summary, isLoading, isError, error, refetch, isRefetching } = useSummary();
   const cacheMeta = getCachedMeta('home_summary');
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
+  const [customerModalVisible, setCustomerModalVisible] = useState(false);
 
   useEffect(() => {
     if (status === 'connected' && userInfo?.name) {
@@ -49,7 +51,7 @@ export function HomeScreen() {
       title: 'Sajili Mgonjwa',
       icon: 'person-add-outline',
       perm: 'can_manage_customers',
-      route: '/stock',
+      route: 'customer_modal',
     },
     {
       title: 'Mauzo Mapya',
@@ -85,6 +87,10 @@ export function HomeScreen() {
     console.log(`[OrbitWorker] Tile pressed: route=${route}, status=${status}, hasPermission=${hasPermission(perm)}`);
     if (status === 'unpaired' || status === 'revoked') {
       router.push('/pair');
+      return;
+    }
+    if (route === 'customer_modal') {
+      setCustomerModalVisible(true);
       return;
     }
     try {
@@ -181,6 +187,11 @@ export function HomeScreen() {
           ))}
         </View>
       </ScrollView>
+      <AddCustomerModal
+        visible={customerModalVisible}
+        onClose={() => setCustomerModalVisible(false)}
+        onSuccess={() => setBannerMessage('Customer registered successfully')}
+      />
     </Screen>
   );
 }

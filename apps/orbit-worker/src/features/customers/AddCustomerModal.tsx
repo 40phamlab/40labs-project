@@ -35,7 +35,13 @@ export function normalizePhoneTZ(phone: string): string | null {
 export function AddCustomerModal({ visible, onClose, onSuccess }: AddCustomerModalProps) {
   const { colors } = useTheme();
   const { t } = useI18n();
-  const insets = useSafeAreaInsets();
+  const insets = (() => {
+    try {
+      return useSafeAreaInsets();
+    } catch {
+      return { top: 0, bottom: 0, left: 0, right: 0 };
+    }
+  })();
   const { activeBusinessId } = useConnectionStore();
 
   const [fullName, setFullName] = useState('');

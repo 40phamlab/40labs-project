@@ -1,45 +1,51 @@
-# File Explorer UI/UX Modernization & Modularization Plan
+# Implementation Plan - Stock Tab Functionality & UI Fixes
 
-Refactor the monolithic File Explorer (`ExplorerScreen.tsx`) into modular, maintainable sub-components adhering strictly to the canonical 40Labs Design Tokens, tactile elevation, and consistent spacing/typography.
+This plan outlines the steps to inspect, fix, and enhance the Stock (Inventory) tab, analytics, movement, performance, expiry, tables, and quick search in `apps/core-desktop`.
 
 ## User Review Required
 
 > [!IMPORTANT]
-> This refactor modularizes the File Explorer UI without changing any underlying Tauri IPC commands (`explorerApi.ts`), state logic, or file preview handlers (`FilePreviewProvider`). All existing unit tests (`ExplorerScreen.test.tsx`) will be preserved and verified.
+> - **Stock Value Metric**: Replaces `THAMANI YA MAUZO` (Sales Revenue) with `THAMANI YA STOCK` (Total Inventory Cost Valuation: $\sum \text{quantity} \times \text{buy\_price}$ for available active/non-expired stock).
+> - **Movement Tab**: Integrates backend stock movement / audit log / adjustment tracking to display real inventory transaction history with filters and search.
+> - **Performance Tab**: Activates 7D, 30D, and 90D date-range controls and calculates real inventory performance (fast/slow movers, turnover, inventory value over time) without hardcoded figures.
+> - **Expiry Tab & Filters**: Ensures correct date calculations, multi-batch handling, status filtering, and branch-level data isolation.
+
+## Open Questions
+
+- None. All requirements align with existing backend models (`inventory_item`, `medicine`, `stock_adjustment`, `audit`) and frontend design tokens.
 
 ## Proposed Changes
 
-### [explorer] Component Modularization
+### 1. Inventory Valuation & Stock Value Metric (`apps/core-desktop`)
+- Update KPI calculation logic in `computeStockAnalytics.ts` and UI components (`StockKpiStrip.tsx`, `InventorySidebar.tsx`, etc.) to use `THAMANI YA STOCK` (`stockValueBuy`).
+- Exclude expired, damaged, or deactivated inventory from active stock valuation.
+- Ensure correct TZS formatting and dynamic updates on mutations.
 
-#### [NEW] [ExplorerBreadcrumb.tsx](file:///C:/dev/40Labs/apps/core-desktop/src/features/explorer/components/ExplorerBreadcrumb.tsx)
-- Dedicated breadcrumb navigation with hard drive icon, path segment separators, and scrollable container.
+### 2. Movement Tab & Backend Integration (`apps/core-desktop` & `src-tauri`)
+- Enhance backend inventory services and frontend `MovementTab` / `inventoryApi` to fetch real movement records (stock additions, sales deductions, purchases, adjustments, returns, transfers).
+- Implement working date-range filters, movement-type filters, search, and pagination.
 
-#### [NEW] [ExplorerToolbar.tsx](file:///C:/dev/40Labs/apps/core-desktop/src/features/explorer/components/ExplorerToolbar.tsx)
-- Top action toolbar housing navigation history buttons (Back, Forward, Up, Refresh), action buttons (New Folder, Rename, Delete, Reveal), selection count, and View Mode switchers (List vs Grid).
+### 3. Performance Tab & Date Range Controls (`apps/core-desktop`)
+- Wire up 7D, 30D, and 90D date-range selectors to recalculate metrics dynamically.
+- Implement robust calculations for fast-moving items, slow-moving items, stock turnover, and inventory value over time with division-by-zero safeguards.
 
-#### [NEW] [ExplorerSidebarTree.tsx](file:///C:/dev/40Labs/apps/core-desktop/src/features/explorer/components/ExplorerSidebarTree.tsx)
-- Left collapsible directory tree with quick access ("40Labs Root", "Browse..."), folder expansion state, and active item highlighting.
+### 4. Table & Quick Search Enhancements (`apps/core-desktop`)
+- Audit and fix all tables across Overview, Movement, Performance, and Expiry tabs (sorting, filtering, search, pagination, empty states, mutation refresh).
+- Ensure Quick Search panel supports name, generic name, SKU, and status filters (Expired, Low Stock, Stock Out, All Active) combined without conflict.
 
-#### [NEW] [ExplorerListView.tsx](file:///C:/dev/40Labs/apps/core-desktop/src/features/explorer/components/ExplorerListView.tsx)
-- Tokenized table view with sortable headers (`Name`, `Type`, `Size`, `Date Modified`), checkboxes, and file type icons.
+### 5. Expiry View & Branch Isolation (`apps/core-desktop` & `src-tauri`)
+- Refine expiry calculations, days-remaining logic, and batch separation.
+- Ensure branch-level data isolation and correct handling of items without expiry dates.
 
-#### [NEW] [ExplorerGridView.tsx](file:///C:/dev/40Labs/apps/core-desktop/src/features/explorer/components/ExplorerGridView.tsx)
-- Tactile card grid view with proper spacing, elevation, and file type representations.
-
-#### [NEW] [ExplorerContextMenu.tsx](file:///C:/dev/40Labs/apps/core-desktop/src/features/explorer/components/ExplorerContextMenu.tsx)
-- Floating context menu for item and canvas right-click actions.
-
-#### [NEW] [ExplorerModals.tsx](file:///C:/dev/40Labs/apps/core-desktop/src/features/explorer/components/ExplorerModals.tsx)
-- Consolidated modal dialogs for New Folder, Rename, and Delete Confirmation using `@40labs/ui-components` Dialog & Button.
-
-#### [MODIFY] [ExplorerScreen.tsx](file:///C:/dev/40Labs/apps/core-desktop/src/features/explorer/ExplorerScreen.tsx)
-- Streamlined container orchestrating state and composing the modular sub-components with canonical design tokens (`--color-app-bg`, `--color-surface-primary`, `.elevation-raised`, `.elevation-inset`).
+### 6. Testing & Verification
+- Add/update unit tests for stock valuation, movement history, performance metrics, date ranges, expiry calculations, and quick search.
+- Run frontend tests and Tauri backend tests.
 
 ## Verification Plan
 
 ### Automated Tests
-- Run `npm test` or vitest for `ExplorerScreen.test.tsx` to ensure all tests pass successfully.
-- Verify file preview opening, search filtering, folder creation, and selection handlers.
+- Run frontend Vitest tests: `pnpm test` (or vitest execution).
+- Run Rust unit tests for inventory repo and service: `cargo test` in `src-tauri`.
 
 ### Manual Verification
-- Inspect UI inside the 40Labs Core Desktop App shell to verify tactile elevation, alignment, responsiveness, and light/dark theme compatibility.
+- Inspect Inventory Dashboard UI via Tauri/browser preview, verifying metric label change (`THAMANI YA STOCK`), table interactions, date range toggles (7D/30D/90D), movement records, and quick search filters.

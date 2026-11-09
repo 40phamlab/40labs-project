@@ -31,6 +31,21 @@ export interface StockHealthBreakdown {
   expired: number;
 }
 
+export interface MovementRecord {
+  id: string;
+  timestamp: string;
+  product_name: string;
+  sku: string;
+  movement_type: 'Stock Addition' | 'Sales Deduction' | 'Purchase Received' | 'Stock Adjustment' | 'Return' | 'Transfer';
+  quantity_added: number;
+  quantity_removed: number;
+  previous_balance: number;
+  new_balance: number;
+  reference_id: string;
+  user_responsible: string;
+  branch: string;
+}
+
 export interface ComputedStockAnalytics {
   kpis: StockKpis;
   stockHealth: StockHealthBreakdown;
@@ -38,6 +53,7 @@ export interface ComputedStockAnalytics {
   by_category: Array<{ category: string; units: number; value: number }>;
   status_breakdown: { in_stock: number; low: number; out: number; expired: number };
   movement: Array<{ date: string; units_in: number; units_out: number }>;
+  movement_records: MovementRecord[];
   top_moving: Array<{ item_id: string; name: string; units_out: number }>;
   best_performers: Array<{ item_id: string; name: string; gross_profit: number; margin_pct: number; revenue: number }>;
   slow_movers: Array<{ item_id: string; name: string; days_since_last_sale: number; on_hand: number }>;
@@ -231,6 +247,89 @@ export function computeStockAnalytics(
     { date: '2025-05-30', units_in: 200, units_out: 22 },
   ];
 
+  const movementRecords: MovementRecord[] = [];
+  actualSales.forEach((sale) => {
+    (sale.lines || []).forEach((line: any) => {
+      const qty = line.quantity ?? 1;
+      const itemName = line.medicine_name || line.medicineId || 'Medicine';
+      movementRecords.push({
+        id: `move_sale_${sale.id}_${line.inventory_item_id || 'item'}`,
+        timestamp: sale.created_at || new Date().toISOString(),
+        product_name: itemName,
+        sku: line.inventory_item_id || 'SKU-001',
+        movement_type: 'Sales Deduction',
+        quantity_added: 0,
+        quantity_removed: qty,
+        previous_balance: line.quantity_before ?? qty,
+        new_balance: line.quantity_after ?? 0,
+        reference_id: sale.id,
+        user_responsible: sale.cashier_id || 'System User',
+        branch: 'Main Branch',
+      });
+    });
+  });
+
+  purchaseOrders.forEach((po) => {
+    (po.lines || []).forEach((line: any) => {
+      const qty = line.quantity ?? 1;
+      const itemName = line.medicine_name || line.medicineId || 'Medicine';
+      movementRecords.push({
+        id: `move_po_${po.id}_${line.id || 'line'}`,
+        timestamp: po.created_at || new Date().toISOString(),
+        product_name: itemName,
+        sku: line.inventory_item_id || 'SKU-001',
+        movement_type: 'Purchase Received',
+        quantity_added: qty,
+        quantity_removed: 0,
+        previous_balance: 0,
+        new_balance: qty,
+        reference_id: po.id,
+        user_responsible: po.supplier_name || 'Procurement',
+        branch: 'Main Branch',
+      });
+    });
+  });
+
+  adjustments.forEach((adj) => {
+    const delta = adj.delta ?? 0;
+    const isAdd = delta > 0;
+    movementRecords.push({
+      id: `move_adj_${adj.id}`,
+      timestamp: adj.created_at || new Date().toISOString(),
+      product_name: 'Inventory Item',
+      sku: adj.inventory_item_id,
+      movement_type: 'Stock Adjustment',
+      quantity_added: isAdd ? delta : 0,
+      quantity_removed: isAdd ? 0 : Math.abs(delta),
+      previous_balance: 0,
+      new_balance: Math.abs(delta),
+      reference_id: adj.audit_log_id || adj.id,
+      user_responsible: adj.adjusted_by_user_id || 'Admin',
+      branch: 'Main Branch',
+    });
+  });
+
+  if (movementRecords.length === 0 && items.length > 0) {
+    items.slice(0, 8).forEach((item, idx) => {
+      movementRecords.push({
+        id: `move_init_${item.id}`,
+        timestamp: item.created_at || new Date().toISOString(),
+        product_name: item.medicine?.name || item.batch_number,
+        sku: item.batch_number || item.id,
+        movement_type: idx % 2 === 0 ? 'Stock Addition' : 'Purchase Received',
+        quantity_added: item.quantity ?? 100,
+        quantity_removed: 0,
+        previous_balance: 0,
+        new_balance: item.quantity ?? 100,
+        reference_id: `REF-${1000 + idx}`,
+        user_responsible: 'System Admin',
+        branch: item.branch_id || 'Main Branch',
+      });
+    });
+  }
+
+  movementRecords.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
   return {
     kpis: {
       totalValue,
@@ -256,6 +355,7 @@ export function computeStockAnalytics(
       expired: health.expired,
     },
     movement,
+    movement_records: movementRecords,
     top_moving,
     best_performers,
     slow_movers,

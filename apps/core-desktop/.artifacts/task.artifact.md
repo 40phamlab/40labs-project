@@ -1,7 +1,7 @@
-- `[x]` Step 1: Create ExplorerBreadcrumb.tsx
-- `[x]` Step 2: Create ExplorerToolbar.tsx
-- `[x]` Step 3: Create ExplorerSidebarTree.tsx
-- `[x]` Step 4: Create ExplorerListView.tsx & ExplorerGridView.tsx
-- `[x]` Step 5: Create ExplorerContextMenu.tsx & ExplorerModals.tsx
-- `[x]` Step 6: Refactor ExplorerScreen.tsx to compose all modular components with 40Labs design tokens & tactile elevation
-- `[x]` Step 7: Run vitest / unit tests (`ExplorerScreen.test.tsx`) to verify correctness
+- `[ ]` 1. Correct Stock Value Metric (`THAMANI YA STOCK` & valuation logic)
+- `[ ]` 2. Fix Movement Tab & Backend Movement History integration
+- `[ ]` 3. Fix Performance Tab & 7D/30D/90D Date Range controls
+- `[ ]` 4. Fix Table Functionality across Overview, Movement, Performance, and Expiry tabs
+- `[ ]` 5. Fix Expiry View & Batch calculations
+- `[ ]` 6. Fix Quick Search & Combined Filters panel
+- `[ ]` 7. Add comprehensive unit tests and verify backend/frontend build & test suite

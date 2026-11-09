@@ -45,5 +45,26 @@
   },
   "value": {
     "notProvided": "Haijatolewa"
+  },
+  "contextMenu": {
+    "copy": "Nakili",
+    "selectAll": "Chagua Yote",
+    "cut": "Kata",
+    "paste": "Bandika",
+    "undo": "Tendua",
+    "redo": "Rudia",
+    "refreshData": "Onyesha Upya Data",
+    "goToHome": "Nenda Nyumbani",
+    "settings": "Mipangilio",
+    "switchLanguage": "Badili Lugha (Kiswahili / Kiingereza)",
+    "toggleTheme": "Badili Mandhari",
+    "syncStatus": "Hali ya Usawazishaji: Imesawazishwa",
+    "openChat": "Fungua Mazungumzo",
+    "markAsRead": "Weka kama Imesomwa",
+    "markAsUnread": "Weka kama Haijasomwa",
+    "archive": "Hifadhi",
+    "viewProfile": "Tazama Wasifu wa Mteja",
+    "reply": "Jibu",
+    "deleteMessage": "Futa Ujumbe"
   }
 }

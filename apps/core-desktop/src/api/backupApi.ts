@@ -112,7 +112,7 @@ export const backupApi = {
       return await invokeCommand<BackupExportResult>('export_disaster_recovery_pack', {
         destinationPath,
         password,
-      });
+      }, 60000);
     }
     throw new Error('Disaster Recovery Export is only available in 40Labs Core Desktop application.');
   },
@@ -125,7 +125,7 @@ export const backupApi = {
       return await invokeCommand<BackupPreview>('preview_disaster_recovery_pack', {
         archivePath,
         password,
-      });
+      }, 60000);
     }
     throw new Error('Disaster Recovery Preview is only available in 40Labs Core Desktop application.');
   },
@@ -138,7 +138,7 @@ export const backupApi = {
       return await invokeCommand<RestoreResult>('restore_disaster_recovery_pack', {
         archivePath,
         password,
-      });
+      }, 60000);
     }
     throw new Error('Disaster Recovery Restore is only available in 40Labs Core Desktop application.');
   },

@@ -30,7 +30,7 @@ describe('StockAnalyticsPanel Component Tests [phase: StockAnalytics]', () => {
 
     expect(screen.getByText(/Stock Trends & Category Analytics/i)).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText('Thamani ya Mauzo')).toBeInTheDocument();
+      expect(screen.getByText('Thamani ya Stock')).toBeInTheDocument();
       expect(screen.getByText('Jumla ya SKUs')).toBeInTheDocument();
     });
   });
@@ -65,7 +65,7 @@ describe('StockAnalyticsPanel Component Tests [phase: StockAnalytics]', () => {
       />
     );
 
-    expect(screen.queryByText('Thamani ya Mauzo')).not.toBeInTheDocument();
+    expect(screen.queryByText('Thamani ya Stock')).not.toBeInTheDocument();
   });
 
   test('range switch updates range state', async () => {

@@ -45,5 +45,26 @@
   },
   "value": {
     "notProvided": "Not Provided"
+  },
+  "contextMenu": {
+    "copy": "Copy",
+    "selectAll": "Select All",
+    "cut": "Cut",
+    "paste": "Paste",
+    "undo": "Undo",
+    "redo": "Redo",
+    "refreshData": "Refresh Data",
+    "goToHome": "Go to Home",
+    "settings": "Settings",
+    "switchLanguage": "Switch Language (Swahili / English)",
+    "toggleTheme": "Toggle Theme",
+    "syncStatus": "Sync Status: Active & Synced",
+    "openChat": "Open Conversation",
+    "markAsRead": "Mark as Read",
+    "markAsUnread": "Mark as Unread",
+    "archive": "Archive",
+    "viewProfile": "View Customer Profile",
+    "reply": "Reply",
+    "deleteMessage": "Delete Message"
   }
 }
