@@ -350,28 +350,7 @@ export const notificationsApi = {
         },
       });
     }
-
-    const now = new Date().toISOString();
-    const att: MessageAttachment = {
-      id: `att_${Date.now()}`,
-      workspace_id: payload.workspaceId || WORKSPACE_ID,
-      branch_id: payload.branchId || BRANCH_ID,
-      message_id: payload.messageId,
-      kind: payload.kind,
-      file_name: payload.fileName,
-      mime_type: payload.mimeType,
-      size_bytes: payload.bytes?.length || (payload.sourcePath ? 2048 : 1024),
-      storage_path: `attachments/${WORKSPACE_ID}/att_${Date.now()}`,
-      sha256: 'mock_sha256_hash',
-      created_at: now,
-      updated_at: now,
-    };
-    if (payload.bytes) {
-      const blob = new Blob([new Uint8Array(payload.bytes)], { type: payload.mimeType });
-      attachmentPreviewUrls.set(att.id, URL.createObjectURL(blob));
-    }
-    attachmentsStore = [...attachmentsStore, att];
-    return att;
+    throw new Error('Native Tauri storage is required to save attachments.');
   },
 
   exportAttachment: async (attachmentId: string, category: 'attachments' | 'exports' | 'reports' | 'lab_results' = 'attachments'): Promise<ExportResult> => {
@@ -381,10 +360,7 @@ export const notificationsApi = {
         category,
       });
     }
-    return {
-      path: `/mock/Documents/40Labs/${category}/${attachmentId}`,
-      folder: category,
-    };
+    throw new Error('Native Tauri environment is required for file export.');
   },
 
   exportAttachmentToPath: async (attachmentId: string, destPath: string): Promise<string> => {
@@ -394,7 +370,7 @@ export const notificationsApi = {
         destPath,
       });
     }
-    return destPath;
+    throw new Error('Native Tauri environment is required for file export to path.');
   },
 
   getNotifications: (): Promise<Notification[]> => notificationsApi.list(),

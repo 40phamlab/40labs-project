@@ -147,6 +147,10 @@ impl AuthEngine {
             return Err(AuthError::Forbidden);
         }
 
+        if user.must_change_credentials != 0 {
+            return Err(AuthError::PasswordRequired);
+        }
+
         let cred = CredentialRepository::get_by_user_id(&self.pool, &user.id)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?
@@ -211,6 +215,10 @@ impl AuthEngine {
         if user.active == 0 {
             *session_guard = None;
             return Err(AuthError::Forbidden);
+        }
+
+        if user.must_change_credentials != 0 {
+            return Err(AuthError::PasswordRequired);
         }
 
         let cred = CredentialRepository::get_by_user_id(&self.pool, &user.id)
@@ -285,6 +293,31 @@ impl AuthEngine {
                         });
                     }
                 }
+            }
+
+            if u.active != 1 {
+                let audit = AuditLogEntry {
+                    id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: u.workspace_id.clone(),
+                    branch_id: u.branch_id.clone(),
+                    action: AuditAction::LoginFailed.as_str().to_string(),
+                    performed_by_user_id: None,
+                    target_entity_type: "AppUser".to_string(),
+                    target_entity_id: u.id.clone(),
+                    metadata: Some(
+                        serde_json::json!({ "reason": "user_inactive", "username": norm_username, "method": "password" })
+                            .to_string(),
+                    ),
+                    created_at: now_iso.clone(),
+                };
+                audit::append(&mut tx, &audit)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                return Err(AuthError::InvalidCredentials { retry_after_secs: None });
             }
 
             let valid = hashing::verify_password(password.as_str(), &c.password_hash);
@@ -536,6 +569,31 @@ impl AuthEngine {
                         });
                     }
                 }
+            }
+
+            if u.active != 1 {
+                let audit = AuditLogEntry {
+                    id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: u.workspace_id.clone(),
+                    branch_id: u.branch_id.clone(),
+                    action: AuditAction::LoginFailed.as_str().to_string(),
+                    performed_by_user_id: None,
+                    target_entity_type: "AppUser".to_string(),
+                    target_entity_id: u.id.clone(),
+                    metadata: Some(
+                        serde_json::json!({ "reason": "user_inactive", "username": norm_username, "method": "password" })
+                            .to_string(),
+                    ),
+                    created_at: now_iso.clone(),
+                };
+                audit::append(&mut tx, &audit)
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                tx.commit()
+                    .await
+                    .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+                return Err(AuthError::InvalidCredentials { retry_after_secs: None });
             }
 
             let pin_hash = match &c.pin_hash {
@@ -1210,6 +1268,10 @@ impl AuthEngine {
             let app_id = approver_user_id.ok_or_else(|| {
                 AuthError::PolicyViolation("Approver required for Sudo tier permission".to_string())
             })?;
+
+            if app_id == actor_id {
+                return Err(AuthError::Forbidden);
+            }
 
             let approver = UserRepository::get_by_id(&self.pool, &app_id)
                 .await

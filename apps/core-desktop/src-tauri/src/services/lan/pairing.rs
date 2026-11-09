@@ -218,7 +218,7 @@ mod tests {
             .create_session("user_active", "{\"can_view_reports\":true}")
             .await
             .unwrap();
-        let token = session.qr_payload.split("&token=").nth(1).unwrap();
+        let token = session.qr_payload.split("&token=").nth(1).unwrap().split('&').next().unwrap();
 
         let app = create_router(state);
 
@@ -324,7 +324,7 @@ mod tests {
 
         // Pair a valid device
         let session = state.create_session("user_active", "{}").await.unwrap();
-        let token = session.qr_payload.split("&token=").nth(1).unwrap();
+        let token = session.qr_payload.split("&token=").nth(1).unwrap().split('&').next().unwrap();
         let pair_payload = serde_json::json!({
             "sessionId": session.session_id,
             "token": token,
@@ -365,7 +365,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         // Block device immediately in DB
-        device_repo::update_device_status(&state.pool, "ws_010101", device_id, "blocked")
+        device_repo::update_device_status(&state.pool, "ws_1", device_id, "blocked")
             .await
             .unwrap();
 
