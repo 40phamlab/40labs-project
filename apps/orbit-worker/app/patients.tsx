@@ -51,14 +51,14 @@ export default function PatientsScreen() {
 
   return (
     <Screen scrollable={false}>
-      <AppHeader title="Orodha ya Wagonjwa (Patients)" onBack={() => router.back()} />
+      <AppHeader title={t('customers.patientsListTitle')} onBack={() => router.back()} />
 
       <View style={styles.searchContainer}>
         <View style={[styles.searchBox, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}>
           <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.textPrimary }]}
-            placeholder="Search by name or phone..."
+            placeholder={t('customers.searchPlaceholder')}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -79,11 +79,11 @@ export default function PatientsScreen() {
         )}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadPatients(true)} tintColor={colors.actionPrimary} />}
-        ListEmptyComponent={!loading ? <EmptyState title="No patients found" icon="people-outline" /> : null}
+        ListEmptyComponent={!loading ? <EmptyState title={t('customers.noPatientsFound')} icon="people-outline" /> : null}
       />
 
       <View style={styles.fabContainer}>
-        <Fab label="Register Patient" icon="person-add" onPress={() => router.push('/patient-add')} />
+        <Fab label={t('customers.actions.addPatient')} icon="person-add" onPress={() => router.push('/patient-add')} />
       </View>
     </Screen>
   );

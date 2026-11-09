@@ -10,8 +10,9 @@ import { Button } from '../../ui/Button';
 import { radius } from '../../theme/rn-tokens';
 import { CartItem } from './types';
 import { Customer } from '../customers/types';
-import { CustomerPickerModal } from '../customers/CustomerPickerModal';
 import { PaymentSelector } from './PaymentSelector';
+import { useI18n } from '../../i18n/I18nProvider';
+import { useRouter } from 'expo-router';
 
 interface CartSheetProps {
   visible: boolean;
@@ -43,7 +44,8 @@ export function CartSheet({
   confirming,
 }: CartSheetProps) {
   const { colors } = useTheme();
-  const [customerModalVisible, setCustomerModalVisible] = useState(false);
+  const { t } = useI18n();
+  const router = useRouter();
 
   const subtotalSum = cart.reduce((acc, item) => acc + item.subtotal, 0);
   const discount = Number(discountAmount) || 0;
@@ -51,15 +53,15 @@ export function CartSheet({
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Shopping Cart">
+    <BottomSheet visible={visible} onClose={onClose} title={t('sales.shoppingCart')}>
       <View style={styles.container}>
         <TouchableOpacity
           style={[styles.customerButton, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
-          onPress={() => setCustomerModalVisible(true)}
+          onPress={() => router.push('/patients')}
         >
           <Ionicons name="person-outline" size={16} color={colors.textSecondary} style={{ marginRight: 8 }} />
           <Text style={[styles.customerText, { color: selectedCustomer ? colors.textPrimary : colors.textMuted }]}>
-            {selectedCustomer ? `${selectedCustomer.fullName} (${selectedCustomer.phone})` : 'Select Patient / Customer'}
+            {selectedCustomer ? `${selectedCustomer.fullName} (${selectedCustomer.phone})` : t('sales.selectCustomer')}
           </Text>
         </TouchableOpacity>
 
@@ -96,13 +98,13 @@ export function CartSheet({
           style={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyCart}>
-              <Text style={{ color: colors.textMuted }}>Cart is empty</Text>
+              <Text style={{ color: colors.textMuted }}>{t('sales.emptyCart')}</Text>
             </View>
           }
         />
 
         <View style={styles.discountRow}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Discount (TZS)</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('sales.discount')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             keyboardType="numeric"
@@ -113,21 +115,21 @@ export function CartSheet({
           />
         </View>
 
-        <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 4 }]}>Payment Method</Text>
+        <Text style={[styles.label, { color: colors.textSecondary, marginBottom: 4 }]}>{t('sales.paymentMethod')}</Text>
         <PaymentSelector selected={paymentMethod} onSelect={onSelectPaymentMethod} />
 
         <View style={[styles.summaryContainer, { borderTopColor: colors.borderSubtle }]}>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Subtotal ({totalItems} items)</Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('sales.subtotal')} ({totalItems} items)</Text>
             <Text variant="mono" style={{ fontSize: 13 }}>TZS {subtotalSum.toLocaleString()}</Text>
           </View>
           <View style={styles.summaryRow}>
-            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>Grand Total</Text>
+            <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{t('sales.grandTotal')}</Text>
             <Text variant="mono" style={{ fontSize: 16, color: colors.actionPrimary }}>TZS {grandTotal.toLocaleString()}</Text>
           </View>
 
           <Button
-            title={`Confirm Sale (TZS ${grandTotal.toLocaleString()})`}
+            title={`${t('sales.confirm')} (TZS ${grandTotal.toLocaleString()})`}
             onPress={onConfirm}
             disabled={confirming || cart.length === 0}
             loading={confirming}
@@ -135,12 +137,6 @@ export function CartSheet({
           />
         </View>
       </View>
-
-      <CustomerPickerModal
-        visible={customerModalVisible}
-        onSelect={(cust) => onSelectCustomer(cust)}
-        onClose={() => setCustomerModalVisible(false)}
-      />
     </BottomSheet>
   );
 }

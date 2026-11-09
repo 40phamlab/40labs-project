@@ -1,10 +1,10 @@
 {
   "title": "Wagonjwa na Wateja",
-  "search": "Tafuta kwa jina, simu, namba ya NHIF...",
+  "search": "Tafuta kwa jina, simu, namba ya TMDA...",
   "name": "Jina Kamili",
   "phone": "Namba ya Simu",
   "email": "Barua Pepe",
-  "nhif": "Namba ya NHIF / Bima",
+  "nhif": "Namba ya TMDA / Bima",
   "history": "Historia ya Manunuzi na Ziara",
   "importWizard": "Mchawi wa Kuleta Wagonjwa",
   "actions": {
@@ -12,5 +12,19 @@
     "editPatient": "Hariri Taarifa za Mgonjwa",
     "importPatients": "Leta Orodha ya Wagonjwa",
     "exportPatients": "Hamisha Wagonjwa"
-  }
+  },
+  "registerPatientTitle": "Sajili Mgonjwa",
+  "phoneNumber": "Namba ya Simu",
+  "fullName": "Jina Kamili",
+  "gender": "Jinsia",
+  "dob": "Tarehe ya Kuzaliwa (YYYY-MM-DD)",
+  "bloodGroup": "Kundi la Damu",
+  "allergies": "Mzio",
+  "phoneAndNameRequired": "Namba ya simu na jina kamili vinahitajika.",
+  "customerExistsTitle": "Mteja Yupo Tayari",
+  "customerExistsBody": "Mteja mwenye namba hii ya simu yupo tayari kwenye mfumo.",
+  "registerFailed": "Imeshindikana kusajili mgonjwa.",
+  "patientsListTitle": "Orodha ya Wagonjwa",
+  "searchPlaceholder": "Tafuta kwa jina au namba...",
+  "noPatientsFound": "Hakuna wagonjwa waliopatikana"
 }

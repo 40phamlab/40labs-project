@@ -21,5 +21,21 @@
     "dropzone": "Buruta picha ya bidhaa hapa, au bonyeza kuchagua",
     "replace": "Badilisha Picha",
     "remove": "Ondoa Picha"
-  }
+  },
+  "addStockTitle": "Ongeza Bidhaa",
+  "medicineName": "Jina la Dawa",
+  "batchNumber": "Namba ya Batch",
+  "expiryDateLabel": "Tarehe ya Kuisha (YYYY-MM-DD)",
+  "quantity": "Idadi",
+  "buyPrice": "Bei ya Kununua",
+  "sellPrice": "Bei ya Kuuza",
+  "saveAndSync": "Hifadhi na Tuma",
+  "fillRequired": "Tafadhali jaza sehemu zote muhimu.",
+  "qtyGreaterThanZero": "Idadi lazima iwe kubwa kuliko 0.",
+  "invalidExpiry": "Tarehe ya kuisha si sahihi au imepita.",
+  "invalidPrices": "Tafadhali weka bei sahihi za namba.",
+  "priceWarningTitle": "Onyo la Bei",
+  "priceWarningBody": "Bei ya kununua iko juu kuliko bei ya kuuza. Unataka kuendelea?",
+  "proceed": "Endelea",
+  "saveFailed": "Imeshindikana kuhifadhi risiti ya hisa."
 }

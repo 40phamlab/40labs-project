@@ -21,5 +21,21 @@
     "dropzone": "Drag and drop product image here, or click to browse",
     "replace": "Replace Photo",
     "remove": "Remove Photo"
-  }
+  },
+  "addStockTitle": "Add Stock",
+  "medicineName": "Medicine Name",
+  "batchNumber": "Batch Number",
+  "expiryDateLabel": "Expiry Date (YYYY-MM-DD)",
+  "quantity": "Quantity",
+  "buyPrice": "Buy Price",
+  "sellPrice": "Sell Price",
+  "saveAndSync": "Save & Sync",
+  "fillRequired": "Please fill in all required fields.",
+  "qtyGreaterThanZero": "Quantity must be greater than 0.",
+  "invalidExpiry": "Expiry date is invalid or has already passed.",
+  "invalidPrices": "Please enter valid numeric prices.",
+  "priceWarningTitle": "Price Warning",
+  "priceWarningBody": "Buy price is higher than sell price. Do you want to proceed?",
+  "proceed": "Proceed",
+  "saveFailed": "Failed to save stock receipt."
 }

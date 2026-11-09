@@ -28,7 +28,7 @@ export default function PatientAddScreen() {
   const handleSubmit = async () => {
     setErrorMsg(null);
     if (!phone.trim() || !fullName.trim()) {
-      setErrorMsg('Phone number and Full Name are required.');
+      setErrorMsg(t('customers.phoneAndNameRequired'));
       return;
     }
 
@@ -45,7 +45,6 @@ export default function PatientAddScreen() {
 
       const outboxId = await enqueue('customer_create', payload);
 
-      // Optimistically set customer in store
       setSelectedCustomer({
         id: outboxId,
         phone: phone.trim(),
@@ -61,12 +60,12 @@ export default function PatientAddScreen() {
     } catch (err: any) {
       if (err.status === 409 || err.message?.includes('duplicate') || err.message?.includes('already exists')) {
         Alert.alert(
-          'Customer Exists',
-          'A customer with this phone number already exists in the system.',
-          [{ text: 'OK', onPress: () => router.back() }]
+          t('customers.customerExistsTitle'),
+          t('customers.customerExistsBody'),
+          [{ text: t('common.ok') || 'OK', onPress: () => router.back() }]
         );
       } else {
-        setErrorMsg(err.message || 'Failed to register patient.');
+        setErrorMsg(err.message || t('customers.registerFailed'));
       }
     } finally {
       setLoading(false);
@@ -75,7 +74,7 @@ export default function PatientAddScreen() {
 
   return (
     <Screen scrollable={false} hasTabBar={false}>
-      <AppHeader title="Sajili Mgonjwa (Register Patient)" onBack={() => router.back()} />
+      <AppHeader title={t('customers.registerPatientTitle')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.container}>
         {errorMsg && (
           <View style={[styles.errorBox, { backgroundColor: colors.surfaceSecondary }]}>
@@ -84,7 +83,7 @@ export default function PatientAddScreen() {
         )}
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Namba ya Simu / Phone Number *</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('customers.phoneNumber')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="e.g. 0712 345 678"
@@ -96,7 +95,7 @@ export default function PatientAddScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Jina Kamili / Full Name *</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('customers.fullName')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="e.g. Juma Ally"
@@ -107,7 +106,7 @@ export default function PatientAddScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Jinsia / Gender</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('customers.gender')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="Male / Female / Other"
@@ -118,7 +117,7 @@ export default function PatientAddScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Tarehe ya Kuzaliwa / DOB (YYYY-MM-DD)</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('customers.dob')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="YYYY-MM-DD"
@@ -129,7 +128,7 @@ export default function PatientAddScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Kundi la Damu / Blood Group</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('customers.bloodGroup')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="e.g. O+"
@@ -140,7 +139,7 @@ export default function PatientAddScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Mzio / Allergies</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('customers.allergies')}</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="e.g. Penicillin"
@@ -151,7 +150,7 @@ export default function PatientAddScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Button title="Sajili Mgonjwa (Save Patient)" onPress={handleSubmit} loading={loading} />
+          <Button title={t('customers.actions.addPatient')} onPress={handleSubmit} loading={loading} />
         </View>
       </ScrollView>
     </Screen>

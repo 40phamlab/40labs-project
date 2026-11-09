@@ -8,7 +8,6 @@ import { Screen, AppHeader, Text, Button } from '../src/ui';
 import { useI18n } from '../src/i18n/I18nProvider';
 import { enqueue } from '../src/lib/outbox-sync';
 import { useRouter } from 'expo-router';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 
 export default function StockAddScreen() {
   const { colors } = useTheme();
@@ -27,37 +26,36 @@ export default function StockAddScreen() {
   const handleSubmit = async () => {
     setErrorMsg(null);
     if (!name.trim() || !batch.trim() || !expiry.trim() || !quantity.trim() || !buyPrice.trim() || !sellPrice.trim()) {
-      setErrorMsg('Please fill in all required fields.');
+      setErrorMsg(t('inventory.fillRequired'));
       return;
     }
 
     const qtyNum = Number(quantity);
     if (isNaN(qtyNum) || qtyNum <= 0) {
-      setErrorMsg('Quantity must be greater than 0.');
+      setErrorMsg(t('inventory.qtyGreaterThanZero'));
       return;
     }
 
-    // Expiry validation: YYYY-MM-DD
     const expiryDate = new Date(expiry);
     if (isNaN(expiryDate.getTime()) || expiryDate <= new Date()) {
-      setErrorMsg('Expiry date is invalid or has already passed.');
+      setErrorMsg(t('inventory.invalidExpiry'));
       return;
     }
 
     const cleanBuy = Number(buyPrice.replace(/[\s,]/g, ''));
     const cleanSell = Number(sellPrice.replace(/[\s,]/g, ''));
     if (isNaN(cleanBuy) || isNaN(cleanSell)) {
-      setErrorMsg('Please enter valid numeric prices.');
+      setErrorMsg(t('inventory.invalidPrices'));
       return;
     }
 
     if (cleanBuy > cleanSell) {
       Alert.alert(
-        'Price Warning',
-        'Buy price is higher than sell price. Do you want to proceed?',
+        t('inventory.priceWarningTitle'),
+        t('inventory.priceWarningBody'),
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Proceed', onPress: () => performSave(cleanBuy, cleanSell, qtyNum) },
+          { text: t('common.cancel') || 'Cancel', style: 'cancel' },
+          { text: t('inventory.proceed'), onPress: () => performSave(cleanBuy, cleanSell, qtyNum) },
         ]
       );
       return;
@@ -79,7 +77,7 @@ export default function StockAddScreen() {
       });
       router.back();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to save stock receipt.');
+      setErrorMsg(err.message || t('inventory.saveFailed'));
     } finally {
       setLoading(false);
     }
@@ -87,7 +85,7 @@ export default function StockAddScreen() {
 
   return (
     <Screen scrollable={false} hasTabBar={false}>
-      <AppHeader title="Ongeza Bidhaa (Add Stock)" onBack={() => router.back()} />
+      <AppHeader title={t('inventory.addStockTitle')} onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.container}>
         {errorMsg && (
           <View style={[styles.errorBox, { backgroundColor: colors.surfaceSecondary }]}>
@@ -96,7 +94,7 @@ export default function StockAddScreen() {
         )}
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Jina la Bidhaa / Medicine Name *</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('inventory.medicineName')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="e.g. Paracetamol 500mg"
@@ -107,7 +105,7 @@ export default function StockAddScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Namba ya Batch / Batch Number *</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('inventory.batchNumber')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="e.g. BATCH-2026-001"
@@ -118,7 +116,7 @@ export default function StockAddScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Tarehe ya Kuisha / Expiry Date (YYYY-MM-DD) *</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('inventory.expiryDateLabel')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
             placeholder="YYYY-MM-DD"
@@ -129,10 +127,9 @@ export default function StockAddScreen() {
         </View>
 
         <View style={styles.field}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>Idadi / Quantity *</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('inventory.quantity')} *</Text>
           <TextInput
             style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
-            keyboardDataType="numeric"
             keyboardType="numeric"
             placeholder="e.g. 100"
             placeholderTextColor={colors.textMuted}
@@ -143,7 +140,7 @@ export default function StockAddScreen() {
 
         <View style={styles.row}>
           <View style={[styles.field, { flex: 1 }]}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Bei ya Kununua (Buy) *</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('inventory.buyPrice')} *</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
               keyboardType="numeric"
@@ -154,7 +151,7 @@ export default function StockAddScreen() {
             />
           </View>
           <View style={[styles.field, { flex: 1 }]}>
-            <Text style={[styles.label, { color: colors.textSecondary }]}>Bei ya Kuuza (Sell) *</Text>
+            <Text style={[styles.label, { color: colors.textSecondary }]}>{t('inventory.sellPrice')} *</Text>
             <TextInput
               style={[styles.input, { backgroundColor: colors.surfaceSecondary, color: colors.textPrimary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
               keyboardType="numeric"
@@ -167,7 +164,7 @@ export default function StockAddScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Button title="Hifadhi na Tuma (Save & Sync)" onPress={handleSubmit} loading={loading} />
+          <Button title={t('inventory.saveAndSync')} onPress={handleSubmit} loading={loading} />
         </View>
       </ScrollView>
     </Screen>

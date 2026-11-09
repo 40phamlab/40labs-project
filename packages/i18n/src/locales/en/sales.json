@@ -1,33 +1,36 @@
 {
-  "title": "Sales POS",
+  "title": "Sales (POS)",
   "cart": "Shopping Cart",
   "scanBarcode": "Scan barcode or search medicine...",
-  "emptyCart": "Cart is empty. Scan items or select from catalog.",
+  "emptyCart": "Cart is empty. Scan items or select from list.",
   "subtotal": "Subtotal",
   "tax": "Tax (VAT 18%)",
   "discount": "Discount",
-  "total": "Total",
-  "checkout": "Complete Checkout",
+  "total": "Grand Total",
+  "checkout": "Checkout",
   "paymentMethod": "Payment Method",
   "cash": "Cash",
-  "mobileMoney": "Mobile Money (Lipa Namba)",
+  "mobileMoney": "Mobile Money",
   "insurance": "Insurance",
   "amountPaid": "Amount Paid",
   "changeDue": "Change Due",
-  "printReceipt": "Print Fiscal Receipt",
+  "printReceipt": "Print Electronic Receipt",
   "dispensingInstructions": "Dispensing Instructions",
-  "customerReport": "Customer Receipt & History",
+  "customerReport": "Customer Report & Receipt",
   "actions": {
     "add": "Add to Cart",
     "remove": "Remove",
     "clear": "Clear Cart",
-    "refund": "Refund Sale"
+    "refund": "Refund"
   },
   "panel": {
     "customer": "Customer",
-    "medicines": "Medicines & Catalog"
+    "medicines": "Medicines List"
   },
   "clear": "Clear",
   "hold": "Hold",
-  "confirm": "Confirm Sale"
+  "confirm": "Confirm Sale",
+  "shoppingCart": "Shopping Cart",
+  "selectCustomer": "Select Patient / Customer",
+  "grandTotal": "Grand Total"
 }

@@ -1,16 +1,30 @@
 {
   "title": "Patients & Customers",
-  "search": "Search by name, phone, NHIF ID...",
+  "search": "Search by name, phone, TMDA number...",
   "name": "Full Name",
   "phone": "Phone Number",
-  "email": "Email Address",
-  "nhif": "NHIF / Insurance Number",
+  "email": "Email",
+  "nhif": "TMDA / Insurance Number",
   "history": "Purchase & Visit History",
   "importWizard": "Import Patients Wizard",
   "actions": {
     "addPatient": "Register Patient",
     "editPatient": "Edit Patient Info",
-    "importPatients": "Import Patients List",
+    "importPatients": "Import Patient List",
     "exportPatients": "Export Patients"
-  }
+  },
+  "registerPatientTitle": "Register Patient",
+  "phoneNumber": "Phone Number",
+  "fullName": "Full Name",
+  "gender": "Gender",
+  "dob": "Date of Birth (YYYY-MM-DD)",
+  "bloodGroup": "Blood Group",
+  "allergies": "Allergies",
+  "phoneAndNameRequired": "Phone number and Full Name are required.",
+  "customerExistsTitle": "Customer Exists",
+  "customerExistsBody": "A customer with this phone number already exists in the system.",
+  "registerFailed": "Failed to register patient.",
+  "patientsListTitle": "Patients List",
+  "searchPlaceholder": "Search by name or phone...",
+  "noPatientsFound": "No patients found"
 }

@@ -2,6 +2,7 @@ import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import { Text, TouchableOpacity } from 'react-native';
 import { I18nProvider, useI18n } from '../src/i18n/I18nProvider';
+import { t as baseT, TranslationKey } from '@40labs/i18n';
 
 function I18nTestComponent() {
   const { language, setLanguage, t } = useI18n();
@@ -40,10 +41,26 @@ describe('Orbit Internationalization (i18n)', () => {
   });
 
   it('verifies critical keys exist and do not return raw keys', () => {
-    const { t } = require('@40labs/i18n');
-    expect(t('nav.history')).not.toBe('nav.history');
-    expect(t('dashboard.inventoryValue')).not.toBe('dashboard.inventoryValue');
-    expect(t('dashboard.salesAndProfitOverview')).not.toBe('dashboard.salesAndProfitOverview');
-    expect(t('pairing.scan')).not.toBe('pairing.scan');
+    expect(baseT('nav.history')).not.toBe('nav.history');
+    expect(baseT('dashboard.inventoryValue')).not.toBe('dashboard.inventoryValue');
+    expect(baseT('dashboard.salesAndProfitOverview')).not.toBe('dashboard.salesAndProfitOverview');
+    expect(baseT('pairing.scan')).not.toBe('pairing.scan');
+  });
+
+  it('fails if any t() translation returns raw key pattern /^[a-z]+\\.[a-zA-Z.]+$/', () => {
+    const sampleKeys: TranslationKey[] = [
+      'nav.home',
+      'nav.history',
+      'dashboard.inventoryValue',
+      'inventory.addStockTitle',
+      'customers.registerPatientTitle',
+      'sales.shoppingCart',
+    ];
+
+    sampleKeys.forEach((key) => {
+      const translation = baseT(key);
+      const isRawKey = /^[a-z]+\.[a-zA-Z.]+$/.test(translation);
+      expect(isRawKey).toBe(false);
+    });
   });
 });
