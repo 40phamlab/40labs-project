@@ -155,7 +155,17 @@ export const t = (key: string, options?: any): string => {
 };
 export type TranslationKey = string;
 export const formatDateTime = (date: Date | string | number, locale = 'sw'): string => {
-  return formatDate(date, locale);
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const intlLocale = locale === 'sw' ? 'sw-TZ' : 'en-US';
+  return new Intl.DateTimeFormat(intlLocale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d);
 };
 export * from './formatters';
 export * from './useLocale';

@@ -101,7 +101,6 @@ export const useThemeStore = create<PreferencesState>((set, get) => {
       get().setTheme(next);
     },
     setLanguage: async (language: Lang) => {
-      await i18n.changeLanguage(language);
       set({ language });
       if (typeof window !== 'undefined') {
         try {
@@ -111,6 +110,7 @@ export const useThemeStore = create<PreferencesState>((set, get) => {
         }
         document.documentElement.lang = language === 'sw' ? 'sw-TZ' : 'en-TZ';
       }
+      await i18n.changeLanguage(language);
     },
   };
 });

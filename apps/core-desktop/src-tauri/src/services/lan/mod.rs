@@ -1,4 +1,6 @@
 pub mod auth;
+pub mod handlers;
+pub mod idempotency;
 pub mod pairing;
 pub mod router;
 
