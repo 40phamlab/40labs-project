@@ -56,16 +56,34 @@ class MockDatabase {
     } else if (upper.startsWith('UPDATE')) {
       const tableName = sql.includes('read_cache') ? 'read_cache' : 'outbox';
       const table = memoryTables.get(tableName) || [];
-      const id = params[params.length - 1];
-      for (const row of table) {
-        if (row.id === id) {
-          row.status = params[0];
-          if (params.length > 2) {
-            row.last_error = params[1];
-            row.attempts += 1;
+      if (sql.includes("WHERE status = 'sending'")) {
+        for (const row of table) {
+          if (row.status === 'sending') {
+            if (sql.includes("status = 'pending'")) {
+              row.status = 'pending';
+            }
+          }
+        }
+      } else {
+        const id = params[params.length - 1];
+        for (const row of table) {
+          if (row.id === id) {
+            if (sql.includes('status = ?')) {
+              row.status = params[0];
+            }
+            if (sql.includes('last_error = ?')) {
+              row.last_error = params[1];
+            }
+            if (sql.includes('next_attempt_at = ?')) {
+              row.next_attempt_at = params[2];
+            }
+            if (sql.includes('attempts =')) {
+              row.attempts = params[3] !== null && params[3] !== undefined ? params[3] : row.attempts + 1;
+            }
           }
         }
       }
+      memoryTables.set(tableName, table);
     }
   }
 
@@ -78,7 +96,16 @@ class MockDatabase {
       results = results.filter(r => r.key === params[0]);
     }
     if (sql.includes("status = 'pending'")) {
-      results = results.filter(r => r.status === 'pending');
+      results = results.filter(r => {
+        if (r.status !== 'pending') return false;
+        if (r.next_attempt_at) {
+          const t = new Date(r.next_attempt_at).getTime();
+          if (!isNaN(t) && t > Date.now()) {
+            return false;
+          }
+        }
+        return true;
+      });
     }
     if (sql.includes('ORDER BY created_at ASC')) {
       results.sort((a, b) => a.created_at.localeCompare(b.created_at));

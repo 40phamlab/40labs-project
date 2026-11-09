@@ -1,4 +1,5 @@
-import { initOutboxDatabase, enqueueOutboxItem, getNextPendingOutboxItem, updateOutboxItemStatus } from '../src/db/outbox';
+import { initOutboxDatabase, enqueueOutboxItem, getNextPendingOutboxItem, updateOutboxItemStatus, listOutboxItems } from '../src/db/outbox';
+import { initOutboxSystem } from '../src/lib/outbox-sync';
 import * as SQLite from 'expo-sqlite';
 
 describe('Outbox Database & Queue', () => {
@@ -32,16 +33,40 @@ describe('Outbox Database & Queue', () => {
     expect(item?.status).toBe('pending');
 
     updateOutboxItemStatus(id, 'sending');
-    // Once sending, getNextPendingOutboxItem shouldn't return it as pending
     const pendingAfterSending = getNextPendingOutboxItem();
     expect(pendingAfterSending).toBeNull();
 
     updateOutboxItemStatus(id, 'failed', 'Network timeout');
-    // We can update back to pending for retry without regenerating ID (Idempotency-Key persistence rule)
     updateOutboxItemStatus(id, 'pending');
 
     const retriedItem = getNextPendingOutboxItem();
     expect(retriedItem?.id).toBe(id);
     expect(retriedItem?.status).toBe('pending');
+  });
+
+  it('honors next_attempt_at backoff schedule', () => {
+    const id = enqueueOutboxItem('server-1', 'customer_create', { name: 'Test' });
+    const futureTime = new Date(Date.now() + 600000).toISOString();
+    updateOutboxItemStatus(id, 'pending', 'Transient', futureTime, 1);
+
+    // Should not return item because next_attempt_at is in the future
+    const next = getNextPendingOutboxItem();
+    expect(next).toBeNull();
+
+    // Past next_attempt_at should return item
+    const pastTime = new Date(Date.now() - 1000).toISOString();
+    updateOutboxItemStatus(id, 'pending', 'Transient', pastTime, 1);
+    const ready = getNextPendingOutboxItem();
+    expect(ready?.id).toBe(id);
+  });
+
+  it('resumes sending items to pending on initOutboxSystem', () => {
+    const id = enqueueOutboxItem('server-1', 'stock_receipt', { item: 'C' });
+    updateOutboxItemStatus(id, 'sending');
+
+    initOutboxSystem();
+    const item = getNextPendingOutboxItem();
+    expect(item?.id).toBe(id);
+    expect(item?.status).toBe('pending');
   });
 });
