@@ -73,7 +73,7 @@ export default function HistoryScreen() {
   };
 
   return (
-    <Screen scrollable={false}>
+    <Screen scrollable={false} hasTabBar={true}>
       <AppHeader title={t('nav.history')} />
       <ScrollView
         horizontal

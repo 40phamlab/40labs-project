@@ -153,7 +153,7 @@ export default function NotificationsScreen() {
   ];
 
   return (
-    <Screen scrollable={false}>
+    <Screen scrollable={false} hasTabBar={true}>
       <AppHeader title={t('nav.notifications')} />
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>

@@ -70,7 +70,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <Screen scrollable={false}>
+    <Screen scrollable={false} hasTabBar={true}>
       <AppHeader title={t('nav.settings')} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 16) + 80 }]}>
         <FormSection title="Server & Connection">
