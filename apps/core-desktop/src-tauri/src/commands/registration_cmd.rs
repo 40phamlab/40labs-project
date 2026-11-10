@@ -247,6 +247,19 @@ pub async fn registration_commit(
             AuthError::InternalError(e).to_response()
         })?;
 
+    // Cloud credentials are installed only after the server-issued activation
+    // grant has been validated by the HTTP activation client. Local database
+    // workflows remain usable offline after this one-time enrollment step.
+    let cloud_device_id = crate::security::keystore::Keystore::cloud_device_id()
+        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+    let cloud_credentials = state
+        .activation_client
+        .enroll_device(&reg_resp.activation_grant, &cloud_device_id)
+        .await
+        .map_err(|e| AuthError::InternalError(e).to_response())?;
+    crate::security::keystore::Keystore::store_cloud_credentials(&cloud_credentials)
+        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+
     let now = chrono::Utc::now().to_rfc3339();
     let mut tx = state
         .pool
@@ -371,7 +384,7 @@ pub async fn registration_commit(
         VALUES (?, ?, ?, 'Local Desktop POS', 'mock_pubkey', ?, 'active', ?, ?)
         "#,
     )
-    .bind(format!("dev_{}", uuid::Uuid::new_v4().simple()))
+    .bind(&cloud_device_id)
     .bind(&reg_resp.workspace_id)
     .bind(&reg_resp.branch_id)
     .bind(&user_id)
@@ -407,6 +420,22 @@ pub async fn registration_commit(
         workspace_id: reg_resp.workspace_id,
         branch_id: reg_resp.branch_id,
     })
+}
+
+#[tauri::command]
+pub async fn cloud_device_credentials_refresh(
+    state: State<'_, AppState>,
+) -> Result<(), AuthErrorResponse> {
+    let stored: crate::activation::DeviceCredentials =
+        crate::security::keystore::Keystore::load_cloud_credentials()
+            .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+    let rotated = state
+        .activation_client
+        .refresh_device_credentials(&stored.device_id, &stored.refresh_token)
+        .await
+        .map_err(|e| AuthError::InternalError(e).to_response())?;
+    crate::security::keystore::Keystore::store_cloud_credentials(&rotated)
+        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())
 }
 
 #[cfg(test)]

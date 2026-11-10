@@ -36,4 +36,27 @@ impl ActivationClient for DevActivationClient {
             activation_grant: "mock_dev_grant_signature".into(),
         })
     }
+
+    async fn enroll_device(
+        &self,
+        _activation_grant: &str,
+        device_id: &str,
+    ) -> Result<super::DeviceCredentials, String> {
+        Ok(super::DeviceCredentials {
+            device_id: device_id.into(),
+            access_token: "dev-only-credential".into(),
+            refresh_token: "dev-only-refresh".into(),
+            token_type: "Bearer".into(),
+            expires_in: 900,
+            refresh_expires_at: (chrono::Utc::now() + chrono::Duration::days(1)).to_rfc3339(),
+        })
+    }
+
+    async fn refresh_device_credentials(
+        &self,
+        device_id: &str,
+        _refresh_token: &str,
+    ) -> Result<super::DeviceCredentials, String> {
+        self.enroll_device("dev-only", device_id).await
+    }
 }

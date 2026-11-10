@@ -10,6 +10,18 @@ pub struct HttpActivationClient {
     public_key: VerifyingKey,
 }
 
+#[derive(Deserialize)]
+struct GrantClaims {
+    business_id: String,
+    workspace_id: String,
+    branch_id: String,
+    issuer: String,
+    audience: String,
+    version: i32,
+    issued_at: String,
+    expires_at: String,
+}
+
 // Public key derived from the development API's all-zero 32-byte signing seed.
 // Production builds should provide ACTIVATION_PUBKEY explicitly.
 const DEFAULT_ED25519_PUBKEY_HEX: &str =
@@ -41,7 +53,7 @@ impl HttpActivationClient {
         })
     }
 
-    pub fn verify_grant(&self, grant: &str) -> Result<(), String> {
+    fn verify_grant(&self, grant: &str) -> Result<GrantClaims, String> {
         let parts: Vec<&str> = grant.split('.').collect();
         if parts.len() != 2 {
             return Err("Invalid activation grant format".into());
@@ -62,7 +74,24 @@ impl HttpActivationClient {
             .verify(&json_bytes, &signature)
             .map_err(|e| format!("Signature verification failed: {}", e))?;
 
-        Ok(())
+        let claims: GrantClaims =
+            serde_json::from_slice(&json_bytes).map_err(|_| "Invalid activation grant claims")?;
+        let issued = chrono::DateTime::parse_from_rfc3339(&claims.issued_at)
+            .map_err(|_| "Invalid activation grant issue time")?;
+        let expires = chrono::DateTime::parse_from_rfc3339(&claims.expires_at)
+            .map_err(|_| "Invalid activation grant expiration")?;
+        let now = chrono::Utc::now();
+        if claims.issuer != "40labs-api-core"
+            || claims.audience != "40labs-desktop-device-enrollment"
+            || claims.version != 2
+            || issued > now + chrono::Duration::seconds(30)
+            || expires <= now
+            || expires > issued + chrono::Duration::minutes(10)
+        {
+            return Err("Activation grant is invalid or expired".into());
+        }
+
+        Ok(claims)
     }
 }
 
@@ -158,9 +187,56 @@ impl ActivationClient for HttpActivationClient {
         let data: RegisterResponse = res.json().await.map_err(|e| e.to_string())?;
 
         // CRITICAL: verify grant signature BEFORE any local write!
-        self.verify_grant(&data.activation_grant)?;
+        let grant = self.verify_grant(&data.activation_grant)?;
+        if grant.business_id != data.business_id
+            || grant.workspace_id != data.workspace_id
+            || grant.branch_id != data.branch_id
+        {
+            return Err("Registration scope does not match the signed activation grant".into());
+        }
 
         Ok(data)
+    }
+
+    async fn enroll_device(
+        &self,
+        activation_grant: &str,
+        device_id: &str,
+    ) -> Result<super::DeviceCredentials, String> {
+        let url = format!("{}/v1/devices/enroll", self.base_url);
+        let res = self
+            .client
+            .post(&url)
+            .json(&serde_json::json!({"activation_grant":activation_grant,"device_id":device_id}))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        if !res.status().is_success() {
+            return Err(format!("Device enrollment failed ({})", res.status()));
+        }
+        res.json().await.map_err(|e| e.to_string())
+    }
+
+    async fn refresh_device_credentials(
+        &self,
+        device_id: &str,
+        refresh_token: &str,
+    ) -> Result<super::DeviceCredentials, String> {
+        let url = format!("{}/v1/devices/refresh", self.base_url);
+        let res = self
+            .client
+            .post(&url)
+            .json(&serde_json::json!({"device_id":device_id,"refresh_token":refresh_token}))
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        if !res.status().is_success() {
+            return Err(format!(
+                "Device credential refresh failed ({})",
+                res.status()
+            ));
+        }
+        res.json().await.map_err(|e| e.to_string())
     }
 }
 
@@ -181,7 +257,8 @@ mod tests {
         let client =
             HttpActivationClient::new("http://localhost:3000".into(), Some(&pubkey_hex)).unwrap();
 
-        let payload_json = r#"{"business_id":"AFYA-123456","workspace_id":"ws_1","branch_id":"br_1","phone_hash":"abc","issued_at":"2025-01-01T00:00:00Z"}"#;
+        let now = chrono::Utc::now();
+        let payload_json = serde_json::json!({"business_id":"AFYA-123456","workspace_id":"ws_1","branch_id":"br_1","phone_hash":"abc","issued_at":now.to_rfc3339(),"expires_at":(now+chrono::Duration::minutes(5)).to_rfc3339(),"issuer":"40labs-api-core","audience":"40labs-desktop-device-enrollment","version":2}).to_string();
         let sig = signing_key.sign(payload_json.as_bytes());
         let payload_b64 = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
         let grant = format!("{}.{}", payload_b64, hex::encode(sig.to_bytes()));
@@ -202,7 +279,8 @@ mod tests {
         );
 
         let client = HttpActivationClient::new("http://127.0.0.1:3000".into(), None).unwrap();
-        let payload_json = r#"{"business_id":"AFYA-123456","workspace_id":"ws_dev","branch_id":"branch_dev","phone_hash":"phone-hash","issued_at":"2026-10-11T00:00:00Z"}"#;
+        let now = chrono::Utc::now();
+        let payload_json = serde_json::json!({"business_id":"AFYA-123456","workspace_id":"ws_dev","branch_id":"branch_dev","phone_hash":"phone-hash","issued_at":now.to_rfc3339(),"expires_at":(now+chrono::Duration::minutes(5)).to_rfc3339(),"issuer":"40labs-api-core","audience":"40labs-desktop-device-enrollment","version":2}).to_string();
         let signature = signing_key.sign(payload_json.as_bytes());
         let payload_b64 = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
         let grant = format!("{}.{}", payload_b64, hex::encode(signature.to_bytes()));

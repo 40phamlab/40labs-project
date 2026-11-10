@@ -1,19 +1,36 @@
+use crate::routes::activation::AppState;
 use axum::{
-    routing::get,
-    Router,
+    extract::{Query, State},
     response::IntoResponse,
-    Json,
-    extract::{State, Query},
+    routing::{get, post},
+    Json, Router,
 };
 use serde::Deserialize;
-use crate::routes::activation::AppState;
 
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/sync/devices", get(devices_handler))
         .route("/sync/changes", get(changes_handler))
         .route("/sync/failures", get(failures_handler))
+        .route(
+            "/sync/devices/:device_id/revoke",
+            post(revoke_device_handler),
+        )
         .with_state(state)
+}
+
+async fn revoke_device_handler(
+    State(state): State<AppState>,
+    axum::extract::Path(device_id): axum::extract::Path<String>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let result = sqlx::query("UPDATE device_enrollments SET revoked_at=COALESCE(revoked_at,NOW()),token_version=token_version+1,refresh_token_hash='',refresh_expires_at=NOW() WHERE device_id=$1 AND revoked_at IS NULL")
+        .bind(&device_id).execute(&state.pool).await.map_err(|_|axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    if result.rows_affected() != 1 {
+        return Err(axum::http::StatusCode::NOT_FOUND);
+    }
+    Ok(Json(
+        serde_json::json!({"device_id":device_id,"revoked":true}),
+    ))
 }
 
 #[derive(Deserialize)]
@@ -24,10 +41,20 @@ pub struct ChangesQuery {
     pub page_size: Option<i64>,
 }
 
-async fn devices_handler(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let rows = sqlx::query_as::<_, (String, String, String, Option<chrono::DateTime<chrono::Utc>>, Option<i32>, Option<String>, Option<String>, Option<String>)>(
+async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            String,
+            Option<chrono::DateTime<chrono::Utc>>,
+            Option<i32>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
         r#"
         SELECT d.device_id, d.workspace_id, COALESCE(b.business_id, d.workspace_id),
                COALESCE(d.last_seen_at, d.last_seen), COALESCE(d.outbox_pending, d.pending_count),
@@ -46,28 +73,36 @@ async fn devices_handler(
     };
 
     let now = chrono::Utc::now();
-    let list: Vec<_> = devices.into_iter().map(|(dev_id, ws_id, biz_id, last_seen, pending, app_ver, biz_name, region)| {
-        let age_secs = last_seen.map(|t| (now - t).num_seconds()).unwrap_or(i64::MAX);
-        let status = if age_secs < 3600 {
-            "healthy"
-        } else if age_secs < 172800 { // 48h
-            "stale"
-        } else {
-            "offline"
-        };
+    let list: Vec<_> = devices
+        .into_iter()
+        .map(
+            |(dev_id, ws_id, biz_id, last_seen, pending, app_ver, biz_name, region)| {
+                let age_secs = last_seen
+                    .map(|t| (now - t).num_seconds())
+                    .unwrap_or(i64::MAX);
+                let status = if age_secs < 3600 {
+                    "healthy"
+                } else if age_secs < 172800 {
+                    // 48h
+                    "stale"
+                } else {
+                    "offline"
+                };
 
-        serde_json::json!({
-            "device_id": dev_id,
-            "workspace_id": ws_id,
-            "business_id": biz_id,
-            "business_name": biz_name.unwrap_or_else(|| "Unknown Business".into()),
-            "region": region.unwrap_or_else(|| "Unknown".into()),
-            "last_seen_at": last_seen.map(|t| t.to_rfc3339()),
-            "outbox_pending": pending.unwrap_or(0),
-            "app_version": app_ver,
-            "status": status
-        })
-    }).collect();
+                serde_json::json!({
+                    "device_id": dev_id,
+                    "workspace_id": ws_id,
+                    "business_id": biz_id,
+                    "business_name": biz_name.unwrap_or_else(|| "Unknown Business".into()),
+                    "region": region.unwrap_or_else(|| "Unknown".into()),
+                    "last_seen_at": last_seen.map(|t| t.to_rfc3339()),
+                    "outbox_pending": pending.unwrap_or(0),
+                    "app_version": app_ver,
+                    "status": status
+                })
+            },
+        )
+        .collect();
 
     Json(serde_json::json!({ "devices": list }))
 }
@@ -117,18 +152,23 @@ async fn changes_handler(
     .await
     .unwrap_or(0);
 
-    let data: Vec<_> = rows.into_iter().map(|(chg_id, entity, entity_id, dev_id, ws_id, version, received_at, biz_name)| {
-        serde_json::json!({
-            "change_id": chg_id,
-            "entity": entity,
-            "entity_id": entity_id,
-            "device_id": dev_id,
-            "workspace_id": ws_id,
-            "business_name": biz_name.unwrap_or_else(|| "Unknown Business".into()),
-            "version": version,
-            "received_at": received_at.to_rfc3339()
-        })
-    }).collect();
+    let data: Vec<_> = rows
+        .into_iter()
+        .map(
+            |(chg_id, entity, entity_id, dev_id, ws_id, version, received_at, biz_name)| {
+                serde_json::json!({
+                    "change_id": chg_id,
+                    "entity": entity,
+                    "entity_id": entity_id,
+                    "device_id": dev_id,
+                    "workspace_id": ws_id,
+                    "business_name": biz_name.unwrap_or_else(|| "Unknown Business".into()),
+                    "version": version,
+                    "received_at": received_at.to_rfc3339()
+                })
+            },
+        )
+        .collect();
 
     Json(serde_json::json!({
         "data": data,
@@ -138,9 +178,7 @@ async fn changes_handler(
     }))
 }
 
-async fn failures_handler(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+async fn failures_handler(State(state): State<AppState>) -> impl IntoResponse {
     let rows = sqlx::query_as::<_, (Option<String>, String, Option<String>, chrono::DateTime<chrono::Utc>, Option<serde_json::Value>)>(
         r#"
         SELECT e.business_id, e.message, e.device_id, e.ts, e.meta
@@ -154,7 +192,8 @@ async fn failures_handler(
     .await
     .unwrap_or_default();
 
-    let mut grouped: std::collections::HashMap<String, serde_json::Value> = std::collections::HashMap::new();
+    let mut grouped: std::collections::HashMap<String, serde_json::Value> =
+        std::collections::HashMap::new();
 
     for (ws_id, msg, dev_id, ts, meta) in rows {
         let key = ws_id.clone().unwrap_or_else(|| "unknown".into());

@@ -109,6 +109,7 @@ pub fn run() {
             commands::auth_cmd::business_set_idle_lock,
             commands::registration_cmd::recovery_redeem,
             commands::registration_cmd::registration_commit,
+            commands::registration_cmd::cloud_device_credentials_refresh,
             commands::registration_cmd::otp_request,
             commands::registration_cmd::otp_verify,
             // Inventory

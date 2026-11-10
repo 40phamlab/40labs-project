@@ -64,6 +64,44 @@ impl std::fmt::Debug for Keystore {
 }
 
 impl Keystore {
+    pub fn cloud_device_id() -> Result<String, KeystoreError> {
+        let entry = keyring::Entry::new(SERVICE_NAME, "cloud-device-id-v1")
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
+        match entry.get_password() {
+            Ok(id) if !id.is_empty() => Ok(id),
+            Ok(_) => Err(KeystoreError::SerializationError(
+                "Empty cloud device ID".into(),
+            )),
+            Err(keyring::Error::NoEntry) => {
+                let id = format!("desktop-{}", uuid::Uuid::new_v4().simple());
+                entry
+                    .set_password(&id)
+                    .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
+                Ok(id)
+            }
+            Err(e) => Err(KeystoreError::KeychainError(e.to_string())),
+        }
+    }
+
+    pub fn store_cloud_credentials<T: serde::Serialize>(
+        credentials: &T,
+    ) -> Result<(), KeystoreError> {
+        let value = serde_json::to_string(credentials)
+            .map_err(|e| KeystoreError::SerializationError(e.to_string()))?;
+        keyring::Entry::new(SERVICE_NAME, "cloud-device-credentials-v1")
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?
+            .set_password(&value)
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))
+    }
+
+    pub fn load_cloud_credentials<T: serde::de::DeserializeOwned>() -> Result<T, KeystoreError> {
+        let value = keyring::Entry::new(SERVICE_NAME, "cloud-device-credentials-v1")
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?
+            .get_password()
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
+        serde_json::from_str(&value).map_err(|e| KeystoreError::SerializationError(e.to_string()))
+    }
+
     pub fn init() -> Result<Self, KeystoreError> {
         #[cfg(test)]
         {
@@ -124,7 +162,8 @@ impl Keystore {
     pub fn derive_key(&self, info: &[u8]) -> [u8; 32] {
         let hk = Hkdf::<Sha256>::new(Some(b"40labs_totp_salt_v1"), self.master_secret.as_ref());
         let mut key = [0u8; 32];
-        hk.expand(info, &mut key).expect("HKDF expand should succeed");
+        hk.expand(info, &mut key)
+            .expect("HKDF expand should succeed");
         key
     }
 
@@ -258,10 +297,7 @@ mod tests {
         let k1 = Keystore::from_raw_keys(master, device).unwrap();
         let k2 = Keystore::from_raw_keys(master, device).unwrap();
         assert_eq!(k1.pin_pepper(), k2.pin_pepper());
-        assert_eq!(
-            k1.verifying_key().as_bytes(),
-            k2.verifying_key().as_bytes()
-        );
+        assert_eq!(k1.verifying_key().as_bytes(), k2.verifying_key().as_bytes());
     }
 
     #[test]

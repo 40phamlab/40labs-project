@@ -1,18 +1,18 @@
 // PHASE: Admin-A
-use axum::{
-    middleware,
-    Router,
-    extract::{State, Request},
-    http::{StatusCode, header, HeaderMap},
-    response::Response,
-};
 use crate::routes::activation::AppState;
+use axum::{
+    extract::{Request, State},
+    http::{header, HeaderMap, StatusCode},
+    middleware,
+    response::Response,
+    Router,
+};
 
+pub mod analytics;
 pub mod auth;
 pub mod businesses;
-pub mod analytics;
-pub mod sync;
 pub mod infra;
+pub mod sync;
 
 #[derive(Clone, Debug)]
 pub struct AdminClaims {
@@ -37,11 +37,21 @@ async fn admin_auth_middleware(
         None => return Err(StatusCode::UNAUTHORIZED),
     };
 
-    let rec = sqlx::query_as::<_, (String, String, String, chrono::DateTime<chrono::Utc>, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>)>(
+    let rec = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            String,
+            chrono::DateTime<chrono::Utc>,
+            Option<chrono::DateTime<chrono::Utc>>,
+            Option<chrono::DateTime<chrono::Utc>>,
+        ),
+    >(
         "SELECT u.id, u.email, u.role, s.expires_at, s.revoked_at, u.disabled_at \
          FROM admin_sessions s \
          JOIN admin_users u ON s.admin_user_id = u.id \
-         WHERE s.id = $1"
+         WHERE s.id = $1",
     )
     .bind(&session_id)
     .fetch_optional(&state.pool)
@@ -61,6 +71,13 @@ async fn admin_auth_middleware(
         if role != "admin" {
             return Err(StatusCode::FORBIDDEN);
         }
+    }
+    if path.contains("/sync/devices/")
+        && path.ends_with("/revoke")
+        && req.method() == axum::http::Method::POST
+        && role != "admin"
+    {
+        return Err(StatusCode::FORBIDDEN);
     }
 
     let claims = AdminClaims {
@@ -103,7 +120,10 @@ pub fn router(state: AppState) -> Router {
         .merge(analytics::router(state.clone()))
         .merge(sync::router(state.clone()))
         .merge(infra::router(state.clone()))
-        .route_layer(middleware::from_fn_with_state(state.clone(), admin_auth_middleware));
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            admin_auth_middleware,
+        ));
 
     Router::new().nest("/admin/v1", api_router)
 }

@@ -55,42 +55,21 @@ async fn push_handler(
         .map_err(|e| ApiError::BadRequest(format!("Invalid JSON push request: {}", e)))?;
 
     validate_push_payload(&req)?;
+    if req.device_id != claims.device_id {
+        return Err(ApiError::Unauthorized(
+            "Request device_id does not match authenticated device".into(),
+        ));
+    }
 
     let mut tx = state.pool.begin().await?;
-
-    // 2. Device pinning check: sync_devices has UNIQUE(workspace_id)
-    let existing_device: Option<(String,)> = sqlx::query_as(
-        "SELECT device_id FROM sync_devices WHERE workspace_id = $1"
-    )
-    .bind(&claims.workspace_id)
-    .fetch_optional(&mut *tx)
-    .await?;
-
-    match existing_device {
-        Some((dev_id,)) if dev_id != req.device_id && dev_id != claims.device_id => {
-            return Err(ApiError::Conflict(format!(
-                "device_mismatch: workspace already pinned to device {}",
-                dev_id
-            )));
-        }
-        _ => {
-            sqlx::query(
-                r#"
-                INSERT INTO sync_devices (workspace_id, branch_id, device_id, last_seen, last_seen_at, app_version)
-                VALUES ($1, '', $2, NOW(), NOW(), $3)
-                ON CONFLICT (device_id) DO UPDATE SET
-                    workspace_id = EXCLUDED.workspace_id,
-                    last_seen = NOW(),
-                    last_seen_at = NOW(),
-                    app_version = COALESCE(EXCLUDED.app_version, sync_devices.app_version)
-                "#,
-            )
-            .bind(&claims.workspace_id)
-            .bind(&req.device_id)
-            .bind(&req.app_version)
-            .execute(&mut *tx)
-            .await?;
-        }
+    let telemetry = sqlx::query(
+        "UPDATE sync_devices SET last_seen=NOW(), last_seen_at=NOW(), app_version=COALESCE($1,app_version) WHERE device_id=$2 AND workspace_id=$3 AND business_id=$4 AND branch_id=$5"
+    ).bind(&req.app_version).bind(&claims.device_id).bind(&claims.workspace_id)
+        .bind(&claims.business_id).bind(&claims.branch_id).execute(&mut *tx).await?;
+    if telemetry.rows_affected() != 1 {
+        return Err(ApiError::Unauthorized(
+            "Enrolled device scope does not match telemetry record".into(),
+        ));
     }
 
     // 3. Process changes in individual SAVEPOINTs
@@ -109,8 +88,8 @@ async fn push_handler(
                     )
                     .bind(uuid::Uuid::new_v4().to_string())
                     .bind(format!("Sync change {} status: {}", change.entity, ack.status))
-                    .bind(Some(claims.workspace_id.clone()))
-                    .bind(Some(req.device_id.clone()))
+                    .bind(Some(claims.business_id.clone()))
+                    .bind(Some(claims.device_id.clone()))
                     .bind(serde_json::json!({ "change_id": change.change_id, "entity": change.entity, "reason": ack.reason }))
                     .execute(&mut *tx)
                     .await;
@@ -146,14 +125,7 @@ async fn push_handler(
         }
     }
 
-    // 4. Update sync_devices last_seen, last_seen_at & app_version
-    sqlx::query(
-        "UPDATE sync_devices SET last_seen = NOW(), last_seen_at = NOW(), app_version = COALESCE($1, app_version) WHERE workspace_id = $2"
-    )
-    .bind(&req.app_version)
-    .bind(&claims.workspace_id)
-    .execute(&mut *tx)
-    .await?;
+    // Telemetry was updated using all authenticated scope fields before applying changes.
 
     tx.commit().await?;
 
@@ -170,27 +142,24 @@ async fn heartbeat_handler(
     claims: DeviceClaims,
     Json(req): Json<HeartbeatRequest>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    sqlx::query(
-        r#"
-        INSERT INTO sync_devices (workspace_id, branch_id, device_id, last_seen, last_seen_at, pending_count, outbox_pending, app_version)
-        VALUES ($1, '', $2, NOW(), NOW(), $3, $3, $4)
-        ON CONFLICT (device_id) DO UPDATE SET
-            workspace_id = EXCLUDED.workspace_id,
-            last_seen = NOW(),
-            last_seen_at = NOW(),
-            pending_count = COALESCE(EXCLUDED.pending_count, sync_devices.pending_count),
-            outbox_pending = COALESCE(EXCLUDED.outbox_pending, sync_devices.outbox_pending),
-            app_version = COALESCE(EXCLUDED.app_version, sync_devices.app_version)
-        "#,
-    )
-    .bind(&claims.workspace_id)
-    .bind(&req.device_id)
-    .bind(req.pending_count)
-    .bind(&req.app_version)
-    .execute(&state.pool)
-    .await?;
-
-    Ok(Json(serde_json::json!({ "status": "heartbeat_acknowledged" })))
+    if req.device_id != claims.device_id {
+        return Err(ApiError::Unauthorized(
+            "Request device_id does not match authenticated device".into(),
+        ));
+    }
+    let updated = sqlx::query(
+        "UPDATE sync_devices SET last_seen=NOW(),last_seen_at=NOW(),pending_count=$1,outbox_pending=$1,app_version=$2 WHERE device_id=$3 AND workspace_id=$4 AND business_id=$5 AND branch_id=$6"
+    ).bind(req.pending_count).bind(&req.app_version).bind(&claims.device_id)
+        .bind(&claims.workspace_id).bind(&claims.business_id).bind(&claims.branch_id)
+        .execute(&state.pool).await?;
+    if updated.rows_affected() != 1 {
+        return Err(ApiError::Unauthorized(
+            "Enrolled device scope does not match telemetry record".into(),
+        ));
+    }
+    Ok(Json(
+        serde_json::json!({ "status": "heartbeat_acknowledged" }),
+    ))
 }
 
 #[derive(Serialize)]
@@ -208,16 +177,21 @@ async fn verification_handler(
     claims: DeviceClaims,
 ) -> Result<Json<VerificationResponse>, ApiError> {
     let row = sqlx::query_as::<_, (Option<String>, Option<bool>, Option<bool>, Option<String>, Option<chrono::DateTime<Utc>>)>(
-        "SELECT verification_status, labs_verified, tmda_registered, rejection_reason, updated_at FROM business_registry WHERE workspace_id = $1 AND business_id = $2"
+        "SELECT verification_status, labs_verified, tmda_registered, rejection_reason, updated_at FROM business_registry WHERE workspace_id = $1 AND business_id = $2 AND branch_id = $3"
     )
     .bind(&claims.workspace_id)
     .bind(&claims.business_id)
+    .bind(&claims.branch_id)
     .fetch_optional(&state.pool)
     .await?;
 
     let (status, labs_verified, tmda_registered, rejection_reason, updated_at) = match row {
         Some(r) => r,
-        None => return Err(ApiError::Unauthorized("Business not found for claims".into())),
+        None => {
+            return Err(ApiError::Unauthorized(
+                "Business not found for claims".into(),
+            ))
+        }
     };
 
     Ok(Json(VerificationResponse {

@@ -211,7 +211,7 @@ paths:
                   server_cursor:
                     type: string
         '409':
-          description: Device pinning mismatch
+          description: Change ID was previously used with different content or scope
   /v1/business/verification:
     get:
       summary: Get business verification and TMDA status
@@ -240,9 +240,42 @@ paths:
                   updated_at:
                     type: string
                     nullable: true
+  /v1/devices/enroll:
+    post:
+      summary: Exchange an activation grant for enrolled-device credentials
+      description: One-time grant exchange. Returns a short-lived HS256 access JWT and rotating refresh token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [activation_grant, device_id]
+              properties:
+                activation_grant: { type: string }
+                device_id: { type: string }
+      responses:
+        '200': { description: Device credentials issued }
+        '401': { description: Invalid, expired, or already consumed activation grant }
+  /v1/devices/refresh:
+    post:
+      summary: Rotate device credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id, refresh_token]
+              properties:
+                device_id: { type: string }
+                refresh_token: { type: string }
+      responses:
+        '200': { description: Rotated credentials issued }
+        '401': { description: Invalid, expired, or revoked refresh token }
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
-      description: Device token or signing key bearer token
+      description: Server-issued HS256 JWT bound to an active device enrollment, workspace, business, and branch

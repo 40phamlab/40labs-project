@@ -6,6 +6,8 @@ Business onboarding and activation follows a 3-step cryptographic flow:
 2. **OTP Verify:** Client submits the received OTP code, receiving a short-lived `verification_token`.
 3. **Registration:** Client submits business details and the `verification_token`, receiving `business_id`, `workspace_id`, `branch_id`, and a cryptographically signed Ed25519 `activation_grant`.
 
+The activation grant is now version 2 and expires within five minutes. Core Desktop validates the Ed25519 signature, issuer, audience, expiry and scope values before using the returned IDs. It exchanges the grant at `POST /v1/devices/enroll` and securely stores the returned signed device credentials in the OS keychain. API Core no longer accepts unsigned Base64 JSON bearer tokens. Full contract and key rotation instructions are in [DEVICE_AUTH.md](DEVICE_AUTH.md).
+
 ---
 
 ### POST /api/v1/activation/otp/request

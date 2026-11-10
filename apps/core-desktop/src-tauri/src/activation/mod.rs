@@ -33,7 +33,27 @@ pub trait OtpClient: Send + Sync {
     async fn verify_otp(&self, phone: &str, code: &str) -> Result<String, String>;
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DeviceCredentials {
+    pub device_id: String,
+    pub access_token: String,
+    pub refresh_token: String,
+    pub token_type: String,
+    pub expires_in: i64,
+    pub refresh_expires_at: String,
+}
+
 #[async_trait]
 pub trait ActivationClient: Send + Sync {
     async fn register(&self, req: RegisterRequest) -> Result<RegisterResponse, String>;
+    async fn enroll_device(
+        &self,
+        activation_grant: &str,
+        device_id: &str,
+    ) -> Result<DeviceCredentials, String>;
+    async fn refresh_device_credentials(
+        &self,
+        device_id: &str,
+        refresh_token: &str,
+    ) -> Result<DeviceCredentials, String>;
 }

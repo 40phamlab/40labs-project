@@ -1,9 +1,9 @@
 use api_core::{
+    grant::{generate_business_id, sign_grant, ActivationGrantPayload},
     otp::{hash_otp, verify_otp_hash},
-    grant::{sign_grant, ActivationGrantPayload, generate_business_id},
     ratelimit::RateLimiter,
 };
-use ed25519_dalek::{SigningKey, VerifyingKey, Verifier, Signature};
+use ed25519_dalek::{Signature, SigningKey, Verifier, VerifyingKey};
 use std::time::Duration;
 
 #[test]
@@ -28,6 +28,10 @@ fn test_grant_signing_and_tamper_rejection() {
         branch_id: "branch_test".into(),
         phone_hash: "hash123".into(),
         issued_at: "2025-01-01T00:00:00Z".into(),
+        expires_at: "2025-01-01T00:05:00Z".into(),
+        issuer: api_core::grant::ACTIVATION_GRANT_ISSUER.into(),
+        audience: api_core::grant::ACTIVATION_GRANT_AUDIENCE.into(),
+        version: 2,
     };
 
     let grant = sign_grant(&payload, &hex_key).expect("Failed to sign grant");
@@ -60,6 +64,10 @@ fn test_empty_key_rejected() {
         branch_id: "branch_test".into(),
         phone_hash: "hash123".into(),
         issued_at: "2025-01-01T00:00:00Z".into(),
+        expires_at: "2025-01-01T00:05:00Z".into(),
+        issuer: api_core::grant::ACTIVATION_GRANT_ISSUER.into(),
+        audience: api_core::grant::ACTIVATION_GRANT_AUDIENCE.into(),
+        version: 2,
     };
     assert!(sign_grant(&payload, "").is_err());
     assert!(sign_grant(&payload, "invalidshortkey").is_err());
@@ -70,9 +78,15 @@ fn test_rate_limiter_evicts() {
     let limiter = RateLimiter::new();
     let key = "test_key";
 
-    assert!(limiter.check_rate_limit(key, 2, Duration::from_secs(60)).is_ok());
-    assert!(limiter.check_rate_limit(key, 2, Duration::from_secs(60)).is_ok());
-    assert!(limiter.check_rate_limit(key, 2, Duration::from_secs(60)).is_err());
+    assert!(limiter
+        .check_rate_limit(key, 2, Duration::from_secs(60))
+        .is_ok());
+    assert!(limiter
+        .check_rate_limit(key, 2, Duration::from_secs(60))
+        .is_ok());
+    assert!(limiter
+        .check_rate_limit(key, 2, Duration::from_secs(60))
+        .is_err());
 
     // Trigger eviction sweep by adding many keys
     for i in 0..1200 {
@@ -80,5 +94,7 @@ fn test_rate_limiter_evicts() {
         let _ = limiter.check_rate_limit(&k, 1, Duration::from_secs(1));
     }
 
-    assert!(limiter.check_rate_limit("post_evict_key", 1, Duration::from_secs(60)).is_ok());
+    assert!(limiter
+        .check_rate_limit("post_evict_key", 1, Duration::from_secs(60))
+        .is_ok());
 }

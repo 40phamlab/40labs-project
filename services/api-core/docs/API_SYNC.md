@@ -9,9 +9,9 @@ Phase 2A Push Sync protocol enables offline-first desktop nodes (Tauri SQLite) t
 **Status:** LIVE   **Phase:** Phase 2A (Sync)
 **Source:** `services/api-core/src/sync/push.rs:push_handler`
 **Purpose:** Push a batch of local SQLite entity changes to the cloud backend with transaction savepoints and idempotency.
-**Auth:** Device Token (`Authorization: Bearer <base64url-encoded-device-claims>`)
+**Auth:** Server-issued HS256 JWT (`Authorization: Bearer <jwt>`) from device enrollment; signature, issuer, audience, expiry, token version, enrollment state and tenant binding are verified.
 **Roles:** Device / Staff
-**Scoping:** `workspace_id` from device claims.
+**Scoping:** Workspace, business, branch and device come from the authenticated enrollment. Payload scope must match; record ownership cannot be changed by upsert.
 **Offline behavior:** Queued locally via outbox; pushed when online.
 **Audit:** Change items tracked in `sync_changes` idempotency table.
 
@@ -71,7 +71,8 @@ Phase 2A Push Sync protocol enables offline-first desktop nodes (Tauri SQLite) t
 **Errors:**
 - `400 BAD_REQUEST`: Invalid JSON, decompression failure, or size > 1MB.
 - `401 UNAUTHORIZED`: Missing or invalid device token.
-- `409 CONFLICT`: Device pinning mismatch (`sync_devices` table pinned to another device ID for this workspace).
+- Per-change mismatched scope or ownership is acknowledged as `rejected`; request `device_id` mismatch is `401`.
+- `409 CONFLICT`: A previously used `(device_id, change_id)` is replayed with different content or scope.
 
 ---
 
@@ -80,6 +81,7 @@ Phase 2A Push Sync protocol enables offline-first desktop nodes (Tauri SQLite) t
 **Source:** `services/api-core/src/sync/push.rs:heartbeat_handler`
 **Purpose:** Update device last seen timestamp and pending outbox count.
 **Auth:** Device Token (`Authorization: Bearer <token>`)
+**Body identity:** `device_id` must equal the authenticated device; the server updates only that device row and exact business/workspace/branch scope.
 
 ---
 
@@ -130,3 +132,11 @@ sequenceDiagram
     Server->>DB: COMMIT Transaction
     Server-->>Client: PushResponse (acks[], server_cursor)
 ```
+
+## Device authentication endpoints
+
+- `POST /v1/devices/enroll`: exchange one-time signed activation grant plus stable Desktop device ID for a 15-minute access JWT and 90-day rotating refresh token.
+- `POST /v1/devices/refresh`: rotate a refresh token; the previous value is invalidated atomically.
+- `POST /admin/v1/sync/devices/{device_id}/revoke`: `admin` role only; immediately rejects access and refresh credentials for that enrollment.
+
+See [DEVICE_AUTH.md](DEVICE_AUTH.md) for claims, key rotation, storage, and migration lifecycle.

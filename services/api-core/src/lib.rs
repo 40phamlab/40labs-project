@@ -1,10 +1,11 @@
+pub mod admin;
+pub mod auth;
 pub mod config;
 pub mod error;
 pub mod grant;
+pub mod migrations;
 pub mod otp;
 pub mod ratelimit;
 pub mod routes;
 pub mod sms;
-pub mod auth;
 pub mod sync;
-pub mod admin;

@@ -10,14 +10,10 @@ use api_core::{
     sms::{console::ConsoleOtpProvider, nextsms::NextSmsProvider, OtpProvider},
 };
 
-async fn apply_database_migrations(pool: &PgPool) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // The shared Postgres sync schema is maintained centrally and must exist
-    // before the API's admin migrations add columns and indexes to its tables.
-    sqlx::raw_sql(include_str!("../../../infra/db/postgres/0001_sync_foundation.sql"))
-        .execute(pool)
-        .await?;
-    sqlx::migrate!("./migrations").run(pool).await?;
-    Ok(())
+async fn apply_database_migrations(
+    pool: &PgPool,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    api_core::migrations::run(pool).await
 }
 
 #[tokio::main]
@@ -84,13 +80,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             if password.is_empty() {
-                password = format!("Admin#{}!", rand::Rng::gen_range(&mut rand::thread_rng(), 1000..9999));
+                password = format!(
+                    "Admin#{}!",
+                    rand::Rng::gen_range(&mut rand::thread_rng(), 1000..9999)
+                );
                 println!("Generated one-time password: {}", password);
             }
 
-            let password_hash = api_core::admin::auth::hash_password(&password).expect("Failed to hash password");
+            let password_hash =
+                api_core::admin::auth::hash_password(&password).expect("Failed to hash password");
             let (totp_secret, otpauth_url) = api_core::admin::auth::generate_totp_secret();
-            let totp_secret_enc = api_core::admin::auth::encrypt_secret(&totp_secret, &config.totp_enc_key).expect("Failed to encrypt TOTP secret");
+            let totp_secret_enc =
+                api_core::admin::auth::encrypt_secret(&totp_secret, &config.totp_enc_key)
+                    .expect("Failed to encrypt TOTP secret");
             let id = uuid::Uuid::new_v4().to_string();
 
             let res = sqlx::query(
@@ -196,7 +198,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await;
 
                 for day_offset in 0..90 {
-                    let summary_date = chrono::Utc::now().date_naive() - chrono::Duration::days(day_offset);
+                    let summary_date =
+                        chrono::Utc::now().date_naive() - chrono::Duration::days(day_offset);
                     let revenue = (i as i64 * 150_000) + (day_offset * 12_000);
                     let _ = sqlx::query(
                         r#"
@@ -244,21 +247,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| default_log),
-        )
+        .with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| default_log))
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    if config.app_env.to_lowercase() == "production" && config.otp_provider.to_lowercase() == "console" {
-        tracing::error!("Refusing to start: Cannot use console OTP provider in production environment.");
+    if config.app_env.to_lowercase() == "production"
+        && config.otp_provider.to_lowercase() == "console"
+    {
+        tracing::error!(
+            "Refusing to start: Cannot use console OTP provider in production environment."
+        );
         panic!("Refusing to start: Console OTP provider not allowed in production.");
     }
 
     if config.app_env.to_lowercase() == "production" {
+        if !api_core::auth::device::key_configuration_is_valid(&config) {
+            panic!("Refusing to start in production mode: DEVICE_TOKEN_SIGNING_KEY_ID and DEVICE_TOKEN_SIGNING_KEYS must configure at least one 32-byte key");
+        }
         let is_invalid = config.activation_signing_key.is_empty()
-            || hex::decode(&config.activation_signing_key).map(|d| d.len() < 32).unwrap_or(true);
+            || hex::decode(&config.activation_signing_key)
+                .map(|d| d.len() < 32)
+                .unwrap_or(true);
         if is_invalid {
             panic!("Refusing to start in production mode: ACTIVATION_SIGNING_KEY must be a valid hex string of at least 32 bytes.");
         }
@@ -289,28 +298,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!("Using ConsoleOtpProvider for OTP delivery");
             Arc::new(ConsoleOtpProvider::new())
         }
-        _ => {
-            Arc::new(NextSmsProvider::new(
-                config.nextsms_base_url.clone(),
-                config.nextsms_api_token.clone(),
-                config.nextsms_sender_id.clone(),
-                config.sms_mode.to_lowercase() != "live",
-            ))
-        }
+        _ => Arc::new(NextSmsProvider::new(
+            config.nextsms_base_url.clone(),
+            config.nextsms_api_token.clone(),
+            config.nextsms_sender_id.clone(),
+            config.sms_mode.to_lowercase() != "live",
+        )),
     };
 
     // Startup check for SMS sender & log loud warning if status 56/58
-    match sms_sender.send("255712345678", "startup check", "health-startup").await {
+    match sms_sender
+        .send("255712345678", "startup check", "health-startup")
+        .await
+    {
         Ok(receipt) => {
             if matches!(receipt.status_id, 56 | 58) {
                 tracing::warn!("LOUD WARNING: NextSMS returned status {} (Sender ID not registered / config error) at startup!", receipt.status_id);
             } else {
-                tracing::info!("SMS sender startup health check passed with status ID {}", receipt.status_id);
+                tracing::info!(
+                    "SMS sender startup health check passed with status ID {}",
+                    receipt.status_id
+                );
             }
         }
         Err(e) => {
-            if let api_core::sms::SmsError::ConfigError(_) | api_core::sms::SmsError::SenderNotApproved(_) = e {
-                tracing::warn!("LOUD WARNING: NextSMS configuration error at startup: {}", e);
+            if let api_core::sms::SmsError::ConfigError(_)
+            | api_core::sms::SmsError::SenderNotApproved(_) = e
+            {
+                tracing::warn!(
+                    "LOUD WARNING: NextSMS configuration error at startup: {}",
+                    e
+                );
             } else {
                 tracing::info!("SMS sender startup health check completed: {:?}", e);
             }
@@ -332,15 +350,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     api_core::admin::infra::start_health_prober(state.clone());
 
     let cors = tower_http::cors::CorsLayer::new()
-        .allow_origin(config.admin_web_origin.parse::<axum::http::HeaderValue>().unwrap_or_else(|_| axum::http::HeaderValue::from_static("http://localhost:5174")))
-        .allow_methods([axum::http::Method::GET, axum::http::Method::POST, axum::http::Method::PUT, axum::http::Method::DELETE, axum::http::Method::OPTIONS])
-        .allow_headers([axum::http::header::CONTENT_TYPE, axum::http::header::AUTHORIZATION])
+        .allow_origin(
+            config
+                .admin_web_origin
+                .parse::<axum::http::HeaderValue>()
+                .unwrap_or_else(|_| axum::http::HeaderValue::from_static("http://localhost:5174")),
+        )
+        .allow_methods([
+            axum::http::Method::GET,
+            axum::http::Method::POST,
+            axum::http::Method::PUT,
+            axum::http::Method::DELETE,
+            axum::http::Method::OPTIONS,
+        ])
+        .allow_headers([
+            axum::http::header::CONTENT_TYPE,
+            axum::http::header::AUTHORIZATION,
+        ])
         .allow_credentials(true);
 
     let app = axum::Router::new()
         .merge(health::health_router(state.clone()))
         .merge(activation::router(state.clone()))
         .merge(api_core::sync::router(state.clone()))
+        .merge(api_core::routes::device::router(state.clone()))
         .merge(api_core::admin::router(state.clone()))
         .layer(cors);
 

@@ -14,7 +14,7 @@ use crate::{
     grant::{generate_business_id, sign_grant, ActivationGrantPayload},
     otp::{generate_otp, hash_otp, hash_string, verify_otp_hash},
     ratelimit::RateLimiter,
-    sms::{normalize_tz_phone, mask_phone, OtpProvider},
+    sms::{mask_phone, normalize_tz_phone, OtpProvider},
 };
 
 #[derive(Clone)]
@@ -30,8 +30,10 @@ pub struct AppState {
     pub sms_sender: Arc<dyn OtpProvider>,
     pub rate_limiter: RateLimiter,
     pub admin_challenges: Arc<std::sync::Mutex<std::collections::HashMap<String, AdminChallenge>>>,
-    pub login_failures: Arc<std::sync::Mutex<std::collections::HashMap<String, (u32, std::time::Instant)>>>,
-    pub account_lockouts: Arc<std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>>>,
+    pub login_failures:
+        Arc<std::sync::Mutex<std::collections::HashMap<String, (u32, std::time::Instant)>>>,
+    pub account_lockouts:
+        Arc<std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>>>,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -59,34 +61,45 @@ pub async fn request_otp(
     Json(payload): Json<OtpRequestPayload>,
 ) -> Result<Json<OtpResponse>, ApiError> {
     if !state.config.otp_enabled {
-        return Err(ApiError::BadRequest("OTP service is currently disabled".into()));
+        return Err(ApiError::BadRequest(
+            "OTP service is currently disabled".into(),
+        ));
     }
 
     let normalized_phone = match normalize_tz_phone(&payload.phone) {
         Ok(p) => p,
         Err(_) => {
             tracing::warn!(phone_masked = %mask_phone(&payload.phone), "invalid_phone_rejected");
-            return Err(ApiError::InvalidPhone("Invalid Tanzanian mobile phone number".into()));
+            return Err(ApiError::InvalidPhone(
+                "Invalid Tanzanian mobile phone number".into(),
+            ));
         }
     };
 
     let phone_hash = hash_string(&normalized_phone);
     let ip_str = addr.ip().to_string();
 
-    if let Err(ra) = state.rate_limiter.check_rate_limit(&phone_hash, 3, std::time::Duration::from_secs(3600)) {
+    if let Err(ra) =
+        state
+            .rate_limiter
+            .check_rate_limit(&phone_hash, 3, std::time::Duration::from_secs(3600))
+    {
         return Err(ApiError::RateLimitExceeded { retry_after: ra });
     }
-    if let Err(ra) = state.rate_limiter.check_rate_limit(&ip_str, 10, std::time::Duration::from_secs(3600)) {
+    if let Err(ra) =
+        state
+            .rate_limiter
+            .check_rate_limit(&ip_str, 10, std::time::Duration::from_secs(3600))
+    {
         return Err(ApiError::RateLimitExceeded { retry_after: ra });
     }
 
     let today = Utc::now().format("%Y-%m-%d").to_string();
-    let count: (i64,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM otp_challenge WHERE created_at LIKE $1"
-    )
-    .bind(format!("{}%", today))
-    .fetch_one(&state.pool)
-    .await?;
+    let count: (i64,) =
+        sqlx::query_as("SELECT COUNT(*) FROM otp_challenge WHERE created_at LIKE $1")
+            .bind(format!("{}%", today))
+            .fetch_one(&state.pool)
+            .await?;
 
     if count.0 >= state.config.otp_daily_max as i64 {
         return Err(ApiError::BadRequest("Daily OTP limit reached".into()));
@@ -118,9 +131,16 @@ pub async fn request_otp(
     .await?;
 
     let msg_id = uuid::Uuid::new_v4().to_string();
-    let text = format!("Your 40Labs activation code is: {}. Valid for 5 minutes.", code);
+    let text = format!(
+        "Your 40Labs activation code is: {}. Valid for 5 minutes.",
+        code
+    );
 
-    if let Err(sms_err) = state.sms_sender.send(&normalized_phone, &text, &msg_id).await {
+    if let Err(sms_err) = state
+        .sms_sender
+        .send(&normalized_phone, &text, &msg_id)
+        .await
+    {
         let _ = sqlx::query("DELETE FROM otp_challenge WHERE phone_hash = $1 AND created_at = $2")
             .bind(&phone_hash)
             .bind(&created_at)
@@ -154,12 +174,16 @@ pub async fn verify_otp(
 ) -> Result<Json<OtpVerifyResponse>, ApiError> {
     let normalized_phone = match normalize_tz_phone(&payload.phone) {
         Ok(p) => p,
-        Err(_) => return Err(ApiError::InvalidPhone("Invalid Tanzanian mobile phone number".into())),
+        Err(_) => {
+            return Err(ApiError::InvalidPhone(
+                "Invalid Tanzanian mobile phone number".into(),
+            ))
+        }
     };
     let phone_hash = hash_string(&normalized_phone);
 
     let row = sqlx::query_as::<_, (String, String, i32, i32)>(
-        "SELECT code_hash, expires_at, attempts, consumed FROM otp_challenge WHERE phone_hash = $1"
+        "SELECT code_hash, expires_at, attempts, consumed FROM otp_challenge WHERE phone_hash = $1",
     )
     .bind(&phone_hash)
     .fetch_optional(&state.pool)
@@ -179,10 +203,16 @@ pub async fn verify_otp(
         .unwrap_or_else(|_| Utc::now());
 
     if Utc::now() > expires_at || attempts >= 5 {
-        return Err(ApiError::BadRequest("OTP code expired or too many failed attempts".into()));
+        return Err(ApiError::BadRequest(
+            "OTP code expired or too many failed attempts".into(),
+        ));
     }
 
-    let valid = verify_otp_hash(&payload.code, &code_hash, state.config.activation_signing_key.as_bytes());
+    let valid = verify_otp_hash(
+        &payload.code,
+        &code_hash,
+        state.config.activation_signing_key.as_bytes(),
+    );
 
     if !valid {
         let new_attempts = attempts + 1;
@@ -288,11 +318,17 @@ pub async fn register_business(
     if !valid_registration_text(&payload.business_name, 160)
         || !valid_registration_text(&payload.owner_first_name, 80)
         || !valid_registration_text(&payload.owner_last_name, 80)
-        || payload.owner_email.as_deref().is_some_and(|email| !valid_email(email))
+        || payload
+            .owner_email
+            .as_deref()
+            .is_some_and(|email| !valid_email(email))
         || !valid_registration_text(&payload.terms_version, 40)
         || !valid_registration_text(&payload.terms_locale, 20)
         || payload.terms_text_sha256.len() != 64
-        || !payload.terms_text_sha256.bytes().all(|byte| byte.is_ascii_hexdigit())
+        || !payload
+            .terms_text_sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit())
     {
         return Err(ApiError::BadRequest("Invalid registration details".into()));
     }
@@ -300,7 +336,7 @@ pub async fn register_business(
     let token_hash = hash_string(&payload.verification_token);
 
     let token_row = sqlx::query_as::<_, (String, String, i32)>(
-        "SELECT phone_hash, expires_at, used FROM verification_token WHERE token_hash = $1"
+        "SELECT phone_hash, expires_at, used FROM verification_token WHERE token_hash = $1",
     )
     .bind(&token_hash)
     .fetch_optional(&state.pool)
@@ -312,7 +348,9 @@ pub async fn register_business(
     };
 
     if used == 1 {
-        return Err(ApiError::BadRequest("Verification token already used".into()));
+        return Err(ApiError::BadRequest(
+            "Verification token already used".into(),
+        ));
     }
 
     let expires_at = chrono::DateTime::parse_from_rfc3339(&expires_at_str)
@@ -326,16 +364,17 @@ pub async fn register_business(
     let mut tx = state.pool.begin().await?;
 
     let existing: Option<(String, String, String)> = sqlx::query_as(
-        "SELECT business_id, workspace_id, branch_id FROM business_registry WHERE phone_hash = $1"
+        "SELECT business_id, workspace_id, branch_id FROM business_registry WHERE phone_hash = $1",
     )
     .bind(&phone_hash)
     .fetch_optional(&mut *tx)
     .await?;
 
-    let consumed = sqlx::query("UPDATE verification_token SET used = 1 WHERE token_hash = $1 AND used = 0")
-        .bind(&token_hash)
-        .execute(&mut *tx)
-        .await?;
+    let consumed =
+        sqlx::query("UPDATE verification_token SET used = 1 WHERE token_hash = $1 AND used = 0")
+            .bind(&token_hash)
+            .execute(&mut *tx)
+            .await?;
     if consumed.rows_affected() != 1 {
         return Err(ApiError::Conflict("Verification token already used".into()));
     }
@@ -350,10 +389,11 @@ pub async fn register_business(
     } else {
         let mut business_id = generate_business_id();
         for _ in 0..5 {
-            let check: Option<(String,)> = sqlx::query_as("SELECT business_id FROM business_registry WHERE business_id = $1")
-                .bind(&business_id)
-                .fetch_optional(&mut *tx)
-                .await?;
+            let check: Option<(String,)> =
+                sqlx::query_as("SELECT business_id FROM business_registry WHERE business_id = $1")
+                    .bind(&business_id)
+                    .fetch_optional(&mut *tx)
+                    .await?;
             if check.is_none() {
                 break;
             }
@@ -387,7 +427,11 @@ pub async fn register_business(
         workspace_id: workspace_id.clone(),
         branch_id: branch_id.clone(),
         phone_hash: phone_hash.clone(),
-        issued_at: now_str,
+        issued_at: now_str.clone(),
+        expires_at: (Utc::now() + Duration::minutes(5)).to_rfc3339(),
+        issuer: crate::grant::ACTIVATION_GRANT_ISSUER.into(),
+        audience: crate::grant::ACTIVATION_GRANT_AUDIENCE.into(),
+        version: 2,
     };
 
     let activation_grant = sign_grant(&grant_payload, &state.config.activation_signing_key)
