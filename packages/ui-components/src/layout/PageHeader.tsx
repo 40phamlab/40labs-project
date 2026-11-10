@@ -3,6 +3,8 @@ import * as React from 'react';
 export interface PageHeaderProps {
   /** Primary page title (string or custom React node) */
   title: React.ReactNode;
+  /** Optional subtitle description */
+  subtitle?: React.ReactNode;
   /** Optional status or category badge displayed adjacent to title */
   badge?: React.ReactNode;
   /** Optional breadcrumbs rendered above header title */
@@ -16,6 +18,7 @@ export interface PageHeaderProps {
 
 export function PageHeader({
   title,
+  subtitle,
   badge,
   breadcrumbs,
   actions,
@@ -40,6 +43,7 @@ export function PageHeader({
             )}
             {badge && <div className="shrink-0">{badge}</div>}
           </div>
+          {subtitle && <p className="text-xs text-text-muted mt-0.5">{subtitle}</p>}
         </div>
 
         {actions && (

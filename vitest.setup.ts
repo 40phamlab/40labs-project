@@ -22,4 +22,12 @@ if (typeof window !== 'undefined') {
       disconnect() {}
     };
   }
+
+  if (!window.IntersectionObserver) {
+    window.IntersectionObserver = class IntersectionObserver {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as any;
+  }
 }

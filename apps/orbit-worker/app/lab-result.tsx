@@ -102,11 +102,11 @@ export default function LabResultScreen() {
         resultNotes: `Value: ${resultValue.trim()} (Ref: ${referenceRange.trim() || 'N/A'}, Out of Range: ${isOutOfRange ? 'Yes' : 'No'})`,
         status: 'completed',
       });
+      setOrders((prev) => prev.filter((o) => o.id !== selectedOrder.id));
       setSelectedOrder(null);
       setResultValue('');
       setReferenceRange('');
       setIsOutOfRange(false);
-      loadOrders(true);
     } catch (err: any) {
       setResultError(err.message || 'Failed to queue lab result');
     } finally {

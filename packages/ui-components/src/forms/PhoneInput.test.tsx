@@ -42,7 +42,15 @@ describe('PhoneInput', () => {
 
   test('removes non-digit characters and limits the national number to nine digits', () => {
     const onChange = vi.fn();
-    render(<PhoneInput aria-label="Phone number" value="" onChange={onChange} />);
+    function ControlledPhone() {
+      const [value, setValue] = React.useState('');
+      return <PhoneInput aria-label="Phone number" value={value} onChange={(e: any) => {
+        const val = typeof e === 'string' ? e : e.target.value;
+        onChange(val);
+        setValue(val);
+      }} />;
+    }
+    render(<ControlledPhone />);
     const input = screen.getByRole('textbox', { name: 'Phone number' });
     fireEvent.change(input, { target: { value: 'abc712-345-67899' } });
     expect(onChange).toHaveBeenCalled();

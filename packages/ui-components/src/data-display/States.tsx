@@ -5,20 +5,23 @@ import { Skeleton } from '../feedback/Skeleton';
 import { Table, TableHeader, TableBody, TableRow, TableCell, TableDensity } from './Table';
 
 export interface LoadingStateProps {
+  title?: string;
   className?: string;
 }
 
 export const LoadingState: React.FC<LoadingStateProps> = ({
+  title,
   className = '',
 }) => {
   return (
     <div
       className={`
-        flex flex-col items-center justify-center p-12 bg-surface-strong rounded-card border border-border
+        flex flex-col items-center justify-center p-12 bg-surface-strong rounded-card border border-border gap-3
         ${className}
       `}
     >
       <Spinner size="md" className="text-primary" />
+      {title && <p className="text-xs font-medium text-text-muted">{title}</p>}
     </div>
   );
 };

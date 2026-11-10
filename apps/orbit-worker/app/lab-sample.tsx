@@ -91,9 +91,9 @@ export default function LabSampleScreen() {
         labOrderId: selectedOrder.id,
         sampleLabel: sampleLabel.trim(),
       });
+      setOrders((prev) => prev.filter((o) => o.id !== selectedOrder.id));
       setSelectedOrder(null);
       setSampleLabel('');
-      loadOrders(true);
     } catch (err: any) {
       setSampleLabelError(err.message || 'Failed to queue sample collection');
     } finally {
@@ -119,7 +119,13 @@ export default function LabSampleScreen() {
         data={orders}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => setSelectedOrder(item)}>
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedOrder(item);
+              setSampleLabel(`SAMPLE-${item.id.slice(-6)}`);
+              setSampleLabelError(null);
+            }}
+          >
             <Card style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text variant="heading" style={{ fontSize: 15 }}>{item.testName || item.testCatalogId}</Text>

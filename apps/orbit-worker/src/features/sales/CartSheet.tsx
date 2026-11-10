@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 interface CartSheetProps {
   visible: boolean;
   onClose: () => void;
+  inline?: boolean;
   cart: CartItem[];
   selectedCustomer: Customer | null;
   onSelectCustomer: (customer: Customer | null) => void;
@@ -32,6 +33,7 @@ interface CartSheetProps {
 export function CartSheet({
   visible,
   onClose,
+  inline = false,
   cart,
   selectedCustomer,
   onSelectCustomer,
@@ -52,9 +54,8 @@ export function CartSheet({
   const grandTotal = Math.max(0, subtotalSum - discount);
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-  return (
-    <BottomSheet visible={visible} onClose={onClose} title={t('sales.shoppingCart')}>
-      <View style={styles.container}>
+  const content = (
+    <View style={inline ? styles.inlineContainer : styles.container}>
         <TouchableOpacity
           style={[styles.customerButton, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderSubtle, borderRadius: radius.card }]}
           onPress={() => router.push('/patients')}
@@ -137,6 +138,15 @@ export function CartSheet({
           />
         </View>
       </View>
+    );
+
+  if (inline) {
+    return content;
+  }
+
+  return (
+    <BottomSheet visible={visible} onClose={onClose} title={t('sales.shoppingCart')}>
+      {content}
     </BottomSheet>
   );
 }

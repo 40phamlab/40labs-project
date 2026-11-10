@@ -267,13 +267,13 @@ export function DataTable<T>({
   // Handle Error State
   if (error) {
     if (errorState) return <>{errorState}</>;
-    return <ErrorState title={errorTitle} onRetry={onRetry} />;
+    return <ErrorState title={typeof error === 'string' ? error : errorTitle} onRetry={onRetry} />;
   }
 
   // Handle Loading State
   if (loading) {
     if (loadingState) return <>{loadingState}</>;
-    if (loadingMessage) return <LoadingState />;
+    if (loadingMessage) return <LoadingState title={loadingMessage} />;
     return <SkeletonTable rows={5} columns={columns.length} density={actualDensity} />;
   }
 

@@ -18,7 +18,7 @@ describe('DataImportModal Component', () => {
       />
     );
 
-    expect(screen.getByText('Upload CSV or Excel Spreadsheet')).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Choose Spreadsheet File' })).toBeDefined();
     expect(screen.getByRole('button', { name: /download template/i })).toBeDefined();
   });
 

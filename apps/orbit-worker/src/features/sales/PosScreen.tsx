@@ -13,7 +13,6 @@ import { fetchStockListApi } from '../stock/api';
 import { CartItem, SaleResponse } from './types';
 import { createSaleApi } from './api';
 import { Customer } from '../customers/types';
-import { PinPad } from '../../components/PinPad';
 import { ScanFrame } from '../../components/ScanFrame';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ProductList } from './ProductList';
@@ -22,6 +21,17 @@ import { CheckoutSheet } from './CheckoutSheet';
 import { useResponsive } from '../../theme/useResponsive';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
+
+function generateUuid(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export function PosScreen() {
   const { colors } = useTheme();
@@ -47,10 +57,10 @@ export function PosScreen() {
   const [cartSheetVisible, setCartSheetVisible] = useState(false);
   const [scannerVisible, setScannerVisible] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
-  const [pinPadVisible, setPinPadVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [onlineErrorBanner, setOnlineErrorBanner] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [completedSale, setCompletedSale] = useState<SaleResponse | null>(null);
 
   const idempotencyKeyRef = useRef<string | null>(null);
@@ -123,10 +133,10 @@ export function PosScreen() {
   const grandTotal = Math.max(0, subtotalSum - discount);
   const totalItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-  const executeCheckout = async (pin?: string) => {
+  const executeCheckout = async () => {
     if (status !== 'connected') {
       setOnlineErrorBanner(true);
-      setPinPadVisible(false);
+      setCheckoutError('Sales are online only. Cannot process sale while offline/unreachable.');
       return;
     }
 
@@ -134,6 +144,12 @@ export function PosScreen() {
 
     setConfirming(true);
     setOnlineErrorBanner(false);
+    setCheckoutError(null);
+
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = generateUuid();
+    }
+
     try {
       const payload = {
         customerId: selectedCustomer ? selectedCustomer.id : null,
@@ -145,17 +161,18 @@ export function PosScreen() {
         discountAmount: discount,
       };
 
-      const { sale, idempotencyKey } = await createSaleApi(activeBusinessId!, payload, idempotencyKeyRef.current || undefined);
-      idempotencyKeyRef.current = idempotencyKey;
+      const { sale } = await createSaleApi(activeBusinessId!, payload, idempotencyKeyRef.current);
       setCompletedSale(sale);
       setCart([]);
       setSelectedCustomer(null);
       setCartSheetVisible(false);
+      idempotencyKeyRef.current = null;
     } catch (err: any) {
+      const msg = err.message || 'Failed to complete sale';
       setOnlineErrorBanner(true);
+      setCheckoutError(msg);
     } finally {
       setConfirming(false);
-      setPinPadVisible(false);
     }
   };
 
@@ -181,7 +198,7 @@ export function PosScreen() {
 
       {onlineErrorBanner && (
         <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-          <Banner title="Sales are online only. Cannot process sale while offline/unreachable." variant="offline" />
+          <Banner title={checkoutError || "Sales are online only. Cannot process sale while offline/unreachable."} variant="offline" />
         </View>
       )}
 
@@ -216,6 +233,7 @@ export function PosScreen() {
           <View style={[styles.cartPane, { backgroundColor: colors.surfacePrimary, borderColor: colors.borderSubtle }]}>
             <Text variant="heading" style={{ fontSize: 16, marginBottom: 12 }}>Current Cart</Text>
             <CartSheet
+              inline={true}
               visible={true}
               onClose={() => {}}
               cart={cart}
@@ -226,7 +244,7 @@ export function PosScreen() {
               onSelectPaymentMethod={setPaymentMethod}
               discountAmount={discountAmount}
               onDiscountChange={setDiscountAmount}
-              onConfirm={() => setPinPadVisible(true)}
+              onConfirm={executeCheckout}
               confirming={confirming}
             />
           </View>
@@ -246,6 +264,7 @@ export function PosScreen() {
 
       {isCompact && (
         <CartSheet
+          inline={false}
           visible={cartSheetVisible}
           onClose={() => setCartSheetVisible(false)}
           cart={cart}
@@ -256,7 +275,7 @@ export function PosScreen() {
           onSelectPaymentMethod={setPaymentMethod}
           discountAmount={discountAmount}
           onDiscountChange={setDiscountAmount}
-          onConfirm={() => setPinPadVisible(true)}
+          onConfirm={executeCheckout}
           confirming={confirming}
         />
       )}
@@ -281,13 +300,6 @@ export function PosScreen() {
           </TouchableOpacity>
         </View>
       </Modal>
-
-      <PinPad
-        visible={pinPadVisible}
-        title="Authorize Sale PIN"
-        onConfirm={(pin) => executeCheckout(pin)}
-        onCancel={() => setPinPadVisible(false)}
-      />
     </Screen>
   );
 }

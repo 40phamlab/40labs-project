@@ -213,6 +213,9 @@ export const notificationsApi = {
   },
 
   create: async (payload: CreateNotificationPayload): Promise<Notification> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<Notification>('create_notification', { payload });
+    }
     // Stable key mapping per requirement 5
     let cType: CounterpartyType = 'customer';
     let cKey = '';
@@ -280,6 +283,15 @@ export const notificationsApi = {
   },
 
   sendMessage: async (payload: SendMessagePayload): Promise<NotificationMessage> => {
+    if (isUsingTauriIpc()) {
+      return invokeCommand<NotificationMessage>('send_notification_message', { payload: {
+        notification_id: payload.notificationId,
+        body: payload.body,
+        content_type: payload.contentType || 'text',
+        html_content: payload.htmlContent || null,
+        attachment_ids: payload.attachmentIds || null,
+      }});
+    }
     // Backward compatibility helper
     // Find thread associated with notification or create fallback
     const notif = notificationsStore.find((n) => n.id === payload.notificationId);

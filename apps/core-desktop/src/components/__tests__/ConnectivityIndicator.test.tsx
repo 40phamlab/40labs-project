@@ -1,8 +1,21 @@
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { ConnectivityIndicator } from '../ConnectivityIndicator';
 import { useConnectivityStore } from '../../stores/useConnectivityStore';
-import { t } from '@40labs/i18n';
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const map: Record<string, string> = {
+        'connectivity.online': 'Online',
+        'connectivity.offline': 'Offline',
+        'connectivity.ariaOnline': 'Network Status: Online',
+        'connectivity.ariaOffline': 'Network Status: Offline',
+      };
+      return map[key] || key;
+    },
+  }),
+}));
 
 describe('ConnectivityIndicator', () => {
   beforeEach(() => {
@@ -18,8 +31,8 @@ describe('ConnectivityIndicator', () => {
     render(<ConnectivityIndicator />);
 
     const indicator = screen.getByRole('status');
-    const expectedAria = t('connectivity.ariaOnline', 'en');
-    const expectedText = t('connectivity.online', 'en');
+    const expectedAria = 'Network Status: Online';
+    const expectedText = 'Online';
 
     expect(indicator.getAttribute('aria-label')).toBe(expectedAria);
     expect(screen.getByText(expectedText)).toBeDefined();
@@ -30,8 +43,8 @@ describe('ConnectivityIndicator', () => {
     render(<ConnectivityIndicator />);
 
     const indicator = screen.getByRole('status');
-    const expectedAria = t('connectivity.ariaOffline', 'en');
-    const expectedText = t('connectivity.offline', 'en');
+    const expectedAria = 'Network Status: Offline';
+    const expectedText = 'Offline';
 
     expect(indicator.getAttribute('aria-label')).toBe(expectedAria);
     expect(screen.getByText(expectedText)).toBeDefined();
