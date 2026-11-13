@@ -1,7 +1,11 @@
-use core_desktop_lib::sync::store::{ack, enqueue_bootstrap, next_batch, requeue_stale_inflight};
+use core_desktop_lib::sync::store::{
+    ack, enqueue_bootstrap, next_batch, next_batch_for_scope, requeue_interrupted_inflight,
+    requeue_stale_inflight,
+};
 use core_desktop_lib::sync::types::{AckStatus, ChangeAck};
 use sqlx::migrate::Migrator;
-use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
+use sqlx::ConnectOptions;
 
 static SQLITE_MIGRATOR: Migrator = sqlx::migrate!("../../../infra/db/sqlite-schema/migrations");
 
@@ -29,6 +33,71 @@ async fn insert_enqueues_outbox() -> Result<(), Box<dyn std::error::Error>> {
     .fetch_one(&mut *conn)
     .await?;
     assert_eq!(count, 1);
+    Ok(())
+}
+
+#[tokio::test]
+async fn scoped_sync_claims_only_the_token_workspace_and_branch_and_recovers_after_restart(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let pool = setup_test_db().await?;
+    sqlx::query("INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile) VALUES ('scope-a', 'ws-a', 'branch-a', 'AFYA-A', 'A', '0712345678'), ('scope-b', 'ws-b', 'branch-b', 'AFYA-B', 'B', '0712345679')")
+        .execute(&pool)
+        .await?;
+
+    let mut conn = pool.acquire().await?;
+    let batch = next_batch_for_scope(&mut conn, 10, "ws-a", "branch-a").await?;
+    assert_eq!(batch.len(), 1);
+    assert_eq!(batch[0].entity_id, "scope-a");
+    assert_eq!(batch[0].workspace_id, "ws-a");
+    assert_eq!(batch[0].branch_id, "branch-a");
+
+    requeue_interrupted_inflight(&mut conn).await?;
+    let recovered = next_batch_for_scope(&mut conn, 10, "ws-a", "branch-a").await?;
+    assert_eq!(recovered.len(), 1);
+    assert_eq!(recovered[0].id, batch[0].id);
+    let other_scope = next_batch_for_scope(&mut conn, 10, "ws-b", "branch-b").await?;
+    assert_eq!(other_scope.len(), 1);
+    assert_eq!(other_scope[0].entity_id, "scope-b");
+    Ok(())
+}
+
+#[tokio::test]
+async fn pending_mutation_survives_database_pool_restart() -> Result<(), Box<dyn std::error::Error>>
+{
+    let db_path = std::env::temp_dir().join(format!("40labs-sync-{}.db", uuid::Uuid::new_v4()));
+    let options = || {
+        SqliteConnectOptions::new()
+            .filename(&db_path)
+            .create_if_missing(true)
+            .disable_statement_logging()
+    };
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(options())
+        .await?;
+    SQLITE_MIGRATOR.run(&pool).await?;
+    sqlx::query("INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile) VALUES ('restart-1', 'ws-r', 'branch-r', 'AFYA-R', 'Restart Test', '0712345678')")
+        .execute(&pool).await?;
+    let before_close: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sync_outbox WHERE entity_id = 'restart-1' AND status = 'pending'",
+    )
+    .fetch_one(&pool)
+    .await?;
+    assert_eq!(before_close, 1);
+    pool.close().await;
+
+    let reopened = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(options())
+        .await?;
+    let after_restart: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sync_outbox WHERE entity_id = 'restart-1' AND status = 'pending'",
+    )
+    .fetch_one(&reopened)
+    .await?;
+    assert_eq!(after_restart, 1);
+    reopened.close().await;
+    let _ = std::fs::remove_file(&db_path);
     Ok(())
 }
 

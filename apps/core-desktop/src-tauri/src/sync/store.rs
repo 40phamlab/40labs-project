@@ -213,14 +213,37 @@ pub async fn next_batch(
     conn: &mut SqliteConnection,
     limit: i64,
 ) -> Result<Vec<OutboxChange>, sqlx::Error> {
+    next_batch_scoped(conn, limit, None, None).await
+}
+
+pub async fn next_batch_for_scope(
+    conn: &mut SqliteConnection,
+    limit: i64,
+    workspace_id: &str,
+    branch_id: &str,
+) -> Result<Vec<OutboxChange>, sqlx::Error> {
+    next_batch_scoped(conn, limit, Some(workspace_id), Some(branch_id)).await
+}
+
+async fn next_batch_scoped(
+    conn: &mut SqliteConnection,
+    limit: i64,
+    workspace_id: Option<&str>,
+    branch_id: Option<&str>,
+) -> Result<Vec<OutboxChange>, sqlx::Error> {
     let mut tx = conn.begin().await?;
 
     let rows: Vec<OutboxChange> = sqlx::query_as(
         "SELECT id, workspace_id, branch_id, entity, entity_id, op, payload, version, status, attempts, last_error, created_at
          FROM sync_outbox_compacted
+         WHERE (? IS NULL OR workspace_id = ?) AND (? IS NULL OR branch_id = ?)
          ORDER BY created_at ASC
          LIMIT ?"
     )
+    .bind(workspace_id)
+    .bind(workspace_id)
+    .bind(branch_id)
+    .bind(branch_id)
     .bind(limit)
     .fetch_all(&mut *tx)
     .await?;
@@ -311,8 +334,17 @@ pub async fn requeue_stale_inflight(
     Ok(())
 }
 
+pub async fn requeue_interrupted_inflight(conn: &mut SqliteConnection) -> Result<(), sqlx::Error> {
+    sqlx::query("UPDATE sync_outbox SET status = 'pending' WHERE status = 'inflight'")
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
 pub async fn pending_count(conn: &mut SqliteConnection) -> Result<i64, sqlx::Error> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_outbox_compacted")
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM (SELECT entity, entity_id FROM sync_outbox WHERE status IN ('pending','inflight') GROUP BY entity, entity_id)",
+    )
         .fetch_one(conn)
         .await?;
     Ok(count)

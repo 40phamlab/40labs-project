@@ -33,12 +33,14 @@ import { useNotifications } from './hooks/useNotifications';
 import { useNotificationSound } from './hooks/useNotificationSound';
 import { useAlertToasts } from './features/alerts/useAlertToasts';
 import { useAlertSound } from './features/alerts/useAlertSound';
+import { useCloudSync } from './hooks/useCloudSync';
 import { AuthGate } from './features/auth/AuthGate';
 import { FilePreviewProvider, useFilePreviewContext } from './providers/FilePreviewProvider';
 import { ContextMenuProvider } from './components/context-menu/ContextMenuProvider';
 import './App.css';
 
 function MainWorkspaceContent() {
+  useCloudSync();
   const activeScreen = useNavStore((s) => s.activeScreen);
   const { previewState, selectFileTab, closeFileTab } = useFilePreviewContext();
   const hasOpenFiles = previewState.isOpen && previewState.files.length > 0;
@@ -87,7 +89,7 @@ function MainWorkspaceContent() {
           files={previewState.files}
           index={previewState.currentIndex}
           onIndexChange={selectFileTab}
-          onClose={(e) => closeFileTab(previewState.currentIndex, e)}
+          onClose={() => closeFileTab(previewState.currentIndex)}
           onDownload={previewState.onDownload}
           onSaveAs={previewState.onSaveAs}
           onOpenExternal={previewState.onOpenExternal}

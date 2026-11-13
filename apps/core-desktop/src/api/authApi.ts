@@ -292,14 +292,11 @@ const failUnavailable: AuthApi = new Proxy({} as AuthApi, {
 
 export const authApi: AuthApi = new Proxy({} as AuthApi, {
   get(_target, prop: keyof AuthApi) {
-    const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
     const tauri = isTauriAvailable();
 
     let activeApi: AuthApi;
     if (tauri) {
       activeApi = tauriAuthApi;
-    } else if (isDev) {
-      activeApi = mockAuthApi;
     } else {
       activeApi = failUnavailable;
     }

@@ -4,23 +4,44 @@ use sqlx::SqlitePool;
 pub struct InventoryRepository;
 
 impl InventoryRepository {
+    pub async fn list_medicines(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+    ) -> Result<Vec<Medicine>, sqlx::Error> {
+        sqlx::query_as::<_, Medicine>("SELECT * FROM medicine WHERE workspace_id = ? AND branch_id = ? ORDER BY name COLLATE NOCASE")
+            .bind(workspace_id).bind(branch_id).fetch_all(pool).await
+    }
+
+    pub async fn list_stock_adjustments(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+    ) -> Result<Vec<StockAdjustment>, sqlx::Error> {
+        sqlx::query_as::<_, StockAdjustment>("SELECT * FROM stock_adjustment WHERE workspace_id = ? AND branch_id = ? ORDER BY created_at DESC")
+            .bind(workspace_id).bind(branch_id).fetch_all(pool).await
+    }
+
     pub async fn list_medicines_with_inventory(
         pool: &SqlitePool,
         workspace_id: &str,
+        branch_id: &str,
         include_deactivated: bool,
     ) -> Result<Vec<MedicineWithInventory>, sqlx::Error> {
         let items: Vec<InventoryItem> = if include_deactivated {
             sqlx::query_as::<_, InventoryItem>(
-                "SELECT * FROM inventory_item WHERE workspace_id = ? ORDER BY created_at DESC",
+                "SELECT * FROM inventory_item WHERE workspace_id = ? AND branch_id = ? ORDER BY created_at DESC",
             )
             .bind(workspace_id)
+            .bind(branch_id)
             .fetch_all(pool)
             .await?
         } else {
             sqlx::query_as::<_, InventoryItem>(
-                "SELECT * FROM inventory_item WHERE workspace_id = ? AND is_deactivated = 0 ORDER BY created_at DESC"
+                "SELECT * FROM inventory_item WHERE workspace_id = ? AND branch_id = ? AND is_deactivated = 0 ORDER BY created_at DESC"
             )
             .bind(workspace_id)
+            .bind(branch_id)
             .fetch_all(pool)
             .await?
         };
@@ -28,9 +49,10 @@ impl InventoryRepository {
         let mut result = Vec::new();
         for item in items {
             let medicine = sqlx::query_as::<_, Medicine>(
-                "SELECT * FROM medicine WHERE workspace_id = ? AND id = ?",
+                "SELECT * FROM medicine WHERE workspace_id = ? AND branch_id = ? AND id = ?",
             )
             .bind(workspace_id)
+            .bind(branch_id)
             .bind(&item.medicine_id)
             .fetch_optional(pool)
             .await?;
@@ -49,21 +71,24 @@ impl InventoryRepository {
     pub async fn get_inventory_item_by_id(
         pool: &SqlitePool,
         workspace_id: &str,
+        branch_id: &str,
         id: &str,
     ) -> Result<Option<MedicineWithInventory>, sqlx::Error> {
         let item = sqlx::query_as::<_, InventoryItem>(
-            "SELECT * FROM inventory_item WHERE workspace_id = ? AND id = ?",
+            "SELECT * FROM inventory_item WHERE workspace_id = ? AND branch_id = ? AND id = ?",
         )
         .bind(workspace_id)
+        .bind(branch_id)
         .bind(id)
         .fetch_optional(pool)
         .await?;
 
         if let Some(inv_item) = item {
             let medicine = sqlx::query_as::<_, Medicine>(
-                "SELECT * FROM medicine WHERE workspace_id = ? AND id = ?",
+                "SELECT * FROM medicine WHERE workspace_id = ? AND branch_id = ? AND id = ?",
             )
             .bind(workspace_id)
+            .bind(branch_id)
             .bind(&inv_item.medicine_id)
             .fetch_optional(pool)
             .await?;

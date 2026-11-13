@@ -25,10 +25,14 @@ pub fn run() {
     tracing::info!("keystore: security keystore initialized successfully");
     let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
 
-    let api_base_url = std::env::var("API_BASE_URL").ok();
+    let api_base_url =
+        std::env::var("API_BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:3000".into());
     let pubkey_hex = std::env::var("ACTIVATION_PUBKEY").ok();
     let (otp_client, activation_client) =
-        activation::client::ActivationClientFactory::create_clients(api_base_url, pubkey_hex);
+        activation::client::ActivationClientFactory::create_clients(
+            Some(api_base_url.clone()),
+            pubkey_hex,
+        );
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -57,6 +61,35 @@ pub fn run() {
                 otp_client,
                 activation_client,
             });
+            let managed = app.state::<AppState>();
+            let sync_pool = managed.pool.clone();
+            let sync_activation_client = managed.activation_client.clone();
+            let sync_auth_state = managed.auth_state.clone();
+            drop(managed);
+            let sync_api_base_url = api_base_url.clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    if !sync_auth_state
+                        .session
+                        .read()
+                        .await
+                        .as_ref()
+                        .is_some_and(|session| !session.locked)
+                    {
+                        continue;
+                    }
+                    if let Err(error) = crate::sync::engine::sync_once(
+                        &sync_pool,
+                        &sync_api_base_url,
+                        &sync_activation_client,
+                    )
+                    .await
+                    {
+                        tracing::debug!(error = %error, "cloud sync deferred; local outbox retained");
+                    }
+                }
+            });
             if let Err(e) = services::documents::ensure_layout(app.handle()) {
                 tracing::warn!("Failed to initialize Documents layout on startup: {}. Will lazy-create on first write.", e);
             }
@@ -65,6 +98,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::system_cmd::system_health_check,
             commands::system_cmd::frontend_log,
+            commands::sync_cmd::cloud_sync_now,
+            commands::sync_cmd::cloud_sync_status,
             // Auth
             commands::auth_cmd::auth_status,
             commands::auth_cmd::auth_login,
@@ -114,6 +149,8 @@ pub fn run() {
             commands::registration_cmd::otp_verify,
             // Inventory
             commands::inventory_cmd::get_inventory_list,
+            commands::inventory_cmd::get_medicines_list,
+            commands::inventory_cmd::get_stock_adjustments,
             commands::inventory_cmd::get_inventory_item,
             commands::inventory_cmd::create_stock_item,
             commands::inventory_cmd::record_stock_action,

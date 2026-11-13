@@ -25,7 +25,17 @@ export interface ChangeAck {
 }
 
 export interface SyncStatus {
-  state: 'synced' | 'pending' | 'offline';
+  state: 'idle' | 'pending' | 'attention';
   pending: number;
+  failed: number;
   last_ack_at?: string | null;
+}
+
+export interface SyncRunResult {
+  state: 'not_enrolled' | 'synced' | 'attention';
+  sent: number;
+  applied: number;
+  rejected: number;
+  pending: number;
+  server_cursor?: string | null;
 }

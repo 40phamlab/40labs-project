@@ -49,12 +49,52 @@ struct InventoryItemPayload {
     sell_price: i64,
     quantity: i32,
     low_stock_threshold: i32,
+    #[serde(deserialize_with = "deserialize_sqlite_bool")]
     cold_chain_required: bool,
+    #[serde(deserialize_with = "deserialize_sqlite_bool")]
     is_deactivated: bool,
     version: i64,
     deleted_at: Option<chrono::DateTime<chrono::Utc>>,
     created_at: String,
     updated_at: String,
+}
+
+fn deserialize_sqlite_bool<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum SqliteBool {
+        Bool(bool),
+        Integer(i64),
+    }
+    match SqliteBool::deserialize(deserializer)? {
+        SqliteBool::Bool(value) => Ok(value),
+        SqliteBool::Integer(0) => Ok(false),
+        SqliteBool::Integer(1) => Ok(true),
+        SqliteBool::Integer(_) => Err(serde::de::Error::custom("expected boolean or SQLite 0/1")),
+    }
+}
+
+#[cfg(test)]
+mod sqlite_bool_tests {
+    use super::deserialize_sqlite_bool;
+    use serde::Deserialize;
+
+    #[derive(Deserialize)]
+    struct Flag {
+        #[serde(deserialize_with = "deserialize_sqlite_bool")]
+        value: bool,
+    }
+
+    #[test]
+    fn inventory_boolean_fields_accept_sqlite_integer_and_json_boolean_values() {
+        assert!(!serde_json::from_str::<Flag>(r#"{"value":0}"#).unwrap().value);
+        assert!(serde_json::from_str::<Flag>(r#"{"value":1}"#).unwrap().value);
+        assert!(serde_json::from_str::<Flag>(r#"{"value":true}"#).unwrap().value);
+        assert!(serde_json::from_str::<Flag>(r#"{"value":2}"#).is_err());
+    }
 }
 
 #[derive(Deserialize, Debug)]

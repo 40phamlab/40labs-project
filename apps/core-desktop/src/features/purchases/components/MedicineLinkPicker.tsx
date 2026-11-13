@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { Medicine, CatalogProduct } from '@40labs/types';
 import { Modal, Button, Input } from '@40labs/ui-components';
-import { inventoryApi } from '../../../../api/inventoryApi';
+import { inventoryApi } from '../../../api/inventoryApi';
 import { Link2, PlusCircle, Search } from 'lucide-react';
 
 export interface MedicineLinkPickerProps {

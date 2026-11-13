@@ -104,6 +104,7 @@ impl InventoryService {
         let existing = InventoryRepository::get_inventory_item_by_id(
             pool,
             &ctx.workspace_id,
+            &ctx.branch_id,
             &req.inventory_item_id,
         )
         .await

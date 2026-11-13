@@ -25,6 +25,7 @@ pub async fn get_stock_handler(
     let items = InventoryRepository::list_medicines_with_inventory(
         &state.pool,
         &device.workspace_id,
+        &device.branch_id,
         false,
     )
     .await
@@ -73,17 +74,21 @@ pub async fn get_stock_item_handler(
     Extension(AuthedDevice { device }): Extension<AuthedDevice>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, (StatusCode, String)> {
-    let item =
-        InventoryRepository::get_inventory_item_by_id(&state.pool, &device.workspace_id, &id)
-            .await
-            .map_err(|e| {
-                tracing::warn!(error = %e, "Failed to get inventory item");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error".to_string(),
-                )
-            })?
-            .ok_or_else(|| (StatusCode::NOT_FOUND, "Stock item not found".to_string()))?;
+    let item = InventoryRepository::get_inventory_item_by_id(
+        &state.pool,
+        &device.workspace_id,
+        &device.branch_id,
+        &id,
+    )
+    .await
+    .map_err(|e| {
+        tracing::warn!(error = %e, "Failed to get inventory item");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        )
+    })?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, "Stock item not found".to_string()))?;
 
     Ok(Json(json!(item)))
 }

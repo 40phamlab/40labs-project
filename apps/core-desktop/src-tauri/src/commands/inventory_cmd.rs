@@ -3,7 +3,8 @@ use tauri::State;
 use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
 use crate::models::inventory::{
-    AddStockRequest, MedicineWithInventory, RecordStockActionRequest, RecordStockActionResult,
+    AddStockRequest, Medicine, MedicineWithInventory, RecordStockActionRequest,
+    RecordStockActionResult, StockAdjustment,
 };
 use crate::repositories::inventory_repo::InventoryRepository;
 use crate::services::inventory_service::InventoryService;
@@ -25,10 +26,47 @@ pub async fn get_inventory_list(
     InventoryRepository::list_medicines_with_inventory(
         &state.pool,
         &ctx.workspace_id,
+        &ctx.branch_id,
         include_deactivated.unwrap_or(false),
     )
     .await
     .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+}
+
+#[tauri::command]
+pub async fn get_medicines_list(
+    state: State<'_, AppState>,
+) -> Result<Vec<Medicine>, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("inventory.view")
+        .await
+        .map_err(|e| e.to_response())?;
+    InventoryRepository::list_medicines(&state.pool, &ctx.workspace_id, &ctx.branch_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+}
+
+#[tauri::command]
+pub async fn get_stock_adjustments(
+    state: State<'_, AppState>,
+) -> Result<Vec<StockAdjustment>, AuthErrorResponse> {
+    let engine = AuthEngine::new(
+        state.auth_state.clone(),
+        state.pool.clone(),
+        state.keystore.clone(),
+    );
+    let ctx = engine
+        .require("inventory.view")
+        .await
+        .map_err(|e| e.to_response())?;
+    InventoryRepository::list_stock_adjustments(&state.pool, &ctx.workspace_id, &ctx.branch_id)
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
 }
 
 #[tauri::command]
@@ -45,9 +83,14 @@ pub async fn get_inventory_item(
         .require("inventory.view")
         .await
         .map_err(|e| e.to_response())?;
-    InventoryRepository::get_inventory_item_by_id(&state.pool, &ctx.workspace_id, &id)
-        .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+    InventoryRepository::get_inventory_item_by_id(
+        &state.pool,
+        &ctx.workspace_id,
+        &ctx.branch_id,
+        &id,
+    )
+    .await
+    .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
 }
 
 #[tauri::command]

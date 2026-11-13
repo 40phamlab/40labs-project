@@ -10,6 +10,8 @@ pub enum CommandPolicy {
 pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     let mut map = HashMap::new();
     map.insert("system_health_check", CommandPolicy::Public);
+    map.insert("cloud_sync_now", CommandPolicy::SessionOnly);
+    map.insert("cloud_sync_status", CommandPolicy::SessionOnly);
     map.insert("frontend_log", CommandPolicy::Public);
     map.insert("auth_status", CommandPolicy::Public);
     map.insert("auth_login", CommandPolicy::Public);
@@ -64,6 +66,14 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
 
     map.insert(
         "get_inventory_list",
+        CommandPolicy::Permission("inventory.view"),
+    );
+    map.insert(
+        "get_medicines_list",
+        CommandPolicy::Permission("inventory.view"),
+    );
+    map.insert(
+        "get_stock_adjustments",
         CommandPolicy::Permission("inventory.view"),
     );
     map.insert(

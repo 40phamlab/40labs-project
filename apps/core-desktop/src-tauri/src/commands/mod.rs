@@ -14,6 +14,7 @@ pub mod partner_facility_cmd;
 pub mod purchases_cmd;
 pub mod registration_cmd;
 pub mod sales_cmd;
+pub mod sync_cmd;
 pub mod system_cmd;
 pub mod totp_cmd;
 pub mod user_cmd;
@@ -25,6 +26,8 @@ mod tests {
     fn test_command_policy_completeness() {
         let registered_commands = vec![
             "system_health_check",
+            "cloud_sync_now",
+            "cloud_sync_status",
             "frontend_log",
             "auth_status",
             "auth_login",
@@ -70,6 +73,8 @@ mod tests {
             "get_integrations_config",
             "update_integrations_config",
             "get_inventory_list",
+            "get_medicines_list",
+            "get_stock_adjustments",
             "get_inventory_item",
             "create_stock_item",
             "record_stock_action",

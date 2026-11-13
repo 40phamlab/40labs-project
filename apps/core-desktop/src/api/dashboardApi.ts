@@ -20,7 +20,7 @@ export const dashboardApi = {
       purchasesRes,
       labOrdersRes,
       customersRes,
-    ] = await Promise.allSettled([
+    ] = await Promise.all([
       salesApi.list(),
       inventoryApi.list(),
       inventoryApi.listMedicines(),
@@ -29,25 +29,12 @@ export const dashboardApi = {
       customersApi.list(),
     ]);
 
-    // Critical data checks: sales and inventory
-    if (salesRes.status === 'rejected' && inventoryRes.status === 'rejected') {
-      throw salesRes.reason || inventoryRes.reason || new Error('Failed to load core dashboard data');
-    }
-
-    if (salesRes.status === 'rejected') {
-      throw salesRes.reason;
-    }
-
-    if (inventoryRes.status === 'rejected') {
-      throw inventoryRes.reason;
-    }
-
-    const salesList = salesRes.status === 'fulfilled' ? salesRes.value : [];
-    const inventoryList = inventoryRes.status === 'fulfilled' ? inventoryRes.value : [];
-    const medicinesList = medicinesRes.status === 'fulfilled' ? medicinesRes.value : [];
-    const purchasesList = purchasesRes.status === 'fulfilled' ? purchasesRes.value : [];
-    const labOrdersList = labOrdersRes.status === 'fulfilled' ? labOrdersRes.value : [];
-    const customersList = customersRes.status === 'fulfilled' ? customersRes.value : [];
+    const salesList = salesRes;
+    const inventoryList = inventoryRes;
+    const medicinesList = medicinesRes;
+    const purchasesList = purchasesRes;
+    const labOrdersList = labOrdersRes;
+    const customersList = customersRes;
 
     const inventoryItems = inventoryList.map((item) => ({
       id: item.id,
