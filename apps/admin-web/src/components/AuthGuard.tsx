@@ -2,17 +2,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { Navigate, Outlet } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
-
-interface UserMe {
-  id: string;
-  email: string;
-  role: string;
-}
+import type { AdminUserMe } from '@40labs/types';
 
 export function AuthGuard() {
-  const { data: user, isLoading, error } = useQuery<UserMe>({
+  const { data: user, isLoading, error } = useQuery<AdminUserMe>({
     queryKey: ['admin-me'],
-    queryFn: () => apiFetch<UserMe>('/admin/v1/me'),
+    queryFn: () => apiFetch<AdminUserMe>('/admin/v1/me'),
     retry: false,
     staleTime: 1000 * 60 * 5,
   });

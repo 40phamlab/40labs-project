@@ -2,20 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
-
-interface UserMe {
-  id: string;
-  email: string;
-  role: string;
-}
-
-interface SessionItem {
-  id: string;
-  expires_at: string;
-  ip?: string;
-  user_agent?: string;
-  revoked_at?: string;
-}
+import type { AdminSession, AdminUserMe } from '@40labs/types';
 
 export function AccountPage() {
   const [tab, setTab] = useState<'profile' | 'totp' | 'sessions'>('profile');
@@ -25,14 +12,14 @@ export function AccountPage() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const { data: user, isLoading: userLoading, error: userError, refetch: refetchUser } = useQuery<UserMe>({
+  const { data: user, isLoading: userLoading, error: userError, refetch: refetchUser } = useQuery<AdminUserMe>({
     queryKey: ['admin-me'],
-    queryFn: () => apiFetch<UserMe>('/admin/v1/me'),
+    queryFn: () => apiFetch<AdminUserMe>('/admin/v1/me'),
   });
 
-  const { data: sessions, isLoading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useQuery<SessionItem[]>({
+  const { data: sessions, isLoading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useQuery<AdminSession[]>({
     queryKey: ['admin-sessions'],
-    queryFn: () => apiFetch<SessionItem[]>('/admin/v1/auth/sessions'),
+    queryFn: () => apiFetch<AdminSession[]>('/admin/v1/auth/sessions'),
     enabled: tab === 'sessions',
   });
 

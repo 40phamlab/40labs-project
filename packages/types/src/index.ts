@@ -25,3 +25,4 @@ export * from './chart';
 export * from './alert';
 export * from './marketplace';
 export * from './sync';
+export * from './api-core';

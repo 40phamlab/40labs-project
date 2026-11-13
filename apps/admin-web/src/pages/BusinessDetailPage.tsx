@@ -3,17 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Building2, PackageSearch, RefreshCw, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-
-interface Business {
-  business_id: string;
-  name: string;
-  region: string | null;
-  tmda_number: string | null;
-  tier: string;
-  verification_status: string;
-  rejection_reason: string | null;
-  created_at: string;
-}
+import type { AdminBusiness } from '@40labs/types';
 
 interface StockItem {
   medicine_id: string;
@@ -36,9 +26,9 @@ export function BusinessDetailPage() {
   const [decisionError, setDecisionError] = React.useState('');
   const [decisionMessage, setDecisionMessage] = React.useState('');
 
-  const { data: business, isLoading, error, refetch } = useQuery({
+  const { data: business, isLoading, error, refetch } = useQuery<AdminBusiness>({
     queryKey: ['admin-business', id],
-    queryFn: () => apiFetch<Business>(`/admin/v1/businesses/${encodeURIComponent(id)}`),
+    queryFn: () => apiFetch<AdminBusiness>(`/admin/v1/businesses/${encodeURIComponent(id)}`),
     enabled: Boolean(id),
   });
   const { data: stock } = useQuery<{

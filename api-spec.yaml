@@ -1,8 +1,209 @@
 openapi: 3.0.3
 info:
-  title: 40Labs Healthcare Platform API - Device Activation & Health V2
-  version: 2.0.0
+  title: 40Labs API Core
+  version: 0.3.0
+  description: >-
+    OpenAPI route index for the currently implemented API Core surface. Full
+    request and response field definitions, role matrix, and explicit unavailable
+    MVP domains are maintained in docs/backend/API_REFERENCE.md. That reference
+    is authoritative where older generated schemas are more specific.
+servers:
+  - url: /
+security: []
+components:
+  securitySchemes:
+    AdminSession:
+      type: apiKey
+      in: cookie
+      name: admin_session
+    DeviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ActivationBearer:
+      type: http
+      scheme: bearer
+      description: Activation signing key.
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                code: { type: string }
+                message: { type: string }
+        message: { type: string }
+        retry_after: { type: integer }
+      description: Admin routes commonly use nested error; activation/device routes use string error.
 paths:
+  /v1/devices/enroll:
+    post:
+      summary: Exchange an activation grant for device credentials
+      description: Request and response schemas are detailed in docs/backend/API_REFERENCE.md.
+      responses: { '200': { description: Device credentials }, '400': { description: Invalid grant }, '409': { description: Device conflict } }
+  /v1/devices/refresh:
+    post:
+      summary: Rotate device credentials
+      responses: { '200': { description: Rotated credentials }, '401': { description: Invalid credentials } }
+  /v1/health:
+    get:
+      summary: Sync service liveness
+      responses: { '200': { description: Service is live } }
+  /v1/sync/push:
+    post:
+      summary: Push device changes
+      security: [{ DeviceBearer: [] }]
+      responses: { '200': { description: Per-change acknowledgements }, '400': { description: Invalid payload }, '401': { description: Unauthorized device } }
+  /v1/sync/heartbeat:
+    post:
+      summary: Update device sync telemetry
+      security: [{ DeviceBearer: [] }]
+      responses: { '200': { description: Heartbeat acknowledged }, '401': { description: Unauthorized device } }
+  /v1/business/verification:
+    get:
+      summary: Read verification status for the authenticated device business
+      security: [{ DeviceBearer: [] }]
+      responses: { '200': { description: Verification status }, '401': { description: Unauthorized device } }
+  /admin/v1/auth/login:
+    post:
+      summary: Start administrator password authentication
+      responses: { '200': { description: MFA challenge }, '401': { description: Invalid credentials }, '429': { description: Rate limited } }
+  /admin/v1/auth/totp:
+    post:
+      summary: Complete administrator TOTP authentication
+      responses: { '200': { description: Session cookie and role }, '401': { description: Invalid challenge or code }, '429': { description: Rate limited } }
+  /admin/v1/auth/recovery:
+    post:
+      summary: Complete administrator recovery-code authentication
+      responses: { '200': { description: Session cookie and role }, '401': { description: Invalid challenge or code } }
+  /admin/v1/auth/recovery-codes/regenerate:
+    post:
+      summary: Regenerate current administrator recovery codes
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: One-time recovery codes }, '401': { description: Unauthorized }, '403': { description: Forbidden } }
+  /admin/v1/auth/logout:
+    post:
+      summary: Revoke current administrator session
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Session revoked }, '401': { description: Unauthorized } }
+  /admin/v1/auth/sessions:
+    get:
+      summary: List current administrator sessions
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Current administrator sessions }, '401': { description: Unauthorized } }
+  /admin/v1/auth/sessions/{session_id}/revoke:
+    post:
+      summary: Revoke an owned administrator session
+      security: [{ AdminSession: [] }]
+      parameters: [{ in: path, name: session_id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Session revoked }, '401': { description: Unauthorized }, '404': { description: Session not found } }
+  /admin/v1/me:
+    get:
+      summary: Return current administrator identity
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Current administrator }, '401': { description: Unauthorized } }
+  /admin/v1/businesses:
+    get:
+      summary: List registered businesses
+      description: Requires businesses:read. Supports status, q, region, tier, sort, direction, page, and limit query parameters.
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Paginated business records }, '401': { description: Unauthorized }, '403': { description: Forbidden }, '500': { description: Database error } }
+  /admin/v1/businesses/{business_id}:
+    get:
+      summary: Read business registry details
+      security: [{ AdminSession: [] }]
+      parameters: [{ in: path, name: business_id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Business details }, '404': { description: Not found } }
+  /admin/v1/businesses/{business_id}/stock:
+    get:
+      summary: Read registered business stock summary and page
+      security: [{ AdminSession: [] }]
+      parameters: [{ in: path, name: business_id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Stock summary and items }, '404': { description: Not found } }
+  /admin/v1/businesses/{business_id}/sync:
+    get:
+      summary: Read business devices and recent sync changes
+      security: [{ AdminSession: [] }]
+      parameters: [{ in: path, name: business_id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Sync devices and changes }, '404': { description: Not found } }
+  /admin/v1/businesses/{business_id}/activity:
+    get:
+      summary: Read recent business audit activity
+      security: [{ AdminSession: [] }]
+      parameters: [{ in: path, name: business_id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Recent activity }, '404': { description: Not found } }
+  /admin/v1/businesses/{business_id}/verification:
+    post:
+      summary: Record a business verification decision
+      security: [{ AdminSession: [] }]
+      parameters: [{ in: path, name: business_id, required: true, schema: { type: string } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [decision], properties: { decision: { type: string, enum: [verified, rejected, suspended] }, reason: { type: string } } } } } }
+      responses: { '200': { description: Decision recorded with audit row }, '400': { description: Invalid decision or reason }, '404': { description: Not found } }
+  /admin/v1/overview:
+    get:
+      summary: Read platform operational overview
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Persisted platform summary } }
+  /admin/v1/analytics/revenue:
+    get:
+      summary: Read platform revenue analytics
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Revenue analytics } }
+  /admin/v1/analytics/products:
+    get:
+      summary: Read platform product analytics
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Product analytics } }
+  /admin/v1/analytics/growth:
+    get:
+      summary: Read platform growth analytics
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Growth analytics } }
+  /admin/v1/sync/devices:
+    get:
+      summary: List registered sync devices
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Sync devices } }
+  /admin/v1/sync/changes:
+    get:
+      summary: List sync changes
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Sync changes } }
+  /admin/v1/sync/failures:
+    get:
+      summary: List sync failures
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Sync failures } }
+  /admin/v1/sync/devices/{device_id}/revoke:
+    post:
+      summary: Revoke device credentials
+      security: [{ AdminSession: [] }]
+      parameters: [{ in: path, name: device_id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Device revoked }, '404': { description: Device not found } }
+  /admin/v1/infra/health:
+    get:
+      summary: Read latest infrastructure probe results
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Health checks and state changes } }
+  /admin/v1/infra/health/history:
+    get:
+      summary: Read infrastructure probe history
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Probe history } }
+  /admin/v1/infra/devices:
+    get:
+      summary: Read device infrastructure status
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Device status list } }
+  /admin/v1/infra/logs:
+    get:
+      summary: Search operational events
+      description: Supports level, source, business_id, since, q, cursor, and limit query parameters.
+      security: [{ AdminSession: [] }]
+      responses: { '200': { description: Redacted log page and next cursor } }
   /healthz:
     get:
       summary: Liveness check

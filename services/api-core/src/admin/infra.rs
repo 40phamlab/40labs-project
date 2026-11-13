@@ -255,7 +255,6 @@ async fn health_handler(State(state): State<AppState>) -> impl IntoResponse {
             "latency_ms": latency,
             "detail": detail.unwrap_or_default(),
             "checked_at": checked_at.to_rfc3339(),
-            "uptime_24h": 100.0
         }));
     }
 

@@ -60,7 +60,7 @@ pub struct ListResponse {
 async fn list_businesses(
     State(state): State<AppState>,
     Query(query): Query<ListQuery>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     let page = query.page.unwrap_or(1).max(1);
     let limit = query.limit.unwrap_or(25).max(1).min(100);
     let offset = (page - 1) * limit;
@@ -152,10 +152,10 @@ async fn list_businesses(
         }
     }
 
-    let total: i64 = match count_qb.build_query_scalar().fetch_one(&state.pool).await {
-        Ok(t) => t,
-        Err(_) => 0,
-    };
+    let total: i64 = count_qb.build_query_scalar().fetch_one(&state.pool).await
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+            "error": { "code": "INTERNAL", "message": "Could not count businesses" }
+        }))))?;
 
     let safe_sort = match sort_col {
         "name" => "b.name",
@@ -187,7 +187,9 @@ async fn list_businesses(
         .await
     {
         Ok(r) => r,
-        Err(_) => Vec::new(),
+        Err(_) => return Err((StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
+            "error": { "code": "INTERNAL", "message": "Could not load businesses" }
+        })))),
     };
 
     let items: Vec<BusinessListItem> = rows
@@ -210,14 +212,13 @@ async fn list_businesses(
         1
     };
 
-    Json(ListResponse {
+    Ok(Json(ListResponse {
         items,
         total,
         page,
         limit,
         total_pages,
-    })
-    .into_response()
+    }))
 }
 
 async fn get_business(

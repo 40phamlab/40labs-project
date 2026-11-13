@@ -3,25 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-
-interface BusinessItem {
-  business_id: string;
-  name: string;
-  region: string | null;
-  tmda_number: string | null;
-  tier: string;
-  verification_status: string;
-  last_sync: string | null;
-  created_at: string;
-}
-
-interface ListResponse {
-  items: BusinessItem[];
-  total: number;
-  page: number;
-  limit: number;
-  total_pages: number;
-}
+import type { AdminBusinessListResponse } from '@40labs/types';
 
 export function BusinessesPage() {
   const navigate = useNavigate();
@@ -38,9 +20,9 @@ export function BusinessesPage() {
   const [searchState, setSearchState] = React.useState({ query: q, value: q });
   const searchInput = searchState.query === q ? searchState.value : q;
   const queryString = searchParams.toString();
-  const { data, isLoading: loading, error, refetch: fetchBusinesses } = useQuery<ListResponse>({
+  const { data, isLoading: loading, error, refetch: fetchBusinesses } = useQuery<AdminBusinessListResponse>({
     queryKey: ['admin-businesses', queryString],
-    queryFn: () => apiFetch<ListResponse>(`/admin/v1/businesses${queryString ? `?${queryString}` : ''}`),
+    queryFn: () => apiFetch<AdminBusinessListResponse>(`/admin/v1/businesses${queryString ? `?${queryString}` : ''}`),
   });
 
   // Debounced search effect
