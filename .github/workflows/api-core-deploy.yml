@@ -1,0 +1,108 @@
+name: API Core AWS Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target GitHub environment
+        required: true
+        type: choice
+        options: [staging, production]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-core-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: eu-north-1
+      AWS_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+      ECR_REPOSITORY_URI: ${{ vars.ECR_REPOSITORY_URI }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      ECS_API_SERVICE: ${{ vars.ECS_API_SERVICE }}
+      ECS_API_TASK_DEFINITION: ${{ vars.ECS_API_TASK_DEFINITION }}
+      ECS_MIGRATION_TASK_DEFINITION: ${{ vars.ECS_MIGRATION_TASK_DEFINITION }}
+      ECS_CONTAINER_NAME: api-core
+      ECS_NETWORK_CONFIGURATION: ${{ vars.ECS_NETWORK_CONFIGURATION }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in AWS_ROLE_ARN ECR_REPOSITORY_URI ECS_CLUSTER ECS_API_SERVICE ECS_API_TASK_DEFINITION ECS_MIGRATION_TASK_DEFINITION ECS_NETWORK_CONFIGURATION; do
+            if [[ -z "${!name}" ]]; then echo "Missing GitHub environment variable: $name" >&2; exit 2; fi
+          done
+          jq -e '.awsvpcConfiguration.subnets | length > 0' <<<"$ECS_NETWORK_CONFIGURATION" >/dev/null
+          jq -e '.awsvpcConfiguration.securityGroups | length > 0' <<<"$ECS_NETWORK_CONFIGURATION" >/dev/null
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-north-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and publish immutable image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${ECR_REPOSITORY_URI}:${GITHUB_SHA}"
+          docker buildx build --platform linux/amd64 --push \
+            --tag "$image" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --file infra/docker/api-core.Dockerfile .
+          echo "uri=$image" >> "$GITHUB_OUTPUT"
+      - name: Register migration task revision
+        id: migration
+        shell: bash
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.uri }}
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition --task-definition "$ECS_MIGRATION_TASK_DEFINITION" \
+            --query taskDefinition > migration-task.json
+          jq --arg image "$IMAGE_URI" --arg name "$ECS_CONTAINER_NAME" '
+            del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy) |
+            .containerDefinitions |= map(if .name == $name then (.image = $image | .command = ["migrate"]) else . end)
+          ' migration-task.json > migration-task-new.json
+          revision=$(aws ecs register-task-definition --cli-input-json file://migration-task-new.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "arn=$revision" >> "$GITHUB_OUTPUT"
+      - name: Run database migrations
+        shell: bash
+        env:
+          TASK_DEFINITION: ${{ steps.migration.outputs.arn }}
+        run: |
+          set -euo pipefail
+          network=$(jq -c '{awsvpcConfiguration: .awsvpcConfiguration}' <<<"$ECS_NETWORK_CONFIGURATION")
+          result=$(aws ecs run-task --cluster "$ECS_CLUSTER" --task-definition "$TASK_DEFINITION" \
+            --launch-type FARGATE --network-configuration "$network")
+          failures=$(jq -r '.failures | length' <<<"$result")
+          if [[ "$failures" != 0 ]]; then jq '.failures' <<<"$result"; exit 1; fi
+          task=$(jq -r '.tasks[0].taskArn' <<<"$result")
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$task"
+          details=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$task")
+          code=$(jq -r --arg name "$ECS_CONTAINER_NAME" '.tasks[0].containers[] | select(.name == $name) | .exitCode // "missing"' <<<"$details")
+          if [[ "$code" != 0 ]]; then jq '.tasks[0] | {lastStatus,stopCode,stoppedReason,containers}' <<<"$details"; exit 1; fi
+      - name: Register API task revision and roll out
+        shell: bash
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.uri }}
+        run: |
+          set -euo pipefail
+          aws ecs describe-task-definition --task-definition "$ECS_API_TASK_DEFINITION" \
+            --query taskDefinition > api-task.json
+          jq --arg image "$IMAGE_URI" --arg name "$ECS_CONTAINER_NAME" '
+            del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy) |
+            .containerDefinitions |= map(if .name == $name then .image = $image else . end)
+          ' api-task.json > api-task-new.json
+          revision=$(aws ecs register-task-definition --cli-input-json file://api-task-new.json --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_API_SERVICE" --task-definition "$revision" >/dev/null
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_API_SERVICE"

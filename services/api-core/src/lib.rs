@@ -4,6 +4,7 @@ pub mod config;
 pub mod error;
 pub mod grant;
 pub mod migrations;
+pub mod observability;
 pub mod otp;
 pub mod ratelimit;
 pub mod routes;

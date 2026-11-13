@@ -1,0 +1,49 @@
+name: API Core PostgreSQL CI
+
+on:
+  push:
+    branches: [main, master, dev]
+    paths:
+      - 'services/api-core/**'
+      - 'infra/db/postgres/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/api-core.yml'
+  pull_request:
+    paths:
+      - 'services/api-core/**'
+      - 'infra/db/postgres/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/api-core.yml'
+
+jobs:
+  api-core:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: api_test
+          POSTGRES_PASSWORD: api_test_only
+          POSTGRES_DB: afya_core_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U api_test -d afya_core_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://api_test:api_test_only@localhost:5432/afya_core_test
+      API_CORE_TEST_DATABASE_URL: postgres://api_test:api_test_only@localhost:5432/afya_core_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Compile API Core
+        run: cargo check --locked --package api-core
+      - name: Run API Core tests
+        run: cargo test --locked --package api-core
+      - name: Build production container
+        run: docker build -f infra/docker/api-core.Dockerfile -t 40labs-api-core:ci .

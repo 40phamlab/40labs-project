@@ -73,7 +73,10 @@ pub struct TotpResponse {
 }
 
 fn session_cookie_header(value: &str, max_age_seconds: i64, app_env: &str) -> String {
-    let secure = if app_env.eq_ignore_ascii_case("production") {
+    let secure = if matches!(
+        app_env.to_ascii_lowercase().as_str(),
+        "production" | "staging"
+    ) {
         "; Secure"
     } else {
         ""
@@ -486,7 +489,9 @@ async fn login_handler(
                 Some(url)
             }
         }
-    } else { None };
+    } else {
+        None
+    };
     let challenge_id = uuid::Uuid::new_v4().to_string();
     let expires_at = chrono::Utc::now() + chrono::Duration::minutes(5);
     if sqlx::query(

@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$PgService,
-    [Parameter(Mandatory=$true)][string]$OutputDirectory
+    [Parameter(Mandatory=$true)][string]$OutputDirectory,
+    [ValidateRange(1,3650)][int]$RetentionDays = 30
 )
 $ErrorActionPreference = 'Stop'
 if (-not (Get-Command pg_dump -ErrorAction SilentlyContinue)) { throw 'pg_dump is required (PostgreSQL client tools).' }
@@ -17,6 +18,14 @@ try {
     $hash = (Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash.ToLowerInvariant()
     Move-Item -LiteralPath $temp -Destination $target
     [System.IO.File]::WriteAllText("$target.sha256", "$hash  $(Split-Path -Leaf $target)", [System.Text.UTF8Encoding]::new($false))
+    $cutoff = (Get-Date).ToUniversalTime().AddDays(-$RetentionDays)
+    Get-ChildItem -LiteralPath $OutputDirectory -File -Filter '40labs-*.dump' |
+        Where-Object { $_.LastWriteTimeUtc -lt $cutoff } |
+        ForEach-Object {
+            Remove-Item -LiteralPath $_.FullName -Force
+            $sidecar = "$($_.FullName).sha256"
+            if (Test-Path -LiteralPath $sidecar) { Remove-Item -LiteralPath $sidecar -Force }
+        }
     Write-Output "Backup created and archive-validated: $target"
     Write-Output "SHA256: $hash"
 } finally {

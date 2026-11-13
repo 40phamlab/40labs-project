@@ -29,6 +29,10 @@ fn test_keys() -> DeviceTokenKeys {
 fn test_config(url: String) -> Config {
     Config {
         database_url: url,
+        migration_database_url: String::new(),
+        database_max_connections: 5,
+        database_connect_timeout_secs: 5,
+        database_acquire_timeout_secs: 5,
         nextsms_base_url: String::new(),
         nextsms_api_token: String::new(),
         nextsms_username: String::new(),

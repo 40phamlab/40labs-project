@@ -1,6 +1,11 @@
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::sync::Arc;
+use tower_http::{
+    limit::RequestBodyLimitLayer,
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
+    trace::{DefaultOnResponse, TraceLayer},
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use api_core::{
@@ -16,8 +21,21 @@ async fn apply_database_migrations(
     api_core::migrations::run(pool).await
 }
 
+async fn connect_pool(
+    options: PgPoolOptions,
+    database_url: &str,
+    connect_timeout_secs: u64,
+) -> Result<PgPool, Box<dyn std::error::Error + Send + Sync>> {
+    let pool = tokio::time::timeout(
+        std::time::Duration::from_secs(connect_timeout_secs),
+        options.connect(database_url),
+    )
+    .await??;
+    Ok(pool)
+}
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Optional healthcheck CLI subcommand for container healthchecks
     if let Some(arg) = std::env::args().nth(1) {
         if arg == "healthcheck" || arg == "health" {
@@ -36,9 +54,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
 
+        if arg == "migrate" {
+            let config = Config::from_env();
+            if let Err(error) = config.validate_migration_environment() {
+                eprintln!("Refusing migration with invalid configuration: {error}");
+                std::process::exit(2);
+            }
+            let migration_url = if config.migration_database_url.trim().is_empty() {
+                &config.database_url
+            } else {
+                &config.migration_database_url
+            };
+            let pool = connect_pool(
+                PgPoolOptions::new().max_connections(2).acquire_timeout(
+                    std::time::Duration::from_secs(
+                        config.database_acquire_timeout_secs.clamp(1, 60),
+                    ),
+                ),
+                migration_url,
+                config.database_connect_timeout_secs.clamp(1, 60),
+            )
+            .await?;
+            apply_database_migrations(&pool)
+                .await
+                .map_err(|_| std::io::Error::other("Database migration failed"))?;
+            pool.close().await;
+            println!("Database migrations completed");
+            return Ok(());
+        }
+
         if arg == "admin-seed" {
             let config = Config::from_env();
-            if config.app_env.eq_ignore_ascii_case("production") {
+            if matches!(
+                config.app_env.to_ascii_lowercase().as_str(),
+                "production" | "staging"
+            ) {
                 eprintln!("admin-seed is disabled in production");
                 std::process::exit(1);
             }
@@ -115,7 +165,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if arg == "admin-demo-seed" {
             let config = Config::from_env();
-            if config.app_env.to_lowercase() == "production" {
+            if matches!(
+                config.app_env.to_lowercase().as_str(),
+                "production" | "staging"
+            ) {
                 eprintln!("Refusing to run demo seed in production environment!");
                 std::process::exit(1);
             }
@@ -230,7 +283,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(error) = config.validate_environment() {
         panic!("Refusing to start with invalid environment configuration: {error}");
     }
-    let default_log = if config.app_env.to_lowercase() == "production" {
+    let default_log = if matches!(
+        config.app_env.to_lowercase().as_str(),
+        "production" | "staging"
+    ) {
         "api_core=info,tower_http=info".into()
     } else {
         "api_core=debug,tower_http=debug".into()
@@ -238,11 +294,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| default_log))
-        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::fmt::layer().json())
         .init();
 
-    if config.app_env.to_lowercase() == "production"
-        && config.otp_provider.to_lowercase() == "console"
+    if matches!(
+        config.app_env.to_lowercase().as_str(),
+        "production" | "staging"
+    ) && config.otp_provider.to_lowercase() == "console"
     {
         tracing::error!(
             "Refusing to start: Cannot use console OTP provider in production environment."
@@ -252,23 +310,55 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if config.sms_mode.to_lowercase() == "live" || config.otp_provider.to_lowercase() == "nextsms" {
         if config.nextsms_api_token.is_empty() || config.nextsms_sender_id.is_empty() {
-            if config.app_env.to_lowercase() == "production" {
+            if matches!(
+                config.app_env.to_lowercase().as_str(),
+                "production" | "staging"
+            ) {
                 panic!("Refusing to start in production mode: NEXTSMS_API_TOKEN and NEXTSMS_SENDER_ID must not be empty.");
             }
         }
     }
 
     tracing::info!("Connecting to database...");
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&config.database_url)
-        .await
-        .expect("Failed to connect to Postgres");
+    let pool = connect_pool(
+        PgPoolOptions::new()
+            .max_connections(config.database_max_connections.clamp(1, 200))
+            .min_connections(1)
+            .acquire_timeout(std::time::Duration::from_secs(
+                config.database_acquire_timeout_secs.clamp(1, 60),
+            ))
+            .idle_timeout(Some(std::time::Duration::from_secs(600)))
+            .max_lifetime(Some(std::time::Duration::from_secs(1800))),
+        &config.database_url,
+        config.database_connect_timeout_secs.clamp(1, 60),
+    )
+    .await
+    .expect("Failed to connect to Postgres");
 
-    tracing::info!("Running database migrations...");
-    apply_database_migrations(&pool)
+    if !matches!(
+        config.app_env.to_lowercase().as_str(),
+        "production" | "staging"
+    ) {
+        tracing::info!("Running database migrations...");
+        let migration_url = if config.migration_database_url.trim().is_empty() {
+            config.database_url.as_str()
+        } else {
+            config.migration_database_url.as_str()
+        };
+        let migration_pool = connect_pool(
+            PgPoolOptions::new().max_connections(2).acquire_timeout(
+                std::time::Duration::from_secs(config.database_acquire_timeout_secs.clamp(1, 60)),
+            ),
+            migration_url,
+            config.database_connect_timeout_secs.clamp(1, 60),
+        )
         .await
-        .expect("Failed to run migrations");
+        .expect("Failed to connect with migration database role");
+        apply_database_migrations(&migration_pool)
+            .await
+            .expect("Failed to run migrations");
+        migration_pool.close().await;
+    }
 
     let sms_sender: Arc<dyn OtpProvider> = match config.otp_provider.to_lowercase().as_str() {
         "console" => {
@@ -345,11 +435,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = axum::Router::new()
         .merge(health::health_router(state.clone()))
+        .merge(api_core::observability::router(state.clone()))
         .merge(activation::router(state.clone()))
         .merge(api_core::sync::router(state.clone()))
         .merge(api_core::routes::device::router(state.clone()))
         .merge(api_core::admin::router(state.clone()))
-        .layer(cors);
+        .layer(cors)
+        .layer(RequestBodyLimitLayer::new(2 * 1024 * 1024))
+        .layer(axum::middleware::from_fn(
+            api_core::observability::track_request,
+        ))
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &axum::http::Request<_>| {
+                    let request_id = request
+                        .extensions()
+                        .get::<RequestId>()
+                        .and_then(|id| id.header_value().to_str().ok())
+                        .unwrap_or("missing");
+                    tracing::info_span!(
+                        "api_request",
+                        method = %request.method(),
+                        request_id = %request_id
+                    )
+                })
+                .on_response(DefaultOnResponse::new().include_headers(false)),
+        )
+        .layer(PropagateRequestIdLayer::new(
+            axum::http::HeaderName::from_static("x-request-id"),
+        ))
+        .layer(SetRequestIdLayer::new(
+            axum::http::HeaderName::from_static("x-request-id"),
+            MakeRequestUuid,
+        ));
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("API core server listening on {}", addr);

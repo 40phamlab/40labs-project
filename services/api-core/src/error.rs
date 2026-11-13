@@ -37,10 +37,10 @@ struct ErrorResponse {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, err_code, msg, retry) = match self {
-            ApiError::Database(e) => (
+            ApiError::Database(_e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "DATABASE_ERROR",
-                e.to_string(),
+                "A database operation failed".to_string(),
                 None,
             ),
             ApiError::BadRequest(m) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", m, None),
@@ -71,7 +71,12 @@ impl IntoResponse for ApiError {
                     None,
                 ),
             },
-            ApiError::Internal(m) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", m, None),
+            ApiError::Internal(_m) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                "An internal error occurred".to_string(),
+                None,
+            ),
         };
 
         let body = Json(ErrorResponse {

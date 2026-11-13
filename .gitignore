@@ -52,6 +52,11 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+infra/docker/secrets/
+*.dump
+*.dump.sha256
+.pgpass
+pg_service.conf
 *.pem
 *.key
 *.pfx

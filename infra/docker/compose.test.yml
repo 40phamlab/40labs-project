@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: api_test
+      POSTGRES_PASSWORD: api_test_only
+      POSTGRES_DB: afya_core_test
+    ports:
+      - "127.0.0.1:${POSTGRES_TEST_HOST_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U api_test -d afya_core_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api-core-test:
+    build:
+      context: ../..
+      dockerfile: infra/docker/api-core.Dockerfile
+    environment:
+      APP_ENV: test
+      DATABASE_URL: postgres://api_test:api_test_only@postgres:5432/afya_core_test
+      MIGRATION_DATABASE_URL: postgres://api_test:api_test_only@postgres:5432/afya_core_test
+      OTP_PROVIDER: console
+      SMS_MODE: test
+      PORT: 3000
+      ADMIN_DEBUG_OTP: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy

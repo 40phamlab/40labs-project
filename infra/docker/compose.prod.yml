@@ -1,41 +1,9 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: 40labs-postgres-prod
-    environment:
-      POSTGRES_USER_FILE: /run/secrets/postgres_user
-      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
-      POSTGRES_DB: afya_core
-    secrets:
-      - postgres_user
-      - postgres_password
-    volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$(cat /run/secrets/postgres_user)\" -d afya_core"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    restart: always
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
   api-core:
+    image: ${API_CORE_IMAGE:-40labs/api-core:local}
     build:
       context: ../..
       dockerfile: infra/docker/api-core.Dockerfile
-    container_name: 40labs-api-core-prod
     environment:
       DATABASE_URL_FILE: /run/secrets/database_url
       NEXTSMS_API_TOKEN_FILE: /run/secrets/nextsms_api_token
@@ -45,7 +13,10 @@ services:
       TOTP_ENC_KEY_FILE: /run/secrets/admin_totp_enc_key
       ADMIN_WEB_ORIGIN: ${ADMIN_WEB_ORIGIN:?Set ADMIN_WEB_ORIGIN to the public HTTPS Admin Web origin}
       SMS_MODE: live
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_MAX_CONNECTIONS: ${DATABASE_MAX_CONNECTIONS:-40}
+      DATABASE_CONNECT_TIMEOUT_SECS: ${DATABASE_CONNECT_TIMEOUT_SECS:-5}
+      DATABASE_ACQUIRE_TIMEOUT_SECS: ${DATABASE_ACQUIRE_TIMEOUT_SECS:-5}
       PORT: 3000
       ADMIN_DEBUG_OTP: "0"
     secrets:
@@ -54,11 +25,8 @@ services:
       - activation_signing_key
       - device_token_signing_keys
       - admin_totp_enc_key
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     read_only: true
     tmpfs:
       - /tmp:size=64M,noexec,nosuid,nodev
@@ -76,22 +44,40 @@ services:
           cpus: '0.5'
           memory: 512M
     restart: always
+    stop_grace_period: 30s
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-volumes:
-  postgres_data_prod:
+  api-core-migrate:
+    image: ${API_CORE_IMAGE:-40labs/api-core:local}
+    entrypoint: ["/app/api-core", "migrate"]
+    profiles: ["migrate"]
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      DATABASE_URL_FILE: /run/secrets/database_url
+      MIGRATION_DATABASE_URL_FILE: /run/secrets/migration_database_url
+      DATABASE_CONNECT_TIMEOUT_SECS: ${DATABASE_CONNECT_TIMEOUT_SECS:-5}
+      DATABASE_ACQUIRE_TIMEOUT_SECS: ${DATABASE_ACQUIRE_TIMEOUT_SECS:-5}
+    secrets:
+      - database_url
+      - migration_database_url
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    user: "65532:65532"
 
 secrets:
-  postgres_user:
-    file: ./secrets/postgres_user.txt
-  postgres_password:
-    file: ./secrets/postgres_password.txt
   database_url:
     file: ./secrets/database_url.txt
+  migration_database_url:
+    file: ./secrets/migration_database_url.txt
   nextsms_api_token:
     file: ./secrets/nextsms_api_token.txt
   activation_signing_key:
