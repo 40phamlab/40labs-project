@@ -44,6 +44,7 @@ export interface AuthApi {
   recoveryRegenerate(password: string): Promise<Array<string>>;
   recoveryGenerateInitial(): Promise<Array<string>>;
   registrationCommit(payload: Record<string, unknown>): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string; recoveryCodes?: string[] }>;
+  registrationDiagnostic(stage: 'terms_hash', outcome: 'started' | 'succeeded' | 'failed'): Promise<void>;
   otpRequest(phone: string): Promise<void>;
   otpVerify(phone: string, code: string): Promise<string>;
   totpStatus(): Promise<{ status: string; enabled: boolean }>;
@@ -99,6 +100,7 @@ export const tauriAuthApi: AuthApi = {
     branch_id?: string;
     recoveryCodes?: string[];
   }>('registration_commit', { payload }, REGISTRATION_COMMIT_TIMEOUT_MS),
+  registrationDiagnostic: (stage, outcome) => invokeCommand<void>('registration_diagnostic', { stage, outcome }),
   otpRequest: (phone) => invokeCommand<void>('otp_request', { phone }),
   otpVerify: (phone, code) => invokeCommand<string>('otp_verify', { phone, code }),
   onboardingAdvance: (state) => invokeCommand<void>('onboarding_advance', { stateName: state }),
@@ -113,6 +115,7 @@ export const tauriAuthApi: AuthApi = {
 };
 
 export const mockAuthApi: AuthApi = {
+  registrationDiagnostic: async () => undefined,
   status: async () => ({ ...mockState }),
   login: async (username, password) => {
     if (!username || !password) {

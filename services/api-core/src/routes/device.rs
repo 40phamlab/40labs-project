@@ -98,9 +98,6 @@ async fn enroll_device(
     let refresh_expires = now + Duration::days(DEVICE_REFRESH_TTL_DAYS);
     let refresh = create_refresh_token();
     let refresh_hash = hash_refresh_token(&refresh);
-    sqlx::query("INSERT INTO device_enrollments (device_id,business_id,workspace_id,branch_id,refresh_token_hash,refresh_expires_at,token_version,created_at,last_seen_at) VALUES ($1,$2,$3,$4,$5,$6,1,NOW(),NOW())")
-        .bind(&req.device_id).bind(&grant.business_id).bind(&grant.workspace_id).bind(&grant.branch_id).bind(&refresh_hash).bind(refresh_expires).execute(&mut *tx).await
-        .map_err(|e| if matches!(e, sqlx::Error::Database(_)) { ApiError::Conflict("Device is already enrolled; revoke it before re-enrolling".into()) } else { ApiError::Database(e) })?;
     let used = sqlx::query("INSERT INTO device_enrollment_grants (grant_sha256,device_id,consumed_at) VALUES ($1,$2,NOW()) ON CONFLICT (grant_sha256) DO NOTHING")
         .bind(grant_hash(&req.activation_grant)).bind(&req.device_id).execute(&mut *tx).await?;
     if used.rows_affected() != 1 {
@@ -108,14 +105,75 @@ async fn enroll_device(
             "Activation grant has already enrolled a device".into(),
         ));
     }
-    sqlx::query("INSERT INTO sync_devices (workspace_id,branch_id,business_id,device_id,last_seen,last_seen_at,pending_count,outbox_pending) VALUES ($1,$2,$3,$4,NOW(),NOW(),0,0)")
-        .bind(&grant.workspace_id).bind(&grant.branch_id).bind(&grant.business_id).bind(&req.device_id).execute(&mut *tx).await?;
+    // Registration can be retried after server enrollment succeeded but the
+    // desktop failed to finish its local transaction. Rotate credentials for
+    // an active enrollment in the exact same scope, while refusing to move a
+    // device between businesses or revive a revoked enrollment.
+    let enrollment = sqlx::query_scalar::<_, i32>(
+        r#"
+        INSERT INTO device_enrollments (
+            device_id, business_id, workspace_id, branch_id, refresh_token_hash,
+            refresh_expires_at, token_version, created_at, last_seen_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, 1, NOW(), NOW())
+        ON CONFLICT (device_id) DO UPDATE SET
+            refresh_token_hash = EXCLUDED.refresh_token_hash,
+            refresh_expires_at = EXCLUDED.refresh_expires_at,
+            token_version = device_enrollments.token_version + 1,
+            last_seen_at = NOW()
+        WHERE device_enrollments.business_id = EXCLUDED.business_id
+          AND device_enrollments.workspace_id = EXCLUDED.workspace_id
+          AND device_enrollments.branch_id = EXCLUDED.branch_id
+          AND device_enrollments.revoked_at IS NULL
+        RETURNING token_version
+        "#,
+    )
+    .bind(&req.device_id)
+    .bind(&grant.business_id)
+    .bind(&grant.workspace_id)
+    .bind(&grant.branch_id)
+    .bind(&refresh_hash)
+    .bind(refresh_expires)
+    .fetch_optional(&mut *tx)
+    .await?;
+    let Some(token_version) = enrollment else {
+        return Err(ApiError::Conflict(
+            "Device is enrolled to another business or its enrollment was revoked".into(),
+        ));
+    };
+
+    let sync_device = sqlx::query(
+        r#"
+        INSERT INTO sync_devices (
+            workspace_id, branch_id, business_id, device_id,
+            last_seen, last_seen_at, pending_count, outbox_pending
+        )
+        VALUES ($1, $2, $3, $4, NOW(), NOW(), 0, 0)
+        ON CONFLICT (device_id) DO UPDATE SET
+            last_seen = NOW(),
+            last_seen_at = NOW()
+        WHERE sync_devices.workspace_id = EXCLUDED.workspace_id
+          AND sync_devices.branch_id = EXCLUDED.branch_id
+          AND sync_devices.business_id = EXCLUDED.business_id
+        "#,
+    )
+    .bind(&grant.workspace_id)
+    .bind(&grant.branch_id)
+    .bind(&grant.business_id)
+    .bind(&req.device_id)
+    .execute(&mut *tx)
+    .await?;
+    if sync_device.rows_affected() != 1 {
+        return Err(ApiError::Conflict(
+            "Device sync record belongs to another business".into(),
+        ));
+    }
     let identity = DeviceIdentity {
         device_id: req.device_id.clone(),
         workspace_id: grant.workspace_id,
         business_id: grant.business_id,
         branch_id: grant.branch_id,
-        token_version: 1,
+        token_version,
     };
     let access = issue_access_token(&state.config.device_token_keys, &identity, now)?;
     tx.commit().await?;

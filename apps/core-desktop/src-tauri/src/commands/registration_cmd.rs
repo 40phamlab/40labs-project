@@ -4,6 +4,63 @@ use crate::db::AppState;
 use serde::Serialize;
 use tauri::State;
 
+fn registration_db_error(stage: &'static str, error: sqlx::Error) -> AuthErrorResponse {
+    let kind = match &error {
+        sqlx::Error::Database(_) => "constraint_or_schema",
+        sqlx::Error::RowNotFound => "missing_row",
+        sqlx::Error::PoolTimedOut | sqlx::Error::PoolClosed => "database_unavailable",
+        _ => "database_operation",
+    };
+    tracing::error!(stage, kind, "Registration database operation failed");
+    crate::debug::registration_event(stage, kind, None);
+    AuthError::DatabaseError(error.to_string()).to_response()
+}
+
+struct RegistrationRun {
+    started: std::time::Instant,
+    completed: bool,
+}
+
+impl RegistrationRun {
+    fn new() -> Self {
+        Self {
+            started: std::time::Instant::now(),
+            completed: false,
+        }
+    }
+
+    fn complete(&mut self) {
+        self.completed = true;
+    }
+}
+
+impl Drop for RegistrationRun {
+    fn drop(&mut self) {
+        if !self.completed {
+            crate::debug::registration_event(
+                "registration_commit",
+                "failed_or_cancelled",
+                Some(self.started.elapsed().as_millis()),
+            );
+        }
+    }
+}
+
+#[tauri::command]
+pub fn registration_diagnostic(stage: String, outcome: String) {
+    let stage = match stage.as_str() {
+        "terms_hash" => "terms_hash",
+        _ => return,
+    };
+    let outcome = match outcome.as_str() {
+        "started" => "started",
+        "succeeded" => "succeeded",
+        "failed" => "failed",
+        _ => return,
+    };
+    crate::debug::registration_event(stage, outcome, None);
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RegistrationResult {
@@ -42,12 +99,24 @@ pub async fn otp_request(
     state: State<'_, AppState>,
     phone: String,
 ) -> Result<i64, AuthErrorResponse> {
+    crate::debug::registration_event("otp_request", "started", None);
+    let started = std::time::Instant::now();
     let phone = normalize_tz_phone(&phone)?;
-    state
-        .otp_client
-        .request_otp(&phone)
-        .await
-        .map_err(|e| AuthError::InternalError(e).to_response())
+    let result = state.otp_client.request_otp(&phone).await.map_err(|e| {
+        tracing::error!(error = %e, "Registration OTP request failed");
+        crate::debug::registration_event(
+            "otp_request",
+            "failed",
+            Some(started.elapsed().as_millis()),
+        );
+        AuthError::InternalError(e).to_response()
+    })?;
+    crate::debug::registration_event(
+        "otp_request",
+        "succeeded",
+        Some(started.elapsed().as_millis()),
+    );
+    Ok(result)
 }
 
 #[tauri::command]
@@ -56,15 +125,31 @@ pub async fn otp_verify(
     phone: String,
     code: String,
 ) -> Result<String, AuthErrorResponse> {
+    crate::debug::registration_event("otp_verify", "started", None);
+    let started = std::time::Instant::now();
     let phone = normalize_tz_phone(&phone)?;
     if code.len() != 6 || !code.bytes().all(|byte| byte.is_ascii_digit()) {
         return Err(AuthError::PolicyViolation("OTP must be 6 digits".into()).to_response());
     }
-    state
+    let result = state
         .otp_client
         .verify_otp(&phone, &code)
         .await
-        .map_err(|e| AuthError::InternalError(e).to_response())
+        .map_err(|e| {
+            tracing::error!(error = %e, "Registration OTP verification failed");
+            crate::debug::registration_event(
+                "otp_verify",
+                "failed",
+                Some(started.elapsed().as_millis()),
+            );
+            AuthError::InternalError(e).to_response()
+        })?;
+    crate::debug::registration_event(
+        "otp_verify",
+        "succeeded",
+        Some(started.elapsed().as_millis()),
+    );
+    Ok(result)
 }
 
 #[tauri::command]
@@ -72,6 +157,10 @@ pub async fn registration_commit(
     state: State<'_, AppState>,
     payload: serde_json::Value,
 ) -> Result<RegistrationResult, AuthErrorResponse> {
+    crate::debug::registration_event("registration_commit", "started", None);
+    let mut registration_run = RegistrationRun::new();
+    let registration_started = std::time::Instant::now();
+    crate::debug::registration_event("registration_validation", "started", None);
     let verification_token = payload
         .get("verification_token")
         .and_then(|v| v.as_str())
@@ -226,6 +315,11 @@ pub async fn registration_commit(
     if !terms_accepted {
         return Err(AuthError::PolicyViolation("Terms must be accepted".into()).to_response());
     }
+    crate::debug::registration_event(
+        "registration_validation",
+        "succeeded",
+        Some(registration_started.elapsed().as_millis()),
+    );
 
     let reg_req = RegisterRequest {
         verification_token: verification_token.to_string(),
@@ -239,41 +333,121 @@ pub async fn registration_commit(
         terms_text_sha256: terms_text_sha256.to_string(),
     };
 
+    crate::debug::registration_event("activation_register", "started", None);
+    let stage_started = std::time::Instant::now();
     let reg_resp = state
         .activation_client
         .register(reg_req)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "Activation service registration failed");
+            crate::debug::registration_event(
+                "activation_register",
+                "failed",
+                Some(stage_started.elapsed().as_millis()),
+            );
             AuthError::InternalError(e).to_response()
         })?;
+    crate::debug::registration_event(
+        "activation_register",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
     // Cloud credentials are installed only after the server-issued activation
     // grant has been validated by the HTTP activation client. Local database
     // workflows remain usable offline after this one-time enrollment step.
-    let cloud_device_id = crate::security::keystore::Keystore::cloud_device_id()
-        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+    crate::debug::registration_event("cloud_device_id", "started", None);
+    let stage_started = std::time::Instant::now();
+    let cloud_device_id = crate::security::keystore::Keystore::cloud_device_id().map_err(|e| {
+        tracing::error!(error = %e, "Registration cloud device ID lookup failed");
+        crate::debug::registration_event(
+            "cloud_device_id",
+            "failed",
+            Some(stage_started.elapsed().as_millis()),
+        );
+        AuthError::InternalError(e.to_string()).to_response()
+    })?;
+    crate::debug::registration_event(
+        "cloud_device_id",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
+    crate::debug::registration_event("device_enrollment", "started", None);
+    let stage_started = std::time::Instant::now();
     let cloud_credentials = state
         .activation_client
         .enroll_device(&reg_resp.activation_grant, &cloud_device_id)
         .await
-        .map_err(|e| AuthError::InternalError(e).to_response())?;
-    crate::security::keystore::Keystore::store_cloud_credentials(&cloud_credentials)
-        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+        .map_err(|e| {
+            tracing::error!(error = %e, "Registration device enrollment failed");
+            crate::debug::registration_event(
+                "device_enrollment",
+                "failed",
+                Some(stage_started.elapsed().as_millis()),
+            );
+            AuthError::InternalError(e).to_response()
+        })?;
+    crate::debug::registration_event(
+        "device_enrollment",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
+    crate::debug::registration_event("credential_storage", "started", None);
+    let stage_started = std::time::Instant::now();
+    crate::security::keystore::Keystore::store_cloud_credentials(&cloud_credentials).map_err(
+        |e| {
+            tracing::error!(error = %e, "Registration cloud credential storage failed");
+            crate::debug::registration_event(
+                "credential_storage",
+                "failed",
+                Some(stage_started.elapsed().as_millis()),
+            );
+            AuthError::InternalError(e.to_string()).to_response()
+        },
+    )?;
+    crate::debug::registration_event(
+        "credential_storage",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
     let now = chrono::Utc::now().to_rfc3339();
+    crate::debug::registration_event("local_transaction", "started", None);
+    let stage_started = std::time::Instant::now();
     let mut tx = state
         .pool
         .begin()
         .await
-        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+        .map_err(|e| registration_db_error("local_transaction", e))?;
+    crate::debug::registration_event(
+        "local_transaction",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
     let owner_id = format!("owner_{}", uuid::Uuid::new_v4().simple());
     let user_id = format!("user_sudo_{}", uuid::Uuid::new_v4().simple());
-    let pwd_hash = crate::security::hashing::hash_password(password)
-        .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+    crate::debug::registration_event("password_hash", "started", None);
+    let stage_started = std::time::Instant::now();
+    let pwd_hash = crate::security::hashing::hash_password(password).map_err(|e| {
+        tracing::error!("Registration password hashing failed");
+        crate::debug::registration_event(
+            "password_hash",
+            "failed",
+            Some(stage_started.elapsed().as_millis()),
+        );
+        AuthError::InternalError(e.to_string()).to_response()
+    })?;
+    crate::debug::registration_event(
+        "password_hash",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
     let full_name = format!("{} {}", owner_first_name, owner_last_name);
 
+    crate::debug::registration_event("owner_insert", "started", None);
+    let stage_started = std::time::Instant::now();
     sqlx::query(
         r#"
         INSERT INTO owner (id, workspace_id, branch_id, first_name, last_name, phone, phone_verified_at, email, created_at, updated_at)
@@ -292,8 +466,15 @@ pub async fn registration_commit(
     .bind(&now)
     .execute(&mut *tx)
     .await
-    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    .map_err(|e| registration_db_error("owner_insert", e))?;
+    crate::debug::registration_event(
+        "owner_insert",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
+    crate::debug::registration_event("user_insert", "started", None);
+    let stage_started = std::time::Instant::now();
     sqlx::query(
         r#"
         INSERT INTO app_user (id, workspace_id, branch_id, username, first_name, last_name, full_name, phone, role, role_preset, active, owner_id, must_change_credentials, created_at, updated_at)
@@ -313,8 +494,15 @@ pub async fn registration_commit(
     .bind(&now)
     .execute(&mut *tx)
     .await
-    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    .map_err(|e| registration_db_error("user_insert", e))?;
+    crate::debug::registration_event(
+        "user_insert",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
+    crate::debug::registration_event("business_insert", "started", None);
+    let stage_started = std::time::Instant::now();
     sqlx::query(
         r#"
         INSERT INTO business (
@@ -359,7 +547,12 @@ pub async fn registration_commit(
     .bind(&now)
     .execute(&mut *tx)
     .await
-    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    .map_err(|e| registration_db_error("business_insert", e))?;
+    crate::debug::registration_event(
+        "business_insert",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
     let cred = crate::models::auth::UserCredential {
         user_id: user_id.clone(),
@@ -375,14 +568,23 @@ pub async fn registration_commit(
         created_at: now.clone(),
         updated_at: now.clone(),
     };
+    crate::debug::registration_event("user_credential_insert", "started", None);
+    let stage_started = std::time::Instant::now();
     crate::repositories::credential_repo::CredentialRepository::create(&mut tx, &cred)
         .await
-        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+        .map_err(|e| registration_db_error("user_credential_insert", e))?;
+    crate::debug::registration_event(
+        "user_credential_insert",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
     use rand::{thread_rng, Rng};
     const RECOVERY_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
     let recovery_batch_id = format!("batch_{}", uuid::Uuid::new_v4().simple());
     let mut recovery_codes = Vec::with_capacity(8);
+    crate::debug::registration_event("recovery_codes_insert", "started", None);
+    let stage_started = std::time::Instant::now();
     for _ in 0..8 {
         let raw: String = {
             let mut rng = thread_rng();
@@ -391,8 +593,15 @@ pub async fn registration_commit(
                 .collect()
         };
         let code = format!("{}-{}", &raw[..5], &raw[5..]);
-        let code_hash = crate::security::hashing::hash_recovery_code(&code)
-            .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+        let code_hash = crate::security::hashing::hash_recovery_code(&code).map_err(|e| {
+            tracing::error!("Registration recovery code hashing failed");
+            crate::debug::registration_event(
+                "recovery_codes_insert",
+                "failed_hashing",
+                Some(stage_started.elapsed().as_millis()),
+            );
+            AuthError::InternalError(e.to_string()).to_response()
+        })?;
         crate::repositories::recovery_repo::RecoveryRepository::create(
             &mut tx,
             &crate::models::auth::RecoveryCode {
@@ -408,10 +617,17 @@ pub async fn registration_commit(
             },
         )
         .await
-        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+        .map_err(|e| registration_db_error("recovery_codes_insert", e))?;
         recovery_codes.push(code);
     }
+    crate::debug::registration_event(
+        "recovery_codes_insert",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
+    crate::debug::registration_event("bound_device_insert", "started", None);
+    let stage_started = std::time::Instant::now();
     sqlx::query(
         r#"
         INSERT INTO bound_device (id, workspace_id, branch_id, device_label, public_key, bound_by_user_id, status, created_at, updated_at)
@@ -426,8 +642,15 @@ pub async fn registration_commit(
     .bind(&now)
     .execute(&mut *tx)
     .await
-    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    .map_err(|e| registration_db_error("bound_device_insert", e))?;
+    crate::debug::registration_event(
+        "bound_device_insert",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
+    crate::debug::registration_event("branch_insert", "started", None);
+    let stage_started = std::time::Instant::now();
     sqlx::query(
         r#"
         INSERT INTO branch (id, workspace_id, branch_id, business_id, name, location, branch_code, status, contacts, created_at, updated_at)
@@ -444,11 +667,29 @@ pub async fn registration_commit(
     .bind(&now)
     .execute(&mut *tx)
     .await
-    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    .map_err(|e| registration_db_error("branch_insert", e))?;
+    crate::debug::registration_event(
+        "branch_insert",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
 
+    crate::debug::registration_event("local_commit", "started", None);
+    let stage_started = std::time::Instant::now();
     tx.commit()
         .await
-        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+        .map_err(|e| registration_db_error("local_commit", e))?;
+    crate::debug::registration_event(
+        "local_commit",
+        "succeeded",
+        Some(stage_started.elapsed().as_millis()),
+    );
+    crate::debug::registration_event(
+        "registration_commit",
+        "succeeded",
+        Some(registration_started.elapsed().as_millis()),
+    );
+    registration_run.complete();
     Ok(RegistrationResult {
         business_id: reg_resp.business_id,
         workspace_id: reg_resp.workspace_id,

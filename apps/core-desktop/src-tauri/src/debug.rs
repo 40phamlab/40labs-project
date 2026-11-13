@@ -1,4 +1,54 @@
+use std::{
+    fs::OpenOptions,
+    io::Write,
+    path::PathBuf,
+    sync::{Mutex, OnceLock},
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+static REGISTRATION_LOG_PATH: OnceLock<PathBuf> = OnceLock::new();
+static REGISTRATION_LOG_LOCK: Mutex<()> = Mutex::new(());
+
+pub fn configure_registration_log(path: PathBuf) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
+    OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|error| error.to_string())?;
+    REGISTRATION_LOG_PATH
+        .set(path)
+        .map_err(|_| "Registration log path was already configured".to_string())
+}
+
+/// Writes only fixed stage names, status, and elapsed time to the dedicated log.
+/// Callers must never pass user input, tokens, or raw error strings here.
+pub fn registration_event(stage: &'static str, outcome: &'static str, elapsed_ms: Option<u128>) {
+    let Some(path) = REGISTRATION_LOG_PATH.get() else {
+        tracing::warn!(
+            stage,
+            outcome,
+            "Registration diagnostic log is not configured"
+        );
+        return;
+    };
+    let _guard = REGISTRATION_LOG_LOCK.lock().ok();
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    let elapsed = elapsed_ms
+        .map(|ms| format!(" elapsed_ms={ms}"))
+        .unwrap_or_default();
+    let line = format!("{timestamp} registration stage={stage} outcome={outcome}{elapsed}\n");
+    match OpenOptions::new().create(true).append(true).open(path) {
+        Ok(mut file) => {
+            if let Err(error) = file.write_all(line.as_bytes()) {
+                tracing::warn!(error = %error, "Could not write registration diagnostic log");
+            }
+        }
+        Err(error) => tracing::warn!(error = %error, "Could not open registration diagnostic log"),
+    }
+}
 
 pub fn init() {
     let _ = tracing_log::LogTracer::init();

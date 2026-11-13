@@ -17,6 +17,14 @@ const normalizePhone = (value: string) => {
   return '';
 };
 
+const logRegistrationDiagnostic = async (outcome: 'started' | 'succeeded' | 'failed') => {
+  try {
+    await authApi.registrationDiagnostic('terms_hash', outcome);
+  } catch {
+    // Diagnostic logging must never prevent registration from continuing.
+  }
+};
+
 export interface TermsStepProps {
   onValidChange: (valid: boolean) => void;
   verification: { token: string; phone: string } | null;
@@ -66,6 +74,15 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
       if (!verification?.token || normalizePhone(verification.phone) !== normalizePhone(storeState.ownerPhone)) {
         throw new Error(t('auth.error.registrationVerificationMismatch', language));
       }
+      await logRegistrationDiagnostic('started');
+      let termsTextSha256: string;
+      try {
+        termsTextSha256 = await getTermsTextSha256();
+        await logRegistrationDiagnostic('succeeded');
+      } catch (error) {
+        await logRegistrationDiagnostic('failed');
+        throw error;
+      }
       const payload: RegistrationPayload = {
         verification_token: verification.token,
         username: credentials.username.trim().toLowerCase(),
@@ -90,7 +107,7 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
         owner_email: storeState.ownerEmail,
         terms_version: TERMS_VERSION,
         terms_locale: 'sw-TZ',
-        terms_text_sha256: await getTermsTextSha256(),
+        terms_text_sha256: termsTextSha256,
       };
 
       const res = await registrationApi.commitRegistration(payload);

@@ -39,6 +39,15 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(move |app| {
+            match app.path().app_log_dir() {
+                Ok(log_dir) => {
+                    let registration_log = log_dir.join("registration.log");
+                    if let Err(error) = crate::debug::configure_registration_log(registration_log) {
+                        tracing::warn!(error = %error, "Could not configure registration diagnostic log");
+                    }
+                }
+                Err(error) => tracing::warn!(error = %error, "Could not resolve application log directory"),
+            }
             let pool = tauri::async_runtime::block_on(init_db_pool_for_app(app.handle())).map_err(|err| {
                 tracing::error!("Failed to initialize persistent SQLite database: {err}");
                 err
@@ -144,6 +153,7 @@ pub fn run() {
             commands::auth_cmd::business_set_idle_lock,
             commands::registration_cmd::recovery_redeem,
             commands::registration_cmd::registration_commit,
+            commands::registration_cmd::registration_diagnostic,
             commands::registration_cmd::cloud_device_credentials_refresh,
             commands::registration_cmd::otp_request,
             commands::registration_cmd::otp_verify,

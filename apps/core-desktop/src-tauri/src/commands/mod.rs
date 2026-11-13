@@ -60,6 +60,7 @@ mod tests {
             "recovery_regenerate",
             "recovery_generate_initial",
             "registration_commit",
+            "registration_diagnostic",
             "otp_request",
             "otp_verify",
             "onboarding_advance",

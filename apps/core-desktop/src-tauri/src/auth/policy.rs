@@ -55,6 +55,7 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     );
 
     map.insert("registration_commit", CommandPolicy::Public);
+    map.insert("registration_diagnostic", CommandPolicy::Public);
     map.insert("otp_request", CommandPolicy::Public);
     map.insert("otp_verify", CommandPolicy::Public);
 
