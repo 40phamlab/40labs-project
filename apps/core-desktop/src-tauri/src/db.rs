@@ -233,62 +233,12 @@ async fn init_db_pool_with_options_and_path(
     .await;
 
     if let Err(err_str) = migrate_res {
-        if err_str.contains("mismatch")
-            || err_str.contains("migration")
-            || err_str.contains("VersionMismatch")
-        {
-            if cfg!(debug_assertions) {
-                if let Some(path) = db_path {
-                    tracing::warn!("SQLite migration version/checksum mismatch detected in development mode. Automatically resetting development database at {}", path.display());
-                    pool.close().await;
-                    let _ = fs::remove_file(path);
-                    let wal_path = PathBuf::from(format!("{}-wal", path.display()));
-                    let _ = fs::remove_file(&wal_path);
-                    let shm_path = PathBuf::from(format!("{}-shm", path.display()));
-                    let _ = fs::remove_file(&shm_path);
-
-                    let retry_res: Result<SqlitePool, String> = async {
-                        let pool2 = SqlitePoolOptions::new()
-                            .max_connections(5)
-                            .connect_with(connect_options)
-                            .await
-                            .map_err(|e| e.to_string())?;
-                        reconcile_registration_migration(&pool2)
-                            .await
-                            .map_err(|e| e.to_string())?;
-                        SQLITE_MIGRATOR
-                            .run(&pool2)
-                            .await
-                            .map_err(|e| e.to_string())?;
-                        Ok(pool2)
-                    }
-                    .await;
-
-                    match retry_res {
-                        Ok(p) => {
-                            tracing::info!("Successfully reset and migrated development database.");
-                            return Ok(p);
-                        }
-                        Err(retry_err) => {
-                            tracing::error!(
-                                "Failed to migrate reset development database: {retry_err}"
-                            );
-                            return Err(retry_err.into());
-                        }
-                    }
-                }
-            }
-
-            tracing::error!(
-                "SQLite migration version/checksum mismatch; database contents were left untouched"
-            );
-            if cfg!(debug_assertions) {
-                tracing::error!("Development migration mismatch: inspect migration history and schema; database was not reset");
-            } else {
-                tracing::error!(
-                    "Release migration mismatch: refusing to start; database was not reset"
-                );
-            }
+        // Migration errors must never trigger an automatic database reset. Keep
+        // the original database and fail startup so the operator can recover it.
+        if db_path.is_some() {
+            tracing::error!("SQLite migration failed for the configured database (path redacted); database was left untouched: {err_str}");
+        } else {
+            tracing::error!("SQLite migration failed; database was left untouched: {err_str}");
         }
         return Err(err_str.into());
     }
@@ -440,6 +390,179 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn existing_sqlite_install_upgrades_without_losing_records() {
+        use std::borrow::Cow;
+
+        let dir =
+            std::env::temp_dir().join(format!("40labs sqlite upgrade {}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("existing.db");
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(
+                SqliteConnectOptions::new()
+                    .filename(&path)
+                    .create_if_missing(true)
+                    .foreign_keys(true),
+            )
+            .await
+            .unwrap();
+
+        let pre_integrity_migrations = Migrator {
+            migrations: Cow::Owned(
+                SQLITE_MIGRATOR
+                    .iter()
+                    .filter(|migration| migration.version < 32)
+                    .cloned()
+                    .collect(),
+            ),
+            ..Migrator::DEFAULT
+        };
+        pre_integrity_migrations.run(&pool).await.unwrap();
+        sqlx::query(
+            "INSERT INTO customer (id,workspace_id,branch_id,full_name,phone) VALUES ('upgrade-preserve','w1','b1','Existing Customer','+255700000005')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        SQLITE_MIGRATOR.run(&pool).await.unwrap();
+
+        let preserved: (String,) =
+            sqlx::query_as("SELECT full_name FROM customer WHERE id='upgrade-preserve'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(preserved.0, "Existing Customer");
+        let latest: (i64,) =
+            sqlx::query_as("SELECT MAX(version) FROM _sqlx_migrations WHERE success=1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(latest.0, 34);
+        pool.close().await;
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn ownership_cannot_be_reassigned_and_cross_branch_children_are_rejected() {
+        let pool = init_db_pool_with_url("sqlite::memory:")
+            .await
+            .expect("fresh database should migrate");
+        sqlx::query(
+            "INSERT INTO business (id,workspace_id,branch_id,business_id,name,tin,tmda_number,role_scopes,tier,contact_mobile,contact_email,appearance_mode,onboarding_state,country,language,created_at,updated_at) VALUES ('business-scope','w1','b1','AFYA-SCOPE','Test Business','tin','tmda','[\"pharmacy\"]','free','+255700000009','test@example.invalid','light','setup_complete','TZ','en','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO branch (id,workspace_id,branch_id,business_id,name,branch_code) VALUES ('branch-b2','w1','b2','AFYA-SCOPE','Second Branch','B2')",
+        )
+        .execute(&pool)
+        .await
+        .expect("business may own multiple branches in one workspace");
+        let cross_workspace_branch = sqlx::query(
+            "INSERT INTO branch (id,workspace_id,branch_id,business_id,name,branch_code) VALUES ('branch-other','w2','b3','AFYA-SCOPE','Foreign Branch','B3')",
+        )
+        .execute(&pool)
+        .await;
+        assert!(cross_workspace_branch.is_err());
+
+        sqlx::query(
+            "INSERT INTO customer (id,workspace_id,branch_id,full_name,phone) VALUES ('c1','w1','b1','Customer','+255700000001')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let reassign =
+            sqlx::query("UPDATE customer SET workspace_id='w2', branch_id='b2' WHERE id='c1'")
+                .execute(&pool)
+                .await;
+        assert!(reassign.is_err(), "scope reassignment must be rejected");
+        let scope: (String, String) =
+            sqlx::query_as("SELECT workspace_id,branch_id FROM customer WHERE id='c1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(scope, ("w1".into(), "b1".into()));
+
+        let cross_branch_sale = sqlx::query(
+            "INSERT INTO sale (id,workspace_id,branch_id,customer_id,payment_method,grand_total) VALUES ('s1','w1','b2','c1','cash',500)",
+        )
+        .execute(&pool)
+        .await;
+        assert!(
+            cross_branch_sale.is_err(),
+            "cross-branch parent link must fail"
+        );
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM sale WHERE id='s1'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count.0, 0, "failed write must leave no record behind");
+
+        sqlx::query(
+            "INSERT INTO sale (id,workspace_id,branch_id,customer_id,payment_method,grand_total) VALUES ('s2','w1','b1','c1','cash',500)",
+        )
+        .execute(&pool)
+        .await
+        .expect("same-branch relation should succeed");
+        sqlx::query(
+            "INSERT INTO sale (id,workspace_id,branch_id,payment_method,grand_total,idempotency_key) VALUES ('s3','w1','b1','cash',500,'sale-key-1')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        let duplicate_idempotency = sqlx::query(
+            "INSERT INTO sale (id,workspace_id,branch_id,payment_method,grand_total,idempotency_key) VALUES ('s4','w1','b1','cash',500,'sale-key-1')",
+        )
+        .execute(&pool)
+        .await;
+        assert!(duplicate_idempotency.is_err());
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn transactions_rollback_and_concurrent_commits_preserve_rows() {
+        let pool = init_db_pool_with_url("sqlite::memory:")
+            .await
+            .expect("fresh database should migrate");
+        let mut tx = pool.begin().await.unwrap();
+        sqlx::query(
+            "INSERT INTO customer (id,workspace_id,branch_id,full_name,phone) VALUES ('rolled-back','w1','b1','Temporary','+255700000002')",
+        )
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+        tx.rollback().await.unwrap();
+
+        let insert = |id: &'static str, phone: &'static str| {
+            let pool = pool.clone();
+            async move {
+                sqlx::query("INSERT INTO customer (id,workspace_id,branch_id,full_name,phone) VALUES (?, 'w1','b1', ?, ?)")
+                    .bind(id)
+                    .bind(id)
+                    .bind(phone)
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+            }
+        };
+        tokio::join!(
+            insert("concurrent-1", "+255700000003"),
+            insert("concurrent-2", "+255700000004")
+        );
+        let count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM customer WHERE id IN ('rolled-back','concurrent-1','concurrent-2')",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(count.0, 2);
+        pool.close().await;
+    }
+
+    #[tokio::test]
     async fn opens_path_with_spaces_and_reserved_characters_and_reuses_existing_database() {
         let dir = std::env::temp_dir().join(format!("40labs db test {}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&dir).unwrap();
@@ -463,6 +586,76 @@ mod tests {
         assert_eq!(value.0, "preserved");
         reopened.close().await;
         let _ = fs::remove_dir_all(dir);
+    }
+
+    #[tokio::test]
+    async fn migration_failure_keeps_existing_database_and_records() {
+        let dir =
+            std::env::temp_dir().join(format!("40labs migration test {}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("existing.db");
+        let pool = init_db_pool_with_path(&path).await.unwrap();
+        sqlx::query("CREATE TABLE migration_safety_fixture (value TEXT NOT NULL)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO migration_safety_fixture VALUES ('preserve-this-record')")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE _sqlx_migrations SET checksum = X'00' WHERE version = 1")
+            .execute(&pool)
+            .await
+            .unwrap();
+        pool.close().await;
+
+        assert!(init_db_pool_with_path(&path).await.is_err());
+        let reopened = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(
+                SqliteConnectOptions::new()
+                    .filename(&path)
+                    .foreign_keys(true),
+            )
+            .await
+            .unwrap();
+        let record: (String,) = sqlx::query_as("SELECT value FROM migration_safety_fixture")
+            .fetch_one(&reopened)
+            .await
+            .unwrap();
+        assert_eq!(record.0, "preserve-this-record");
+        reopened.close().await;
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[tokio::test]
+    async fn failed_sqlite_migration_rolls_back_partial_ddl() {
+        let dir = std::env::temp_dir().join(format!(
+            "40labs interrupted migration {}",
+            uuid::Uuid::new_v4()
+        ));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("0001_partial_failure.sql"),
+            "CREATE TABLE should_rollback (id INTEGER PRIMARY KEY);\nINSERT INTO missing_table VALUES (1);",
+        )
+        .unwrap();
+        let migrator = Migrator::new(dir.clone()).await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+        assert!(migrator.run(&pool).await.is_err());
+        let table_exists: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='should_rollback'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(table_exists.0, 0, "failed migration DDL should roll back");
+        pool.close().await;
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[tokio::test]

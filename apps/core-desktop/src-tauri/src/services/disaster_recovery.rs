@@ -439,12 +439,10 @@ pub async fn export_disaster_recovery_pack_impl(
         let _ = fs::remove_file(&snapshot_db_path);
     }
 
-    let snapshot_db_str = snapshot_db_path.to_string_lossy().to_string();
-    let vacuum_query = format!("VACUUM INTO '{}'", snapshot_db_str.replace('\'', "''"));
-    sqlx::query(&vacuum_query)
-        .execute(pool)
-        .await
-        .map_err(|e| format!("Failed to create database snapshot: {e}"))?;
+    if let Err(err) = create_verified_sqlite_snapshot(pool, &snapshot_db_path).await {
+        let _ = fs::remove_dir_all(&temp_dir);
+        return Err(err);
+    }
 
     // 3. Collect files from Documents directory
     let mut file_entries = Vec::new();
@@ -597,6 +595,57 @@ pub async fn export_disaster_recovery_pack_impl(
         total_records,
         created_at,
     })
+}
+
+/// Produce a transactionally consistent SQLite snapshot and verify it before
+/// the backup is packaged. VACUUM INTO creates a standalone file, including
+/// committed WAL content, without copying a live database file directly.
+async fn create_verified_sqlite_snapshot(
+    source: &SqlitePool,
+    destination: &Path,
+) -> Result<(), String> {
+    let destination = destination
+        .to_str()
+        .ok_or_else(|| "Backup destination path is not valid UTF-8".to_string())?;
+    sqlx::query("VACUUM INTO ?")
+        .bind(destination)
+        .execute(source)
+        .await
+        .map_err(|e| format!("Failed to create database snapshot: {e}"))?;
+
+    let options = SqliteConnectOptions::new()
+        .filename(destination)
+        .create_if_missing(false)
+        .foreign_keys(true);
+    let snapshot = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(options)
+        .await
+        .map_err(|e| format!("Failed to open database snapshot for verification: {e}"))?;
+    let integrity: Vec<String> = sqlx::query_scalar("PRAGMA integrity_check")
+        .fetch_all(&snapshot)
+        .await
+        .map_err(|e| format!("Database snapshot integrity check failed: {e}"))?;
+    let fk_violations: Vec<(String, Option<i64>, String, i64)> =
+        sqlx::query_as("PRAGMA foreign_key_check")
+            .fetch_all(&snapshot)
+            .await
+            .map_err(|e| format!("Database snapshot foreign-key check failed: {e}"))?;
+    snapshot.close().await;
+
+    if integrity.as_slice() != ["ok"] {
+        return Err(format!(
+            "Database snapshot failed integrity_check: {}",
+            integrity.join("; ")
+        ));
+    }
+    if !fk_violations.is_empty() {
+        return Err(format!(
+            "Database snapshot contains {} foreign-key violation(s)",
+            fk_violations.len()
+        ));
+    }
+    Ok(())
 }
 
 /// Decrypt and inspect a .core backup pack for restoration preview
@@ -866,8 +915,9 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
 
     if live_db_path.exists() {
         let backup_db_path = safety_dir.join("40labs.db");
-        fs::copy(&live_db_path, &backup_db_path)
-            .map_err(|e| format!("Failed to create safety copy of current database: {e}"))?;
+        create_verified_sqlite_snapshot(&state.pool, &backup_db_path)
+            .await
+            .map_err(|e| format!("Failed to create verified safety backup: {e}"))?;
     }
 
     let doc_root = crate::services::documents::documents_root(app).ok();
@@ -1022,6 +1072,55 @@ fn rollback_from_safety(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn sqlite_snapshot_is_portable_and_integrity_checked() {
+        let dir = std::env::temp_dir().join(format!("40labs backup test {}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("snapshot.sqlite");
+        let source_path = dir.join("source.sqlite");
+        let source = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(
+                SqliteConnectOptions::new()
+                    .filename(source_path)
+                    .create_if_missing(true)
+                    .foreign_keys(true),
+            )
+            .await
+            .unwrap();
+        sqlx::query("CREATE TABLE snapshot_test (id TEXT PRIMARY KEY, value TEXT NOT NULL)")
+            .execute(&source)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO snapshot_test VALUES ('preserved', 'committed')")
+            .execute(&source)
+            .await
+            .unwrap();
+
+        create_verified_sqlite_snapshot(&source, &path)
+            .await
+            .expect("snapshot should pass integrity and FK verification");
+        let restored = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect_with(
+                SqliteConnectOptions::new()
+                    .filename(&path)
+                    .create_if_missing(false)
+                    .foreign_keys(true),
+            )
+            .await
+            .unwrap();
+        let value: (String,) =
+            sqlx::query_as("SELECT value FROM snapshot_test WHERE id = 'preserved'")
+                .fetch_one(&restored)
+                .await
+                .unwrap();
+        assert_eq!(value.0, "committed");
+        restored.close().await;
+        source.close().await;
+        fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn test_encryption_decryption_roundtrip() {
