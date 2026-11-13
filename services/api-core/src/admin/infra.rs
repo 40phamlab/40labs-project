@@ -1,12 +1,11 @@
+use crate::routes::activation::AppState;
 use axum::{
-    routing::get,
-    Router,
+    extract::{Query, State},
     response::IntoResponse,
-    Json,
-    extract::{State, Query},
+    routing::get,
+    Json, Router,
 };
 use serde::Deserialize;
-use crate::routes::activation::AppState;
 use tokio::time::{self, Duration};
 use uuid::Uuid;
 
@@ -36,7 +35,9 @@ pub fn start_health_prober(state: AppState) {
     });
 }
 
-pub async fn run_health_checks(state: &AppState) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn run_health_checks(
+    state: &AppState,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // 1. DB check
     let start = std::time::Instant::now();
     let db_res = sqlx::query("SELECT 1").execute(&state.pool).await;
@@ -67,20 +68,25 @@ pub async fn run_health_checks(state: &AppState) -> Result<(), Box<dyn std::erro
     save_check_result(state, "migrations", mig_status, 5, &mig_detail).await?;
 
     // 3. Sync pipeline check
-    let sync_res: Result<Option<chrono::DateTime<chrono::Utc>>, _> = sqlx::query_scalar(
-        "SELECT MAX(received_at) FROM sync_changes"
-    )
-    .fetch_optional(&state.pool)
-    .await;
+    let sync_res: Result<Option<chrono::DateTime<chrono::Utc>>, _> =
+        sqlx::query_scalar("SELECT MAX(received_at) FROM sync_changes")
+            .fetch_optional(&state.pool)
+            .await;
     let (sync_status, sync_detail) = match sync_res {
         Ok(Some(last_ts)) => {
             let age_hours = (chrono::Utc::now() - last_ts).num_hours();
             if age_hours < 24 {
                 ("ok", format!("Last sync {}h ago", age_hours))
             } else if age_hours <= 72 {
-                ("degraded", format!("Sync pipeline stale: {}h ago", age_hours))
+                (
+                    "degraded",
+                    format!("Sync pipeline stale: {}h ago", age_hours),
+                )
             } else {
-                ("down", format!("Sync pipeline halted: {}h since last sync", age_hours))
+                (
+                    "down",
+                    format!("Sync pipeline halted: {}h since last sync", age_hours),
+                )
             }
         }
         Ok(None) => ("ok", "No sync changes recorded yet".into()),
@@ -90,26 +96,40 @@ pub async fn run_health_checks(state: &AppState) -> Result<(), Box<dyn std::erro
 
     // 4. Sync failures check
     let failures_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sync_changes WHERE received_at >= NOW() - INTERVAL '1 hour'"
+        "SELECT COUNT(*) FROM sync_changes WHERE received_at >= NOW() - INTERVAL '1 hour'",
     )
     .fetch_one(&state.pool)
     .await
     .unwrap_or(0);
     let (fail_status, fail_detail) = if failures_count < 5 {
-        ("ok", format!("{} recent sync events in last hour", failures_count))
+        (
+            "ok",
+            format!("{} recent sync events in last hour", failures_count),
+        )
     } else if failures_count <= 50 {
-        ("degraded", format!("Elevated sync activity: {} events", failures_count))
+        (
+            "degraded",
+            format!("Elevated sync activity: {} events", failures_count),
+        )
     } else {
-        ("down", format!("High sync volume/failures: {} events", failures_count))
+        (
+            "down",
+            format!("High sync volume/failures: {} events", failures_count),
+        )
     };
     save_check_result(state, "sync_failures", fail_status, 15, &fail_detail).await?;
 
     // 5. External URLs check from HEALTH_EXTERNAL_URLS
     if let Ok(urls_env) = std::env::var("HEALTH_EXTERNAL_URLS") {
-        let client = reqwest::Client::builder().timeout(Duration::from_secs(5)).build().unwrap_or_default();
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .unwrap_or_default();
         for item in urls_env.split(',') {
             let item = item.trim();
-            if item.is_empty() { continue; }
+            if item.is_empty() {
+                continue;
+            }
             let parts: Vec<&str> = item.splitn(2, '=').collect();
             let (name, url) = if parts.len() == 2 {
                 (parts[0], parts[1])
@@ -136,9 +156,10 @@ pub async fn run_health_checks(state: &AppState) -> Result<(), Box<dyn std::erro
     }
 
     // 6. Daily cleanup (>7 days for health checks, >14 days for ops events)
-    let _ = sqlx::query("DELETE FROM infra_health_checks WHERE checked_at < NOW() - INTERVAL '7 days'")
-        .execute(&state.pool)
-        .await;
+    let _ =
+        sqlx::query("DELETE FROM infra_health_checks WHERE checked_at < NOW() - INTERVAL '7 days'")
+            .execute(&state.pool)
+            .await;
     let _ = sqlx::query("DELETE FROM ops_events WHERE ts < NOW() - INTERVAL '14 days'")
         .execute(&state.pool)
         .await;
@@ -175,8 +196,17 @@ async fn save_check_result(
 
     if let Some(old) = prev_status {
         if old != status {
-            let level = if status == "down" { "ERROR" } else if status == "degraded" { "WARN" } else { "INFO" };
-            let msg = format!("Health check '{}' transitioned from {} to {}", check_name, old, status);
+            let level = if status == "down" {
+                "ERROR"
+            } else if status == "degraded" {
+                "WARN"
+            } else {
+                "INFO"
+            };
+            let msg = format!(
+                "Health check '{}' transitioned from {} to {}",
+                check_name, old, status
+            );
             let meta = serde_json::json!({ "check": check_name, "from": old, "to": status, "latency_ms": latency_ms });
             let _ = sqlx::query(
                 "INSERT INTO ops_events (id, ts, level, source, message, meta) VALUES ($1, NOW(), $2, 'probe', $3, $4)"
@@ -193,9 +223,7 @@ async fn save_check_result(
     Ok(())
 }
 
-async fn health_handler(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+async fn health_handler(State(state): State<AppState>) -> impl IntoResponse {
     let rows = sqlx::query_as::<_, (String, String, i32, Option<String>, chrono::DateTime<chrono::Utc>)>(
         "SELECT DISTINCT ON (check_name) check_name, status, latency_ms, detail, checked_at FROM infra_health_checks ORDER BY check_name, checked_at DESC"
     )
@@ -238,21 +266,25 @@ async fn health_handler(
     .await
     .unwrap_or_default();
 
-    let state_changes: Vec<_> = events.into_iter().map(|(level, source, message, ts)| {
-        serde_json::json!({
-            "level": level,
-            "source": source,
-            "message": message,
-            "ts": ts.to_rfc3339()
+    let state_changes: Vec<_> = events
+        .into_iter()
+        .map(|(level, source, message, ts)| {
+            serde_json::json!({
+                "level": level,
+                "source": source,
+                "message": message,
+                "ts": ts.to_rfc3339()
+            })
         })
-    }).collect();
+        .collect();
 
     Json(serde_json::json!({
         "overall": overall,
         "last_checked": last_checked.map(|t| t.to_rfc3339()),
         "checks": check_list,
         "state_changes": state_changes
-    })).into_response()
+    }))
+    .into_response()
 }
 
 #[derive(Deserialize)]
@@ -277,30 +309,46 @@ async fn history_handler(
     .await
     .unwrap_or_default();
 
-    let history: Vec<_> = rows.into_iter().map(|(lat, st, checked)| {
-        serde_json::json!({
-            "latency_ms": lat,
-            "status": st,
-            "checked_at": checked.to_rfc3339()
+    let history: Vec<_> = rows
+        .into_iter()
+        .map(|(lat, st, checked)| {
+            serde_json::json!({
+                "latency_ms": lat,
+                "status": st,
+                "checked_at": checked.to_rfc3339()
+            })
         })
-    }).collect();
+        .collect();
 
     Json(serde_json::json!({
         "check": check_name,
         "history": history
-    })).into_response()
+    }))
+    .into_response()
 }
 
-async fn devices_handler(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let rows = sqlx::query_as::<_, (String, String, String, Option<chrono::DateTime<chrono::Utc>>, Option<i32>, Option<String>, Option<String>, Option<String>)>(
+async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            String,
+            Option<chrono::DateTime<chrono::Utc>>,
+            Option<i32>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        ),
+    >(
         "SELECT d.device_id, d.workspace_id, COALESCE(b.business_id, d.workspace_id), \
          COALESCE(d.last_seen_at, d.last_seen), COALESCE(d.outbox_pending, d.pending_count), \
          d.app_version, b.name, b.address_region \
          FROM sync_devices d LEFT JOIN business_registry b ON d.workspace_id = b.workspace_id \
-         ORDER BY COALESCE(d.last_seen_at, d.last_seen) DESC"
-    ).fetch_all(&state.pool).await;
+         ORDER BY COALESCE(d.last_seen_at, d.last_seen) DESC",
+    )
+    .fetch_all(&state.pool)
+    .await;
     match rows {
         Ok(rows) => {
             let now = chrono::Utc::now();
@@ -314,9 +362,13 @@ async fn devices_handler(
             }).collect();
             Json(serde_json::json!({ "devices": devices })).into_response()
         }
-        Err(_) => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not load infrastructure devices" }
-        }))).into_response(),
+        Err(_) => (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": { "code": "INTERNAL", "message": "Could not load infrastructure devices" }
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -324,7 +376,15 @@ pub static LOG_DROP_COUNT: std::sync::atomic::AtomicU64 = std::sync::atomic::Ato
 
 pub fn redact_text(text: &str) -> String {
     let mut cleaned = text.to_string();
-    let sensitive = ["pin=1234", "password=", "bearer", "token", "secret", "totp", "authorization"];
+    let sensitive = [
+        "pin=1234",
+        "password=",
+        "bearer",
+        "token",
+        "secret",
+        "totp",
+        "authorization",
+    ];
     for s in sensitive {
         if cleaned.to_lowercase().contains(s) {
             cleaned = cleaned.replace(s, "[REDACTED]");
@@ -350,20 +410,22 @@ async fn logs_handler(
 ) -> impl IntoResponse {
     let limit = query.limit.unwrap_or(50).clamp(1, 100);
 
-    let since_dt = query.since.as_deref().and_then(|s| {
-        match s {
-            "1h" => Some(chrono::Utc::now() - chrono::Duration::hours(1)),
-            "24h" => Some(chrono::Utc::now() - chrono::Duration::hours(24)),
-            "7d" => Some(chrono::Utc::now() - chrono::Duration::days(7)),
-            _ => chrono::DateTime::parse_from_rfc3339(s).ok().map(|dt| dt.with_timezone(&chrono::Utc)),
-        }
+    let since_dt = query.since.as_deref().and_then(|s| match s {
+        "1h" => Some(chrono::Utc::now() - chrono::Duration::hours(1)),
+        "24h" => Some(chrono::Utc::now() - chrono::Duration::hours(24)),
+        "7d" => Some(chrono::Utc::now() - chrono::Duration::days(7)),
+        _ => chrono::DateTime::parse_from_rfc3339(s)
+            .ok()
+            .map(|dt| dt.with_timezone(&chrono::Utc)),
     });
 
     let (cursor_ts, cursor_id) = match query.cursor.as_deref() {
         Some(c) => {
             let parts: Vec<&str> = c.splitn(2, '|').collect();
             if parts.len() == 2 {
-                let dt = chrono::DateTime::parse_from_rfc3339(parts[0]).ok().map(|d| d.with_timezone(&chrono::Utc));
+                let dt = chrono::DateTime::parse_from_rfc3339(parts[0])
+                    .ok()
+                    .map(|d| d.with_timezone(&chrono::Utc));
                 (dt, Some(parts[1].to_string()))
             } else {
                 (None, None)
@@ -372,12 +434,27 @@ async fn logs_handler(
         None => (None, None),
     };
 
-    let levels: Option<Vec<String>> = query.level.as_deref().map(|l| l.split(',').map(|s| s.trim().to_uppercase()).collect());
+    let levels: Option<Vec<String>> = query
+        .level
+        .as_deref()
+        .map(|l| l.split(',').map(|s| s.trim().to_uppercase()).collect());
     let source = query.source.clone();
     let biz_id = query.business_id.clone();
     let search_q = query.q.clone().map(|s| redact_text(&s));
 
-    let rows = sqlx::query_as::<_, (String, chrono::DateTime<chrono::Utc>, String, String, String, Option<String>, Option<String>, Option<serde_json::Value>)>(
+    let rows = sqlx::query_as::<
+        _,
+        (
+            String,
+            chrono::DateTime<chrono::Utc>,
+            String,
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<serde_json::Value>,
+        ),
+    >(
         r#"
         SELECT id, ts, level, source, message, business_id, device_id, meta
         FROM ops_events
@@ -415,21 +492,27 @@ async fn logs_handler(
         }
     }
 
-    let data: Vec<_> = rows.into_iter().map(|(id, ts, level, source, message, business_id, device_id, meta)| {
-        serde_json::json!({
-            "id": id,
-            "ts": ts.to_rfc3339(),
-            "level": level,
-            "source": source,
-            "message": redact_text(&message),
-            "business_id": business_id,
-            "device_id": device_id,
-            "meta": meta
-        })
-    }).collect();
+    let data: Vec<_> = rows
+        .into_iter()
+        .map(
+            |(id, ts, level, source, message, business_id, device_id, meta)| {
+                serde_json::json!({
+                    "id": id,
+                    "ts": ts.to_rfc3339(),
+                    "level": level,
+                    "source": source,
+                    "message": redact_text(&message),
+                    "business_id": business_id,
+                    "device_id": device_id,
+                    "meta": meta
+                })
+            },
+        )
+        .collect();
 
     Json(serde_json::json!({
         "data": data,
         "next_cursor": next_cursor
-    })).into_response()
+    }))
+    .into_response()
 }

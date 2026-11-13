@@ -1,17 +1,11 @@
-use api_core::sms::{
-    console::ConsoleOtpProvider,
-    nextsms::NextSmsProvider,
-    OtpProvider, SmsError,
-};
+use api_core::sms::{console::ConsoleOtpProvider, nextsms::NextSmsProvider, OtpProvider, SmsError};
 use wiremock::{
     matchers::{method, path},
     Mock, MockServer, ResponseTemplate,
 };
 
 fn init_tracing() {
-    let _ = tracing_subscriber::fmt()
-        .with_test_writer()
-        .try_init();
+    let _ = tracing_subscriber::fmt().with_test_writer().try_init();
 }
 
 #[tokio::test]
@@ -24,7 +18,12 @@ async fn test_nextsms_401() {
         .mount(&mock_server)
         .await;
 
-    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let provider = NextSmsProvider::new(
+        mock_server.uri(),
+        "token".to_string(),
+        "40Labs".to_string(),
+        false,
+    );
     let res = provider.send("255712345678", "OTP 123456", "ref-401").await;
     assert!(res.is_err());
     assert!(matches!(res.unwrap_err(), SmsError::ProviderAuth));
@@ -40,7 +39,12 @@ async fn test_nextsms_429() {
         .mount(&mock_server)
         .await;
 
-    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let provider = NextSmsProvider::new(
+        mock_server.uri(),
+        "token".to_string(),
+        "40Labs".to_string(),
+        false,
+    );
     let res = provider.send("255712345678", "OTP 123456", "ref-429").await;
     assert!(res.is_err());
     assert!(matches!(res.unwrap_err(), SmsError::ProviderRateLimited));
@@ -56,7 +60,12 @@ async fn test_nextsms_500() {
         .mount(&mock_server)
         .await;
 
-    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let provider = NextSmsProvider::new(
+        mock_server.uri(),
+        "token".to_string(),
+        "40Labs".to_string(),
+        false,
+    );
     let res = provider.send("255712345678", "OTP 123456", "ref-500").await;
     assert!(res.is_err());
     assert!(matches!(res.unwrap_err(), SmsError::ProviderUnavailable));
@@ -72,8 +81,15 @@ async fn test_nextsms_timeout() {
         .mount(&mock_server)
         .await;
 
-    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
-    let res = provider.send("255712345678", "OTP 123456", "ref-timeout").await;
+    let provider = NextSmsProvider::new(
+        mock_server.uri(),
+        "token".to_string(),
+        "40Labs".to_string(),
+        false,
+    );
+    let res = provider
+        .send("255712345678", "OTP 123456", "ref-timeout")
+        .await;
     assert!(res.is_err());
     assert!(matches!(res.unwrap_err(), SmsError::ProviderUnavailable));
 }
@@ -98,7 +114,12 @@ async fn test_nextsms_200_status_56() {
         .mount(&mock_server)
         .await;
 
-    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
+    let provider = NextSmsProvider::new(
+        mock_server.uri(),
+        "token".to_string(),
+        "40Labs".to_string(),
+        false,
+    );
     let res = provider.send("255712345678", "OTP 123456", "ref-56").await;
     assert!(res.is_err());
     assert!(matches!(res.unwrap_err(), SmsError::SenderNotApproved(_)));
@@ -124,8 +145,15 @@ async fn test_nextsms_200_status_50_large_ref() {
         .mount(&mock_server)
         .await;
 
-    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
-    let res = provider.send("255712345678", "OTP 123456", "ref-large-ref").await;
+    let provider = NextSmsProvider::new(
+        mock_server.uri(),
+        "token".to_string(),
+        "40Labs".to_string(),
+        false,
+    );
+    let res = provider
+        .send("255712345678", "OTP 123456", "ref-large-ref")
+        .await;
     assert!(res.is_ok());
     let outcome = res.unwrap();
     assert_eq!(outcome.status_id, 50);
@@ -142,8 +170,15 @@ async fn test_nextsms_non_json_body() {
         .mount(&mock_server)
         .await;
 
-    let provider = NextSmsProvider::new(mock_server.uri(), "token".to_string(), "40Labs".to_string(), false);
-    let res = provider.send("255712345678", "OTP 123456", "ref-non-json").await;
+    let provider = NextSmsProvider::new(
+        mock_server.uri(),
+        "token".to_string(),
+        "40Labs".to_string(),
+        false,
+    );
+    let res = provider
+        .send("255712345678", "OTP 123456", "ref-non-json")
+        .await;
     assert!(res.is_err());
     assert!(matches!(res.unwrap_err(), SmsError::ProviderRejected(_)));
 }
@@ -152,7 +187,13 @@ async fn test_nextsms_non_json_body() {
 async fn test_console_provider() {
     init_tracing();
     let provider = ConsoleOtpProvider::new();
-    let res = provider.send("255712345678", "Your 40Labs activation code is: 123456. Valid for 5 minutes.", "ref-console").await;
+    let res = provider
+        .send(
+            "255712345678",
+            "Your 40Labs activation code is: 123456. Valid for 5 minutes.",
+            "ref-console",
+        )
+        .await;
     assert!(res.is_ok());
     let outcome = res.unwrap();
     assert_eq!(outcome.status_id, 50);

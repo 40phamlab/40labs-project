@@ -20,15 +20,21 @@ export async function invokeCommand<T>(
   timeoutMs = 5000
 ): Promise<T> {
   if (isTauriAvailable()) {
+    let timeoutId: number | undefined;
     try {
       const invokePromise = invoke<T>(command, args);
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Tauri IPC timeout for command: ${command}`)), timeoutMs)
+        timeoutId = window.setTimeout(
+          () => reject(new Error(`Tauri IPC timeout for command: ${command}`)),
+          timeoutMs,
+        )
       );
       return await Promise.race([invokePromise, timeoutPromise]);
     } catch (error) {
       console.error(`[40Labs IPC Error] Command "${command}" failed:`, error);
       throw error;
+    } finally {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     }
   }
   throw new Error(`Tauri runtime unavailable for IPC command: ${command}`);

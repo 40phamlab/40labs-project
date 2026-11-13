@@ -1,6 +1,6 @@
+use hmac::{Hmac, Mac};
 use rand::rngs::OsRng;
 use rand::RngCore;
-use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
 

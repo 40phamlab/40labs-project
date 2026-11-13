@@ -377,5 +377,3 @@ pub struct WorkflowExecutionExportManifest {
     pub results: Vec<LabResult>,
     pub audit_events: Vec<crate::models::audit::AuditLogEntry>,
 }
-
-

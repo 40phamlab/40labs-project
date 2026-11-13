@@ -12,5 +12,6 @@ export const REGISTRATION_STEPS: readonly RegStepConfig[] = [
   { id: 'location', i18n: 'auth.reg.location' },
   { id: 'payments', i18n: 'auth.reg.payments', skippable: true },
   { id: 'owner',    i18n: 'auth.reg.ownerOtp' },
+  { id: 'account',  i18n: 'auth.reg.account' },
   { id: 'terms',    i18n: 'auth.reg.terms' },
 ] as const;

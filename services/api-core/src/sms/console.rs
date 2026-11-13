@@ -1,4 +1,4 @@
-use super::{SendOutcome, SmsError, OtpProvider};
+use super::{OtpProvider, SendOutcome, SmsError};
 use async_trait::async_trait;
 use tracing::warn;
 
@@ -32,7 +32,12 @@ fn extract_code(text: &str) -> String {
 
 #[async_trait]
 impl OtpProvider for ConsoleOtpProvider {
-    async fn send(&self, to_e164: &str, text: &str, reference: &str) -> Result<SendOutcome, SmsError> {
+    async fn send(
+        &self,
+        to_e164: &str,
+        text: &str,
+        reference: &str,
+    ) -> Result<SendOutcome, SmsError> {
         let masked = mask_phone(to_e164);
         let code = extract_code(text);
         warn!(msg_ref = %reference, phone = %masked, "[DEV OTP] ref={} code={}", reference, code);

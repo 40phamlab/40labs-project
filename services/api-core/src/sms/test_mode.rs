@@ -1,4 +1,4 @@
-use super::{nextsms::NextSmsProvider, SendOutcome, SmsError, OtpProvider};
+use super::{nextsms::NextSmsProvider, OtpProvider, SendOutcome, SmsError};
 use async_trait::async_trait;
 
 pub struct TestModeProvider {

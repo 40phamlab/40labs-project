@@ -1,15 +1,14 @@
+use crate::routes::activation::AppState;
 use axum::{
-    routing::get,
-    Router,
+    extract::{Query, State},
     response::IntoResponse,
-    Json,
-    extract::{State, Query},
+    routing::get,
+    Json, Router,
 };
 use serde::Deserialize;
-use crate::routes::activation::AppState;
-use std::sync::{Mutex, OnceLock};
-use std::time::{Instant, Duration};
 use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 /*
   =============================================================================
@@ -86,23 +85,24 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn overview_handler(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+async fn overview_handler(State(state): State<AppState>) -> impl IntoResponse {
     let cache_key = "overview_handler_v1".to_string();
     if let Some(cached) = get_cached(&cache_key) {
         return Json(cached).into_response();
     }
 
-    let registered_businesses: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM business_registry")
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
+    let registered_businesses: i64 =
+        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM business_registry")
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
 
-    let verified_count: i64 = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM business_verification WHERE status = 'verified'")
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
+    let verified_count: i64 = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM business_verification WHERE status = 'verified'",
+    )
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
 
     let pending_count: i64 = sqlx::query_scalar::<_, i64>(
         "SELECT COUNT(*) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE v.status IS NULL OR v.status = 'pending'"
@@ -153,7 +153,7 @@ async fn overview_handler(
          LEFT JOIN business_verification v ON b.business_id = v.business_id \
          WHERE v.status IS NULL OR v.status = 'pending' \
          ORDER BY b.created_at ASC \
-         LIMIT 5"
+         LIMIT 5",
     )
     .fetch_all(&state.pool)
     .await
@@ -245,14 +245,17 @@ async fn revenue_handler(
 
     let tier_distribution: HashMap<String, i64> = tier_rows.into_iter().collect();
 
-    let data: Vec<_> = rows.into_iter().map(|(bucket, revenue, region, tier)| {
-        serde_json::json!({
-            "bucket": bucket,
-            "revenue": revenue,
-            "region": region,
-            "tier": tier
+    let data: Vec<_> = rows
+        .into_iter()
+        .map(|(bucket, revenue, region, tier)| {
+            serde_json::json!({
+                "bucket": bucket,
+                "revenue": revenue,
+                "region": region,
+                "tier": tier
+            })
         })
-    }).collect();
+        .collect();
 
     let response_json = serde_json::json!({
         "range": range,
@@ -408,16 +411,18 @@ async fn growth_handler(
         0.0
     };
 
-    let verified_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'verified'")
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
+    let verified_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'verified'")
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
 
     let unverified_count = total_registered - verified_count;
 
-    let signups_per_week: Vec<_> = signups_rows.into_iter().map(|(wk, c)| {
-        serde_json::json!({ "week": wk, "signups": c })
-    }).collect();
+    let signups_per_week: Vec<_> = signups_rows
+        .into_iter()
+        .map(|(wk, c)| serde_json::json!({ "week": wk, "signups": c }))
+        .collect();
 
     let response_json = serde_json::json!({
         "signups_per_week": signups_per_week,

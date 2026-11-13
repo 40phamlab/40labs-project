@@ -1,14 +1,12 @@
-use sqlx::sqlite::SqlitePoolOptions;
+use core_desktop_lib::sync::store::{ack, enqueue_bootstrap, next_batch, requeue_stale_inflight};
+use core_desktop_lib::sync::types::{AckStatus, ChangeAck};
 use sqlx::migrate::Migrator;
-use core_desktop_lib::sync::store::{enqueue_bootstrap, next_batch, ack, requeue_stale_inflight};
-use core_desktop_lib::sync::types::{ChangeAck, AckStatus};
+use sqlx::sqlite::SqlitePoolOptions;
 
 static SQLITE_MIGRATOR: Migrator = sqlx::migrate!("../../../infra/db/sqlite-schema/migrations");
 
 async fn setup_test_db() -> Result<sqlx::SqlitePool, Box<dyn std::error::Error>> {
-    let pool = SqlitePoolOptions::new()
-        .connect("sqlite::memory:")
-        .await?;
+    let pool = SqlitePoolOptions::new().connect("sqlite::memory:").await?;
     SQLITE_MIGRATOR.run(&pool).await?;
     Ok(pool)
 }
@@ -20,14 +18,16 @@ async fn insert_enqueues_outbox() -> Result<(), Box<dyn std::error::Error>> {
 
     sqlx::query(
         "INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile)
-         VALUES ('biz-1', 'ws-1', 'branch-1', 'AFYA-0001', 'Test Clinic', '0712345678')"
+         VALUES ('biz-1', 'ws-1', 'branch-1', 'AFYA-0001', 'Test Clinic', '0712345678')",
     )
     .execute(&mut *conn)
     .await?;
 
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_outbox WHERE entity = 'business' AND entity_id = 'biz-1'")
-        .fetch_one(&mut *conn)
-        .await?;
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sync_outbox WHERE entity = 'business' AND entity_id = 'biz-1'",
+    )
+    .fetch_one(&mut *conn)
+    .await?;
     assert_eq!(count, 1);
     Ok(())
 }
@@ -39,7 +39,7 @@ async fn update_bumps_version_and_enqueues() -> Result<(), Box<dyn std::error::E
 
     sqlx::query(
         "INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile)
-         VALUES ('biz-2', 'ws-1', 'branch-1', 'AFYA-0002', 'Test Clinic 2', '0712345678')"
+         VALUES ('biz-2', 'ws-1', 'branch-1', 'AFYA-0002', 'Test Clinic 2', '0712345678')",
     )
     .execute(&mut *conn)
     .await?;
@@ -53,9 +53,10 @@ async fn update_bumps_version_and_enqueues() -> Result<(), Box<dyn std::error::E
         .await?;
     assert_eq!(version, 2);
 
-    let outbox_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_outbox WHERE entity_id = 'biz-2'")
-        .fetch_one(&mut *conn)
-        .await?;
+    let outbox_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM sync_outbox WHERE entity_id = 'biz-2'")
+            .fetch_one(&mut *conn)
+            .await?;
     assert!(outbox_count >= 2);
     Ok(())
 }
@@ -76,9 +77,10 @@ async fn price_change_writes_history_once() -> Result<(), Box<dyn std::error::Er
         .execute(&mut *conn)
         .await?;
 
-    let history_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM price_history WHERE inventory_item_id = 'inv-1'")
-        .fetch_one(&mut *conn)
-        .await?;
+    let history_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM price_history WHERE inventory_item_id = 'inv-1'")
+            .fetch_one(&mut *conn)
+            .await?;
     assert_eq!(history_count, 1);
     Ok(())
 }
@@ -99,9 +101,10 @@ async fn price_noop_update_writes_no_history() -> Result<(), Box<dyn std::error:
         .execute(&mut *conn)
         .await?;
 
-    let history_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM price_history WHERE inventory_item_id = 'inv-2'")
-        .fetch_one(&mut *conn)
-        .await?;
+    let history_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM price_history WHERE inventory_item_id = 'inv-2'")
+            .fetch_one(&mut *conn)
+            .await?;
     assert_eq!(history_count, 0);
     Ok(())
 }
@@ -113,7 +116,7 @@ async fn hard_delete_blocked() -> Result<(), Box<dyn std::error::Error>> {
 
     sqlx::query(
         "INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile)
-         VALUES ('biz-3', 'ws-1', 'branch-1', 'AFYA-0003', 'Test Clinic 3', '0712345678')"
+         VALUES ('biz-3', 'ws-1', 'branch-1', 'AFYA-0003', 'Test Clinic 3', '0712345678')",
     )
     .execute(&mut *conn)
     .await?;
@@ -132,17 +135,21 @@ async fn soft_delete_emits_delete_op() -> Result<(), Box<dyn std::error::Error>>
 
     sqlx::query(
         "INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile)
-         VALUES ('biz-4', 'ws-1', 'branch-1', 'AFYA-0004', 'Test Clinic 4', '0712345678')"
+         VALUES ('biz-4', 'ws-1', 'branch-1', 'AFYA-0004', 'Test Clinic 4', '0712345678')",
     )
     .execute(&mut *conn)
     .await?;
 
-    sqlx::query("UPDATE business SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = 'biz-4'")
-        .execute(&mut *conn)
-        .await?;
+    sqlx::query(
+        "UPDATE business SET deleted_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = 'biz-4'",
+    )
+    .execute(&mut *conn)
+    .await?;
 
     let batch = next_batch(&mut *conn, 10).await?;
-    let delete_op = batch.iter().find(|b| b.entity_id == "biz-4" && b.op == "delete");
+    let delete_op = batch
+        .iter()
+        .find(|b| b.entity_id == "biz-4" && b.op == "delete");
     assert!(delete_op.is_some());
     Ok(())
 }
@@ -180,7 +187,7 @@ async fn ack_supersedes_older_pending() -> Result<(), Box<dyn std::error::Error>
 
     sqlx::query(
         "INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile)
-         VALUES ('biz-5', 'ws-1', 'branch-1', 'AFYA-0005', 'Test Clinic 5', '0712345678')"
+         VALUES ('biz-5', 'ws-1', 'branch-1', 'AFYA-0005', 'Test Clinic 5', '0712345678')",
     )
     .execute(&mut *conn)
     .await?;
@@ -189,15 +196,21 @@ async fn ack_supersedes_older_pending() -> Result<(), Box<dyn std::error::Error>
         .execute(&mut *conn)
         .await?;
 
-    let change_id: String = sqlx::query_scalar("SELECT id FROM sync_outbox WHERE entity_id = 'biz-5' ORDER BY created_at DESC LIMIT 1")
-        .fetch_one(&mut *conn)
-        .await?;
+    let change_id: String = sqlx::query_scalar(
+        "SELECT id FROM sync_outbox WHERE entity_id = 'biz-5' ORDER BY created_at DESC LIMIT 1",
+    )
+    .fetch_one(&mut *conn)
+    .await?;
 
-    ack(&mut *conn, vec![ChangeAck {
-        change_id,
-        status: AckStatus::Applied,
-        reason: None,
-    }]).await?;
+    ack(
+        &mut *conn,
+        vec![ChangeAck {
+            change_id,
+            status: AckStatus::Applied,
+            reason: None,
+        }],
+    )
+    .await?;
 
     let pending_for_biz5: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM sync_outbox WHERE entity_id = 'biz-5' AND status IN ('pending', 'inflight')"
@@ -338,7 +351,7 @@ async fn inflight_requeue_after_crash() -> Result<(), Box<dyn std::error::Error>
 
     sqlx::query(
         "INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile)
-         VALUES ('biz-7', 'ws-1', 'branch-1', 'AFYA-0007', 'Test Clinic 7', '0712345678')"
+         VALUES ('biz-7', 'ws-1', 'branch-1', 'AFYA-0007', 'Test Clinic 7', '0712345678')",
     )
     .execute(&mut *conn)
     .await?;
@@ -346,16 +359,18 @@ async fn inflight_requeue_after_crash() -> Result<(), Box<dyn std::error::Error>
     let batch = next_batch(&mut *conn, 10).await?;
     assert!(!batch.is_empty());
 
-    let status: String = sqlx::query_scalar("SELECT status FROM sync_outbox WHERE entity_id = 'biz-7'")
-        .fetch_one(&mut *conn)
-        .await?;
+    let status: String =
+        sqlx::query_scalar("SELECT status FROM sync_outbox WHERE entity_id = 'biz-7'")
+            .fetch_one(&mut *conn)
+            .await?;
     assert_eq!(status, "inflight");
 
     requeue_stale_inflight(&mut *conn, 0).await?;
 
-    let status_after: String = sqlx::query_scalar("SELECT status FROM sync_outbox WHERE entity_id = 'biz-7'")
-        .fetch_one(&mut *conn)
-        .await?;
+    let status_after: String =
+        sqlx::query_scalar("SELECT status FROM sync_outbox WHERE entity_id = 'biz-7'")
+            .fetch_one(&mut *conn)
+            .await?;
     assert_eq!(status_after, "pending");
     Ok(())
 }
@@ -372,7 +387,10 @@ async fn real_world_dev_db_migration() -> Result<(), Box<dyn std::error::Error>>
         let mut conn = pool.acquire().await?;
         enqueue_bootstrap(&mut *conn).await?;
         let count = core_desktop_lib::sync::store::pending_count(&mut *conn).await?;
-        println!("Real-world dev DB pending sync count after migration & bootstrap: {}", count);
+        println!(
+            "Real-world dev DB pending sync count after migration & bootstrap: {}",
+            count
+        );
         assert!(count >= 0);
     }
     Ok(())

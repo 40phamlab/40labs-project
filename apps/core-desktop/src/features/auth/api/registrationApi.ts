@@ -1,6 +1,10 @@
 import { authApi } from '../../../api/authApi';
 
 export interface RegistrationPayload {
+  verification_token: string;
+  username: string;
+  password: string;
+  terms_accepted: true;
   business_name: string;
   logo_data_url?: string | null;
   region: string;
@@ -27,11 +31,11 @@ export interface RegistrationPayload {
 }
 
 export const registrationApi = {
-  requestOtp: async (phoneOrEmail: string, _channel: 'sms' | 'email' = 'sms') => {
-    await authApi.otpRequest(phoneOrEmail);
+  requestOtp: async (phone: string) => {
+    await authApi.otpRequest(phone);
   },
-  verifyOtp: async (phoneOrEmail: string, code: string, _channel: 'sms' | 'email' = 'sms') => {
-    return await authApi.otpVerify(phoneOrEmail, code);
+  verifyOtp: async (phone: string, code: string) => {
+    return await authApi.otpVerify(phone, code);
   },
   commitRegistration: async (payload: RegistrationPayload) => {
     return await authApi.registrationCommit(payload as unknown as Record<string, unknown>);

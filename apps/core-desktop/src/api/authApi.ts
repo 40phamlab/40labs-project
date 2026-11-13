@@ -2,6 +2,9 @@ import type { Business, User } from '@40labs/types';
 import { invokeCommand, isTauriAvailable } from './client';
 import { logAuthDebug } from '../lib/debugLog';
 
+const REGISTRATION_COMMIT_TIMEOUT_MS = 60_000;
+const RECOVERY_CODES_TIMEOUT_MS = 60_000;
+
 export interface AuthStatusResponse {
   deviceBound: boolean;
   business: Business | null;
@@ -40,7 +43,7 @@ export interface AuthApi {
   recoveryRedeem(username: string, code: string, newPassword: string): Promise<void>;
   recoveryRegenerate(password: string): Promise<Array<string>>;
   recoveryGenerateInitial(): Promise<Array<string>>;
-  registrationCommit(payload: Record<string, unknown>): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>;
+  registrationCommit(payload: Record<string, unknown>): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string; recoveryCodes?: string[] }>;
   otpRequest(phone: string): Promise<void>;
   otpVerify(phone: string, code: string): Promise<string>;
   totpStatus(): Promise<{ status: string; enabled: boolean }>;
@@ -85,9 +88,17 @@ export const tauriAuthApi: AuthApi = {
   userSetActive: (userId, active) => invokeCommand<void>('user_set_active', { userId, active }),
   userResetCredentials: (userId) => invokeCommand<string>('user_reset_credentials', { userId }),
   recoveryRedeem: (username, code, newPassword) => invokeCommand<void>('recovery_redeem', { username, code, newPassword }),
-  recoveryRegenerate: (password) => invokeCommand<Array<string>>('recovery_regenerate', { password }),
-  recoveryGenerateInitial: () => invokeCommand<Array<string>>('recovery_generate_initial'),
-  registrationCommit: (payload) => invokeCommand<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string }>('registration_commit', { payload }),
+  recoveryRegenerate: (password) => invokeCommand<Array<string>>('recovery_regenerate', { password }, RECOVERY_CODES_TIMEOUT_MS),
+  recoveryGenerateInitial: () => invokeCommand<Array<string>>('recovery_generate_initial', undefined, RECOVERY_CODES_TIMEOUT_MS),
+  registrationCommit: (payload) => invokeCommand<{
+    businessId?: string;
+    business_id?: string;
+    workspaceId?: string;
+    workspace_id?: string;
+    branchId?: string;
+    branch_id?: string;
+    recoveryCodes?: string[];
+  }>('registration_commit', { payload }, REGISTRATION_COMMIT_TIMEOUT_MS),
   otpRequest: (phone) => invokeCommand<void>('otp_request', { phone }),
   otpVerify: (phone, code) => invokeCommand<string>('otp_verify', { phone, code }),
   onboardingAdvance: (state) => invokeCommand<void>('onboarding_advance', { stateName: state }),
@@ -170,7 +181,7 @@ export const mockAuthApi: AuthApi = {
       mockState.session.pinSet = true;
     }
   },
-  stepUp: async (_permission, secret, method = 'pin', _approverUserId, _target) => {
+  stepUp: async (_permission, secret, _method = 'pin', _approverUserId, _target) => {
     if (!secret) {
       throw { code: 'INVALID_CREDENTIALS' };
     }
@@ -249,7 +260,12 @@ export const mockAuthApi: AuthApi = {
     };
     mockState.business = biz;
     mockState.session = null;
-    return { business_id: biz.business_id, workspace_id: biz.workspace_id, branch_id: biz.branch_id };
+    return {
+      business_id: biz.business_id,
+      workspace_id: biz.workspace_id,
+      branch_id: biz.branch_id,
+      recoveryCodes: ['DEV01-ABCDE', 'DEV02-ABCDE', 'DEV03-ABCDE', 'DEV04-ABCDE'],
+    };
   },
   otpRequest: async () => {},
   otpVerify: async () => 'mock-verification-token',

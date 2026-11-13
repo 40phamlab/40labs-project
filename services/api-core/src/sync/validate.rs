@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use crate::error::ApiError;
+use serde::Deserialize;
 use std::io::Read;
 
 #[derive(Deserialize, Debug)]
@@ -37,14 +37,18 @@ pub fn validate_push_payload(req: &PushRequest) -> Result<(), ApiError> {
         return Ok(());
     }
     if req.changes.len() > 500 {
-        return Err(ApiError::BadRequest("Batch exceeds maximum limit of 500 changes".into()));
+        return Err(ApiError::BadRequest(
+            "Batch exceeds maximum limit of 500 changes".into(),
+        ));
     }
     Ok(())
 }
 
 pub fn decompress_gzip(bytes: &[u8], max_size: usize) -> Result<Vec<u8>, ApiError> {
     if bytes.len() > max_size {
-        return Err(ApiError::BadRequest("Payload exceeds maximum allowed size of 1 MB".into()));
+        return Err(ApiError::BadRequest(
+            "Payload exceeds maximum allowed size of 1 MB".into(),
+        ));
     }
 
     // Check if gzip magic bytes (0x1f, 0x8b) are present
@@ -52,11 +56,14 @@ pub fn decompress_gzip(bytes: &[u8], max_size: usize) -> Result<Vec<u8>, ApiErro
         let mut decoder = flate2::read::GzDecoder::new(bytes);
         let mut decompressed = Vec::new();
         let mut limited = decoder.take((max_size + 1) as u64);
-        limited.read_to_end(&mut decompressed)
+        limited
+            .read_to_end(&mut decompressed)
             .map_err(|_| ApiError::BadRequest("Failed to decompress gzip payload".into()))?;
 
         if decompressed.len() > max_size {
-            return Err(ApiError::BadRequest("Decompressed payload exceeds 1 MB limit".into()));
+            return Err(ApiError::BadRequest(
+                "Decompressed payload exceeds 1 MB limit".into(),
+            ));
         }
         Ok(decompressed)
     } else {

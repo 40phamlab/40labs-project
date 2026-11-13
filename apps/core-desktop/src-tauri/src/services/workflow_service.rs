@@ -1,15 +1,15 @@
+use crate::models::audit::AuditLogEntry;
+use crate::models::lab::{
+    LabReport, LabResult, LabStageAttachmentDb, LabWorkflowRunDb, LabWorkflowRunStepDb,
+    WorkflowExecutionExportManifest,
+};
+use crate::repositories::audit_repo::AuditRepository;
+use crate::repositories::lab_repo::LabRepository;
 use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::Manager;
-use sqlx::SqlitePool;
-use crate::models::lab::{
-    LabWorkflowRunDb, LabWorkflowRunStepDb, LabStageAttachmentDb,
-    WorkflowExecutionExportManifest, LabReport, LabResult
-};
-use crate::models::audit::AuditLogEntry;
-use crate::repositories::lab_repo::LabRepository;
-use crate::repositories::audit_repo::AuditRepository;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,7 +35,9 @@ pub fn get_workflows_dir<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result
     Ok(workflows_dir)
 }
 
-pub fn get_attachments_dir<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<PathBuf, String> {
+pub fn get_attachments_dir<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> Result<PathBuf, String> {
     let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let att_dir = app_data.join("attachments");
     if !att_dir.exists() {
@@ -44,7 +46,9 @@ pub fn get_attachments_dir<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Resu
     Ok(att_dir)
 }
 
-pub fn list_workflows<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Vec<WorkflowTemplateFile>, String> {
+pub fn list_workflows<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> Result<Vec<WorkflowTemplateFile>, String> {
     let dir = get_workflows_dir(app)?;
     let mut list = Vec::new();
 
@@ -134,7 +138,10 @@ pub fn publish_workflow<R: tauri::Runtime>(
     template_id: String,
 ) -> Result<WorkflowTemplateFile, String> {
     let mut workflows = list_workflows(app)?;
-    let target_idx = workflows.iter().position(|w| w.id == template_id).ok_or("Workflow template not found")?;
+    let target_idx = workflows
+        .iter()
+        .position(|w| w.id == template_id)
+        .ok_or("Workflow template not found")?;
     let now = chrono::Utc::now().to_rfc3339();
 
     let target_test_id = workflows[target_idx].test_id.clone();
@@ -159,7 +166,10 @@ pub fn export_workflow<R: tauri::Runtime>(
     destination_path: String,
 ) -> Result<(), String> {
     let workflows = list_workflows(app)?;
-    let target = workflows.iter().find(|w| w.id == template_id).ok_or("Workflow template not found")?;
+    let target = workflows
+        .iter()
+        .find(|w| w.id == template_id)
+        .ok_or("Workflow template not found")?;
     let content = serde_json::to_string_pretty(target).map_err(|e| e.to_string())?;
     fs::write(destination_path, content).map_err(|e| e.to_string())?;
     Ok(())
@@ -169,7 +179,8 @@ pub fn import_workflow<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     json_content: String,
 ) -> Result<WorkflowTemplateFile, String> {
-    let mut template: WorkflowTemplateFile = serde_json::from_str(&json_content).map_err(|e| e.to_string())?;
+    let mut template: WorkflowTemplateFile =
+        serde_json::from_str(&json_content).map_err(|e| e.to_string())?;
     template.id = format!("wf_{}", uuid::Uuid::new_v4());
     template.updated_at = chrono::Utc::now().to_rfc3339();
     save_workflow(app, template)
@@ -184,7 +195,10 @@ pub async fn start_execution(
     template_id: &str,
 ) -> Result<(LabWorkflowRunDb, Vec<LabWorkflowRunStepDb>), String> {
     let workflows = list_workflows(app)?;
-    let template = workflows.iter().find(|w| w.id == template_id).ok_or("Workflow template not found")?;
+    let template = workflows
+        .iter()
+        .find(|w| w.id == template_id)
+        .ok_or("Workflow template not found")?;
 
     let now = chrono::Utc::now().to_rfc3339();
     let run_id = format!("wfrun_{}", uuid::Uuid::new_v4());
@@ -201,7 +215,8 @@ pub async fn start_execution(
         updated_at: now.clone(),
     };
 
-    let graph: serde_json::Value = serde_json::from_str(&template.graph_json).map_err(|e| e.to_string())?;
+    let graph: serde_json::Value =
+        serde_json::from_str(&template.graph_json).map_err(|e| e.to_string())?;
     let nodes = graph["nodes"].as_array().ok_or("Invalid graph nodes")?;
     let edges = graph["edges"].as_array().cloned().unwrap_or_default();
 
@@ -218,7 +233,9 @@ pub async fn start_execution(
     }
 
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
-    LabRepository::create_workflow_run(&mut *tx, &run).await.map_err(|e| e.to_string())?;
+    LabRepository::create_workflow_run(&mut *tx, &run)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let mut steps = Vec::new();
     for node in nodes {
@@ -242,7 +259,9 @@ pub async fn start_execution(
             updated_at: now.clone(),
         };
 
-        LabRepository::create_workflow_run_step(&mut *tx, &step).await.map_err(|e| e.to_string())?;
+        LabRepository::create_workflow_run_step(&mut *tx, &step)
+            .await
+            .map_err(|e| e.to_string())?;
         steps.push(step);
     }
 
@@ -283,12 +302,21 @@ pub async fn complete_step(
         .await
         .map_err(|e| e.to_string())?;
 
-    let all_done = steps.iter().all(|s| s.status == "done" || s.status == "skipped");
+    let all_done = steps
+        .iter()
+        .all(|s| s.status == "done" || s.status == "skipped");
     let new_state = if all_done { "completed" } else { "running" };
 
-    LabRepository::update_workflow_run_state(&mut *tx, workspace_id, branch_id, run_id, new_state, &now)
-        .await
-        .map_err(|e| e.to_string())?;
+    LabRepository::update_workflow_run_state(
+        &mut *tx,
+        workspace_id,
+        branch_id,
+        run_id,
+        new_state,
+        &now,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
 
@@ -297,9 +325,10 @@ pub async fn complete_step(
         .map_err(|e| e.to_string())?
         .ok_or("Workflow run not found")?;
 
-    let updated_steps = LabRepository::list_workflow_run_steps(pool, workspace_id, branch_id, run_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let updated_steps =
+        LabRepository::list_workflow_run_steps(pool, workspace_id, branch_id, run_id)
+            .await
+            .map_err(|e| e.to_string())?;
 
     Ok((run, updated_steps))
 }
@@ -353,7 +382,9 @@ pub async fn attach_stage_file<R: tauri::Runtime>(
     };
 
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
-    LabRepository::create_stage_attachment(&mut *tx, &attachment).await.map_err(|e| e.to_string())?;
+    LabRepository::create_stage_attachment(&mut *tx, &attachment)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let audit_entry = AuditLogEntry {
         id: format!("audit_{}", uuid::Uuid::new_v4()),
@@ -364,9 +395,14 @@ pub async fn attach_stage_file<R: tauri::Runtime>(
         performed_by_user_id: Some(actor_user_id.to_string()),
         target_entity_type: "lab_stage_attachment".to_string(),
         target_entity_id: attachment.id.clone(),
-        metadata: Some(serde_json::json!({ "filename": sanitized_name, "runId": run_id, "nodeId": node_id }).to_string()),
+        metadata: Some(
+            serde_json::json!({ "filename": sanitized_name, "runId": run_id, "nodeId": node_id })
+                .to_string(),
+        ),
     };
-    AuditRepository::create(pool, &audit_entry).await.map_err(|e| e.to_string())?;
+    AuditRepository::create(pool, &audit_entry)
+        .await
+        .map_err(|e| e.to_string())?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
     Ok(attachment)
@@ -383,17 +419,20 @@ pub async fn replace_stage_file<R: tauri::Runtime>(
     mime_type: String,
     file_bytes: Vec<u8>,
 ) -> Result<LabStageAttachmentDb, String> {
-    let existing = LabRepository::get_stage_attachment(pool, workspace_id, branch_id, attachment_id)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or("Attachment not found")?;
+    let existing =
+        LabRepository::get_stage_attachment(pool, workspace_id, branch_id, attachment_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or("Attachment not found")?;
 
     let sanitized_name = Path::new(&original_filename)
         .file_name()
         .and_then(|s| s.to_str())
         .ok_or("Invalid filename")?;
 
-    let att_dir = get_attachments_dir(app)?.join(&existing.run_id).join(&existing.node_id);
+    let att_dir = get_attachments_dir(app)?
+        .join(&existing.run_id)
+        .join(&existing.node_id);
     if !att_dir.exists() {
         fs::create_dir_all(&att_dir).map_err(|e| e.to_string())?;
     }
@@ -410,7 +449,9 @@ pub async fn replace_stage_file<R: tauri::Runtime>(
     let now = chrono::Utc::now().to_rfc3339();
 
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
-    LabRepository::delete_stage_attachment(&mut *tx, workspace_id, branch_id, attachment_id).await.map_err(|e| e.to_string())?;
+    LabRepository::delete_stage_attachment(&mut *tx, workspace_id, branch_id, attachment_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let updated = LabStageAttachmentDb {
         id: existing.id.clone(),
@@ -428,7 +469,9 @@ pub async fn replace_stage_file<R: tauri::Runtime>(
         updated_at: now.clone(),
     };
 
-    LabRepository::create_stage_attachment(&mut *tx, &updated).await.map_err(|e| e.to_string())?;
+    LabRepository::create_stage_attachment(&mut *tx, &updated)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let audit_entry = AuditLogEntry {
         id: format!("audit_{}", uuid::Uuid::new_v4()),
@@ -441,7 +484,9 @@ pub async fn replace_stage_file<R: tauri::Runtime>(
         target_entity_id: existing.id.clone(),
         metadata: Some(serde_json::json!({ "filename": sanitized_name }).to_string()),
     };
-    AuditRepository::create(pool, &audit_entry).await.map_err(|e| e.to_string())?;
+    AuditRepository::create(pool, &audit_entry)
+        .await
+        .map_err(|e| e.to_string())?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
     Ok(updated)
@@ -454,10 +499,11 @@ pub async fn remove_stage_file(
     actor_user_id: &str,
     attachment_id: &str,
 ) -> Result<(), String> {
-    let existing = LabRepository::get_stage_attachment(pool, workspace_id, branch_id, attachment_id)
-        .await
-        .map_err(|e| e.to_string())?
-        .ok_or("Attachment not found")?;
+    let existing =
+        LabRepository::get_stage_attachment(pool, workspace_id, branch_id, attachment_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or("Attachment not found")?;
 
     if Path::new(&existing.storage_path).exists() {
         let _ = fs::remove_file(&existing.storage_path);
@@ -465,7 +511,9 @@ pub async fn remove_stage_file(
 
     let now = chrono::Utc::now().to_rfc3339();
     let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
-    LabRepository::delete_stage_attachment(&mut *tx, workspace_id, branch_id, attachment_id).await.map_err(|e| e.to_string())?;
+    LabRepository::delete_stage_attachment(&mut *tx, workspace_id, branch_id, attachment_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let audit_entry = AuditLogEntry {
         id: format!("audit_{}", uuid::Uuid::new_v4()),
@@ -478,7 +526,9 @@ pub async fn remove_stage_file(
         target_entity_id: attachment_id.to_string(),
         metadata: Some(serde_json::json!({ "filename": existing.original_filename }).to_string()),
     };
-    AuditRepository::create(pool, &audit_entry).await.map_err(|e| e.to_string())?;
+    AuditRepository::create(pool, &audit_entry)
+        .await
+        .map_err(|e| e.to_string())?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
     Ok(())
@@ -501,12 +551,13 @@ pub async fn export_execution_run(
         .await
         .map_err(|e| e.to_string())?;
 
-    let attachments = LabRepository::list_all_stage_attachments_for_run(pool, workspace_id, branch_id, run_id)
-        .await
-        .map_err(|e| e.to_string())?;
+    let attachments =
+        LabRepository::list_all_stage_attachments_for_run(pool, workspace_id, branch_id, run_id)
+            .await
+            .map_err(|e| e.to_string())?;
 
     let reports = sqlx::query_as::<_, LabReport>(
-        "SELECT * FROM lab_report WHERE workspace_id = ? AND branch_id = ? AND order_id = ?"
+        "SELECT * FROM lab_report WHERE workspace_id = ? AND branch_id = ? AND order_id = ?",
     )
     .bind(workspace_id)
     .bind(branch_id)
@@ -516,7 +567,7 @@ pub async fn export_execution_run(
     .map_err(|e| e.to_string())?;
 
     let results = sqlx::query_as::<_, LabResult>(
-        "SELECT * FROM lab_result WHERE workspace_id = ? AND branch_id = ? AND lab_order_id = ?"
+        "SELECT * FROM lab_result WHERE workspace_id = ? AND branch_id = ? AND lab_order_id = ?",
     )
     .bind(workspace_id)
     .bind(branch_id)
@@ -560,7 +611,8 @@ pub async fn import_execution_commit(
     json_content: &str,
     conflict_strategy: &str, // "skip", "overwrite", "create_new"
 ) -> Result<LabWorkflowRunDb, String> {
-    let manifest: WorkflowExecutionExportManifest = serde_json::from_str(json_content).map_err(|e| e.to_string())?;
+    let manifest: WorkflowExecutionExportManifest =
+        serde_json::from_str(json_content).map_err(|e| e.to_string())?;
     if manifest.format_version != "1.0" {
         return Err("Incompatible schema version in execution manifest".into());
     }
@@ -583,16 +635,24 @@ pub async fn import_execution_commit(
             sqlx::query("DELETE FROM lab_workflow_run_step WHERE workspace_id = ? AND branch_id = ? AND run_id = ?")
                 .bind(workspace_id).bind(branch_id).bind(&run.id)
                 .execute(&mut *tx).await.map_err(|e| e.to_string())?;
-            sqlx::query("DELETE FROM lab_workflow_run WHERE workspace_id = ? AND branch_id = ? AND id = ?")
-                .bind(workspace_id).bind(branch_id).bind(&run.id)
-                .execute(&mut *tx).await.map_err(|e| e.to_string())?;
+            sqlx::query(
+                "DELETE FROM lab_workflow_run WHERE workspace_id = ? AND branch_id = ? AND id = ?",
+            )
+            .bind(workspace_id)
+            .bind(branch_id)
+            .bind(&run.id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| e.to_string())?;
         }
     }
 
     run.workspace_id = workspace_id.to_string();
     run.branch_id = branch_id.to_string();
 
-    LabRepository::create_workflow_run(&mut *tx, &run).await.map_err(|e| e.to_string())?;
+    LabRepository::create_workflow_run(&mut *tx, &run)
+        .await
+        .map_err(|e| e.to_string())?;
 
     for mut step in manifest.steps {
         if conflict_strategy == "create_new" {
@@ -601,7 +661,9 @@ pub async fn import_execution_commit(
         step.workspace_id = workspace_id.to_string();
         step.branch_id = branch_id.to_string();
         step.run_id = run.id.clone();
-        LabRepository::create_workflow_run_step(&mut *tx, &step).await.map_err(|e| e.to_string())?;
+        LabRepository::create_workflow_run_step(&mut *tx, &step)
+            .await
+            .map_err(|e| e.to_string())?;
     }
 
     let audit_entry = AuditLogEntry {
@@ -613,9 +675,14 @@ pub async fn import_execution_commit(
         performed_by_user_id: Some(actor_user_id.to_string()),
         target_entity_type: "lab_workflow_run".to_string(),
         target_entity_id: run.id.clone(),
-        metadata: Some(serde_json::json!({ "strategy": conflict_strategy, "importedRunId": run.id }).to_string()),
+        metadata: Some(
+            serde_json::json!({ "strategy": conflict_strategy, "importedRunId": run.id })
+                .to_string(),
+        ),
     };
-    AuditRepository::create(pool, &audit_entry).await.map_err(|e| e.to_string())?;
+    AuditRepository::create(pool, &audit_entry)
+        .await
+        .map_err(|e| e.to_string())?;
 
     tx.commit().await.map_err(|e| e.to_string())?;
     Ok(run)
@@ -629,7 +696,7 @@ pub async fn export_lab_report_record_text(
     report_id: &str,
 ) -> Result<String, String> {
     let report = sqlx::query_as::<_, LabReport>(
-        "SELECT * FROM lab_report WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+        "SELECT * FROM lab_report WHERE workspace_id = ? AND branch_id = ? AND id = ?",
     )
     .bind(workspace_id)
     .bind(branch_id)
@@ -663,8 +730,16 @@ pub async fn export_lab_report_record_text(
          Created At: {}\n\
          ----------------------------------------\n\
          RESULTS:\n",
-        report.id, report.order_id, report.patient_id, report.status, report.version,
-        report.prepared_by, report.finalized_by, report.finalized_at, report.summary_note, report.created_at
+        report.id,
+        report.order_id,
+        report.patient_id,
+        report.status,
+        report.version,
+        report.prepared_by,
+        report.finalized_by,
+        report.finalized_at,
+        report.summary_note,
+        report.created_at
     );
 
     for res in results {

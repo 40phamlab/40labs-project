@@ -38,6 +38,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if arg == "admin-seed" {
             let config = Config::from_env();
+            if config.app_env.eq_ignore_ascii_case("production") {
+                eprintln!("admin-seed is disabled in production");
+                std::process::exit(1);
+            }
             let pool = PgPoolOptions::new()
                 .max_connections(1)
                 .connect(&config.database_url)
@@ -50,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let mut email = "admin@40labs.io".to_string();
             let mut role = "admin".to_string();
-            let mut password = String::new();
+            let password = std::env::var("ADMIN_SEED_PASSWORD").unwrap_or_default();
 
             let args: Vec<String> = std::env::args().collect();
             let mut i = 2;
@@ -68,43 +72,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             i += 1;
                         }
                     }
-                    "--password" => {
-                        if i + 1 < args.len() {
-                            password = args[i + 1].clone();
-                            i += 1;
-                        }
-                    }
                     _ => {}
                 }
                 i += 1;
             }
 
-            if password.is_empty() {
-                password = format!(
-                    "Admin#{}!",
-                    rand::Rng::gen_range(&mut rand::thread_rng(), 1000..9999)
-                );
-                println!("Generated one-time password: {}", password);
+            if password.len() < 16 {
+                eprintln!("Set ADMIN_SEED_PASSWORD to a unique password of at least 16 characters");
+                std::process::exit(2);
             }
 
             let password_hash =
                 api_core::admin::auth::hash_password(&password).expect("Failed to hash password");
-            let (totp_secret, otpauth_url) = api_core::admin::auth::generate_totp_secret();
-            let totp_secret_enc =
-                api_core::admin::auth::encrypt_secret(&totp_secret, &config.totp_enc_key)
-                    .expect("Failed to encrypt TOTP secret");
             let id = uuid::Uuid::new_v4().to_string();
 
             let res = sqlx::query(
                 "INSERT INTO admin_users (id, email, password_hash, totp_secret_enc, role) \
-                 VALUES ($1, $2, $3, $4, $5) \
-                 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, totp_secret_enc = EXCLUDED.totp_secret_enc, role = EXCLUDED.role \
+                 VALUES ($1, $2, $3, NULL, $4) \
+                 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, totp_secret_enc = NULL, totp_last_step = NULL, role = EXCLUDED.role \
                  RETURNING id"
             )
             .bind(id)
             .bind(&email)
             .bind(&password_hash)
-            .bind(&totp_secret_enc)
             .bind(&role)
             .fetch_one(&pool)
             .await;
@@ -114,9 +104,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("Admin seeded successfully!");
                     println!("Email: {}", email);
                     println!("Role: {}", role);
-                    println!("Password: {}", password);
-                    println!("TOTP Secret (Base32): {}", totp_secret);
-                    println!("OTPAuth URL: {}", otpauth_url);
                     std::process::exit(0);
                 }
                 Err(e) => {
@@ -240,6 +227,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let config = Config::from_env();
+    if let Err(error) = config.validate_environment() {
+        panic!("Refusing to start with invalid environment configuration: {error}");
+    }
     let default_log = if config.app_env.to_lowercase() == "production" {
         "api_core=info,tower_http=info".into()
     } else {
@@ -258,19 +248,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "Refusing to start: Cannot use console OTP provider in production environment."
         );
         panic!("Refusing to start: Console OTP provider not allowed in production.");
-    }
-
-    if config.app_env.to_lowercase() == "production" {
-        if !api_core::auth::device::key_configuration_is_valid(&config) {
-            panic!("Refusing to start in production mode: DEVICE_TOKEN_SIGNING_KEY_ID and DEVICE_TOKEN_SIGNING_KEYS must configure at least one 32-byte key");
-        }
-        let is_invalid = config.activation_signing_key.is_empty()
-            || hex::decode(&config.activation_signing_key)
-                .map(|d| d.len() < 32)
-                .unwrap_or(true);
-        if is_invalid {
-            panic!("Refusing to start in production mode: ACTIVATION_SIGNING_KEY must be a valid hex string of at least 32 bytes.");
-        }
     }
 
     if config.sms_mode.to_lowercase() == "live" || config.otp_provider.to_lowercase() == "nextsms" {
@@ -342,9 +319,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config: config.clone(),
         sms_sender,
         rate_limiter,
-        admin_challenges: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-        login_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-        account_lockouts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     };
 
     api_core::admin::infra::start_health_prober(state.clone());

@@ -77,7 +77,7 @@ function AdminShellContent() {
       lastNonClosedState="open"
       onNavStateChange={setSidebarState}
     >
-      <div className="h-full w-full animate-screen-enter">
+      <div className="h-full min-h-0 w-full overflow-x-hidden overflow-y-auto animate-screen-enter">
         <Routes>
           <Route path="/" element={<OverviewPage />} />
           <Route path="/businesses" element={<BusinessesPage />} />

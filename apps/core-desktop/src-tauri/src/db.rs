@@ -1,9 +1,9 @@
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions};
-use tauri::Manager;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
+use tauri::Manager;
 
 use crate::auth::AuthState;
 use crate::security::keystore::Keystore;
@@ -168,7 +168,9 @@ pub async fn init_db_pool() -> Result<SqlitePool, Box<dyn std::error::Error>> {
     Err("Release database initialization requires a Tauri AppHandle".into())
 }
 
-pub async fn init_db_pool_for_app<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+pub async fn init_db_pool_for_app<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> Result<SqlitePool, Box<dyn std::error::Error>> {
     let path = if cfg!(debug_assertions) {
         resolve_dev_database_path()?
     } else {
@@ -177,9 +179,12 @@ pub async fn init_db_pool_for_app<R: tauri::Runtime>(app: &tauri::AppHandle<R>) 
     init_db_pool_with_path(&path).await
 }
 
-async fn init_db_pool_with_path(path: &std::path::Path) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+async fn init_db_pool_with_path(
+    path: &std::path::Path,
+) -> Result<SqlitePool, Box<dyn std::error::Error>> {
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("Unable to prepare database directory ({}): {e}", e.kind()))?;
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Unable to prepare database directory ({}): {e}", e.kind()))?;
     }
     tracing::debug!("Opening SQLite database (path redacted)");
     let options = SqliteConnectOptions::new()
@@ -200,7 +205,9 @@ pub async fn init_db_pool_with_url(db_url: &str) -> Result<SqlitePool, Box<dyn s
 }
 
 #[allow(dead_code)]
-async fn init_db_pool_with_options(connect_options: SqliteConnectOptions) -> Result<SqlitePool, Box<dyn std::error::Error>> {
+async fn init_db_pool_with_options(
+    connect_options: SqliteConnectOptions,
+) -> Result<SqlitePool, Box<dyn std::error::Error>> {
     init_db_pool_with_options_and_path(connect_options, None).await
 }
 
@@ -214,8 +221,13 @@ async fn init_db_pool_with_options_and_path(
         .await?;
 
     let migrate_res: Result<(), String> = async {
-        reconcile_registration_migration(&pool).await.map_err(|e| e.to_string())?;
-        SQLITE_MIGRATOR.run(&pool).await.map_err(|e| e.to_string())?;
+        reconcile_registration_migration(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
+        SQLITE_MIGRATOR
+            .run(&pool)
+            .await
+            .map_err(|e| e.to_string())?;
         Ok(())
     }
     .await;
@@ -258,18 +270,24 @@ async fn init_db_pool_with_options_and_path(
                             return Ok(p);
                         }
                         Err(retry_err) => {
-                            tracing::error!("Failed to migrate reset development database: {retry_err}");
+                            tracing::error!(
+                                "Failed to migrate reset development database: {retry_err}"
+                            );
                             return Err(retry_err.into());
                         }
                     }
                 }
             }
 
-            tracing::error!("SQLite migration version/checksum mismatch; database contents were left untouched");
+            tracing::error!(
+                "SQLite migration version/checksum mismatch; database contents were left untouched"
+            );
             if cfg!(debug_assertions) {
                 tracing::error!("Development migration mismatch: inspect migration history and schema; database was not reset");
             } else {
-                tracing::error!("Release migration mismatch: refusing to start; database was not reset");
+                tracing::error!(
+                    "Release migration mismatch: refusing to start; database was not reset"
+                );
             }
         }
         return Err(err_str.into());
@@ -428,14 +446,20 @@ mod tests {
         let path = dir.join("data test.db");
         let pool = init_db_pool_with_path(&path).await.unwrap();
         sqlx::query("CREATE TABLE path_test (value TEXT NOT NULL)")
-            .execute(&pool).await.unwrap();
+            .execute(&pool)
+            .await
+            .unwrap();
         sqlx::query("INSERT INTO path_test VALUES ('preserved')")
-            .execute(&pool).await.unwrap();
+            .execute(&pool)
+            .await
+            .unwrap();
         pool.close().await;
 
         let reopened = init_db_pool_with_path(&path).await.unwrap();
         let value: (String,) = sqlx::query_as("SELECT value FROM path_test")
-            .fetch_one(&reopened).await.unwrap();
+            .fetch_one(&reopened)
+            .await
+            .unwrap();
         assert_eq!(value.0, "preserved");
         reopened.close().await;
         let _ = fs::remove_dir_all(dir);

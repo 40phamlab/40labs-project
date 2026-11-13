@@ -37,7 +37,12 @@ struct ErrorResponse {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let (status, err_code, msg, retry) = match self {
-            ApiError::Database(e) => (StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", e.to_string(), None),
+            ApiError::Database(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "DATABASE_ERROR",
+                e.to_string(),
+                None,
+            ),
             ApiError::BadRequest(m) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", m, None),
             ApiError::InvalidPhone(m) => (StatusCode::BAD_REQUEST, "INVALID_PHONE", m, None),
             ApiError::Unauthorized(m) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", m, None),
@@ -48,27 +53,24 @@ impl IntoResponse for ApiError {
                 format!("Rate limit exceeded. Try again in {} seconds.", retry_after),
                 Some(retry_after),
             ),
-            ApiError::Sms(ref sms_err) => {
-                match sms_err {
-                    crate::sms::SmsError::ProviderUnavailable | crate::sms::SmsError::ProviderRateLimited => {
-                        let retry_secs = 10;
-                        (
-                            StatusCode::SERVICE_UNAVAILABLE,
-                            "SMS_PROVIDER_UNAVAILABLE",
-                            "SMS provider temporarily unavailable. Please retry.".to_string(),
-                            Some(retry_secs),
-                        )
-                    }
-                    _ => {
-                        (
-                            StatusCode::BAD_GATEWAY,
-                            "SMS_PROVIDER_ERROR",
-                            "SMS provider error".to_string(),
-                            None,
-                        )
-                    }
+            ApiError::Sms(ref sms_err) => match sms_err {
+                crate::sms::SmsError::ProviderUnavailable
+                | crate::sms::SmsError::ProviderRateLimited => {
+                    let retry_secs = 10;
+                    (
+                        StatusCode::SERVICE_UNAVAILABLE,
+                        "SMS_PROVIDER_UNAVAILABLE",
+                        "SMS provider temporarily unavailable. Please retry.".to_string(),
+                        Some(retry_secs),
+                    )
                 }
-            }
+                _ => (
+                    StatusCode::BAD_GATEWAY,
+                    "SMS_PROVIDER_ERROR",
+                    "SMS provider error".to_string(),
+                    None,
+                ),
+            },
             ApiError::Internal(m) => (StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", m, None),
         };
 
@@ -81,12 +83,11 @@ impl IntoResponse for ApiError {
         let mut response = body.into_response();
         *response.status_mut() = status;
         if let Some(ra) = retry {
-            let hv = HeaderValue::from_str(&ra.to_string())
-                .unwrap_or_else(|_| HeaderValue::from(ra));
-            response.headers_mut().insert(
-                axum::http::header::RETRY_AFTER,
-                hv,
-            );
+            let hv =
+                HeaderValue::from_str(&ra.to_string()).unwrap_or_else(|_| HeaderValue::from(ra));
+            response
+                .headers_mut()
+                .insert(axum::http::header::RETRY_AFTER, hv);
         }
         response
     }

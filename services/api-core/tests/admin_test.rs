@@ -1,19 +1,22 @@
 // PHASE: Admin-A
-use api_core::admin::auth::{hash_password, verify_password, generate_totp_secret, verify_totp, encrypt_secret, decrypt_secret};
-use axum::{
-    body::Body,
-    http::{Request, StatusCode, header},
+use api_core::admin::auth::{
+    decrypt_secret, encrypt_secret, generate_totp_secret, hash_password, verify_password,
+    verify_totp,
 };
-use http_body_util::BodyExt;
-use tower::ServiceExt;
-use sqlx::postgres::PgPoolOptions;
 use api_core::{
     config::Config,
     ratelimit::RateLimiter,
     routes::{activation, health},
     sms::console::ConsoleOtpProvider,
 };
+use axum::{
+    body::Body,
+    http::{header, Request, StatusCode},
+};
+use http_body_util::BodyExt;
+use sqlx::postgres::PgPoolOptions;
 use std::sync::Arc;
+use tower::ServiceExt;
 
 #[test]
 fn test_password_hashing_and_verification() {
@@ -24,9 +27,11 @@ fn test_password_hashing_and_verification() {
 }
 
 #[test]
-fn print_current_totp() {
+fn test_current_totp_code_generation() {
     let secret_b32 = "GYBNXTWZTCWXLCY3P6HLOH6IJ26V6QW4";
-    let secret = totp_rs::Secret::Encoded(secret_b32.to_string()).to_bytes().unwrap();
+    let secret = totp_rs::Secret::Encoded(secret_b32.to_string())
+        .to_bytes()
+        .unwrap();
     let totp = totp_rs::TOTP::new(
         totp_rs::Algorithm::SHA1,
         6,
@@ -35,15 +40,19 @@ fn print_current_totp() {
         secret,
         Some("40Labs Admin".into()),
         "".into(),
-    ).unwrap();
+    )
+    .unwrap();
     let code = totp.generate_current().unwrap();
-    println!("CURRENT_TOTP_CODE_FOR_SAIRAM: {}", code);
+    assert_eq!(code.len(), 6);
+    assert!(code.chars().all(|digit| digit.is_ascii_digit()));
 }
 
 #[test]
 fn test_totp_generation_and_verification() {
     let (secret_b32, _url) = generate_totp_secret();
-    let secret = totp_rs::Secret::Encoded(secret_b32.clone()).to_bytes().unwrap();
+    let secret = totp_rs::Secret::Encoded(secret_b32.clone())
+        .to_bytes()
+        .unwrap();
     let totp = totp_rs::TOTP::new(
         totp_rs::Algorithm::SHA1,
         6,
@@ -52,7 +61,8 @@ fn test_totp_generation_and_verification() {
         secret,
         Some("40Labs Admin".into()),
         "".into(),
-    ).unwrap();
+    )
+    .unwrap();
     let code = totp.generate_current().unwrap();
     assert!(verify_totp(&secret_b32, &code));
     assert!(!verify_totp(&secret_b32, "000000"));
@@ -86,9 +96,6 @@ async fn test_readyz_fails_when_db_down() {
         config: config.clone(),
         sms_sender: Arc::new(ConsoleOtpProvider::new()),
         rate_limiter: RateLimiter::new(),
-        admin_challenges: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-        login_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-        account_lockouts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     };
 
     let app = health::health_router(state);
@@ -109,7 +116,8 @@ async fn test_readyz_fails_when_db_down() {
 #[tokio::test]
 async fn test_migration_sql_contains_immutable_triggers() {
     let migration_path = concat!(env!("CARGO_MANIFEST_DIR"), "/migrations/0002_admin_ops.sql");
-    let migration_content = std::fs::read_to_string(migration_path).expect("Failed to read 0002_admin_ops.sql");
+    let migration_content =
+        std::fs::read_to_string(migration_path).expect("Failed to read 0002_admin_ops.sql");
 
     assert!(migration_content.contains("CREATE TABLE IF NOT EXISTS admin_audit_log"));
     assert!(migration_content.contains("block_admin_audit_mutation"));
@@ -137,9 +145,6 @@ async fn test_health_prober_handles_dead_db_without_crashing() {
         config: config.clone(),
         sms_sender: Arc::new(ConsoleOtpProvider::new()),
         rate_limiter: RateLimiter::new(),
-        admin_challenges: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-        login_failures: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
-        account_lockouts: Arc::new(std::sync::Mutex::new(std::collections::HashMap::new())),
     };
 
     let res = api_core::admin::infra::run_health_checks(&state).await;
@@ -149,7 +154,8 @@ async fn test_health_prober_handles_dead_db_without_crashing() {
 #[tokio::test]
 async fn test_sync_request_updates_last_seen_at() {
     let migration_path = concat!(env!("CARGO_MANIFEST_DIR"), "/migrations/0003_sync_ops.sql");
-    let migration_content = std::fs::read_to_string(migration_path).expect("Failed to read 0003_sync_ops.sql");
+    let migration_content =
+        std::fs::read_to_string(migration_path).expect("Failed to read 0003_sync_ops.sql");
     assert!(migration_content.contains("last_seen_at"));
     assert!(migration_content.contains("outbox_pending"));
 }
@@ -188,14 +194,17 @@ fn test_forbidden_keys_scan_across_admin_responses() {
             "activation_rate_pct": 0.0,
             "verified_count": 0,
             "unverified_count": 0
-        })
+        }),
     ];
 
     for resp in responses {
         let s = resp.to_string().to_lowercase();
         for key in forbidden {
-            assert!(!s.contains(key), "Forbidden key '{}' found in admin analytics response!", key);
+            assert!(
+                !s.contains(key),
+                "Forbidden key '{}' found in admin analytics response!",
+                key
+            );
         }
     }
 }
-

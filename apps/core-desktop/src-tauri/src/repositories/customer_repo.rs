@@ -66,12 +66,10 @@ impl CustomerRepository {
             .fetch_all(pool)
             .await?
         } else {
-            sqlx::query_as::<_, Customer>(
-                "SELECT * FROM customer WHERE workspace_id = ?",
-            )
-            .bind(workspace_id)
-            .fetch_all(pool)
-            .await?
+            sqlx::query_as::<_, Customer>("SELECT * FROM customer WHERE workspace_id = ?")
+                .bind(workspace_id)
+                .fetch_all(pool)
+                .await?
         };
 
         let target_norm = normalize_tz_phone(norm_phone).unwrap_or_else(|| norm_phone.to_string());
@@ -87,7 +85,10 @@ impl CustomerRepository {
                 }
             }
             let c_digits: String = c.phone.chars().filter(|ch| ch.is_ascii_digit()).collect();
-            if !target_digits.is_empty() && (c_digits == target_digits || (c_digits.len() >= 9 && target_digits.ends_with(&c_digits))) {
+            if !target_digits.is_empty()
+                && (c_digits == target_digits
+                    || (c_digits.len() >= 9 && target_digits.ends_with(&c_digits)))
+            {
                 return Ok(Some(c));
             }
         }
@@ -258,7 +259,10 @@ mod tests {
             .await
             .expect("Failed get_by_id query");
         assert!(fetched_correct_ws.is_some());
-        assert_eq!(fetched_correct_ws.unwrap().email.as_deref(), Some("baraka@example.com"));
+        assert_eq!(
+            fetched_correct_ws.unwrap().email.as_deref(),
+            Some("baraka@example.com")
+        );
     }
 
     #[tokio::test]
@@ -292,9 +296,10 @@ mod tests {
         CustomerRepository::create(&pool, &cust).await.unwrap();
 
         // Verify phone normalized to +255 format
-        let found = CustomerRepository::find_by_workspace_and_phone(&pool, "ws_1", "+255754123456", None)
-            .await
-            .unwrap();
+        let found =
+            CustomerRepository::find_by_workspace_and_phone(&pool, "ws_1", "+255754123456", None)
+                .await
+                .unwrap();
         assert!(found.is_some());
         assert_eq!(found.unwrap().full_name, "Amina Salum");
 

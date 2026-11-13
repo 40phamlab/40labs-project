@@ -1,10 +1,10 @@
 use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
+use crate::models::audit::AuditLogEntry;
 use crate::models::notification::{
     AppendThreadMessagePayload, FindOrCreateThreadPayload, MessageAttachment, Notification,
     NotificationMessage, SaveAttachmentPayload, SendMessagePayload, Thread,
 };
-use crate::models::audit::AuditLogEntry;
 use crate::repositories::audit_repo::AuditRepository;
 use crate::repositories::notification_repo::NotificationRepository;
 use crate::services::documents::{ensure_layout, sanitize_file_name, unique_path, ExportCategory};
@@ -15,10 +15,20 @@ const MAX_IMAGE_SIZE: i64 = 16 * 1024 * 1024; // 16 MB
 const MAX_AUDIO_SIZE: i64 = 16 * 1024 * 1024; // 16 MB
 const MAX_FILE_SIZE: i64 = 100 * 1024 * 1024; // 100 MB
 
-fn validate_attachment_content(bytes: &[u8], kind: &str, file_name: &str, declared_mime: &str) -> Result<(), String> {
-    let extension = std::path::Path::new(file_name).extension().and_then(|v| v.to_str())
-        .map(|v| v.to_ascii_lowercase()).ok_or("File extension is required")?;
-    if file_name.contains('/') || file_name.contains('\\') || file_name.starts_with('.') { return Err("Unsafe attachment file name".into()); }
+fn validate_attachment_content(
+    bytes: &[u8],
+    kind: &str,
+    file_name: &str,
+    declared_mime: &str,
+) -> Result<(), String> {
+    let extension = std::path::Path::new(file_name)
+        .extension()
+        .and_then(|v| v.to_str())
+        .map(|v| v.to_ascii_lowercase())
+        .ok_or("File extension is required")?;
+    if file_name.contains('/') || file_name.contains('\\') || file_name.starts_with('.') {
+        return Err("Unsafe attachment file name".into());
+    }
     let detected = infer::get(bytes).map(|v| v.mime_type());
     let (expected_kind, expected_mime) = match extension.as_str() {
         "png" => ("image", "image/png"), "jpg" | "jpeg" => ("image", "image/jpeg"),
@@ -30,28 +40,63 @@ fn validate_attachment_content(bytes: &[u8], kind: &str, file_name: &str, declar
         _ => return Err("Unsupported type. Supported: PNG, JPEG, GIF, WebP, WAV, MP3, OGG, WebM, M4A/MP4 audio, PDF, and UTF-8 TXT".into()),
     };
     let declared_mime_base = declared_mime.split(';').next().unwrap_or("").trim();
-    if kind != expected_kind || !declared_mime_base.eq_ignore_ascii_case(expected_mime) { return Err("Attachment kind or MIME type does not match its safe extension".into()); }
+    if kind != expected_kind || !declared_mime_base.eq_ignore_ascii_case(expected_mime) {
+        return Err("Attachment kind or MIME type does not match its safe extension".into());
+    }
     if extension == "txt" {
-        if bytes.is_empty() || std::str::from_utf8(bytes).is_err() || bytes.contains(&0) { return Err("TXT attachment must contain non-empty UTF-8 text".into()); }
+        if bytes.is_empty() || std::str::from_utf8(bytes).is_err() || bytes.contains(&0) {
+            return Err("TXT attachment must contain non-empty UTF-8 text".into());
+        }
     } else {
         let format_ok = match extension.as_str() {
-            "png" => bytes.starts_with(b"\x89PNG\r\n\x1a\n") && bytes.len() >= 45 && bytes.get(12..16) == Some(b"IHDR") && bytes.windows(4).any(|w| w == b"IEND"),
-            "jpg" | "jpeg" => bytes.starts_with(&[0xff, 0xd8, 0xff]) && bytes.ends_with(&[0xff, 0xd9]),
-            "gif" => (bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a")) && bytes.ends_with(&[0x3b]),
-            "webp" => bytes.len() >= 12 && bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP"),
-            "wav" => bytes.len() >= 44 && bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WAVE"),
-            "mp3" => bytes.starts_with(b"ID3") || (bytes.len() > 2 && bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0),
+            "png" => {
+                bytes.starts_with(b"\x89PNG\r\n\x1a\n")
+                    && bytes.len() >= 45
+                    && bytes.get(12..16) == Some(b"IHDR")
+                    && bytes.windows(4).any(|w| w == b"IEND")
+            }
+            "jpg" | "jpeg" => {
+                bytes.starts_with(&[0xff, 0xd8, 0xff]) && bytes.ends_with(&[0xff, 0xd9])
+            }
+            "gif" => {
+                (bytes.starts_with(b"GIF87a") || bytes.starts_with(b"GIF89a"))
+                    && bytes.ends_with(&[0x3b])
+            }
+            "webp" => {
+                bytes.len() >= 12 && bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP")
+            }
+            "wav" => {
+                bytes.len() >= 44 && bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WAVE")
+            }
+            "mp3" => {
+                bytes.starts_with(b"ID3")
+                    || (bytes.len() > 2 && bytes[0] == 0xff && bytes[1] & 0xe0 == 0xe0)
+            }
             "ogg" | "oga" => bytes.starts_with(b"OggS"),
-            "webm" => bytes.starts_with(b"\x1aE\xdf\xa3") && (bytes.windows(6).any(|w| w == b"A_OPUS") || bytes.windows(8).any(|w| w == b"A_VORBIS")),
-            "m4a" | "mp4" => bytes.len() >= 12 && bytes.get(4..8) == Some(b"ftyp") && bytes.windows(4).any(|w| w == b"soun"),
-            "pdf" => bytes.starts_with(b"%PDF-") && bytes.windows(5).rev().take(1024).any(|w| w == b"%%EOF"),
+            "webm" => {
+                bytes.starts_with(b"\x1aE\xdf\xa3")
+                    && (bytes.windows(6).any(|w| w == b"A_OPUS")
+                        || bytes.windows(8).any(|w| w == b"A_VORBIS"))
+            }
+            "m4a" | "mp4" => {
+                bytes.len() >= 12
+                    && bytes.get(4..8) == Some(b"ftyp")
+                    && bytes.windows(4).any(|w| w == b"soun")
+            }
+            "pdf" => {
+                bytes.starts_with(b"%PDF-")
+                    && bytes.windows(5).rev().take(1024).any(|w| w == b"%%EOF")
+            }
             _ => false,
         };
         let detected_matches = detected == Some(expected_mime)
             || (expected_mime == "audio/mp4" && detected == Some("video/mp4"))
             || (extension == "webm" && detected == Some("video/webm"));
         if !format_ok || !detected_matches {
-            return Err("File content signature or format structure does not match its declared type".into());
+            return Err(
+                "File content signature or format structure does not match its declared type"
+                    .into(),
+            );
         }
     }
     Ok(())
@@ -89,18 +134,28 @@ pub async fn create_notification(
         .map_err(|e| e.to_response())?;
 
     let recipient = if let Some(customer_id) = payload.recipient_customer_id.as_deref() {
-        Some(crate::repositories::customer_repo::CustomerRepository::get_by_id(
-            &state.pool,
-            &ctx.workspace_id,
-            customer_id,
-        ).await.map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
-        .filter(|customer| customer.archived_at.is_none())
-        .ok_or_else(|| crate::auth::AuthError::NotFound("Customer not found in this workspace".to_string()).to_response())?)
+        Some(
+            crate::repositories::customer_repo::CustomerRepository::get_by_id(
+                &state.pool,
+                &ctx.workspace_id,
+                customer_id,
+            )
+            .await
+            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?
+            .filter(|customer| customer.archived_at.is_none())
+            .ok_or_else(|| {
+                crate::auth::AuthError::NotFound("Customer not found in this workspace".to_string())
+                    .to_response()
+            })?,
+        )
     } else {
         None
     };
 
-    let sender_name = recipient.as_ref().map(|c| c.full_name.as_str()).unwrap_or(&payload.sender_name);
+    let sender_name = recipient
+        .as_ref()
+        .map(|c| c.full_name.as_str())
+        .unwrap_or(&payload.sender_name);
 
     let now = chrono::Utc::now().to_rfc3339();
     let notif_id = format!("notif_{}", uuid::Uuid::new_v4());
@@ -139,26 +194,26 @@ pub async fn create_notification(
         .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
 
     if !payload.body.trim().is_empty() {
-    let msg = NotificationMessage {
-        id: format!("msg_{}", uuid::Uuid::new_v4()),
-        workspace_id: ctx.workspace_id.clone(),
-        branch_id: ctx.branch_id.clone(),
-        notification_id: notif_id,
-        thread_id: notif.thread_id.clone(),
-        direction: "incoming".to_string(),
-        content_type: "text".to_string(),
-        body: payload.body,
-        html_content: None,
-        status: "read".to_string(),
-        sent_at: now.clone(),
-        created_at: now.clone(),
-        updated_at: now,
-        attachments: None,
-    };
+        let msg = NotificationMessage {
+            id: format!("msg_{}", uuid::Uuid::new_v4()),
+            workspace_id: ctx.workspace_id.clone(),
+            branch_id: ctx.branch_id.clone(),
+            notification_id: notif_id,
+            thread_id: notif.thread_id.clone(),
+            direction: "incoming".to_string(),
+            content_type: "text".to_string(),
+            body: payload.body,
+            html_content: None,
+            status: "read".to_string(),
+            sent_at: now.clone(),
+            created_at: now.clone(),
+            updated_at: now,
+            attachments: None,
+        };
 
-    NotificationRepository::create_message(&state.pool, &msg)
-        .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+        NotificationRepository::create_message(&state.pool, &msg)
+            .await
+            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
     }
 
     Ok(notif)
@@ -252,19 +307,35 @@ pub async fn send_notification_message(
     let attachment_ids = payload.attachment_ids.unwrap_or_default();
     let mut seen = std::collections::HashSet::new();
     if attachment_ids.iter().any(|id| !seen.insert(id)) {
-        return Err(crate::auth::AuthError::PolicyViolation("Duplicate attachment id".into()).to_response());
+        return Err(
+            crate::auth::AuthError::PolicyViolation("Duplicate attachment id".into()).to_response(),
+        );
     }
-    if let Err(err) = NotificationRepository::create_message_with_attachments(&state.pool, &msg, &attachment_ids, &updated_body).await {
+    if let Err(err) = NotificationRepository::create_message_with_attachments(
+        &state.pool,
+        &msg,
+        &attachment_ids,
+        &updated_body,
+    )
+    .await
+    {
         // Roll back staged uploads too, so a failed send leaves no orphaned rows or files.
         if let Ok(app_data_dir) = app.path().app_data_dir() {
             for id in &attachment_ids {
-                if let Ok(Some(att)) = NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, id).await {
+                if let Ok(Some(att)) =
+                    NotificationRepository::get_attachment(&state.pool, &ctx.workspace_id, id).await
+                {
                     if att.message_id.is_none() {
                         if let (Ok(base), Ok(file)) = (
-                            app_data_dir.join("attachments").join(&ctx.workspace_id).canonicalize(),
+                            app_data_dir
+                                .join("attachments")
+                                .join(&ctx.workspace_id)
+                                .canonicalize(),
                             app_data_dir.join(&att.storage_path).canonicalize(),
                         ) {
-                            if file.starts_with(base) { let _ = tokio::fs::remove_file(file).await; }
+                            if file.starts_with(base) {
+                                let _ = tokio::fs::remove_file(file).await;
+                            }
                         }
                         let _ = sqlx::query("DELETE FROM message_attachments WHERE id = ? AND workspace_id = ? AND message_id IS NULL")
                             .bind(id).bind(&ctx.workspace_id).execute(&state.pool).await;
@@ -349,7 +420,10 @@ pub async fn save_attachment(
         .map_err(|e| e.to_response())?;
 
     if !matches!(payload.kind.as_str(), "image" | "audio" | "file") {
-        return Err(crate::auth::AuthError::PolicyViolation("Invalid attachment kind".to_string()).to_response());
+        return Err(
+            crate::auth::AuthError::PolicyViolation("Invalid attachment kind".to_string())
+                .to_response(),
+        );
     }
 
     let app_data_dir = app
@@ -398,7 +472,10 @@ pub async fn save_attachment(
         }
     } else if let Some(source_path_str) = &payload.source_path {
         let src_path = std::path::Path::new(source_path_str);
-        if src_path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        if src_path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
             return Err(crate::auth::AuthError::PolicyViolation(
                 "Path traversal detected in source path".to_string(),
             )
@@ -467,7 +544,10 @@ pub async fn save_attachment(
 
     let content = match tokio::fs::read(&full_storage_path).await {
         Ok(bytes) => bytes,
-        Err(e) => { let _ = tokio::fs::remove_file(&full_storage_path).await; return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response()); }
+        Err(e) => {
+            let _ = tokio::fs::remove_file(&full_storage_path).await;
+            return Err(crate::auth::AuthError::InternalError(e.to_string()).to_response());
+        }
     };
     let sanitized_file_name = std::path::Path::new(&payload.file_name)
         .file_name()
@@ -475,7 +555,12 @@ pub async fn save_attachment(
         .unwrap_or("unnamed_file")
         .to_string();
 
-    if let Err(reason) = validate_attachment_content(&content, &payload.kind, &sanitized_file_name, &payload.mime_type) {
+    if let Err(reason) = validate_attachment_content(
+        &content,
+        &payload.kind,
+        &sanitized_file_name,
+        &payload.mime_type,
+    ) {
         let _ = tokio::fs::remove_file(&full_storage_path).await;
         return Err(crate::auth::AuthError::PolicyViolation(reason).to_response());
     }
@@ -776,9 +861,13 @@ pub async fn get_threads(
         .require_session()
         .await
         .map_err(|e| e.to_response())?;
-    NotificationRepository::list_threads(&state.pool, &ctx.workspace_id, include_archived.unwrap_or(false))
-        .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+    NotificationRepository::list_threads(
+        &state.pool,
+        &ctx.workspace_id,
+        include_archived.unwrap_or(false),
+    )
+    .await
+    .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
 }
 
 #[tauri::command]
@@ -939,17 +1028,20 @@ mod tests {
     #[test]
     fn rejects_invalid_signatures_and_mismatched_declarations() {
         assert!(validate_attachment_content(b"not a png", "image", "x.png", "image/png").is_err());
-        assert!(validate_attachment_content(b"%PDF-1.7 fake", "image", "x.png", "image/png").is_err());
+        assert!(
+            validate_attachment_content(b"%PDF-1.7 fake", "image", "x.png", "image/png").is_err()
+        );
         assert!(validate_attachment_content(b"%PDF-1.7", "file", "x.pdf", "text/plain").is_err());
     }
 
     #[test]
     fn accepts_supported_content_with_matching_extension_and_mime() {
         let mut png = b"\x89PNG\r\n\x1a\n".to_vec();
-        png.extend_from_slice(&[0, 0, 0, 13, b'I', b'H', b'D', b'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0, 0, 0, 0, 0]);
+        png.extend_from_slice(&[
+            0, 0, 0, 13, b'I', b'H', b'D', b'R', 0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0, 0, 0, 0, 0,
+        ]);
         png.extend_from_slice(&[0, 0, 0, 0, b'I', b'E', b'N', b'D', 0, 0, 0, 0]);
         assert!(validate_attachment_content(&png, "image", "photo.png", "image/png").is_ok());
         assert!(validate_attachment_content(b"hello\n", "file", "notes.txt", "text/plain").is_ok());
     }
-
 }

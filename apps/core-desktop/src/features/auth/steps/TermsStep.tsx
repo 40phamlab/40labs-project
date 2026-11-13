@@ -5,16 +5,30 @@ import { registrationApi, type RegistrationPayload } from '../api/registrationAp
 import { useLanguageStore } from '../../../stores/useLanguageStore';
 import { t } from '@40labs/i18n';
 import { ShieldCheck, Loader2 } from 'lucide-react';
+import { getTermsTextSha256, TERMS_VERSION } from '../components/termsContent';
+import type { RegistrationCredentials } from './AccountStep';
+import { authApi } from '../../../api/authApi';
+
+const normalizePhone = (value: string) => {
+  const digits = value.replace(/\D/g, '');
+  if (digits.startsWith('255') && digits.length === 12) return digits;
+  if (digits.startsWith('0') && digits.length === 10) return `255${digits.slice(1)}`;
+  if (digits.length === 9) return `255${digits}`;
+  return '';
+};
 
 export interface TermsStepProps {
   onValidChange: (valid: boolean) => void;
-  onCommitSuccess: (result: { businessId?: string; business_id?: string; credentials?: any; recoveryCodes?: string[] }) => void;
+  verification: { token: string; phone: string } | null;
+  credentials: RegistrationCredentials;
+  onCommitSuccess: (result: { businessId: string; recoveryCodes: string[] }) => void;
+  onRegistrationStored: () => void;
 }
 
 /**
  * TODO: [reason: legal text pending] [phase: auth-1E-B]
  */
-export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, onCommitSuccess }) => {
+export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verification, credentials, onCommitSuccess, onRegistrationStored }) => {
   const { language } = useLanguageStore();
   const storeState = useRegistrationStore();
 
@@ -23,6 +37,7 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, onCommitSuc
   const [accepted, setAccepted] = React.useState(storeState.termsAccepted);
   const [committing, setCommitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [registrationMayHaveCompleted, setRegistrationMayHaveCompleted] = React.useState(false);
 
   React.useEffect(() => {
     onValidChange(accepted);
@@ -46,8 +61,16 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, onCommitSuc
     }
     setCommitting(true);
     setError(null);
+    setRegistrationMayHaveCompleted(false);
     try {
+      if (!verification?.token || normalizePhone(verification.phone) !== normalizePhone(storeState.ownerPhone)) {
+        throw new Error(t('auth.error.registrationVerificationMismatch', language));
+      }
       const payload: RegistrationPayload = {
+        verification_token: verification.token,
+        username: credentials.username.trim().toLowerCase(),
+        password: credentials.password,
+        terms_accepted: true,
         business_name: storeState.businessName,
         logo_data_url: storeState.logoDataUrl,
         region: storeState.region,
@@ -65,15 +88,57 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, onCommitSuc
         owner_last_name: storeState.ownerLastName,
         owner_phone: storeState.ownerPhone,
         owner_email: storeState.ownerEmail,
-        terms_version: '1.0',
-        terms_locale: language,
-        terms_text_sha256: 'placeholder-sha256-hash',
+        terms_version: TERMS_VERSION,
+        terms_locale: 'sw-TZ',
+        terms_text_sha256: await getTermsTextSha256(),
       };
 
       const res = await registrationApi.commitRegistration(payload);
-      onCommitSuccess(res);
+      const businessId = res.business_id || res.businessId;
+      if (!businessId || !res.recoveryCodes?.length) {
+        throw new Error(t('auth.error.registrationIncomplete', language));
+      }
+      onCommitSuccess({ businessId, recoveryCodes: res.recoveryCodes });
     } catch (err: any) {
-      setError(err?.message || 'Imeshindikana kukamilisha usajili');
+      const registrationTimeout = err instanceof Error
+        && err.message.includes('Tauri IPC timeout for command: registration_commit');
+      if (registrationTimeout) {
+        try {
+          const status = await authApi.status();
+          if (status.deviceBound && status.business) {
+            onRegistrationStored();
+            return;
+          }
+        } catch {
+          // The command may still hold the local database transaction.
+        }
+        setRegistrationMayHaveCompleted(true);
+        setError(t('auth.error.registrationPending', language));
+        setCommitting(false);
+        return;
+      }
+      const errorCode = err && typeof err === 'object' && typeof err.code === 'string' ? err.code : null;
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : t(errorCode === 'POLICY_VIOLATION' ? 'auth.error.registrationValidation' : 'auth.error.registrationFailed', language),
+      );
+      setCommitting(false);
+    }
+  };
+
+  const handleCheckRegistrationStatus = async () => {
+    setCommitting(true);
+    try {
+      const status = await authApi.status();
+      if (status.deviceBound && status.business) {
+        onRegistrationStored();
+        return;
+      }
+      setError(t('auth.error.registrationStillPending', language));
+    } catch {
+      setError(t('auth.error.registrationStillPending', language));
+    } finally {
       setCommitting(false);
     }
   };
@@ -89,7 +154,16 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, onCommitSuc
 
   return (
     <div className="space-y-6">
-      {error && <p role="alert" className="text-xs font-medium text-[#EF4444]">{error}</p>}
+      {error && (
+        <div role="alert" className="space-y-2">
+          <p className="text-xs font-medium text-[#EF4444]">{error}</p>
+          {registrationMayHaveCompleted && (
+            <button type="button" onClick={handleCheckRegistrationStatus} className="text-xs font-semibold text-action-primary underline">
+              {t('auth.error.checkRegistrationStatus', language)}
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="p-5 bg-surface border border-border rounded-[14px] space-y-4">
         <div className="flex items-start space-x-3">

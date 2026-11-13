@@ -61,7 +61,8 @@ export const useRegistrationStore = create<RegistrationDraftState>((set) => {
     ownerPhone: initial.ownerPhone || '',
     sameAsBusinessPhone: initial.sameAsBusinessPhone ?? true,
     ownerEmail: initial.ownerEmail || '',
-    termsAccepted: initial.termsAccepted || false,
+    // Acceptance is deliberately ephemeral and must be reconfirmed for every attempt.
+    termsAccepted: false,
 
     setField: (key, value) => {
       set((state) => {
@@ -79,7 +80,9 @@ export const useRegistrationStore = create<RegistrationDraftState>((set) => {
           next.ownerPhone = state.businessPhone;
         }
         try {
-          const { setField, resetDraft, ...persistable } = next;
+          const persistable = Object.fromEntries(
+            Object.entries(next).filter(([field]) => !['setField', 'resetDraft', 'termsAccepted'].includes(field)),
+          );
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(persistable));
         } catch {
           // ignore

@@ -114,9 +114,8 @@ pub async fn pair_handler(
         )
     })?;
 
-    let (workspace_id, branch_id) = user_info.unwrap_or_else(|| {
-        ("ws_010101".to_string(), "br_010101".to_string())
-    });
+    let (workspace_id, branch_id) =
+        user_info.unwrap_or_else(|| ("ws_010101".to_string(), "br_010101".to_string()));
 
     // 5. Create paired device in database
     let device = match device_repo::create_paired_device(
@@ -218,7 +217,14 @@ mod tests {
             .create_session("user_active", "{\"can_view_reports\":true}")
             .await
             .unwrap();
-        let token = session.qr_payload.split("&token=").nth(1).unwrap().split('&').next().unwrap();
+        let token = session
+            .qr_payload
+            .split("&token=")
+            .nth(1)
+            .unwrap()
+            .split('&')
+            .next()
+            .unwrap();
 
         let app = create_router(state);
 
@@ -324,7 +330,14 @@ mod tests {
 
         // Pair a valid device
         let session = state.create_session("user_active", "{}").await.unwrap();
-        let token = session.qr_payload.split("&token=").nth(1).unwrap().split('&').next().unwrap();
+        let token = session
+            .qr_payload
+            .split("&token=")
+            .nth(1)
+            .unwrap()
+            .split('&')
+            .next()
+            .unwrap();
         let pair_payload = serde_json::json!({
             "sessionId": session.session_id,
             "token": token,

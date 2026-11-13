@@ -49,26 +49,24 @@ pub async fn create_branch(
         .map_err(|e| e.to_response())?;
 
     // Resolve business_id server-side from session workspace
-    let business_row: Option<(String,)> = sqlx::query_as(
-        "SELECT business_id FROM business WHERE workspace_id = ? LIMIT 1",
-    )
-    .bind(&ctx.workspace_id)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    let business_row: Option<(String,)> =
+        sqlx::query_as("SELECT business_id FROM business WHERE workspace_id = ? LIMIT 1")
+            .bind(&ctx.workspace_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
     let business_id = business_row
         .map(|r| r.0)
         .ok_or_else(|| AuthError::NotFound("Business profile not found".into()).to_response())?;
 
     // Fetch existing branch codes for this business
-    let existing_rows: Vec<(String,)> = sqlx::query_as(
-        "SELECT branch_code FROM branch WHERE business_id = ?",
-    )
-    .bind(&business_id)
-    .fetch_all(&state.pool)
-    .await
-    .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    let existing_rows: Vec<(String,)> =
+        sqlx::query_as("SELECT branch_code FROM branch WHERE business_id = ?")
+            .bind(&business_id)
+            .fetch_all(&state.pool)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
     let existing_codes: Vec<String> = existing_rows.into_iter().map(|r| r.0).collect();
 

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use zeroize::Zeroizing;
 
 use crate::auth::error::AuthError;
-use crate::auth::session::{ApproverInfo, AuthState, Session, StepUpGrant, PendingTotp};
+use crate::auth::session::{ApproverInfo, AuthState, PendingTotp, Session, StepUpGrant};
 use crate::auth::totp;
 use crate::models::audit::{AuditAction, AuditLogEntry};
 use crate::models::auth::{AppUser, RecoveryCode};
@@ -317,7 +317,9 @@ impl AuthEngine {
                     .await
                     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-                return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: None,
+                });
             }
 
             let valid = hashing::verify_password(password.as_str(), &c.password_hash);
@@ -385,10 +387,11 @@ impl AuthEngine {
                 .await
                 .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-            let totp_rec = crate::repositories::totp_repo::TotpRepository::get_by_user_id(&self.pool, &u.id)
-                .await
-                .ok()
-                .flatten();
+            let totp_rec =
+                crate::repositories::totp_repo::TotpRepository::get_by_user_id(&self.pool, &u.id)
+                    .await
+                    .ok()
+                    .flatten();
             if let Some(tr) = totp_rec {
                 if tr.enabled_at.is_some() {
                     let pending_token = format!("totp_{}", uuid::Uuid::new_v4());
@@ -416,7 +419,10 @@ impl AuthEngine {
                 performed_by_user_id: Some(u.id.clone()),
                 target_entity_type: "AppUser".to_string(),
                 target_entity_id: u.id.clone(),
-                metadata: Some(serde_json::json!({ "reason": "login_success", "method": "password" }).to_string()),
+                metadata: Some(
+                    serde_json::json!({ "reason": "login_success", "method": "password" })
+                        .to_string(),
+                ),
                 created_at: now_iso.clone(),
             };
             audit::append(&mut tx, &audit)
@@ -463,11 +469,7 @@ impl AuthEngine {
         })
     }
 
-    pub async fn login_pin(
-        &self,
-        username: &str,
-        pin: &str,
-    ) -> Result<(), AuthError> {
+    pub async fn login_pin(&self, username: &str, pin: &str) -> Result<(), AuthError> {
         let norm_username =
             policy::validate_username(username).map_err(|_| AuthError::InvalidCredentials {
                 retry_after_secs: None,
@@ -497,7 +499,12 @@ impl AuthEngine {
                 (Some(u), Some(c))
             }
             None => {
-                let _ = hashing::verify_pin("dummy_user", pin, self.keystore.pin_pepper(), hashing::get_dummy_hash());
+                let _ = hashing::verify_pin(
+                    "dummy_user",
+                    pin,
+                    self.keystore.pin_pepper(),
+                    hashing::get_dummy_hash(),
+                );
                 (None, None)
             }
         };
@@ -531,7 +538,9 @@ impl AuthEngine {
                     .await
                     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-                return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: None,
+                });
             }
 
             if u.must_change_credentials != 0 {
@@ -593,7 +602,9 @@ impl AuthEngine {
                     .await
                     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-                return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+                return Err(AuthError::InvalidCredentials {
+                    retry_after_secs: None,
+                });
             }
 
             let pin_hash = match &c.pin_hash {
@@ -620,7 +631,9 @@ impl AuthEngine {
                         .await
                         .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-                    return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+                    return Err(AuthError::InvalidCredentials {
+                        retry_after_secs: None,
+                    });
                 }
             };
 
@@ -697,7 +710,9 @@ impl AuthEngine {
                 performed_by_user_id: Some(u.id.clone()),
                 target_entity_type: "AppUser".to_string(),
                 target_entity_id: u.id.clone(),
-                metadata: Some(serde_json::json!({ "reason": "login_success", "method": "pin" }).to_string()),
+                metadata: Some(
+                    serde_json::json!({ "reason": "login_success", "method": "pin" }).to_string(),
+                ),
                 created_at: now_iso.clone(),
             };
             audit::append(&mut tx, &audit)
@@ -783,9 +798,11 @@ impl AuthEngine {
         let valid = hashing::verify_pin(&user_id, pin, self.keystore.pin_pepper(), pin_hash);
         if !valid {
             let new_fails = cred.failed_pin_attempts + 1;
-            CredentialRepository::increment_pin_failures(&mut tx, &user_id, new_fails, None, &now_iso)
-                .await
-                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            CredentialRepository::increment_pin_failures(
+                &mut tx, &user_id, new_fails, None, &now_iso,
+            )
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
             if new_fails >= 5 {
                 let mut session_guard = self.state.session.write().await;
@@ -1096,6 +1113,8 @@ impl AuthEngine {
     }
 
     pub async fn recovery_regenerate(&self, password: &str) -> Result<Vec<String>, AuthError> {
+        use rand::Rng;
+
         let ctx = self.require_session().await?;
         let cred = CredentialRepository::get_by_user_id(&self.pool, &ctx.user_id)
             .await
@@ -1108,7 +1127,67 @@ impl AuthEngine {
             });
         }
 
-        Ok(vec!["ABCDE-12345".to_string(), "FGHIJ-67890".to_string()])
+        const RECOVERY_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+        let now = self.state.clock.now_iso();
+        let batch_id = format!("batch_{}", uuid::Uuid::new_v4().simple());
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        RecoveryRepository::invalidate_active_batches(&mut tx, &ctx.user_id, &now)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        let mut codes = Vec::with_capacity(8);
+        for _ in 0..8 {
+            let raw: String = {
+                let mut rng = rand::thread_rng();
+                (0..10)
+                    .map(|_| RECOVERY_ALPHABET[rng.gen_range(0..RECOVERY_ALPHABET.len())] as char)
+                    .collect()
+            };
+            let code = format!("{}-{}", &raw[..5], &raw[5..]);
+            let code_hash = hashing::hash_recovery_code(&code)
+                .map_err(|e| AuthError::InternalError(e.to_string()))?;
+            RecoveryRepository::create(
+                &mut tx,
+                &RecoveryCode {
+                    id: format!("rec_{}", uuid::Uuid::new_v4().simple()),
+                    workspace_id: ctx.workspace_id.clone(),
+                    branch_id: ctx.branch_id.clone(),
+                    user_id: ctx.user_id.clone(),
+                    batch_id: batch_id.clone(),
+                    code_hash,
+                    used_at: None,
+                    invalidated_at: None,
+                    created_at: now.clone(),
+                },
+            )
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+            codes.push(code);
+        }
+
+        let audit_entry = AuditLogEntry {
+            id: format!("aud_{}", uuid::Uuid::new_v4().simple()),
+            workspace_id: ctx.workspace_id.clone(),
+            branch_id: ctx.branch_id.clone(),
+            created_at: now,
+            action: "recovery_codes_regenerated".to_string(),
+            performed_by_user_id: Some(ctx.user_id.clone()),
+            target_entity_type: "User".to_string(),
+            target_entity_id: ctx.user_id,
+            metadata: None,
+        };
+        audit::append(&mut tx, &audit_entry)
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        Ok(codes)
     }
 
     pub async fn recovery_generate_initial(&self) -> Result<Vec<String>, AuthError> {
@@ -1333,8 +1412,9 @@ impl AuthEngine {
                     };
                     let lock_until_str = if lockout_duration > 0 {
                         Some(
-                            (chrono::Utc::now() + chrono::Duration::seconds(lockout_duration as i64))
-                                .to_rfc3339(),
+                            (chrono::Utc::now()
+                                + chrono::Duration::seconds(lockout_duration as i64))
+                            .to_rfc3339(),
                         )
                     } else {
                         None
@@ -1348,7 +1428,11 @@ impl AuthEngine {
                     )
                     .await
                     .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-                    if lockout_duration > 0 { Some(lockout_duration) } else { None }
+                    if lockout_duration > 0 {
+                        Some(lockout_duration)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 };
@@ -1639,36 +1723,60 @@ impl AuthEngine {
 
     pub async fn login_totp(&self, pending_token: &str, code: &str) -> Result<(), AuthError> {
         let mut pending_guard = self.state.pending_totps.write().await;
-        let pending = pending_guard.remove(pending_token).ok_or(AuthError::InvalidCredentials { retry_after_secs: None })?;
+        let pending = pending_guard
+            .remove(pending_token)
+            .ok_or(AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            })?;
         let now = self.state.clock.now_secs();
         if now > pending.expires_at {
-            return Err(AuthError::InvalidCredentials { retry_after_secs: None });
+            return Err(AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            });
         }
         drop(pending_guard);
 
         let user = UserRepository::get_by_id(&self.pool, &pending.user_id)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?
-            .ok_or_else(|| AuthError::InvalidCredentials { retry_after_secs: None })?;
+            .ok_or_else(|| AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            })?;
 
-        let totp_rec = crate::repositories::totp_repo::TotpRepository::get_by_user_id(&self.pool, &pending.user_id)
-            .await
-            .map_err(|e| AuthError::DatabaseError(e.to_string()))?
-            .ok_or_else(|| AuthError::InvalidCredentials { retry_after_secs: None })?;
+        let totp_rec = crate::repositories::totp_repo::TotpRepository::get_by_user_id(
+            &self.pool,
+            &pending.user_id,
+        )
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()))?
+        .ok_or_else(|| AuthError::InvalidCredentials {
+            retry_after_secs: None,
+        })?;
 
         let encryption_key = self.keystore.derive_key(b"totp_secret_v1");
         let secret_base32 = totp::decrypt_secret(&totp_rec.secret_enc, &encryption_key)
             .map_err(|e| AuthError::InternalError(e))?;
 
         let step = totp::verify_totp(&secret_base32, code, totp_rec.last_used_step as u64)
-            .map_err(|_| AuthError::InvalidCredentials { retry_after_secs: None })?;
+            .map_err(|_| AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            })?;
 
         let now_iso = self.state.clock.now_iso();
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-
-        crate::repositories::totp_repo::TotpRepository::update_last_used_step(&self.pool, &pending.user_id, step, &now_iso)
+        let mut tx = self
+            .pool
+            .begin()
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+
+        crate::repositories::totp_repo::TotpRepository::update_last_used_step(
+            &self.pool,
+            &pending.user_id,
+            step,
+            &now_iso,
+        )
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let audit = AuditLogEntry {
             id: format!("audit_{}", uuid::Uuid::new_v4().simple()),
@@ -1678,13 +1786,17 @@ impl AuthEngine {
             performed_by_user_id: Some(user.id.clone()),
             target_entity_type: "AppUser".to_string(),
             target_entity_id: user.id.clone(),
-            metadata: Some(serde_json::json!({ "reason": "login_success", "method": "totp" }).to_string()),
+            metadata: Some(
+                serde_json::json!({ "reason": "login_success", "method": "totp" }).to_string(),
+            ),
             created_at: now_iso.clone(),
         };
         audit::append(&mut tx, &audit)
             .await
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
-        tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        tx.commit()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let mut session_guard = self.state.session.write().await;
         *session_guard = Some(Session {
@@ -1712,22 +1824,32 @@ impl AuthEngine {
             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         let now_iso = self.state.clock.now_iso();
-        let mut tx = self.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
         if let Some(u) = user {
-            let totp_rec = crate::repositories::totp_repo::TotpRepository::get_by_user_id(&self.pool, &u.id)
-                .await
-                .ok()
-                .flatten();
+            let totp_rec =
+                crate::repositories::totp_repo::TotpRepository::get_by_user_id(&self.pool, &u.id)
+                    .await
+                    .ok()
+                    .flatten();
 
             if let Some(tr) = totp_rec {
                 if tr.enabled_at.is_some() {
                     let encryption_key = self.keystore.derive_key(b"totp_secret_v1");
-                    if let Ok(secret_base32) = totp::decrypt_secret(&tr.secret_enc, &encryption_key) {
-                        if let Ok(step) = totp::verify_totp(&secret_base32, code, tr.last_used_step as u64) {
-                            crate::repositories::totp_repo::TotpRepository::update_last_used_step(&self.pool, &u.id, step, &now_iso)
-                                .await
-                                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                    if let Ok(secret_base32) = totp::decrypt_secret(&tr.secret_enc, &encryption_key)
+                    {
+                        if let Ok(step) =
+                            totp::verify_totp(&secret_base32, code, tr.last_used_step as u64)
+                        {
+                            crate::repositories::totp_repo::TotpRepository::update_last_used_step(
+                                &self.pool, &u.id, step, &now_iso,
+                            )
+                            .await
+                            .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
                             crate::security::policy::validate_password(new_password, &u.username)
                                 .map_err(|e| AuthError::PolicyViolation(e.to_string()))?;
@@ -1742,7 +1864,10 @@ impl AuthEngine {
                                 performed_by_user_id: Some(u.id.clone()),
                                 target_entity_type: "AppUser".to_string(),
                                 target_entity_id: u.id.clone(),
-                                metadata: Some(serde_json::json!({ "reason": "totp_password_reset" }).to_string()),
+                                metadata: Some(
+                                    serde_json::json!({ "reason": "totp_password_reset" })
+                                        .to_string(),
+                                ),
                                 created_at: now_iso.clone(),
                             };
                             audit::append(&mut tx, &audit)
@@ -1769,7 +1894,9 @@ impl AuthEngine {
                             .await
                             .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
 
-                            tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()))?;
+                            tx.commit()
+                                .await
+                                .map_err(|e| AuthError::DatabaseError(e.to_string()))?;
                             return Ok(());
                         }
                     }
@@ -1792,7 +1919,9 @@ impl AuthEngine {
         let _ = audit::append(&mut tx, &audit).await;
         let _ = tx.commit().await;
 
-        Err(AuthError::InvalidCredentials { retry_after_secs: None })
+        Err(AuthError::InvalidCredentials {
+            retry_after_secs: None,
+        })
     }
 }
 

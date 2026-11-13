@@ -73,6 +73,20 @@ impl DeviceTokenKeys {
     pub fn key_ids(&self) -> impl Iterator<Item = &str> {
         self.keys.keys().map(String::as_str)
     }
+
+    fn has_production_key_material(&self) -> bool {
+        let development_key =
+            hex::decode("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+                .unwrap();
+        self.keys.values().all(|key| {
+            key.iter()
+                .copied()
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                >= 16
+                && key != &development_key
+        })
+    }
 }
 
 #[derive(Clone)]
@@ -134,10 +148,13 @@ impl Config {
             tracing::error!("NEXTSMS_API_TOKEN is empty");
         }
         let active_kid = get_env_or_file("DEVICE_TOKEN_SIGNING_KEY_ID", "dev-1");
-        let default_keys = if app_env.eq_ignore_ascii_case("production") {
-            "{}"
-        } else {
+        let default_keys = if matches!(
+            app_env.to_ascii_lowercase().as_str(),
+            "development" | "test"
+        ) {
             "{\"dev-1\":\"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\"}"
+        } else {
+            "{}"
         };
         let key_source = get_env_or_file("DEVICE_TOKEN_SIGNING_KEYS", default_keys);
         let device_token_keys = DeviceTokenKeys::parse(active_kid.clone(), &key_source)
@@ -175,5 +192,131 @@ impl Config {
             admin_debug_otp: get_env_or_file("ADMIN_DEBUG_OTP", "0") == "1",
             device_token_keys,
         }
+    }
+
+    pub fn validate_environment(&self) -> Result<(), String> {
+        if !matches!(
+            self.app_env.to_ascii_lowercase().as_str(),
+            "development" | "test" | "production"
+        ) {
+            return Err("APP_ENV must be development, test, or production".into());
+        }
+        if self.app_env.eq_ignore_ascii_case("production") {
+            self.validate_production()?;
+        }
+        Ok(())
+    }
+
+    pub fn validate_production(&self) -> Result<(), String> {
+        if !self.app_env.eq_ignore_ascii_case("production") {
+            return Ok(());
+        }
+        let origin = url::Url::parse(&self.admin_web_origin)
+            .map_err(|_| "ADMIN_WEB_ORIGIN must be a valid URL")?;
+        if origin.scheme() != "https"
+            || origin.host_str().is_none()
+            || matches!(origin.host_str(), Some("localhost" | "127.0.0.1" | "::1"))
+            || origin.path() != "/"
+            || origin.query().is_some()
+            || origin.fragment().is_some()
+            || !origin.username().is_empty()
+            || origin.password().is_some()
+        {
+            return Err("ADMIN_WEB_ORIGIN must be an explicit HTTPS origin".into());
+        }
+        let key =
+            hex::decode(&self.totp_enc_key).map_err(|_| "TOTP_ENC_KEY must be 32-byte hex")?;
+        if key.len() != 32
+            || !has_sufficient_key_diversity(&key)
+            || self.totp_enc_key
+                == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        {
+            return Err("TOTP_ENC_KEY must be a non-default 32-byte secret".into());
+        }
+        let activation_key = hex::decode(&self.activation_signing_key)
+            .map_err(|_| "ACTIVATION_SIGNING_KEY must be hex")?;
+        if activation_key.len() < 32 || !has_sufficient_key_diversity(&activation_key) {
+            return Err("ACTIVATION_SIGNING_KEY must contain at least 32 bytes".into());
+        }
+        if !crate::auth::device::key_configuration_is_valid(self)
+            || !self.device_token_keys.has_production_key_material()
+        {
+            return Err("Device token signing keys are not configured".into());
+        }
+        if self.admin_debug_otp {
+            return Err("ADMIN_DEBUG_OTP must be disabled in production".into());
+        }
+        Ok(())
+    }
+}
+
+fn has_sufficient_key_diversity(bytes: &[u8]) -> bool {
+    bytes
+        .iter()
+        .copied()
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+        >= 16
+}
+
+#[cfg(test)]
+mod production_config_tests {
+    use super::*;
+
+    fn prod_config() -> Config {
+        Config {
+            database_url: "postgres://example/db".into(),
+            nextsms_base_url: String::new(),
+            nextsms_api_token: String::new(),
+            nextsms_username: String::new(),
+            nextsms_password: String::new(),
+            nextsms_sender_id: "sender".into(),
+            sms_mode: "live".into(),
+            otp_provider: "nextsms".into(),
+            app_env: "production".into(),
+            otp_enabled: true,
+            otp_daily_max: 1,
+            activation_signing_key: hex::encode((96u8..128).collect::<Vec<_>>()),
+            port: 3000,
+            admin_web_origin: "https://admin.example.test".into(),
+            totp_enc_key: hex::encode((64u8..96).collect::<Vec<_>>()),
+            admin_debug_otp: false,
+            device_token_keys: DeviceTokenKeys::parse(
+                "v1".into(),
+                &format!(
+                    r#"{{"v1":"{}"}}"#,
+                    hex::encode((32u8..64).collect::<Vec<_>>())
+                ),
+            )
+            .unwrap(),
+        }
+    }
+
+    #[test]
+    fn production_config_requires_explicit_non_default_secrets_and_https_origin() {
+        assert!(prod_config().validate_production().is_ok());
+        assert!(prod_config().validate_environment().is_ok());
+        let mut unknown = prod_config();
+        unknown.app_env = "prod".into();
+        assert!(unknown.validate_environment().is_err());
+        let mut config = prod_config();
+        config.admin_web_origin = "http://localhost:5174".into();
+        assert!(config.validate_production().is_err());
+        let mut config = prod_config();
+        config.admin_web_origin = "https://admin.example.test/path".into();
+        assert!(config.validate_production().is_err());
+        let mut config = prod_config();
+        config.totp_enc_key =
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef".into();
+        assert!(config.validate_production().is_err());
+        let mut config = prod_config();
+        config.totp_enc_key = "22".repeat(32);
+        assert!(config.validate_production().is_err());
+        let mut config = prod_config();
+        config.activation_signing_key = "00".repeat(32);
+        assert!(config.validate_production().is_err());
+        let mut config = prod_config();
+        config.admin_debug_otp = true;
+        assert!(config.validate_production().is_err());
     }
 }

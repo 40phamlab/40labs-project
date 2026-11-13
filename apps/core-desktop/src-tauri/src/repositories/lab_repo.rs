@@ -1,7 +1,8 @@
 use crate::models::inventory::{InventoryItem, Medicine, MedicineWithInventory};
 use crate::models::lab::{
-    LabOrder, LabQcData, LabQcEquipment, LabQcRecord, LabResult, LabSample, SampleEvent, TestCatalogEntry,
-    LabReport, LabReportItem, LabReportForward, LabWorkflowRunDb, LabWorkflowRunStepDb, LabStageAttachmentDb,
+    LabOrder, LabQcData, LabQcEquipment, LabQcRecord, LabReport, LabReportForward, LabReportItem,
+    LabResult, LabSample, LabStageAttachmentDb, LabWorkflowRunDb, LabWorkflowRunStepDb,
+    SampleEvent, TestCatalogEntry,
 };
 use sqlx::SqlitePool;
 
@@ -137,7 +138,7 @@ impl LabRepository {
         id: &str,
     ) -> Result<Option<LabSample>, sqlx::Error> {
         sqlx::query_as::<_, LabSample>(
-            "SELECT * FROM lab_sample WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+            "SELECT * FROM lab_sample WHERE workspace_id = ? AND branch_id = ? AND id = ?",
         )
         .bind(workspace_id)
         .bind(branch_id)
@@ -411,7 +412,7 @@ impl LabRepository {
         id: &str,
     ) -> Result<Option<LabReport>, sqlx::Error> {
         sqlx::query_as::<_, LabReport>(
-            "SELECT * FROM lab_report WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+            "SELECT * FROM lab_report WHERE workspace_id = ? AND branch_id = ? AND id = ?",
         )
         .bind(workspace_id)
         .bind(branch_id)
@@ -621,7 +622,7 @@ impl LabRepository {
         run_id: &str,
     ) -> Result<Option<LabWorkflowRunDb>, sqlx::Error> {
         sqlx::query_as::<_, LabWorkflowRunDb>(
-            "SELECT * FROM lab_workflow_run WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+            "SELECT * FROM lab_workflow_run WHERE workspace_id = ? AND branch_id = ? AND id = ?",
         )
         .bind(workspace_id)
         .bind(branch_id)
@@ -806,7 +807,7 @@ impl LabRepository {
         attachment_id: &str,
     ) -> Result<u64, sqlx::Error> {
         sqlx::query(
-            "DELETE FROM lab_stage_attachment WHERE workspace_id = ? AND branch_id = ? AND id = ?"
+            "DELETE FROM lab_stage_attachment WHERE workspace_id = ? AND branch_id = ? AND id = ?",
         )
         .bind(workspace_id)
         .bind(branch_id)
@@ -816,4 +817,3 @@ impl LabRepository {
         .map(|res| res.rows_affected())
     }
 }
-

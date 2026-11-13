@@ -21,13 +21,168 @@ pub struct AdminClaims {
     pub role: String,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AdminAction {
+    Read,
+    Write,
+    Manage,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum AdminResource {
+    Auth,
+    Businesses,
+    Analytics,
+    Sync,
+    Infrastructure,
+    Logs,
+}
+
+/// Central, default-deny role policy. Unknown roles and unmapped routes never gain access.
+pub fn role_allows(role: &str, action: AdminAction, resource: AdminResource) -> bool {
+    use AdminAction::{Manage, Read, Write};
+    use AdminResource::{Analytics, Auth, Businesses, Infrastructure, Logs, Sync};
+    match role {
+        "super_admin" => true,
+        "admin" => match (resource, action) {
+            (Auth, Read | Write | Manage)
+            | (Businesses, Read | Write | Manage)
+            | (Analytics, Read)
+            | (Sync, Read | Write)
+            | (Infrastructure, Read) => true,
+            (Logs, Read) => true,
+            _ => false,
+        },
+        "reviewer" => matches!(
+            (resource, action),
+            (Auth, Write)
+                | (Businesses, Read)
+                | (Analytics, Read)
+                | (Sync, Read)
+                | (Infrastructure, Read)
+        ),
+        "viewer" => matches!(
+            (resource, action),
+            (Auth, Write) | (Businesses, Read) | (Analytics, Read)
+        ),
+        _ => false,
+    }
+}
+
+fn route_permission(
+    method: &axum::http::Method,
+    path: &str,
+) -> Option<(AdminResource, AdminAction)> {
+    use AdminAction::{Read, Write};
+    use AdminResource::{Analytics, Auth, Businesses, Infrastructure, Logs, Sync};
+    let segments: Vec<_> = path.trim_matches('/').split('/').collect();
+    let prefix_len = if segments.starts_with(&["admin", "v1"]) {
+        2
+    } else {
+        0
+    };
+    let suffix = segments.get(prefix_len..).unwrap_or_default();
+    match (method.as_str(), suffix) {
+        ("GET", ["me"]) => Some((Auth, Read)),
+        ("POST", ["auth", "logout" | "recovery-codes", ..]) => Some((Auth, Write)),
+        ("GET", ["businesses"]) | ("GET", ["businesses", _, ..]) => Some((Businesses, Read)),
+        ("POST", ["businesses", _, "verification"]) => Some((Businesses, Write)),
+        ("GET", ["overview"] | ["analytics", ..]) => Some((Analytics, Read)),
+        ("GET", ["sync", ..]) => Some((Sync, Read)),
+        ("POST", ["sync", "devices", _, "revoke"]) => Some((Sync, Write)),
+        ("GET", ["infra", "logs", ..]) => Some((Logs, Read)),
+        ("GET", ["infra", ..]) => Some((Infrastructure, Read)),
+        // Session management is owner-scoped in the handlers; keep it available to all roles.
+        ("POST", ["auth", "sessions", _, "revoke"]) => Some((Auth, Write)),
+        ("GET", ["auth", "sessions"]) => Some((Auth, Read)),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod permission_tests {
+    use super::*;
+    use axum::http::Method;
+
+    #[test]
+    fn role_matrix_is_default_deny_and_scoped_by_action() {
+        assert!(role_allows(
+            "super_admin",
+            AdminAction::Manage,
+            AdminResource::Logs
+        ));
+        assert!(role_allows(
+            "admin",
+            AdminAction::Write,
+            AdminResource::Businesses
+        ));
+        assert!(!role_allows(
+            "reviewer",
+            AdminAction::Write,
+            AdminResource::Businesses
+        ));
+        assert!(role_allows(
+            "reviewer",
+            AdminAction::Read,
+            AdminResource::Sync
+        ));
+        assert!(!role_allows(
+            "reviewer",
+            AdminAction::Read,
+            AdminResource::Logs
+        ));
+        assert!(!role_allows(
+            "viewer",
+            AdminAction::Read,
+            AdminResource::Sync
+        ));
+        assert!(role_allows(
+            "viewer",
+            AdminAction::Write,
+            AdminResource::Auth
+        ));
+        assert!(!role_allows(
+            "unknown",
+            AdminAction::Read,
+            AdminResource::Businesses
+        ));
+    }
+
+    #[test]
+    fn route_policy_maps_mutations_and_denies_unmapped_routes() {
+        assert_eq!(
+            route_permission(&Method::POST, "/admin/v1/businesses/b1/verification"),
+            Some((AdminResource::Businesses, AdminAction::Write))
+        );
+        assert_eq!(
+            route_permission(&Method::POST, "/admin/v1/sync/devices/d1/revoke"),
+            Some((AdminResource::Sync, AdminAction::Write))
+        );
+        assert_eq!(
+            route_permission(&Method::GET, "/admin/v1/infra/logs"),
+            Some((AdminResource::Logs, AdminAction::Read))
+        );
+        assert_eq!(
+            route_permission(&Method::DELETE, "/admin/v1/businesses/b1"),
+            None
+        );
+        assert_eq!(route_permission(&Method::GET, "/admin/v1/unmapped"), None);
+    }
+}
+
 async fn admin_auth_middleware(
     State(state): State<AppState>,
     mut req: Request,
     next: middleware::Next,
 ) -> Result<Response, StatusCode> {
     let path = req.uri().path();
-    if path.contains("/auth/login") || path.contains("/auth/totp") {
+    if path.ends_with("/auth/login")
+        || path.ends_with("/login")
+        || path.ends_with("/auth/totp")
+        || path.ends_with("/totp")
+        || path.ends_with("/auth/recovery")
+        || path.ends_with("/recovery")
+    {
         return Ok(next.run(req).await);
     }
 
@@ -66,17 +221,8 @@ async fn admin_auth_middleware(
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    // Role check for verification POST
-    if path.contains("/verification") && req.method() == axum::http::Method::POST {
-        if role != "admin" {
-            return Err(StatusCode::FORBIDDEN);
-        }
-    }
-    if path.contains("/sync/devices/")
-        && path.ends_with("/revoke")
-        && req.method() == axum::http::Method::POST
-        && role != "admin"
-    {
+    let (resource, action) = route_permission(req.method(), path).ok_or(StatusCode::FORBIDDEN)?;
+    if !role_allows(&role, action, resource) {
         return Err(StatusCode::FORBIDDEN);
     }
 

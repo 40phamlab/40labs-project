@@ -157,7 +157,9 @@ fn load_or_create_tls_identity(app_data_dir: &Path) -> Result<(String, String, S
             let fingerprint = format!("{:x}", Sha256::digest(certificate_der));
             Ok((certificate_pem, private_key_pem, fingerprint))
         }
-        _ => Err("Orbit TLS identity is incomplete; refusing to replace it automatically".to_string()),
+        _ => Err(
+            "Orbit TLS identity is incomplete; refusing to replace it automatically".to_string(),
+        ),
     }
 }
 

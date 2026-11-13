@@ -1,5 +1,5 @@
-pub mod nextsms;
 pub mod console;
+pub mod nextsms;
 pub mod test_mode;
 
 use async_trait::async_trait;
@@ -51,7 +51,12 @@ pub enum SmsError {
 
 #[async_trait]
 pub trait OtpProvider: Send + Sync {
-    async fn send(&self, to_e164: &str, text: &str, reference: &str) -> Result<SendOutcome, SmsError>;
+    async fn send(
+        &self,
+        to_e164: &str,
+        text: &str,
+        reference: &str,
+    ) -> Result<SendOutcome, SmsError>;
 }
 
 pub type SmsSender = dyn OtpProvider;
@@ -119,7 +124,9 @@ pub fn normalize_tz_phone(input: &str) -> Result<String, &'static str> {
 
     if normalized.len() == 12 && normalized.starts_with("255") {
         let prefix_digit = normalized.as_bytes()[3];
-        if (prefix_digit == b'6' || prefix_digit == b'7') && normalized[3..].chars().all(|c| c.is_ascii_digit()) {
+        if (prefix_digit == b'6' || prefix_digit == b'7')
+            && normalized[3..].chars().all(|c| c.is_ascii_digit())
+        {
             return Ok(normalized);
         }
     }
@@ -143,13 +150,28 @@ mod tests {
     #[test]
     fn test_normalize_tz_phone_table() {
         assert_eq!(normalize_tz_phone("0712345678"), Ok("255712345678".into()));
-        assert_eq!(normalize_tz_phone("255712345678"), Ok("255712345678".into()));
-        assert_eq!(normalize_tz_phone("+255712345678"), Ok("255712345678".into()));
+        assert_eq!(
+            normalize_tz_phone("255712345678"),
+            Ok("255712345678".into())
+        );
+        assert_eq!(
+            normalize_tz_phone("+255712345678"),
+            Ok("255712345678".into())
+        );
         assert_eq!(normalize_tz_phone("712345678"), Ok("255712345678".into()));
-        assert_eq!(normalize_tz_phone("0712 345-678"), Ok("255712345678".into()));
-        assert_eq!(normalize_tz_phone("+255 712 345 678"), Ok("255712345678".into()));
+        assert_eq!(
+            normalize_tz_phone("0712 345-678"),
+            Ok("255712345678".into())
+        );
+        assert_eq!(
+            normalize_tz_phone("+255 712 345 678"),
+            Ok("255712345678".into())
+        );
         assert_eq!(normalize_tz_phone("0655223344"), Ok("255655223344".into()));
-        assert_eq!(normalize_tz_phone("0712-345-678"), Ok("255712345678".into()));
+        assert_eq!(
+            normalize_tz_phone("0712-345-678"),
+            Ok("255712345678".into())
+        );
         assert_eq!(normalize_tz_phone("133712345678"), Err("INVALID_PHONE"));
         assert_eq!(normalize_tz_phone("+233712345678"), Err("INVALID_PHONE"));
         assert_eq!(normalize_tz_phone("071234567"), Err("INVALID_PHONE"));

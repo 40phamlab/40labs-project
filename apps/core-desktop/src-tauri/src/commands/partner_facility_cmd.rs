@@ -1,6 +1,8 @@
 use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
-use crate::models::partner_facility::{PartnerFacility, PartnerFacilityContacts, FacilityType, FacilityStatus};
+use crate::models::partner_facility::{
+    FacilityStatus, FacilityType, PartnerFacility, PartnerFacilityContacts,
+};
 use crate::repositories::partner_facility_repo::PartnerFacilityRepository;
 use tauri::State;
 
@@ -15,7 +17,9 @@ pub struct CreatePartnerFacilityPayload {
 }
 
 #[tauri::command]
-pub async fn partner_facility_list(state: State<'_, AppState>) -> Result<Vec<PartnerFacility>, AuthErrorResponse> {
+pub async fn partner_facility_list(
+    state: State<'_, AppState>,
+) -> Result<Vec<PartnerFacility>, AuthErrorResponse> {
     let engine = AuthEngine::new(
         state.auth_state.clone(),
         state.pool.clone(),
@@ -51,7 +55,11 @@ pub async fn partner_facility_create(
     let id = format!("pf_{}", uuid::Uuid::new_v4());
     let now = chrono::Utc::now().to_rfc3339();
 
-    let is_linked = payload.partner_business_id.as_deref().map(|s| !s.is_empty()).unwrap_or(false);
+    let is_linked = payload
+        .partner_business_id
+        .as_deref()
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
 
     let facility = PartnerFacility {
         id: id.clone(),

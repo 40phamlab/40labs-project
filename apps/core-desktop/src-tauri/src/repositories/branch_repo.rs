@@ -18,19 +18,14 @@ impl BranchRepository {
         workspace_id: &str,
         id: &str,
     ) -> Result<Option<Branch>, sqlx::Error> {
-        sqlx::query_as::<_, Branch>(
-            "SELECT * FROM branch WHERE workspace_id = ? AND id = ?",
-        )
-        .bind(workspace_id)
-        .bind(id)
-        .fetch_optional(executor)
-        .await
+        sqlx::query_as::<_, Branch>("SELECT * FROM branch WHERE workspace_id = ? AND id = ?")
+            .bind(workspace_id)
+            .bind(id)
+            .fetch_optional(executor)
+            .await
     }
 
-    pub async fn create(
-        conn: &mut SqliteConnection,
-        branch: &Branch,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn create(conn: &mut SqliteConnection, branch: &Branch) -> Result<(), sqlx::Error> {
         sqlx::query(
             r#"
             INSERT INTO branch (
@@ -74,7 +69,9 @@ impl BranchRepository {
         };
 
         let new_name = name.unwrap_or(&existing.name);
-        let new_location = location.map(|s| Some(s.to_string())).unwrap_or(existing.location);
+        let new_location = location
+            .map(|s| Some(s.to_string()))
+            .unwrap_or(existing.location);
         let new_district = match district {
             Some(opt) => opt.map(|s| s.to_string()),
             None => existing.district,

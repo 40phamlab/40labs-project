@@ -8,7 +8,33 @@ Method: Source/config inspection. No live deployment, production secrets, or pro
 
 ## Executive summary
 
-API Core is one Rust/Axum service backed by PostgreSQL. It implements activation, a limited sync protocol, and a substantial Admin Web API. Core Desktop's operational source of truth is its per-installation SQLx/SQLite database. The inspected desktop API references show activation and Ed25519 grant verification, but no end-to-end client for the mounted cloud sync push route. Admin Web pages use React Query and call API Core. Sync authentication is critically broken: device bearer tokens are unsigned base64 JSON claims. Anyone can fabricate a workspace/business/device identity and invoke sync routes. Sync also accepts client-controlled branch IDs and can change cloud-row ownership on ID conflict. Do not expose sync endpoints to untrusted networks until these are fixed.
+API Core is one Rust/Axum service backed by PostgreSQL. It implements activation, a limited sync protocol, and a substantial Admin Web API. Core Desktop's operational source of truth is its per-installation SQLx/SQLite database. The inspected desktop API references show activation and Ed25519 grant verification, but no end-to-end client for the mounted cloud sync push route. Admin Web pages use React Query and call API Core.
+
+### Remediation status update — 2026-11-13
+
+This document's original findings below preserve evidence from the 2026-11-10 audit snapshot; where the code has since changed, the status below supersedes the old “Evidence” paragraph. “Fixed in source” does not imply production deployment or complete test validation.
+
+| Finding | Current status |
+|---|---|
+| P0-1 forged device credentials | **Fixed in source** in commit `43365d3`: signed HS256 JWTs, strict claims, enrollment-bound scope, revocation, and device-token tests. This turn's Rust unit tests passed; the PostgreSQL integration suite could not be completed because Docker/PostgreSQL became unavailable. |
+| P1-1 workspace/branch writes and ownership reassignment | **Fixed in source** by device-scope checks and ownership-preserving writes in the same commit. PostgreSQL sync integration was not rerun successfully in this turn. |
+| P1-2 production secrets and origin | **Partially fixed**: API startup now validates explicit HTTPS Admin origin without path/query/credentials, non-default 32-byte TOTP key with minimum byte diversity, activation/device signing keys with minimum byte diversity, rejects the known device development key, validates supported `APP_ENV`, and requires debug OTP off. Production Compose wires origin and TOTP key through secrets. Existing deployments still require operators to create and provision `admin_totp_enc_key.txt` and set `ADMIN_WEB_ORIGIN`; no production deployment was changed. |
+| P1-3 Admin RBAC | **Partially fixed in source**: centralized default-deny role/resource/action policy now gates every mounted route. `super_admin`, `admin`, `reviewer`, and `viewer` have explicit policies; integration coverage exists for viewer denial. No business-specific admin grant scopes exist, so roles with read permission still have broad platform read access within their resource. |
+| P1-4 sync idempotency | **Partially fixed in prior remediation**: idempotency is per device and binds payload/status. Additional replay/corrected-retry semantics remain to verify. |
+| P1-5 device identity/enrollment/revocation | **Fixed in source** by enrolled claims, request device-ID equality, and admin revocation. Database integration validation is currently unavailable. |
+| P1-6 full Desktop cloud sync/domain coverage | **Open**: no observed end-to-end Desktop outbox push/pull integration and only five cloud entities are supported. |
+| Desktop cloud user authorization | **Open limitation**: cloud device identity is scoped to workspace/business/branch, but cloud sync does not carry a server-authenticated employee/user principal or enforce per-user permissions. Local Desktop authentication remains offline-capable. |
+| P1-7 client-submitted revenue summary truth | **Open**: summary values remain client-submitted and are not reconciled to synced sales. |
+| P2-1 process-local authentication state/rate limits | **Partially fixed in source**: Admin challenges and shared rate counters now live in PostgreSQL; login/TOTP/recovery and activation limits use atomic shared buckets; TOTP replay is prevented and TOTP throttling is both challenge- and account-scoped; OTP attempts and consumption use conditional/atomic updates. Rate buckets are opportunistically expired after one day. Full API integration tests passed on isolated PostgreSQL. Proxy address uses the TCP peer, not forwarded headers; deployments behind proxies need a trusted-proxy design before per-client IP limits are meaningful. Expired login challenges still need cleanup. |
+| Admin session/recovery | **Implemented and integration-tested in source**: hashed one-time recovery codes, durable challenges, revocable sessions, fresh session IDs, secure cookie attributes, and TOTP replay prevention are present. Focused PostgreSQL tests passed; session lifecycle still needs broader route coverage and operational key rotation. |
+| P2-2 backups/restore | **Open**. |
+| P2-3 least-privilege database/RLS | **Open**. |
+| P2-4 log redaction | **Open**; logs are not yet fully allow-listed or proven free of secret-bearing provider/database errors. Admin auth credential values were removed from routine auth failure metadata, and the Admin debug TOTP printing path was removed. |
+| P2-5 activation grant lifecycle | **Fixed in source** by versioned, expiring Ed25519 grant and one-time enrollment from commit `43365d3`. |
+| P2-6 API docs/OpenAPI parity | **Partially updated**; Admin auth contract docs and runbook were revised, but route-wide OpenAPI parity remains open. |
+| P3 findings | **Open** unless stated above. |
+
+Verification in this update: `cargo fmt --all -- --check`, `cargo check -p api-core`, `cargo test -p api-core --lib` (12 passed), the focused Admin PostgreSQL integration suite (4 passed), and the complete `cargo test -p api-core` suite (43 passed, 0 failed) all passed using an isolated PostgreSQL database. No production database, secrets, or deployment were accessed. The initial hardening changes made before this update in other working-tree files were not authored as part of this audit update and remain untouched.
 
 Other high-priority risks: production Compose omits Admin Web origin and TOTP encryption key, causing localhost CORS fallback and a known hardcoded TOTP key; Admin RBAC distinguishes admin only for business-verification POST while all roles can read platform-wide records/logs; idempotency can falsely acknowledge rejected or unrelated changes as applied; Core Desktop sync coverage/integration is incomplete; and analytics treats device-submitted summaries as revenue truth. No production migration state, backup, live deployment, or test result was verified.
 
@@ -313,34 +339,34 @@ Files: admin/infra.rs, sync status schema, prod monitoring config/runbook.
 
 | Area | Result |
 |---|---|
-| Forged device token | Confirmed P0: unsigned base64 claims accepted. |
-| JWT/signature/expiration | Admin uses opaque random DB session, not JWT. Activation grant uses Ed25519 but has no expiry. Device bearer has no signature or expiry. |
-| Session hijacking/revocation | Admin cookie HttpOnly/SameSite=Strict; Secure in prod; session expiry/revocation/disabled user checked. Logout and own session revocation exist. Device revocation absent. |
-| Password/recovery | Admin Argon2. No Admin reset/recovery endpoint found. Desktop local recovery-code schema exists, not API Core recovery. Seed prints credentials/factor. |
-| TOTP | totp-rs current code; encrypted AES-GCM code path; prod uses known fallback key unless separately injected. In-memory challenge and no distributed TOTP lockout. |
-| RBAC | Only verification POST is admin-only; broad all-role reads. Device routes unauthenticated in practice due forged claims. |
+| Forged device token | **Remediated in source** in `43365d3`: signed JWT verification, enrollment and revocation binding. Current-turn unit tests pass; current-turn full PostgreSQL suite not verified. |
+| JWT/signature/expiration | Device JWT and activation grant use signatures, expiry and scope contracts. Admin uses opaque random database session IDs, not JWTs. |
+| Session hijacking/revocation | Admin cookie HttpOnly/SameSite=Strict; Secure in production; expiry, revocation and disabled-user checks exist. Durable challenges and one-use TOTP/recovery codes added; integration verification incomplete. |
+| Password/recovery | Admin Argon2. New one-time recovery-code login and seed no longer prints credentials or MFA secrets. Password-reset/email recovery is not implemented. |
+| TOTP | totp-rs with AES-GCM encrypted secret; production now rejects missing/default TOTP key. Accepted time step stored atomically to prevent replay; integration test requires rerun. |
+| RBAC | Central default-deny role/action/resource policy added. Business-scoped access grants are not implemented; roles with read permission retain broad resource-level access. |
 | SQL injection | Inspected handler SQL uses binds/QueryBuilder; business sort is allow-listed; savepoint name is generated UUID. No injectable interpolation found in inspected paths. Source review, not scanner result. |
-| Cross-workspace/branch | Confirmed risks: forged tenant claims, untrusted branch fields and ownership-changing upserts. |
-| IDOR | Platform-wide business IDs readable by any authenticated admin role; no external grant scope. |
+| Cross-workspace/branch | Signed server-enrolled claims and sync ownership checks added. Database integration tests not rerun successfully in current turn. |
+| IDOR | Admin business reads remain platform-wide according to the configured role capability; no business-specific grant scope exists. Device record ID alone is not intended as authorization. |
 | File upload | No API Core upload route found. Desktop attachments are local functionality. |
-| Secrets/logs | Checked-in TOTP fallback key; dev DB credential defaults; redaction flawed; explicit seed prints secrets. No .env/production secret values were read. |
-| CORS/cookie | Single configured origin + credentials; prod compose omission falls back localhost. Cookie flags are mostly sound; no CSRF token, with JSON/CORS/SameSite as current controls. |
-| Rate limit | Exists but per process, not durable/distributed. |
+| Secrets/logs | Production now requires non-default TOTP/device/activation secrets and explicit HTTPS Admin origin. Admin seed no longer prints credentials or MFA secrets. General ops log redaction remains incomplete. No production secrets were read. |
+| CORS/cookie | Single configured origin + credentials; production Compose now requires explicit origin. Cookie flags are HttpOnly/SameSite=Strict and Secure in production. No CSRF token; review trusted subdomains and browser deployment model. |
+| Rate limit | Activation and Admin limits now use atomic database buckets shared across instances; database outage fails closed. Proxy forwarding policy and high-volume operational behavior need production verification. |
 | Sync replay | Global change ID, rejected-ID poisoning, false applied ack, non-durable cursor. |
 | DB permissions | No RLS/grants found; runtime applies migrations. Actual production grants unknown. |
 | Backups | Persistent volume only; no backup/restore evidence. |
 
 ## Missing MVP functionality
 
-1. Secure device enrollment/token issue/expiry/revocation and branch binding.
+1. Complete PostgreSQL integration verification for signed device enrollment/token issue/expiry/revocation and branch binding.
 2. Complete sync read/pull, cursor, conflict resolution, retries and desktop outbox integration.
 3. Cloud replication for key MVP sales/receipt, customer, lab and audit workflows.
 4. Server-verified or explicitly unreconciled revenue analytics.
-5. Admin least privilege and scoped Gov/Enterprise access approvals.
-6. Admin password recovery, TOTP lifecycle/key rotation and session metadata.
+5. Business-scoped Admin access grants for restricted external/reviewer roles.
+6. Admin password-reset flow, TOTP encryption-key rotation and session metadata.
 7. Production migration job/least-privilege DB accounts and actual migration compatibility checks.
 8. Backup/PITR, restore procedure and recovery objectives.
-9. Production config fail-fast for Admin origin and TOTP key.
+9. Provision production Admin origin and TOTP encryption secret; rehearse startup validation and secret rotation.
 10. Generated shared API contracts and CI route/auth schema parity.
 
 ## Recommended implementation sequence / dependencies

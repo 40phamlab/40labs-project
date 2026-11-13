@@ -8,6 +8,14 @@ Business onboarding and activation follows a 3-step cryptographic flow:
 
 The activation grant is now version 2 and expires within five minutes. Core Desktop validates the Ed25519 signature, issuer, audience, expiry and scope values before using the returned IDs. It exchanges the grant at `POST /v1/devices/enroll` and securely stores the returned signed device credentials in the OS keychain. API Core no longer accepts unsigned Base64 JSON bearer tokens. Full contract and key rotation instructions are in [DEVICE_AUTH.md](DEVICE_AUTH.md).
 
+## Administrative authentication and authorization
+
+Admin Web uses password plus TOTP at `POST /admin/v1/auth/login` and `POST /admin/v1/auth/totp`. Login challenges are stored in PostgreSQL, expire after five minutes and can be consumed once. TOTP acceptance records the accepted time step atomically; the same step cannot be used again. Recovery codes can be regenerated through authenticated `POST /admin/v1/auth/recovery-codes/regenerate` (shown once) and used at public `POST /admin/v1/auth/recovery` with a valid password challenge. Each recovery code is high entropy, stored as a SHA-256 digest, and consumed once.
+
+Sessions are opaque random IDs in the `HttpOnly; SameSite=Strict` `admin_session` cookie; production adds `Secure`. Sessions expire after eight hours and can be revoked individually from the caller's own session list. Every protected Admin route is checked by the centralized default-deny policy in `src/admin/mod.rs`: `super_admin` has all mapped permissions; `admin` can read and mutate business verification, read analytics and infrastructure, and read/revoke devices; `reviewer` can read businesses, analytics, sync and non-log infrastructure; `viewer` can read businesses and analytics. All authenticated roles can log out and manage only their own sessions/recovery codes. Unknown roles and routes are denied.
+
+Login, TOTP, recovery, and activation rate counters are PostgreSQL-backed and shared across API Core instances; if the limiter database write fails, the request is rejected. Do not enable OTP-code debug output. Seed a development admin with `ADMIN_SEED_PASSWORD` set in the process environment (minimum 16 characters) and `cargo run --bin api-core -- admin-seed --email ... --role admin`. The seed command refuses production, stores no TOTP secret, and never prints the password or MFA secret; first password login returns a one-time TOTP enrollment URL. Set `APP_ENV=production`, a real HTTPS `ADMIN_WEB_ORIGIN`, non-default `TOTP_ENC_KEY`, and signing keys through secret files; production startup fails closed when those are invalid.
+
 ---
 
 ### POST /api/v1/activation/otp/request

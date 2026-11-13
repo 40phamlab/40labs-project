@@ -119,9 +119,6 @@ async fn postgres_enrolled_device_isolation_and_atomic_sync() {
         config: test_config(url),
         sms_sender: Arc::new(ConsoleOtpProvider::new()) as Arc<dyn OtpProvider>,
         rate_limiter: RateLimiter::new(),
-        admin_challenges: Arc::new(Mutex::new(HashMap::new())),
-        login_failures: Arc::new(Mutex::new(HashMap::new())),
-        account_lockouts: Arc::new(Mutex::new(HashMap::new())),
     });
     let now = chrono::Utc::now();
     let a = issue_access_token(

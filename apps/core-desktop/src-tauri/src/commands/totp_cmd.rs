@@ -1,11 +1,11 @@
+use crate::auth::totp::{decrypt_secret, encrypt_secret, generate_new_totp, verify_totp};
 use crate::auth::{AuthError, AuthErrorResponse};
-use crate::auth::totp::{generate_new_totp, encrypt_secret, decrypt_secret, verify_totp};
+use crate::repositories::credential_repo::CredentialRepository;
 use crate::repositories::totp_repo::TotpRepository;
 use crate::repositories::user_repo::UserRepository;
-use crate::repositories::credential_repo::CredentialRepository;
 use crate::AppState;
-use tauri::State;
 use serde::Serialize;
+use tauri::State;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -19,7 +19,9 @@ pub async fn auth_totp_begin(
     state: State<'_, AppState>,
 ) -> Result<TotpBeginResponse, AuthErrorResponse> {
     let session_guard = state.auth_state.session.read().await;
-    let session = session_guard.as_ref().ok_or(AuthError::SessionRequired.to_response())?;
+    let session = session_guard
+        .as_ref()
+        .ok_or(AuthError::SessionRequired.to_response())?;
     let user_id = session.user_id.clone();
     drop(session_guard);
 
@@ -32,7 +34,9 @@ pub async fn auth_totp_begin(
         .await
         .ok()
         .flatten();
-    let biz_name = business.map(|b| b.name).unwrap_or_else(|| "40Labs".to_string());
+    let biz_name = business
+        .map(|b| b.name)
+        .unwrap_or_else(|| "40Labs".to_string());
     let account_label = format!("{}@{}", user.username, biz_name);
 
     let (base32_secret, uri, _) = generate_new_totp(&account_label, "40Labs")
@@ -66,24 +70,37 @@ pub async fn auth_totp_confirm(
     code: String,
 ) -> Result<(), AuthErrorResponse> {
     let session_guard = state.auth_state.session.read().await;
-    let session = session_guard.as_ref().ok_or(AuthError::SessionRequired.to_response())?;
+    let session = session_guard
+        .as_ref()
+        .ok_or(AuthError::SessionRequired.to_response())?;
     let user_id = session.user_id.clone();
     drop(session_guard);
 
     let totp_rec = TotpRepository::get_by_user_id(&state.pool, &user_id)
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| AuthError::PolicyViolation("TOTP setup not initiated".to_string()).to_response())?;
+        .ok_or_else(|| {
+            AuthError::PolicyViolation("TOTP setup not initiated".to_string()).to_response()
+        })?;
 
     let encryption_key = state.keystore.derive_key(b"totp_secret_v1");
     let secret_base32 = decrypt_secret(&totp_rec.secret_enc, &encryption_key)
         .map_err(|e| AuthError::InternalError(e).to_response())?;
 
-    let step = verify_totp(&secret_base32, &code, totp_rec.last_used_step as u64)
-        .map_err(|_| AuthError::InvalidCredentials { retry_after_secs: None }.to_response())?;
+    let step =
+        verify_totp(&secret_base32, &code, totp_rec.last_used_step as u64).map_err(|_| {
+            AuthError::InvalidCredentials {
+                retry_after_secs: None,
+            }
+            .to_response()
+        })?;
 
     let now = chrono::Utc::now().to_rfc3339();
-    let mut tx = state.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
     TotpRepository::confirm(&state.pool, &user_id, &now)
         .await
@@ -106,7 +123,9 @@ pub async fn auth_totp_confirm(
     crate::repositories::audit_repo::audit::append(&mut tx, &audit)
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
-    tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    tx.commit()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
     Ok(())
 }
@@ -118,7 +137,9 @@ pub async fn auth_totp_disable(
     code: String,
 ) -> Result<(), AuthErrorResponse> {
     let session_guard = state.auth_state.session.read().await;
-    let session = session_guard.as_ref().ok_or(AuthError::SessionRequired.to_response())?;
+    let session = session_guard
+        .as_ref()
+        .ok_or(AuthError::SessionRequired.to_response())?;
     let user_id = session.user_id.clone();
     drop(session_guard);
 
@@ -128,23 +149,36 @@ pub async fn auth_totp_disable(
         .ok_or_else(|| AuthError::NotFound("Credentials not found".to_string()).to_response())?;
 
     if !crate::security::hashing::verify_password(&password, &cred.password_hash) {
-        return Err(AuthError::InvalidCredentials { retry_after_secs: None }.to_response());
+        return Err(AuthError::InvalidCredentials {
+            retry_after_secs: None,
+        }
+        .to_response());
     }
 
     let totp_rec = TotpRepository::get_by_user_id(&state.pool, &user_id)
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?
-        .ok_or_else(|| AuthError::PolicyViolation("TOTP not configured".to_string()).to_response())?;
+        .ok_or_else(|| {
+            AuthError::PolicyViolation("TOTP not configured".to_string()).to_response()
+        })?;
 
     let encryption_key = state.keystore.derive_key(b"totp_secret_v1");
     let secret_base32 = decrypt_secret(&totp_rec.secret_enc, &encryption_key)
         .map_err(|e| AuthError::InternalError(e).to_response())?;
 
-    verify_totp(&secret_base32, &code, totp_rec.last_used_step as u64)
-        .map_err(|_| AuthError::InvalidCredentials { retry_after_secs: None }.to_response())?;
+    verify_totp(&secret_base32, &code, totp_rec.last_used_step as u64).map_err(|_| {
+        AuthError::InvalidCredentials {
+            retry_after_secs: None,
+        }
+        .to_response()
+    })?;
 
     let now = chrono::Utc::now().to_rfc3339();
-    let mut tx = state.pool.begin().await.map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
     TotpRepository::delete(&state.pool, &user_id)
         .await
@@ -164,7 +198,9 @@ pub async fn auth_totp_disable(
     crate::repositories::audit_repo::audit::append(&mut tx, &audit)
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
-    tx.commit().await.map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+    tx.commit()
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
     Ok(())
 }
@@ -185,5 +221,7 @@ pub async fn auth_totp_status(
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
     let enabled = totp_rec.map(|r| r.enabled_at.is_some()).unwrap_or(false);
-    Ok(serde_json::json!({ "status": if enabled { "enabled" } else { "not_configured" }, "enabled": enabled }))
+    Ok(
+        serde_json::json!({ "status": if enabled { "enabled" } else { "not_configured" }, "enabled": enabled }),
+    )
 }

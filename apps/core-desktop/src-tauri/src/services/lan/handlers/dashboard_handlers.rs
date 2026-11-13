@@ -51,12 +51,11 @@ pub async fn summary_handler(
         .and_then(|r| r.try_get("cnt").ok())
         .unwrap_or(0);
 
-    let total_patients_row =
-        sqlx::query("SELECT COUNT(*) as cnt FROM customer")
-            .fetch_optional(&state.pool)
-            .await
-            .ok()
-            .flatten();
+    let total_patients_row = sqlx::query("SELECT COUNT(*) as cnt FROM customer")
+        .fetch_optional(&state.pool)
+        .await
+        .ok()
+        .flatten();
     let total_patients_count: i64 = total_patients_row
         .and_then(|r| r.try_get("cnt").ok())
         .unwrap_or(0);
@@ -120,8 +119,12 @@ pub async fn summary_handler(
     let (user_role, workspace_id, branch_id) = match user_row {
         Some(r) => {
             let role: String = r.try_get("role").unwrap_or_else(|_| "staff".to_string());
-            let ws: String = r.try_get("workspace_id").unwrap_or_else(|_| device.workspace_id.clone());
-            let br: String = r.try_get("branch_id").unwrap_or_else(|_| device.branch_id.clone());
+            let ws: String = r
+                .try_get("workspace_id")
+                .unwrap_or_else(|_| device.workspace_id.clone());
+            let br: String = r
+                .try_get("branch_id")
+                .unwrap_or_else(|_| device.branch_id.clone());
             (role, ws, br)
         }
         None => (
@@ -246,7 +249,9 @@ pub async fn activity_handler(
 
     for row in patients {
         let id: String = row.try_get("id").unwrap_or_default();
-        let name: String = row.try_get("full_name").unwrap_or_else(|_| "Unknown Patient".to_string());
+        let name: String = row
+            .try_get("full_name")
+            .unwrap_or_else(|_| "Unknown Patient".to_string());
         let created_at: String = row.try_get("created_at").unwrap_or_default();
         items.push(json!({
             "id": format!("patient-{}", id),
@@ -260,7 +265,9 @@ pub async fn activity_handler(
 
     for row in samples {
         let id: String = row.try_get("id").unwrap_or_default();
-        let stype: String = row.try_get("sample_label").unwrap_or_else(|_| "Sample".to_string());
+        let stype: String = row
+            .try_get("sample_label")
+            .unwrap_or_else(|_| "Sample".to_string());
         let created_at: String = row.try_get("created_at").unwrap_or_default();
         items.push(json!({
             "id": format!("sample-{}", id),
@@ -301,14 +308,21 @@ pub async fn get_staff_notifications_handler(
         .await
         .map_err(|e| {
             tracing::warn!(error = %e, "Failed to fetch user for notifications");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            )
         })?;
 
     let (user_role, workspace_id, branch_id) = match user_row {
         Some(r) => {
             let role: String = r.try_get("role").unwrap_or_else(|_| "staff".to_string());
-            let ws: String = r.try_get("workspace_id").unwrap_or_else(|_| device.workspace_id.clone());
-            let br: String = r.try_get("branch_id").unwrap_or_else(|_| device.branch_id.clone());
+            let ws: String = r
+                .try_get("workspace_id")
+                .unwrap_or_else(|_| device.workspace_id.clone());
+            let br: String = r
+                .try_get("branch_id")
+                .unwrap_or_else(|_| device.branch_id.clone());
             (role, ws, br)
         }
         None => (
@@ -330,7 +344,10 @@ pub async fn get_staff_notifications_handler(
     .await
     .map_err(|e| {
         tracing::warn!(error = %e, "Failed to list staff notifications");
-        (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        )
     })?;
 
     let next_cursor = if items.len() as i64 >= limit {
@@ -392,14 +409,23 @@ pub async fn post_staff_notification_handler(
             .await
             .map_err(|e| {
                 tracing::warn!(error = %e, "Failed to fetch user for posting notification");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             })?;
 
     let (sender_name, workspace_id, branch_id) = match user_row {
         Some(r) => {
-            let name: String = r.try_get("full_name").unwrap_or_else(|_| "Staff User".to_string());
-            let ws: String = r.try_get("workspace_id").unwrap_or_else(|_| device.workspace_id.clone());
-            let br: String = r.try_get("branch_id").unwrap_or_else(|_| device.branch_id.clone());
+            let name: String = r
+                .try_get("full_name")
+                .unwrap_or_else(|_| "Staff User".to_string());
+            let ws: String = r
+                .try_get("workspace_id")
+                .unwrap_or_else(|_| device.workspace_id.clone());
+            let br: String = r
+                .try_get("branch_id")
+                .unwrap_or_else(|_| device.branch_id.clone());
             (name, ws, br)
         }
         None => (
@@ -440,7 +466,10 @@ pub async fn post_staff_notification_handler(
         .await
         .map_err(|e| {
             tracing::warn!(error = %e, "Failed to create staff notification");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            )
         })?;
 
     if payload.audience == "broadcast" || payload.audience == "alert" || severity == "alert" {
@@ -486,7 +515,10 @@ pub async fn patch_staff_notification_read_handler(
         .await
         .map_err(|e| {
             tracing::warn!(error = %e, "Failed to mark notification as read");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            )
         })?;
 
     Ok(Json(json!({

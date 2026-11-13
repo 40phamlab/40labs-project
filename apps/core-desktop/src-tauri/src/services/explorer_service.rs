@@ -23,9 +23,13 @@ pub struct ExplorerDirectoryContent {
 
 /// Checks if a path exists and is safe to access (not a protected application database file).
 pub fn validate_path_safety(path: &Path) -> Result<PathBuf, String> {
-    let canonical = path
-        .canonicalize()
-        .map_err(|e| format!("Invalid path or path does not exist '{}': {}", path.display(), e))?;
+    let canonical = path.canonicalize().map_err(|e| {
+        format!(
+            "Invalid path or path does not exist '{}': {}",
+            path.display(),
+            e
+        )
+    })?;
 
     let path_str = canonical.to_string_lossy().to_lowercase();
 
@@ -35,7 +39,10 @@ pub fn validate_path_safety(path: &Path) -> Result<PathBuf, String> {
         || path_str.ends_with("40labs.db-shm")
         || path_str.ends_with(".keystore")
     {
-        return Err("Access to sensitive application database or credential store is protected.".to_string());
+        return Err(
+            "Access to sensitive application database or credential store is protected."
+                .to_string(),
+        );
     }
 
     Ok(canonical)
@@ -46,7 +53,9 @@ pub fn validate_destructive_operation(path: &Path) -> Result<PathBuf, String> {
     let canonical = validate_path_safety(path)?;
 
     if canonical.parent().is_none() {
-        return Err("Destructive operations on root filesystem directories are prohibited.".to_string());
+        return Err(
+            "Destructive operations on root filesystem directories are prohibited.".to_string(),
+        );
     }
 
     Ok(canonical)
@@ -65,12 +74,16 @@ pub fn read_directory(dir_path: &str) -> Result<ExplorerDirectoryContent, String
     let canonical = validate_path_safety(path)?;
 
     if !canonical.is_dir() {
-        return Err(format!("Specified path is not a directory: {}", canonical.display()));
+        return Err(format!(
+            "Specified path is not a directory: {}",
+            canonical.display()
+        ));
     }
 
     let parent_path = canonical.parent().map(|p| p.to_string_lossy().to_string());
 
-    let entries = std::fs::read_dir(&canonical).map_err(|e| format!("Failed to read directory content: {}", e))?;
+    let entries = std::fs::read_dir(&canonical)
+        .map_err(|e| format!("Failed to read directory content: {}", e))?;
 
     let mut items = Vec::new();
 
@@ -82,7 +95,10 @@ pub fn read_directory(dir_path: &str) -> Result<ExplorerDirectoryContent, String
 
         let item_path = entry.path();
         let symlink_meta = std::fs::symlink_metadata(&item_path).ok();
-        let is_symlink = symlink_meta.as_ref().map(|m| m.file_type().is_symlink()).unwrap_or(false);
+        let is_symlink = symlink_meta
+            .as_ref()
+            .map(|m| m.file_type().is_symlink())
+            .unwrap_or(false);
 
         let metadata = std::fs::metadata(&item_path).ok();
 
@@ -145,13 +161,17 @@ pub fn read_file_text(file_path: &str, max_bytes: Option<u64>) -> Result<String,
     }
 
     let limit = max_bytes.unwrap_or(5_000_000); // 5 MB default
-    let file = std::fs::File::open(&canonical).map_err(|e| format!("Failed to open file: {}", e))?;
+    let file =
+        std::fs::File::open(&canonical).map_err(|e| format!("Failed to open file: {}", e))?;
 
     let mut handle = file.take(limit);
     let mut buffer = Vec::new();
-    handle.read_to_end(&mut buffer).map_err(|e| format!("Failed to read file: {}", e))?;
+    handle
+        .read_to_end(&mut buffer)
+        .map_err(|e| format!("Failed to read file: {}", e))?;
 
-    String::from_utf8(buffer).map_err(|_| "File contains binary data or invalid UTF-8 encoding.".to_string())
+    String::from_utf8(buffer)
+        .map_err(|_| "File contains binary data or invalid UTF-8 encoding.".to_string())
 }
 
 /// Create folder
@@ -172,16 +192,22 @@ pub fn create_directory(parent_path: &str, name: &str) -> Result<String, String>
 /// Rename path
 pub fn rename_path(old_path: &str, new_name: &str) -> Result<String, String> {
     let canonical_old = validate_destructive_operation(Path::new(old_path))?;
-    let parent = canonical_old.parent().ok_or("Cannot rename path without parent directory.")?;
+    let parent = canonical_old
+        .parent()
+        .ok_or("Cannot rename path without parent directory.")?;
 
     let safe_name = crate::services::documents::sanitize_file_name(new_name);
     let target = parent.join(&safe_name);
 
     if target.exists() {
-        return Err(format!("A file or folder with name '{}' already exists.", safe_name));
+        return Err(format!(
+            "A file or folder with name '{}' already exists.",
+            safe_name
+        ));
     }
 
-    std::fs::rename(&canonical_old, &target).map_err(|e| format!("Failed to rename item: {}", e))?;
+    std::fs::rename(&canonical_old, &target)
+        .map_err(|e| format!("Failed to rename item: {}", e))?;
 
     Ok(target.to_string_lossy().to_string())
 }
@@ -198,10 +224,14 @@ pub fn copy_file(source_path: &str, target_dir: &str) -> Result<String, String> 
         return Err("Target is not a directory.".to_string());
     }
 
-    let file_name = canonical_source.file_name().and_then(|n| n.to_str()).unwrap_or("copied_file");
+    let file_name = canonical_source
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("copied_file");
     let dest_path = crate::services::documents::unique_path(&canonical_target_dir, file_name);
 
-    std::fs::copy(&canonical_source, &dest_path).map_err(|e| format!("Failed to copy file: {}", e))?;
+    std::fs::copy(&canonical_source, &dest_path)
+        .map_err(|e| format!("Failed to copy file: {}", e))?;
 
     Ok(dest_path.to_string_lossy().to_string())
 }
@@ -211,7 +241,8 @@ pub fn delete_path(path: &str) -> Result<(), String> {
     let canonical = validate_destructive_operation(Path::new(path))?;
 
     if canonical.is_dir() {
-        std::fs::remove_dir_all(&canonical).map_err(|e| format!("Failed to delete folder: {}", e))?;
+        std::fs::remove_dir_all(&canonical)
+            .map_err(|e| format!("Failed to delete folder: {}", e))?;
     } else {
         std::fs::remove_file(&canonical).map_err(|e| format!("Failed to delete file: {}", e))?;
     }
@@ -223,7 +254,9 @@ pub fn delete_path(path: &str) -> Result<(), String> {
 pub fn reveal_in_file_manager(app: &tauri::AppHandle, path: &str) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
     let canonical = validate_path_safety(Path::new(path))?;
-    app.opener().reveal_item_in_dir(canonical).map_err(|e| format!("Failed to reveal item in file manager: {}", e))
+    app.opener()
+        .reveal_item_in_dir(canonical)
+        .map_err(|e| format!("Failed to reveal item in file manager: {}", e))
 }
 
 #[cfg(test)]
@@ -232,7 +265,8 @@ mod tests {
 
     #[test]
     fn test_validate_path_safety_blocks_database_files() {
-        let temp_dir = std::env::temp_dir().join(format!("40labs_test_db_{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("40labs_test_db_{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&temp_dir).unwrap();
         let db_file = temp_dir.join("40labs.db");
         std::fs::write(&db_file, "sqlite database content").unwrap();
@@ -246,9 +280,14 @@ mod tests {
 
     #[test]
     fn test_filesystem_crud_operations() {
-        let temp_dir = std::env::temp_dir().join(format!("40labs_explorer_test_{}", uuid::Uuid::new_v4()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("40labs_explorer_test_{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&temp_dir).unwrap();
-        let temp_str = temp_dir.canonicalize().unwrap().to_string_lossy().to_string();
+        let temp_str = temp_dir
+            .canonicalize()
+            .unwrap()
+            .to_string_lossy()
+            .to_string();
 
         // 1. Create directory
         let new_folder = create_directory(&temp_str, "SubFolder").unwrap();

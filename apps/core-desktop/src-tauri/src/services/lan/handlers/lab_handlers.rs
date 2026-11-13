@@ -28,7 +28,7 @@ pub async fn get_lab_orders_handler(
         LEFT JOIN customer c ON o.customer_id = c.id
         WHERE o.workspace_id = ? AND o.branch_id = ?
         ORDER BY o.created_at DESC
-        "#
+        "#,
     )
     .bind(&device.workspace_id)
     .bind(&device.branch_id)
@@ -36,29 +36,43 @@ pub async fn get_lab_orders_handler(
     .await
     .map_err(|e| {
         tracing::warn!(error = %e, "Failed to fetch lab orders");
-        (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        )
     })?;
 
-    let orders = rows.iter().map(|row| {
-        let order = LabOrder {
-            id: row.try_get("id").unwrap_or_default(),
-            workspace_id: row.try_get("workspace_id").unwrap_or_default(),
-            branch_id: row.try_get("branch_id").unwrap_or_default(),
-            created_at: row.try_get("created_at").unwrap_or_default(),
-            updated_at: row.try_get("updated_at").unwrap_or_default(),
-            customer_id: row.try_get("customer_id").unwrap_or_default(),
-            sale_id: row.try_get("sale_id").ok().flatten(),
-            ordered_by_user_id: row.try_get("ordered_by_user_id").unwrap_or_default(),
-            status: row.try_get("status").unwrap_or_else(|_| "ordered".to_string()),
-            test_catalog_id: row.try_get("test_catalog_id").unwrap_or_default(),
-        };
-        let mut val = serde_json::to_value(order).unwrap();
-        if let Some(obj) = val.as_object_mut() {
-            obj.insert("testName".to_string(), json!(row.try_get::<String, _>("test_name").unwrap_or_default()));
-            obj.insert("patientName".to_string(), json!(row.try_get::<String, _>("patient_name").unwrap_or_default()));
-        }
-        val
-    }).collect::<Vec<_>>();
+    let orders = rows
+        .iter()
+        .map(|row| {
+            let order = LabOrder {
+                id: row.try_get("id").unwrap_or_default(),
+                workspace_id: row.try_get("workspace_id").unwrap_or_default(),
+                branch_id: row.try_get("branch_id").unwrap_or_default(),
+                created_at: row.try_get("created_at").unwrap_or_default(),
+                updated_at: row.try_get("updated_at").unwrap_or_default(),
+                customer_id: row.try_get("customer_id").unwrap_or_default(),
+                sale_id: row.try_get("sale_id").ok().flatten(),
+                ordered_by_user_id: row.try_get("ordered_by_user_id").unwrap_or_default(),
+                status: row
+                    .try_get("status")
+                    .unwrap_or_else(|_| "ordered".to_string()),
+                test_catalog_id: row.try_get("test_catalog_id").unwrap_or_default(),
+            };
+            let mut val = serde_json::to_value(order).unwrap();
+            if let Some(obj) = val.as_object_mut() {
+                obj.insert(
+                    "testName".to_string(),
+                    json!(row.try_get::<String, _>("test_name").unwrap_or_default()),
+                );
+                obj.insert(
+                    "patientName".to_string(),
+                    json!(row.try_get::<String, _>("patient_name").unwrap_or_default()),
+                );
+            }
+            val
+        })
+        .collect::<Vec<_>>();
 
     Ok(Json(json!(orders)))
 }
@@ -69,7 +83,9 @@ pub async fn post_lab_samples_handler(
     headers: HeaderMap,
     Json(payload): Json<CollectLabSampleRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    if let Some(cached) = check_idempotency(&state.pool, &device.workspace_id, &headers, "/lab/samples").await? {
+    if let Some(cached) =
+        check_idempotency(&state.pool, &device.workspace_id, &headers, "/lab/samples").await?
+    {
         return Ok(cached);
     }
 
@@ -99,7 +115,10 @@ pub async fn post_lab_samples_handler(
             if e.contains("status") || e.contains("invalid") || e.contains("not found") {
                 (StatusCode::CONFLICT, e)
             } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
         })?;
 
@@ -123,7 +142,9 @@ pub async fn post_lab_results_handler(
     headers: HeaderMap,
     Json(payload): Json<RecordLabResultRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    if let Some(cached) = check_idempotency(&state.pool, &device.workspace_id, &headers, "/lab/results").await? {
+    if let Some(cached) =
+        check_idempotency(&state.pool, &device.workspace_id, &headers, "/lab/results").await?
+    {
         return Ok(cached);
     }
 
@@ -153,7 +174,10 @@ pub async fn post_lab_results_handler(
             if e.contains("status") || e.contains("invalid") || e.contains("not found") {
                 (StatusCode::CONFLICT, e)
             } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
         })?;
 

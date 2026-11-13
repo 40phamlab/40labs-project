@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use reqwest::Client;
 use serde::Deserialize;
+use std::time::Duration;
 
 pub struct HttpActivationClient {
     base_url: String,
@@ -46,9 +47,15 @@ impl HttpActivationClient {
         key_bytes.copy_from_slice(&bytes);
         let public_key = VerifyingKey::from_bytes(&key_bytes).map_err(|e| e.to_string())?;
 
+        let client = Client::builder()
+            .connect_timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(20))
+            .build()
+            .map_err(|e| format!("Failed to configure activation HTTP client: {e}"))?;
+
         Ok(Self {
             base_url,
-            client: Client::new(),
+            client,
             public_key,
         })
     }

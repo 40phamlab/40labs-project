@@ -10,6 +10,7 @@ pub struct RegistrationResult {
     business_id: String,
     workspace_id: String,
     branch_id: String,
+    recovery_codes: Vec<String>,
 }
 
 fn normalize_tz_phone(input: &str) -> Result<String, AuthErrorResponse> {
@@ -378,6 +379,39 @@ pub async fn registration_commit(
         .await
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
+    use rand::{thread_rng, Rng};
+    const RECOVERY_ALPHABET: &[u8] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    let recovery_batch_id = format!("batch_{}", uuid::Uuid::new_v4().simple());
+    let mut recovery_codes = Vec::with_capacity(8);
+    for _ in 0..8 {
+        let raw: String = {
+            let mut rng = thread_rng();
+            (0..10)
+                .map(|_| RECOVERY_ALPHABET[rng.gen_range(0..RECOVERY_ALPHABET.len())] as char)
+                .collect()
+        };
+        let code = format!("{}-{}", &raw[..5], &raw[5..]);
+        let code_hash = crate::security::hashing::hash_recovery_code(&code)
+            .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?;
+        crate::repositories::recovery_repo::RecoveryRepository::create(
+            &mut tx,
+            &crate::models::auth::RecoveryCode {
+                id: format!("rec_{}", uuid::Uuid::new_v4().simple()),
+                workspace_id: reg_resp.workspace_id.clone(),
+                branch_id: reg_resp.branch_id.clone(),
+                user_id: user_id.clone(),
+                batch_id: recovery_batch_id.clone(),
+                code_hash,
+                used_at: None,
+                invalidated_at: None,
+                created_at: now.clone(),
+            },
+        )
+        .await
+        .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
+        recovery_codes.push(code);
+    }
+
     sqlx::query(
         r#"
         INSERT INTO bound_device (id, workspace_id, branch_id, device_label, public_key, bound_by_user_id, status, created_at, updated_at)
@@ -419,6 +453,7 @@ pub async fn registration_commit(
         business_id: reg_resp.business_id,
         workspace_id: reg_resp.workspace_id,
         branch_id: reg_resp.branch_id,
+        recovery_codes,
     })
 }
 

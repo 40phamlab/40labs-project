@@ -26,7 +26,10 @@ pub async fn get_customers_handler(
         .await
         .map_err(|e| {
             tracing::warn!(error = %e, "Failed to list customers");
-            (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            )
         })?;
 
     let search = params.get("search").map(|s| s.to_lowercase());
@@ -53,7 +56,9 @@ pub async fn post_customers_handler(
     headers: HeaderMap,
     Json(payload): Json<AddCustomerRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    if let Some(cached) = check_idempotency(&state.pool, &device.workspace_id, &headers, "/customers").await? {
+    if let Some(cached) =
+        check_idempotency(&state.pool, &device.workspace_id, &headers, "/customers").await?
+    {
         return Ok(cached);
     }
 
@@ -110,7 +115,10 @@ pub async fn post_customers_handler(
         }
         Err(e) => {
             tracing::warn!(error = %e, "Failed to create customer");
-            Err((StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string()))
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal server error".to_string(),
+            ))
         }
     }
 }

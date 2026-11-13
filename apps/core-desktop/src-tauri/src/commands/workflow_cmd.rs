@@ -1,9 +1,9 @@
-use tauri::{AppHandle, State};
 use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
-use crate::models::lab::{LabWorkflowRunDb, LabWorkflowRunStepDb, LabStageAttachmentDb};
+use crate::models::lab::{LabStageAttachmentDb, LabWorkflowRunDb, LabWorkflowRunStepDb};
 use crate::repositories::lab_repo::LabRepository;
 use crate::services::workflow_service::{self, WorkflowTemplateFile};
+use tauri::{AppHandle, State};
 
 #[tauri::command]
 pub async fn get_workflow_templates(
@@ -45,7 +45,9 @@ pub async fn save_workflow_draft(
 
     let now = chrono::Utc::now().to_rfc3339();
 
-    let existing_draft = workflows.iter().find(|w| w.test_id == test_id && w.status == "draft");
+    let existing_draft = workflows
+        .iter()
+        .find(|w| w.test_id == test_id && w.status == "draft");
 
     let template = if let Some(draft) = existing_draft {
         WorkflowTemplateFile {
@@ -158,9 +160,16 @@ pub async fn start_workflow_execution(
         .await
         .map_err(|e| e.to_response())?;
 
-    workflow_service::start_execution(&app, &state.pool, &ctx.workspace_id, &ctx.branch_id, &order_id, &template_id)
-        .await
-        .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
+    workflow_service::start_execution(
+        &app,
+        &state.pool,
+        &ctx.workspace_id,
+        &ctx.branch_id,
+        &order_id,
+        &template_id,
+    )
+    .await
+    .map_err(|e| crate::auth::AuthError::InternalError(e).to_response())
 }
 
 #[tauri::command]
@@ -210,14 +219,24 @@ pub async fn get_workflow_execution(
         .await
         .map_err(|e| e.to_response())?;
 
-    let run = LabRepository::get_workflow_run_by_order(&state.pool, &ctx.workspace_id, &ctx.branch_id, &order_id)
-        .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+    let run = LabRepository::get_workflow_run_by_order(
+        &state.pool,
+        &ctx.workspace_id,
+        &ctx.branch_id,
+        &order_id,
+    )
+    .await
+    .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
 
     if let Some(r) = run {
-        let steps = LabRepository::list_workflow_run_steps(&state.pool, &ctx.workspace_id, &ctx.branch_id, &r.id)
-            .await
-            .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
+        let steps = LabRepository::list_workflow_run_steps(
+            &state.pool,
+            &ctx.workspace_id,
+            &ctx.branch_id,
+            &r.id,
+        )
+        .await
+        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())?;
         Ok(Some((r, steps)))
     } else {
         Ok(None)
@@ -278,9 +297,15 @@ pub async fn get_stage_attachments(
         .await
         .map_err(|e| e.to_response())?;
 
-    LabRepository::list_stage_attachments(&state.pool, &ctx.workspace_id, &ctx.branch_id, &run_id, &node_id)
-        .await
-        .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
+    LabRepository::list_stage_attachments(
+        &state.pool,
+        &ctx.workspace_id,
+        &ctx.branch_id,
+        &run_id,
+        &node_id,
+    )
+    .await
+    .map_err(|e| crate::auth::AuthError::DatabaseError(e.to_string()).to_response())
 }
 
 #[tauri::command]

@@ -4,7 +4,7 @@ import { AuthShell } from './shell/AuthShell';
 import { REGISTRATION_STEPS } from './registration/steps.config';
 import { useRegistrationStore } from './store/registrationSlice';
 import { useLanguageStore } from '../../stores/useLanguageStore';
-import { t, type TranslationKey } from '@40labs/i18n';
+import { t } from '@40labs/i18n';
 import { BusinessInfoStep } from './steps/BusinessInfoStep';
 import { BusinessPhoneStep } from './steps/BusinessPhoneStep';
 import { SizeStep } from './steps/SizeStep';
@@ -14,6 +14,7 @@ import { OwnerDetailsStep } from './steps/OwnerDetailsStep';
 import { OwnerVerifyStep } from './steps/OwnerVerifyStep';
 import { TermsStep } from './steps/TermsStep';
 import { AccessStep } from './steps/AccessStep';
+import { AccountStep, type RegistrationCredentials } from './steps/AccountStep';
 
 interface RegistrationWizardProps {
   onComplete: () => void;
@@ -25,9 +26,33 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
 
   const [currentStep, setCurrentStep] = React.useState<number>(0);
   const [completed, setCompleted] = React.useState<Set<number>>(new Set());
-  const [isStepValid, setIsStepValid] = React.useState<boolean>(false);
+  const [singleStepValidity, setSingleStepValidity] = React.useState<Record<string, boolean>>({});
+  const [businessInfoValid, setBusinessInfoValid] = React.useState(false);
+  const [businessPhoneValid, setBusinessPhoneValid] = React.useState(false);
+  const [ownerDetailsValid, setOwnerDetailsValid] = React.useState(false);
+  const [ownerPhoneVerified, setOwnerPhoneVerified] = React.useState(false);
   const [isCompleted, setIsCompleted] = React.useState<boolean>(false);
-  const [commitData, setCommitData] = React.useState<{ businessId: string; recoveryCodes?: string[] } | null>(null);
+  const [verification, setVerification] = React.useState<{ token: string; phone: string } | null>(null);
+  const [credentials, setCredentials] = React.useState<RegistrationCredentials>({ username: '', password: '' });
+  const [commitData, setCommitData] = React.useState<{
+    businessId: string;
+    credentials: RegistrationCredentials;
+    recoveryCodes: string[];
+  } | null>(null);
+
+  const handleOwnerVerified = React.useCallback((value: { token: string; phone: string } | null) => {
+    setVerification(value);
+  }, []);
+  const setCurrentStepValid = React.useCallback((valid: boolean) => {
+    const stepId = REGISTRATION_STEPS[currentStep]?.id;
+    if (stepId) setSingleStepValidity((current) => ({ ...current, [stepId]: valid }));
+  }, [currentStep]);
+  const currentStepId = REGISTRATION_STEPS[currentStep]?.id;
+  const isStepValid = currentStepId === 'business'
+    ? businessInfoValid && businessPhoneValid
+    : currentStepId === 'owner'
+      ? ownerDetailsValid && ownerPhoneVerified
+      : Boolean(currentStepId && singleStepValidity[currentStepId]);
 
   // Map REGISTRATION_STEPS to StepDef for HexStepper
   const stepDefs = REGISTRATION_STEPS.map((step) => ({
@@ -41,14 +66,12 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
       nextCompleted.add(currentStep);
       setCompleted(nextCompleted);
       setCurrentStep(currentStep + 1);
-      setIsStepValid(false);
     }
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
-      setIsStepValid(true); // previously visited steps considered valid
     }
   };
 
@@ -58,14 +81,12 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
       nextCompleted.add(currentStep);
       setCompleted(nextCompleted);
       setCurrentStep(currentStep + 1);
-      setIsStepValid(false);
     }
   };
 
   const handleStepClick = (index: number) => {
     if (completed.has(index) || index < currentStep) {
       setCurrentStep(index);
-      setIsStepValid(true);
     }
   };
 
@@ -74,6 +95,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
       return (
         <AccessStep
           businessId={commitData.businessId}
+          credentials={commitData.credentials}
           recoveryCodes={commitData.recoveryCodes}
           onCompleteSignIn={() => {
             resetDraft();
@@ -89,32 +111,43 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
       case 'business':
         return (
           <div className="space-y-6">
-            <BusinessInfoStep onValidChange={setIsStepValid} />
-            <BusinessPhoneStep onValidChange={setIsStepValid} />
+            <BusinessInfoStep onValidChange={setBusinessInfoValid} />
+            <BusinessPhoneStep onValidChange={setBusinessPhoneValid} />
           </div>
         );
       case 'type':
-        return <SizeStep onValidChange={setIsStepValid} />;
+        return <SizeStep onValidChange={setCurrentStepValid} />;
       case 'location':
-        return <PlaceStep onValidChange={setIsStepValid} />;
+        return <PlaceStep onValidChange={setCurrentStepValid} />;
       case 'payments':
-        return <PaymentsStep onValidChange={setIsStepValid} />;
+        return <PaymentsStep onValidChange={setCurrentStepValid} />;
       case 'owner':
         return (
           <div className="space-y-6">
-            <OwnerDetailsStep onValidChange={setIsStepValid} />
-            <OwnerVerifyStep onValidChange={setIsStepValid} />
+            <OwnerDetailsStep onValidChange={setOwnerDetailsValid} />
+            <OwnerVerifyStep
+              onValidChange={setOwnerPhoneVerified}
+              onVerified={handleOwnerVerified}
+            />
           </div>
         );
+      case 'account':
+        return <AccountStep value={credentials} onChange={setCredentials} onValidChange={setCurrentStepValid} />;
       case 'terms':
         return (
           <TermsStep
-            onValidChange={setIsStepValid}
+            onValidChange={setCurrentStepValid}
+            verification={verification}
+            credentials={credentials}
+            onRegistrationStored={() => {
+              resetDraft();
+              onComplete();
+            }}
             onCommitSuccess={(res) => {
-              const bizId = res.business_id || res.businessId || 'AFYA-TEST01';
               setCommitData({
-                businessId: bizId,
-                recoveryCodes: res.recoveryCodes || ['ABCDE-12345', 'FGHIJ-67890', 'KLMNO-11223', 'PQRST-44556'],
+                businessId: res.businessId,
+                credentials,
+                recoveryCodes: res.recoveryCodes,
               });
               setIsCompleted(true);
               const nextCompleted = new Set(completed);

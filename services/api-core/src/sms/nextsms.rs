@@ -1,4 +1,4 @@
-use super::{SendOutcome, SmsError, OtpProvider};
+use super::{OtpProvider, SendOutcome, SmsError};
 use async_trait::async_trait;
 use reqwest::Client;
 use serde::Deserialize;
@@ -111,7 +111,12 @@ impl NextSmsProvider {
 
 #[async_trait]
 impl OtpProvider for NextSmsProvider {
-    async fn send(&self, to_e164: &str, text: &str, reference: &str) -> Result<SendOutcome, SmsError> {
+    async fn send(
+        &self,
+        to_e164: &str,
+        text: &str,
+        reference: &str,
+    ) -> Result<SendOutcome, SmsError> {
         let endpoint_path = if self.is_test_mode {
             "/api/sms/v2/test/text/single"
         } else {
@@ -128,7 +133,8 @@ impl OtpProvider for NextSmsProvider {
             reference: reference.to_string(),
         };
 
-        let res = self.client
+        let res = self
+            .client
             .post(&url)
             .bearer_auth(&self.api_token)
             .header("Content-Type", "application/json")
@@ -213,11 +219,17 @@ impl OtpProvider for NextSmsProvider {
             }
             56 | 58 => {
                 error!(msg_ref = %reference, status_id = %status_id, "NextSMS sender not approved");
-                Err(SmsError::SenderNotApproved(format!("Status ID {}: {}", status_id, body_text)))
+                Err(SmsError::SenderNotApproved(format!(
+                    "Status ID {}: {}",
+                    status_id, body_text
+                )))
             }
             61 => {
                 error!(msg_ref = %reference, status_id = %status_id, "NextSMS test mode recipient");
-                Err(SmsError::TestModeRecipient(format!("Status ID {}: {}", status_id, body_text)))
+                Err(SmsError::TestModeRecipient(format!(
+                    "Status ID {}: {}",
+                    status_id, body_text
+                )))
             }
             other => {
                 error!(msg_ref = %reference, status_id = %other, "NextSMS unknown status id");

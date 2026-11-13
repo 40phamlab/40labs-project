@@ -38,10 +38,14 @@ impl CustomerService {
             }
         }
 
-        if let Some(existing) =
-            CustomerRepository::find_by_workspace_and_phone(pool, &ctx.workspace_id, &norm_phone, None)
-                .await
-                .map_err(|e| e.to_string())?
+        if let Some(existing) = CustomerRepository::find_by_workspace_and_phone(
+            pool,
+            &ctx.workspace_id,
+            &norm_phone,
+            None,
+        )
+        .await
+        .map_err(|e| e.to_string())?
         {
             return Err(format!("DUPLICATE_PHONE:{}", existing.id));
         }
@@ -56,7 +60,10 @@ impl CustomerService {
             updated_at: now.clone(),
             full_name,
             phone: norm_phone,
-            email: req.email.map(|e| e.trim().to_string()).filter(|e| !e.is_empty()),
+            email: req
+                .email
+                .map(|e| e.trim().to_string())
+                .filter(|e| !e.is_empty()),
             outstanding_balance: 0,
             notes: req.notes,
             dob: req.dob,
@@ -97,13 +104,18 @@ impl CustomerService {
 
         if let Err(err) = CustomerRepository::create(&mut *tx, &customer).await {
             let err_msg = err.to_string();
-            if err_msg.contains("UNIQUE constraint failed") || err_msg.contains("code: 2067") || err_msg.contains("code: 1555") {
+            if err_msg.contains("UNIQUE constraint failed")
+                || err_msg.contains("code: 2067")
+                || err_msg.contains("code: 1555")
+            {
                 if let Ok(Some(existing)) = CustomerRepository::find_by_workspace_and_phone(
                     pool,
                     &ctx.workspace_id,
                     &customer.phone,
                     None,
-                ).await {
+                )
+                .await
+                {
                     return Err(format!("DUPLICATE_PHONE:{}", existing.id));
                 }
             }
@@ -177,7 +189,11 @@ impl CustomerService {
             FieldUpdate::Clear => None,
             FieldUpdate::Set(n) => {
                 let trimmed = n.trim().to_string();
-                if trimmed.is_empty() { None } else { Some(trimmed) }
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed)
+                }
             }
         };
 
@@ -186,7 +202,11 @@ impl CustomerService {
             FieldUpdate::Clear => None,
             FieldUpdate::Set(d) => {
                 let trimmed = d.trim().to_string();
-                if trimmed.is_empty() { None } else { Some(trimmed) }
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed)
+                }
             }
         };
 
@@ -211,7 +231,11 @@ impl CustomerService {
             FieldUpdate::Clear => None,
             FieldUpdate::Set(bg) => {
                 let trimmed = bg.trim().to_string();
-                if trimmed.is_empty() { None } else { Some(trimmed) }
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed)
+                }
             }
         };
 
@@ -219,7 +243,9 @@ impl CustomerService {
             FieldUpdate::Unset => existing.allergies,
             FieldUpdate::Clear => None,
             FieldUpdate::Set(val) => {
-                if val.is_null() || (val.is_array() && val.as_array().map_or(true, |a| a.is_empty())) {
+                if val.is_null()
+                    || (val.is_array() && val.as_array().map_or(true, |a| a.is_empty()))
+                {
                     None
                 } else {
                     serde_json::to_string(&val).ok()
@@ -258,8 +284,16 @@ impl CustomerService {
                 if val.is_null() {
                     None
                 } else if let Some(obj) = val.as_object() {
-                    let name = obj.get("name").and_then(|v| v.as_str()).unwrap_or("").trim();
-                    let phone = obj.get("phone").and_then(|v| v.as_str()).unwrap_or("").trim();
+                    let name = obj
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .trim();
+                    let phone = obj
+                        .get("phone")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .trim();
                     if name.is_empty() && phone.is_empty() {
                         None
                     } else {
@@ -276,7 +310,11 @@ impl CustomerService {
             FieldUpdate::Clear => None,
             FieldUpdate::Set(wd) => {
                 let trimmed = wd.trim().to_string();
-                if trimmed.is_empty() { None } else { Some(trimmed) }
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed)
+                }
             }
         };
 
@@ -285,7 +323,11 @@ impl CustomerService {
             FieldUpdate::Clear => None,
             FieldUpdate::Set(pn) => {
                 let trimmed = pn.trim().to_string();
-                if trimmed.is_empty() { None } else { Some(trimmed) }
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed)
+                }
             }
         };
 
@@ -294,7 +336,11 @@ impl CustomerService {
             FieldUpdate::Clear => None,
             FieldUpdate::Set(dt) => {
                 let trimmed = dt.trim().to_string();
-                if trimmed.is_empty() { None } else { Some(trimmed) }
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed)
+                }
             }
         };
 
@@ -304,7 +350,9 @@ impl CustomerService {
             }
         }
 
-        let outstanding_balance = req.outstanding_balance.unwrap_or(existing.outstanding_balance);
+        let outstanding_balance = req
+            .outstanding_balance
+            .unwrap_or(existing.outstanding_balance);
 
         let now = Utc::now().to_rfc3339();
         let updated = Customer {
@@ -350,13 +398,18 @@ impl CustomerService {
 
         if let Err(err) = CustomerRepository::update(&mut *tx, &updated).await {
             let err_msg = err.to_string();
-            if err_msg.contains("UNIQUE constraint failed") || err_msg.contains("code: 2067") || err_msg.contains("code: 1555") {
+            if err_msg.contains("UNIQUE constraint failed")
+                || err_msg.contains("code: 2067")
+                || err_msg.contains("code: 1555")
+            {
                 if let Ok(Some(existing_dup)) = CustomerRepository::find_by_workspace_and_phone(
                     pool,
                     &ctx.workspace_id,
                     &updated.phone,
                     Some(id),
-                ).await {
+                )
+                .await
+                {
                     return Err(format!("DUPLICATE_PHONE:{}", existing_dup.id));
                 }
             }
@@ -649,7 +702,9 @@ mod tests {
             archived_at: None,
             amob_patient_id: None,
         };
-        CustomerRepository::create(&pool, &cust_direct).await.unwrap();
+        CustomerRepository::create(&pool, &cust_direct)
+            .await
+            .unwrap();
 
         let req = AddCustomerRequest {
             full_name: "Conflict Customer".to_string(),
@@ -692,7 +747,9 @@ mod tests {
             allergies: Some(serde_json::json!([{"substance": "Pollen"}])),
             chronic_conditions: Some(vec!["Asthma".to_string()]),
             current_medications: Some(vec!["Inhaler".to_string()]),
-            emergency_contact: Some(serde_json::json!({"name": "Guardian", "phone": "+255711000000"})),
+            emergency_contact: Some(
+                serde_json::json!({"name": "Guardian", "phone": "+255711000000"}),
+            ),
             ward_district: Some("Ilala".to_string()),
             pharmacy_notes: Some("Check inhaler refill".to_string()),
         };
@@ -756,7 +813,10 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(archived.archived_at.as_deref(), Some("2026-02-01T12:00:00Z"));
+        assert_eq!(
+            archived.archived_at.as_deref(),
+            Some("2026-02-01T12:00:00Z")
+        );
 
         let unarchive_req = UpdateCustomerRequest {
             archived_at: FieldUpdate::Clear,
@@ -787,10 +847,12 @@ mod tests {
         assert_eq!(res_not_found.unwrap_err(), "Customer not found");
 
         // 5. Verify failed write does not commit audit event
-        let audit_count_before: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log WHERE target_entity_id = 'cust_non_existent'")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let audit_count_before: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM audit_log WHERE target_entity_id = 'cust_non_existent'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(audit_count_before, 0);
     }
 }

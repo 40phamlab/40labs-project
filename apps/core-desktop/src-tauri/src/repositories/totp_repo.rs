@@ -1,5 +1,5 @@
-use sqlx::sqlite::SqlitePool;
 use serde::{Deserialize, Serialize};
+use sqlx::sqlite::SqlitePool;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct UserTotp {
@@ -50,27 +50,19 @@ impl TotpRepository {
         pool: &SqlitePool,
         user_id: &str,
     ) -> Result<Option<UserTotp>, sqlx::Error> {
-        sqlx::query_as::<_, UserTotp>(
-            "SELECT * FROM user_totp WHERE user_id = ?"
-        )
-        .bind(user_id)
-        .fetch_optional(pool)
-        .await
+        sqlx::query_as::<_, UserTotp>("SELECT * FROM user_totp WHERE user_id = ?")
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
     }
 
-    pub async fn confirm(
-        pool: &SqlitePool,
-        user_id: &str,
-        now: &str,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE user_totp SET enabled_at = ?, updated_at = ? WHERE user_id = ?"
-        )
-        .bind(now)
-        .bind(now)
-        .bind(user_id)
-        .execute(pool)
-        .await?;
+    pub async fn confirm(pool: &SqlitePool, user_id: &str, now: &str) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE user_totp SET enabled_at = ?, updated_at = ? WHERE user_id = ?")
+            .bind(now)
+            .bind(now)
+            .bind(user_id)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 
@@ -80,21 +72,16 @@ impl TotpRepository {
         step: u64,
         now: &str,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "UPDATE user_totp SET last_used_step = ?, updated_at = ? WHERE user_id = ?"
-        )
-        .bind(step as i64)
-        .bind(now)
-        .bind(user_id)
-        .execute(pool)
-        .await?;
+        sqlx::query("UPDATE user_totp SET last_used_step = ?, updated_at = ? WHERE user_id = ?")
+            .bind(step as i64)
+            .bind(now)
+            .bind(user_id)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 
-    pub async fn delete(
-        pool: &SqlitePool,
-        user_id: &str,
-    ) -> Result<(), sqlx::Error> {
+    pub async fn delete(pool: &SqlitePool, user_id: &str) -> Result<(), sqlx::Error> {
         sqlx::query("DELETE FROM user_totp WHERE user_id = ?")
             .bind(user_id)
             .execute(pool)

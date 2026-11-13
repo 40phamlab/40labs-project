@@ -5,15 +5,16 @@ use uuid::Uuid;
 use crate::auth::AuthContext;
 use crate::models::audit::AuditLogEntry;
 use crate::models::lab::{
-    CollectLabSampleRequest, CreateLabOrderRequest, CreateLabQcEquipmentRequest,
-    CreateLabQcRecordRequest, CreateTestCatalogRequest, LabOrder, LabQcEquipment, LabQcRecord,
-    LabSample, RecordLabResultRequest, SampleEvent, TestCatalogEntry, UpdateSampleExpiryRequest,
-    LabReport, LabReportItem, LabReportForward, CreateLabReportRequest, FinalizeLabReportRequest, AmendLabReportRequest, ForwardLabReportRequest, LabResult,
+    AmendLabReportRequest, CollectLabSampleRequest, CreateLabOrderRequest,
+    CreateLabQcEquipmentRequest, CreateLabQcRecordRequest, CreateLabReportRequest,
+    CreateTestCatalogRequest, FinalizeLabReportRequest, ForwardLabReportRequest, LabOrder,
+    LabQcEquipment, LabQcRecord, LabReport, LabReportForward, LabReportItem, LabResult, LabSample,
+    RecordLabResultRequest, SampleEvent, TestCatalogEntry, UpdateSampleExpiryRequest,
 };
 use crate::models::notification::Notification;
 use crate::repositories::audit_repo::audit;
-use crate::repositories::lab_repo::LabRepository;
 use crate::repositories::credential_repo::CredentialRepository;
+use crate::repositories::lab_repo::LabRepository;
 use crate::repositories::notification_repo::NotificationRepository;
 use crate::security::hashing;
 
@@ -455,7 +456,7 @@ impl LabService {
         let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
         let order = sqlx::query_as::<_, LabOrder>(
-            "SELECT * FROM lab_order WHERE id = ? AND workspace_id = ? AND branch_id = ?"
+            "SELECT * FROM lab_order WHERE id = ? AND workspace_id = ? AND branch_id = ?",
         )
         .bind(&req.lab_order_id)
         .bind(&ctx.workspace_id)
@@ -627,7 +628,9 @@ impl LabService {
                                 sample_id: s.id.clone(),
                                 event_type: "recollect_requested".to_string(),
                                 actor_user_id: ctx.user_id.clone(),
-                                payload_json: Some(serde_json::json!({ "reason": "Sample expired" }).to_string()),
+                                payload_json: Some(
+                                    serde_json::json!({ "reason": "Sample expired" }).to_string(),
+                                ),
                                 occurred_at: now.clone(),
                                 created_at: now.clone(),
                                 updated_at: now.clone(),
@@ -647,7 +650,9 @@ impl LabService {
                             "Sample has expired. Mandatory reason is required for expiry override.".to_string()
                         })?;
                         if reason.trim().is_empty() {
-                            return Err("Mandatory reason cannot be empty for expiry override.".into());
+                            return Err(
+                                "Mandatory reason cannot be empty for expiry override.".into()
+                            );
                         }
 
                         let cred = CredentialRepository::get_by_user_id(pool, &ctx.user_id)
@@ -672,7 +677,9 @@ impl LabService {
                             sample_id: s.id.clone(),
                             event_type: "expiry_overridden".to_string(),
                             actor_user_id: ctx.user_id.clone(),
-                            payload_json: Some(serde_json::json!({ "reason": reason.trim() }).to_string()),
+                            payload_json: Some(
+                                serde_json::json!({ "reason": reason.trim() }).to_string(),
+                            ),
                             occurred_at: now.clone(),
                             created_at: now.clone(),
                             updated_at: now.clone(),
@@ -787,7 +794,7 @@ impl LabService {
 
         for result_id in req.result_ids {
             let res_row = sqlx::query_as::<_, LabResult>(
-                "SELECT * FROM lab_result WHERE id = ? AND workspace_id = ? AND branch_id = ?"
+                "SELECT * FROM lab_result WHERE id = ? AND workspace_id = ? AND branch_id = ?",
             )
             .bind(&result_id)
             .bind(&ctx.workspace_id)
@@ -845,10 +852,11 @@ impl LabService {
         let now = Utc::now().to_rfc3339();
         let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
-        let report = LabRepository::get_report(&mut *tx, &ctx.workspace_id, &ctx.branch_id, report_id)
-            .await
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| "Report not found".to_string())?;
+        let report =
+            LabRepository::get_report(&mut *tx, &ctx.workspace_id, &ctx.branch_id, report_id)
+                .await
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| "Report not found".to_string())?;
 
         if report.status == "finalized" {
             return Err("Report is already finalized".to_string());
@@ -889,7 +897,10 @@ impl LabService {
                 sample_id,
                 event_type: "reported".to_string(),
                 actor_user_id: ctx.user_id.clone(),
-                payload_json: Some(serde_json::json!({ "report_id": report_id, "version": report.version }).to_string()),
+                payload_json: Some(
+                    serde_json::json!({ "report_id": report_id, "version": report.version })
+                        .to_string(),
+                ),
                 occurred_at: now.clone(),
                 created_at: now.clone(),
                 updated_at: now.clone(),
@@ -916,10 +927,11 @@ impl LabService {
 
         tx.commit().await.map_err(|e| e.to_string())?;
 
-        let updated_report = LabRepository::get_report(pool, &ctx.workspace_id, &ctx.branch_id, report_id)
-            .await
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| "Report not found after finalization".to_string())?;
+        let updated_report =
+            LabRepository::get_report(pool, &ctx.workspace_id, &ctx.branch_id, report_id)
+                .await
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| "Report not found after finalization".to_string())?;
 
         Ok(updated_report)
     }
@@ -952,10 +964,11 @@ impl LabService {
         let now = Utc::now().to_rfc3339();
         let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
-        let old_report = LabRepository::get_report(&mut *tx, &ctx.workspace_id, &ctx.branch_id, report_id)
-            .await
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| "Report not found".to_string())?;
+        let old_report =
+            LabRepository::get_report(&mut *tx, &ctx.workspace_id, &ctx.branch_id, report_id)
+                .await
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| "Report not found".to_string())?;
 
         let new_report_id = format!("labrep_{}", Uuid::new_v4().simple());
         let new_version = old_report.version + 1;
@@ -984,15 +997,20 @@ impl LabService {
         let result_ids = if let Some(rids) = req.result_ids {
             rids
         } else {
-            let old_items = LabRepository::list_report_items(&mut *tx, &ctx.workspace_id, &ctx.branch_id, report_id)
-                .await
-                .map_err(|e| e.to_string())?;
+            let old_items = LabRepository::list_report_items(
+                &mut *tx,
+                &ctx.workspace_id,
+                &ctx.branch_id,
+                report_id,
+            )
+            .await
+            .map_err(|e| e.to_string())?;
             old_items.into_iter().map(|item| item.result_id).collect()
         };
 
         for result_id in result_ids {
             let res_row = sqlx::query_as::<_, LabResult>(
-                "SELECT * FROM lab_result WHERE id = ? AND workspace_id = ? AND branch_id = ?"
+                "SELECT * FROM lab_result WHERE id = ? AND workspace_id = ? AND branch_id = ?",
             )
             .bind(&result_id)
             .bind(&ctx.workspace_id)
@@ -1026,7 +1044,9 @@ impl LabService {
             performed_by_user_id: Some(ctx.user_id.clone()),
             target_entity_type: "LabReport".to_string(),
             target_entity_id: new_report_id.clone(),
-            metadata: Some(serde_json::json!({ "supersedes": report_id, "version": new_version }).to_string()),
+            metadata: Some(
+                serde_json::json!({ "supersedes": report_id, "version": new_version }).to_string(),
+            ),
             created_at: now.clone(),
         };
         audit::append(&mut *tx, &audit_entry)
@@ -1046,10 +1066,11 @@ impl LabService {
         let now = Utc::now().to_rfc3339();
         let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
 
-        let report = LabRepository::get_report(&mut *tx, &ctx.workspace_id, &ctx.branch_id, report_id)
-            .await
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| "Report not found".to_string())?;
+        let report =
+            LabRepository::get_report(&mut *tx, &ctx.workspace_id, &ctx.branch_id, report_id)
+                .await
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| "Report not found".to_string())?;
 
         let forward_id = format!("labrepfd_{}", Uuid::new_v4().simple());
         let forward = LabReportForward {
@@ -1089,7 +1110,10 @@ impl LabService {
                 sample_id,
                 event_type: "forwarded".to_string(),
                 actor_user_id: ctx.user_id.clone(),
-                payload_json: Some(serde_json::json!({ "report_id": report_id, "to_user": req.to_user_id }).to_string()),
+                payload_json: Some(
+                    serde_json::json!({ "report_id": report_id, "to_user": req.to_user_id })
+                        .to_string(),
+                ),
                 occurred_at: now.clone(),
                 created_at: now.clone(),
                 updated_at: now.clone(),
@@ -1127,7 +1151,10 @@ impl LabService {
             sender_name: ctx.user_id.clone(),
             sender_business_id: None,
             subject: format!("Lab Report v{} Forwarded", report.version),
-            body: format!("A lab report has been forwarded to you. Note: {}", req.note.as_deref().unwrap_or("None")),
+            body: format!(
+                "A lab report has been forwarded to you. Note: {}",
+                req.note.as_deref().unwrap_or("None")
+            ),
             status: "unread".to_string(),
             channel: "in_app".to_string(),
             content_type: Some("text/plain".to_string()),
@@ -1151,9 +1178,14 @@ impl LabService {
         pool: &SqlitePool,
         ctx: &AuthContext,
     ) -> Result<Vec<LabReportForward>, String> {
-        LabRepository::list_report_forwards_to_user(pool, &ctx.workspace_id, &ctx.branch_id, &ctx.user_id)
-            .await
-            .map_err(|e| e.to_string())
+        LabRepository::list_report_forwards_to_user(
+            pool,
+            &ctx.workspace_id,
+            &ctx.branch_id,
+            &ctx.user_id,
+        )
+        .await
+        .map_err(|e| e.to_string())
     }
 }
 

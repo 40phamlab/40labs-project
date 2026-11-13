@@ -5,15 +5,15 @@ import { Check, Copy, Download, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 export interface AccessStepProps {
   businessId: string;
-  credentials?: { username: string; password?: string };
-  recoveryCodes?: string[];
+  credentials: { username: string; password: string };
+  recoveryCodes: string[];
   onCompleteSignIn: () => void;
 }
 
 export const AccessStep: React.FC<AccessStepProps> = ({
   businessId,
-  credentials = { username: 'admin', password: 'TempPassword123!' },
-  recoveryCodes = ['ABCDE-12345', 'FGHIJ-67890', 'KLMNO-11223', 'PQRST-44556'],
+  credentials,
+  recoveryCodes,
   onCompleteSignIn,
 }) => {
   const [showPassword, setShowPassword] = React.useState(false);
@@ -24,11 +24,9 @@ export const AccessStep: React.FC<AccessStepProps> = ({
   const [error, setError] = React.useState<string | null>(null);
 
   const handleCopyPassword = () => {
-    if (credentials.password) {
-      navigator.clipboard.writeText(credentials.password);
-      setCopiedPass(true);
-      setTimeout(() => setCopiedPass(false), 2000);
-    }
+    navigator.clipboard.writeText(credentials.password);
+    setCopiedPass(true);
+    setTimeout(() => setCopiedPass(false), 2000);
   };
 
   const handleCopyCodes = () => {
@@ -54,7 +52,7 @@ export const AccessStep: React.FC<AccessStepProps> = ({
     setSigningIn(true);
     setError(null);
     try {
-      await authApi.login(credentials.username, credentials.password || 'TempPassword123!');
+      await authApi.login(credentials.username, credentials.password);
       onCompleteSignIn();
     } catch (err: any) {
       setError('Kuingia otomatiki kimeshindwa. Tafadhali ingia kwa kutumia jina la mtumiaji.');

@@ -1,15 +1,14 @@
+use crate::admin::AdminClaims;
+use crate::routes::activation::AppState;
+use axum::Extension;
 use axum::{
-    routing::{get, post},
-    Router,
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
-    extract::{State, Query, Path},
+    routing::{get, post},
+    Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use crate::routes::activation::AppState;
-use crate::admin::AdminClaims;
-use axum::Extension;
 
 pub fn router(state: AppState) -> Router {
     Router::new()
@@ -18,7 +17,10 @@ pub fn router(state: AppState) -> Router {
         .route("/businesses/:business_id/stock", get(get_stock))
         .route("/businesses/:business_id/sync", get(get_sync))
         .route("/businesses/:business_id/activity", get(get_activity))
-        .route("/businesses/:business_id/verification", post(verify_business))
+        .route(
+            "/businesses/:business_id/verification",
+            post(verify_business),
+        )
         .with_state(state)
 }
 
@@ -69,7 +71,11 @@ async fn list_businesses(
     let tier_filter = query.tier.as_deref();
     let sort_col = query.sort.as_deref().unwrap_or("created_at");
     let sort_dir = query.direction.as_deref().unwrap_or("desc").to_uppercase();
-    let sort_dir = if sort_dir != "ASC" && sort_dir != "DESC" { "DESC".to_string() } else { sort_dir };
+    let sort_dir = if sort_dir != "ASC" && sort_dir != "DESC" {
+        "DESC".to_string()
+    } else {
+        sort_dir
+    };
 
     let mut qb = sqlx::QueryBuilder::new(
         r#"
@@ -85,7 +91,7 @@ async fn list_businesses(
         FROM business_registry b
         LEFT JOIN business_verification v ON b.business_id = v.business_id
         WHERE 1=1
-        "#
+        "#,
     );
 
     if status_filter != "all" {
@@ -166,13 +172,27 @@ async fn list_businesses(
     qb.push(" OFFSET ");
     qb.push_bind(offset);
 
-    let rows = match qb.build_query_as::<(String, String, Option<String>, Option<String>, String, String, chrono::DateTime<chrono::Utc>, String)>().fetch_all(&state.pool).await {
+    let rows = match qb
+        .build_query_as::<(
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            String,
+            chrono::DateTime<chrono::Utc>,
+            String,
+        )>()
+        .fetch_all(&state.pool)
+        .await
+    {
         Ok(r) => r,
         Err(_) => Vec::new(),
     };
 
-    let items: Vec<BusinessListItem> = rows.into_iter().map(|row| {
-        BusinessListItem {
+    let items: Vec<BusinessListItem> = rows
+        .into_iter()
+        .map(|row| BusinessListItem {
             business_id: row.0,
             name: row.1,
             region: row.2,
@@ -181,10 +201,14 @@ async fn list_businesses(
             verification_status: row.5,
             last_sync: Some(row.6.to_rfc3339()),
             created_at: row.7,
-        }
-    }).collect();
+        })
+        .collect();
 
-    let total_pages = if limit > 0 { (total + limit - 1) / limit } else { 1 };
+    let total_pages = if limit > 0 {
+        (total + limit - 1) / limit
+    } else {
+        1
+    };
 
     Json(ListResponse {
         items,
@@ -192,14 +216,27 @@ async fn list_businesses(
         page,
         limit,
         total_pages,
-    }).into_response()
+    })
+    .into_response()
 }
 
 async fn get_business(
     State(state): State<AppState>,
     Path(business_id): Path<String>,
 ) -> impl IntoResponse {
-    let row = sqlx::query_as::<_, (String, String, Option<String>, Option<String>, String, String, Option<String>, String)>(
+    let row = sqlx::query_as::<
+        _,
+        (
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            String,
+            Option<String>,
+            String,
+        ),
+    >(
         r#"
         SELECT
             b.business_id,
@@ -213,7 +250,7 @@ async fn get_business(
         FROM business_registry b
         LEFT JOIN business_verification v ON b.business_id = v.business_id
         WHERE b.business_id = $1
-        "#
+        "#,
     )
     .bind(&business_id)
     .fetch_optional(&state.pool)
@@ -229,8 +266,13 @@ async fn get_business(
             "verification_status": r.5,
             "rejection_reason": r.6,
             "created_at": r.7,
-        })).into_response(),
-        _ => (StatusCode::NOT_FOUND, Json(serde_json::json!({ "error": "Business not found" }))).into_response(),
+        }))
+        .into_response(),
+        _ => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "Business not found" })),
+        )
+            .into_response(),
     }
 }
 
@@ -249,16 +291,31 @@ async fn get_stock(
     let page_size = query.page_size.unwrap_or(25).clamp(1, 100);
     let offset = (page - 1) * page_size;
     let scope = sqlx::query_as::<_, (String, String)>(
-        "SELECT workspace_id, branch_id FROM business_registry WHERE business_id = $1"
-    ).bind(&business_id).fetch_optional(&state.pool).await;
+        "SELECT workspace_id, branch_id FROM business_registry WHERE business_id = $1",
+    )
+    .bind(&business_id)
+    .fetch_optional(&state.pool)
+    .await;
     let (workspace_id, branch_id) = match scope {
         Ok(Some(scope)) => scope,
-        Ok(None) => return (StatusCode::NOT_FOUND, Json(serde_json::json!({
-            "error": { "code": "NOT_FOUND", "message": "Business not found" }
-        }))).into_response(),
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not load business stock" }
-        }))).into_response(),
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": { "code": "NOT_FOUND", "message": "Business not found" }
+                })),
+            )
+                .into_response()
+        }
+        Err(_) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": { "code": "INTERNAL", "message": "Could not load business stock" }
+                })),
+            )
+                .into_response()
+        }
     };
     let summary = sqlx::query_as::<_, (i64, i64, i64)>(
         "SELECT COUNT(*), COUNT(*) FILTER (WHERE quantity <= low_stock_threshold), \
@@ -266,12 +323,17 @@ async fn get_stock(
            AND expiry_date <= TO_CHAR(CURRENT_DATE + 90, 'YYYY-MM-DD')) \
          FROM cloud_inventory_items WHERE workspace_id = $1 AND branch_id = $2 AND deleted_at IS NULL"
     ).bind(&workspace_id).bind(&branch_id).fetch_one(&state.pool).await;
-    let (total, low_stock_count, expiring_soon_count) = match summary {
-        Ok(summary) => summary,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not summarize business stock" }
-        }))).into_response(),
-    };
+    let (total, low_stock_count, expiring_soon_count) =
+        match summary {
+            Ok(summary) => summary,
+            Err(_) => return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": { "code": "INTERNAL", "message": "Could not summarize business stock" }
+                })),
+            )
+                .into_response(),
+        };
     let rows = sqlx::query_as::<_, (String, String, String, i64, i64, i32, i32)>(
         "SELECT medicine_id, batch_number, expiry_date, buy_price, sell_price, quantity, low_stock_threshold \
          FROM cloud_inventory_items WHERE workspace_id = $1 AND branch_id = $2 AND deleted_at IS NULL \
@@ -279,9 +341,13 @@ async fn get_stock(
     ).bind(&workspace_id).bind(&branch_id).bind(page_size).bind(offset).fetch_all(&state.pool).await;
     let rows = match rows {
         Ok(rows) => rows,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not load business stock items" }
-        }))).into_response(),
+        Err(_) => return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": { "code": "INTERNAL", "message": "Could not load business stock items" }
+            })),
+        )
+            .into_response(),
     };
     let items: Vec<_> = rows.into_iter().map(|(medicine_id, batch_number, expiry_date, buy_price, sell_price, quantity, low_stock_threshold)| {
         serde_json::json!({ "medicine_id": medicine_id, "batch_number": batch_number, "expiry_date": expiry_date,
@@ -298,16 +364,29 @@ async fn get_sync(
     Path(business_id): Path<String>,
 ) -> impl IntoResponse {
     let scope = sqlx::query_as::<_, (String, String)>(
-        "SELECT workspace_id, branch_id FROM business_registry WHERE business_id = $1"
-    ).bind(&business_id).fetch_optional(&state.pool).await;
+        "SELECT workspace_id, branch_id FROM business_registry WHERE business_id = $1",
+    )
+    .bind(&business_id)
+    .fetch_optional(&state.pool)
+    .await;
     let (workspace_id, branch_id) = match scope {
         Ok(Some(scope)) => scope,
-        Ok(None) => return (StatusCode::NOT_FOUND, Json(serde_json::json!({
-            "error": { "code": "NOT_FOUND", "message": "Business not found" }
-        }))).into_response(),
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not load business sync activity" }
-        }))).into_response(),
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": { "code": "NOT_FOUND", "message": "Business not found" }
+                })),
+            )
+                .into_response()
+        }
+        Err(_) => return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": { "code": "INTERNAL", "message": "Could not load business sync activity" }
+            })),
+        )
+            .into_response(),
     };
     let devices = sqlx::query_as::<_, (String, Option<chrono::DateTime<chrono::Utc>>, Option<i32>, Option<String>)>(
         "SELECT device_id, COALESCE(last_seen_at, last_seen), COALESCE(outbox_pending, pending_count), app_version \
@@ -323,10 +402,15 @@ async fn get_sync(
             "error": { "code": "INTERNAL", "message": "Could not load business devices" }
         }))).into_response(),
     };
-    let changes = sqlx::query_as::<_, (String, String, String, i64, chrono::DateTime<chrono::Utc>)>(
-        "SELECT change_id, entity, entity_id, version, received_at FROM sync_changes \
-         WHERE workspace_id = $1 AND branch_id = $2 ORDER BY received_at DESC LIMIT 20"
-    ).bind(&workspace_id).bind(&branch_id).fetch_all(&state.pool).await;
+    let changes =
+        sqlx::query_as::<_, (String, String, String, i64, chrono::DateTime<chrono::Utc>)>(
+            "SELECT change_id, entity, entity_id, version, received_at FROM sync_changes \
+         WHERE workspace_id = $1 AND branch_id = $2 ORDER BY received_at DESC LIMIT 20",
+        )
+        .bind(&workspace_id)
+        .bind(&branch_id)
+        .fetch_all(&state.pool)
+        .await;
     let changes = match changes {
         Ok(changes) => changes.into_iter().map(|(change_id, entity, entity_id, version, received_at)| {
             serde_json::json!({ "change_id": change_id, "entity": entity, "entity_id": entity_id,
@@ -350,15 +434,22 @@ async fn get_activity(
     ).bind(&business_id).fetch_all(&state.pool).await;
     match rows {
         Ok(rows) => {
-            let activity: Vec<_> = rows.into_iter().map(|(action, admin, target_id, payload, created_at)| {
-                serde_json::json!({ "action": action, "admin": admin, "business_id": target_id,
+            let activity: Vec<_> = rows
+                .into_iter()
+                .map(|(action, admin, target_id, payload, created_at)| {
+                    serde_json::json!({ "action": action, "admin": admin, "business_id": target_id,
                     "payload": payload, "created_at": created_at.to_rfc3339() })
-            }).collect();
+                })
+                .collect();
             Json(serde_json::json!({ "activity": activity })).into_response()
         }
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not load business activity" }
-        }))).into_response(),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": { "code": "INTERNAL", "message": "Could not load business activity" }
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -380,7 +471,11 @@ async fn verify_business(
             "error": { "code": "INVALID_DECISION", "message": "Decision must be verified, rejected, or suspended" }
         }))).into_response();
     }
-    let reason = payload.reason.as_deref().map(str::trim).filter(|reason| !reason.is_empty());
+    let reason = payload
+        .reason
+        .as_deref()
+        .map(str::trim)
+        .filter(|reason| !reason.is_empty());
     if status != "verified" && reason.is_none() {
         return (StatusCode::BAD_REQUEST, Json(serde_json::json!({
             "error": { "code": "REASON_REQUIRED", "message": "A reason is required for rejection or suspension" }
@@ -389,9 +484,13 @@ async fn verify_business(
 
     let mut tx = match state.pool.begin().await {
         Ok(tx) => tx,
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not begin verification update" }
-        }))).into_response(),
+        Err(_) => return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": { "code": "INTERNAL", "message": "Could not begin verification update" }
+            })),
+        )
+            .into_response(),
     };
     let exists = sqlx::query("SELECT 1 FROM business_registry WHERE business_id = $1")
         .bind(&business_id)
@@ -399,12 +498,24 @@ async fn verify_business(
         .await;
     match exists {
         Ok(Some(_)) => {}
-        Ok(None) => return (StatusCode::NOT_FOUND, Json(serde_json::json!({
-            "error": { "code": "NOT_FOUND", "message": "Business not found" }
-        }))).into_response(),
-        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not verify business" }
-        }))).into_response(),
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({
+                    "error": { "code": "NOT_FOUND", "message": "Business not found" }
+                })),
+            )
+                .into_response()
+        }
+        Err(_) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": { "code": "INTERNAL", "message": "Could not verify business" }
+                })),
+            )
+                .into_response()
+        }
     }
     let result = async {
         sqlx::query(
@@ -434,8 +545,12 @@ async fn verify_business(
 
     match result {
         Ok(_) => Json(serde_json::json!({ "success": true, "status": status })).into_response(),
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-            "error": { "code": "INTERNAL", "message": "Could not save verification decision" }
-        }))).into_response(),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({
+                "error": { "code": "INTERNAL", "message": "Could not save verification decision" }
+            })),
+        )
+            .into_response(),
     }
 }

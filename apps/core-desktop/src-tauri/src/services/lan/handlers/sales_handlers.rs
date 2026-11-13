@@ -9,8 +9,8 @@ use std::sync::Arc;
 use crate::auth::AuthContext;
 use crate::models::sales::CreateSaleRequest;
 use crate::repositories::sales_repo::SalesRepository;
-use crate::services::sales_service::SalesService;
 use crate::services::lan::{auth::AuthedDevice, LanServerState};
+use crate::services::sales_service::SalesService;
 
 pub async fn post_sales_handler(
     State(state): State<Arc<LanServerState>>,
@@ -65,7 +65,10 @@ pub async fn post_sales_handler(
             if e.contains("stock") || e.contains("insufficient") || e.contains("invalid") {
                 (StatusCode::CONFLICT, e)
             } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
         })?;
 

@@ -4,10 +4,12 @@ use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
 use crate::models::inventory::MedicineWithInventory;
 use crate::models::lab::{
-    CollectLabSampleRequest, CreateLabOrderRequest, CreateLabQcEquipmentRequest,
-    CreateLabQcRecordRequest, CreateTestCatalogRequest, EnterLabResultRequest, ExpiryOverrideRequest, LabOrder, LabQcData,
-    LabQcEquipment, LabQcRecord, LabResult, LabSample, RecordLabResultRequest, SampleEvent, TestCatalogEntry, UpdateSampleExpiryRequest,
-    LabReport, LabReportForward, CreateLabReportRequest, FinalizeLabReportRequest, AmendLabReportRequest, ForwardLabReportRequest,
+    AmendLabReportRequest, CollectLabSampleRequest, CreateLabOrderRequest,
+    CreateLabQcEquipmentRequest, CreateLabQcRecordRequest, CreateLabReportRequest,
+    CreateTestCatalogRequest, EnterLabResultRequest, ExpiryOverrideRequest,
+    FinalizeLabReportRequest, ForwardLabReportRequest, LabOrder, LabQcData, LabQcEquipment,
+    LabQcRecord, LabReport, LabReportForward, LabResult, LabSample, RecordLabResultRequest,
+    SampleEvent, TestCatalogEntry, UpdateSampleExpiryRequest,
 };
 use crate::repositories::lab_repo::LabRepository;
 use crate::services::lab_service::LabService;
@@ -337,7 +339,11 @@ pub async fn enter_lab_result(
 
     let record_req = RecordLabResultRequest {
         lab_order_id: payload.lab_order_id.clone(),
-        result_notes: format!("Value: {} (Ref: {})", payload.value, payload.reference_range.as_deref().unwrap_or("N/A")),
+        result_notes: format!(
+            "Value: {} (Ref: {})",
+            payload.value,
+            payload.reference_range.as_deref().unwrap_or("N/A")
+        ),
         status: Some("report_ready".to_string()),
         expiry_override_pin: payload.expiry_override_pin,
         expiry_override_reason: payload.expiry_override_reason,

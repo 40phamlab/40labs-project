@@ -174,11 +174,20 @@ impl NotificationRepository {
                 content_type, body, html_content, status, sent_at, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"#,
         )
-        .bind(&msg.id).bind(&msg.workspace_id).bind(&msg.branch_id)
-        .bind(&msg.notification_id).bind(&msg.direction).bind(&msg.content_type)
-        .bind(&msg.body).bind(&msg.html_content).bind(&msg.status)
-        .bind(&msg.sent_at).bind(&msg.created_at).bind(&msg.updated_at)
-        .execute(&mut *tx).await?;
+        .bind(&msg.id)
+        .bind(&msg.workspace_id)
+        .bind(&msg.branch_id)
+        .bind(&msg.notification_id)
+        .bind(&msg.direction)
+        .bind(&msg.content_type)
+        .bind(&msg.body)
+        .bind(&msg.html_content)
+        .bind(&msg.status)
+        .bind(&msg.sent_at)
+        .bind(&msg.created_at)
+        .bind(&msg.updated_at)
+        .execute(&mut *tx)
+        .await?;
 
         for attachment_id in attachment_ids {
             let result = sqlx::query(
@@ -477,33 +486,79 @@ mod attachment_tests {
 
     #[tokio::test]
     async fn linking_is_atomic_and_workspace_scoped() {
-        let pool = SqlitePoolOptions::new().max_connections(1).connect("sqlite::memory:").await.unwrap();
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
         sqlx::query("CREATE TABLE notifications (id TEXT PRIMARY KEY, workspace_id TEXT, body TEXT, status TEXT, updated_at TEXT)").execute(&pool).await.unwrap();
         sqlx::query("CREATE TABLE notification_messages (id TEXT PRIMARY KEY, workspace_id TEXT, branch_id TEXT, notification_id TEXT, direction TEXT, content_type TEXT, body TEXT, html_content TEXT, status TEXT, sent_at TEXT, created_at TEXT, updated_at TEXT)").execute(&pool).await.unwrap();
         sqlx::query("CREATE TABLE message_attachments (id TEXT PRIMARY KEY, workspace_id TEXT, branch_id TEXT, message_id TEXT, kind TEXT, file_name TEXT, mime_type TEXT, size_bytes INTEGER, storage_path TEXT, sha256 TEXT, duration_ms INTEGER, created_at TEXT, updated_at TEXT)").execute(&pool).await.unwrap();
-        sqlx::query("INSERT INTO notifications VALUES ('n1', 'ws1', 'old', 'unread', 't')").execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO notifications VALUES ('n1', 'ws1', 'old', 'unread', 't')")
+            .execute(&pool)
+            .await
+            .unwrap();
         for (id, workspace) in [("a1", "ws1"), ("a2", "ws2")] {
             sqlx::query("INSERT INTO message_attachments (id, workspace_id, branch_id, message_id, kind, file_name, mime_type, size_bytes, storage_path, sha256, created_at, updated_at) VALUES (?, ?, 'b', NULL, 'file', 'x.txt', 'text/plain', 1, 'p', 'h', 't', 't')")
                 .bind(id).bind(workspace).execute(&pool).await.unwrap();
         }
         let message = |id: &str| NotificationMessage {
-            id: id.into(), workspace_id: "ws1".into(), branch_id: "b".into(), notification_id: "n1".into(),
+            id: id.into(),
+            workspace_id: "ws1".into(),
+            branch_id: "b".into(),
+            notification_id: "n1".into(),
             thread_id: None,
-            direction: "outgoing".into(), content_type: "text".into(), body: "reply".into(), html_content: None,
-            status: "queued".into(), sent_at: "t".into(), created_at: "t".into(), updated_at: "t".into(), attachments: None,
+            direction: "outgoing".into(),
+            content_type: "text".into(),
+            body: "reply".into(),
+            html_content: None,
+            status: "queued".into(),
+            sent_at: "t".into(),
+            created_at: "t".into(),
+            updated_at: "t".into(),
+            attachments: None,
         };
-        NotificationRepository::create_message_with_attachments(&pool, &message("m1"), &["a1".into()], "updated")
-            .await.unwrap();
-        let linked: (String,) = sqlx::query_as("SELECT message_id FROM message_attachments WHERE id = 'a1'").fetch_one(&pool).await.unwrap();
+        NotificationRepository::create_message_with_attachments(
+            &pool,
+            &message("m1"),
+            &["a1".into()],
+            "updated",
+        )
+        .await
+        .unwrap();
+        let linked: (String,) =
+            sqlx::query_as("SELECT message_id FROM message_attachments WHERE id = 'a1'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert_eq!(linked.0, "m1");
 
-        let result = NotificationRepository::create_message_with_attachments(&pool, &message("m2"), &["a2".into()], "bad")
-            .await;
+        let result = NotificationRepository::create_message_with_attachments(
+            &pool,
+            &message("m2"),
+            &["a2".into()],
+            "bad",
+        )
+        .await;
         assert!(result.is_err());
-        let messages: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM notification_messages WHERE id = 'm2'").fetch_one(&pool).await.unwrap();
-        assert_eq!(messages.0, 0, "failed association must roll back message insertion");
-        assert!(NotificationRepository::get_attachment(&pool, "ws1", "a2").await.unwrap().is_none());
-        let staged: (Option<String>,) = sqlx::query_as("SELECT message_id FROM message_attachments WHERE id = 'a2'").fetch_one(&pool).await.unwrap();
+        let messages: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM notification_messages WHERE id = 'm2'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            messages.0, 0,
+            "failed association must roll back message insertion"
+        );
+        assert!(NotificationRepository::get_attachment(&pool, "ws1", "a2")
+            .await
+            .unwrap()
+            .is_none());
+        let staged: (Option<String>,) =
+            sqlx::query_as("SELECT message_id FROM message_attachments WHERE id = 'a2'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
         assert!(staged.0.is_none());
     }
 }

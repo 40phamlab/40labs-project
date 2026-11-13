@@ -35,7 +35,9 @@ pub async fn devices_me_handler(
     let user_info = match user_record {
         Some(u) => {
             let id: String = u.try_get("id").unwrap_or_default();
-            let full_name: String = u.try_get("full_name").unwrap_or_else(|_| "Assigned Staff".to_string());
+            let full_name: String = u
+                .try_get("full_name")
+                .unwrap_or_else(|_| "Assigned Staff".to_string());
             let role: String = u.try_get("role").unwrap_or_else(|_| "staff".to_string());
             json!({
                 "id": id,

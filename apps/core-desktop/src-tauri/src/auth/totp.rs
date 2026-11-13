@@ -16,7 +16,10 @@ pub fn create_totp(secret_base32: &str, account_name: &str, issuer: &str) -> Res
     .map_err(|e| e.to_string())
 }
 
-pub fn generate_new_totp(account_name: &str, issuer: &str) -> Result<(String, String, String), String> {
+pub fn generate_new_totp(
+    account_name: &str,
+    issuer: &str,
+) -> Result<(String, String, String), String> {
     let mut secret_bytes = [0u8; 20];
     rand::rngs::OsRng.fill_bytes(&mut secret_bytes);
     let secret = Secret::Raw(secret_bytes.to_vec());

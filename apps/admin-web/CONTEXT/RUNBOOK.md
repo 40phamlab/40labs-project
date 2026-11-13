@@ -34,9 +34,10 @@
 ## 4. Seeding Admin & Demo Data
 - **Seed an Admin User**:
   ```bash
+  # Set ADMIN_SEED_PASSWORD in the process environment (16+ characters), then:
   cargo run --bin api-core -- admin-seed --email admin@40labs.io --role admin
   ```
-  *(Outputs generated password and TOTP secret).*
+  *(Development only. It prints no credentials, rejects production, and clears the user's TOTP enrollment. The first password login returns a one-time MFA setup URL.)*
 
 - **Seed Demo Analytics Data** (Dev only):
   ```bash

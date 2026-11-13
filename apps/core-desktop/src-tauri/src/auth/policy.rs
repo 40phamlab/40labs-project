@@ -40,10 +40,7 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
         "user_reset_credentials",
         CommandPolicy::Permission("users.manage"),
     );
-    map.insert(
-        "user_reset_pin",
-        CommandPolicy::Permission("users.manage"),
-    );
+    map.insert("user_reset_pin", CommandPolicy::Permission("users.manage"));
 
     map.insert("recovery_redeem", CommandPolicy::Public);
     map.insert(
@@ -120,9 +117,15 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
         "update_lab_sample_status",
         CommandPolicy::Permission("lab.result.enter"),
     );
-    map.insert("update_sample_expiry", CommandPolicy::Permission("lab.order"));
+    map.insert(
+        "update_sample_expiry",
+        CommandPolicy::Permission("lab.order"),
+    );
     map.insert("get_sample_events", CommandPolicy::SessionOnly);
-    map.insert("expiry_override", CommandPolicy::Permission("lab.result.enter"));
+    map.insert(
+        "expiry_override",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
 
     map.insert(
         "get_audit_logs",
@@ -143,8 +146,14 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
 
     map.insert("get_business", CommandPolicy::SessionOnly);
     map.insert("get_branches", CommandPolicy::SessionOnly);
-    map.insert("create_branch", CommandPolicy::Permission("branches.manage"));
-    map.insert("update_branch", CommandPolicy::Permission("branches.manage"));
+    map.insert(
+        "create_branch",
+        CommandPolicy::Permission("branches.manage"),
+    );
+    map.insert(
+        "update_branch",
+        CommandPolicy::Permission("branches.manage"),
+    );
     map.insert("upload_business_logo", CommandPolicy::SessionOnly);
     map.insert(
         "update_business",
@@ -160,17 +169,32 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("get_test_catalog", CommandPolicy::SessionOnly);
     map.insert("get_lab_stock", CommandPolicy::SessionOnly);
     map.insert("get_lab_qc_data", CommandPolicy::SessionOnly);
-    map.insert("create_test_catalog_entry", CommandPolicy::Permission("lab.order"));
-    map.insert("create_lab_qc_equipment", CommandPolicy::Permission("lab.order"));
-    map.insert("create_lab_qc_record", CommandPolicy::Permission("lab.result.enter"));
+    map.insert(
+        "create_test_catalog_entry",
+        CommandPolicy::Permission("lab.order"),
+    );
+    map.insert(
+        "create_lab_qc_equipment",
+        CommandPolicy::Permission("lab.order"),
+    );
+    map.insert(
+        "create_lab_qc_record",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
     map.insert(
         "enter_lab_result",
         CommandPolicy::Permission("lab.result.enter"),
     );
     map.insert("get_lab_reports", CommandPolicy::SessionOnly);
     map.insert("create_lab_report", CommandPolicy::Permission("lab.order"));
-    map.insert("finalize_lab_report", CommandPolicy::Permission("lab.result.enter"));
-    map.insert("amend_lab_report", CommandPolicy::Permission("lab.result.enter"));
+    map.insert(
+        "finalize_lab_report",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
+    map.insert(
+        "amend_lab_report",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
     map.insert("forward_lab_report", CommandPolicy::SessionOnly);
     map.insert("get_forwarded_reports_to_me", CommandPolicy::SessionOnly);
 
@@ -194,9 +218,18 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("remove_device", CommandPolicy::Permission("devices.manage"));
 
     map.insert("partner_facility_list", CommandPolicy::SessionOnly);
-    map.insert("partner_facility_create", CommandPolicy::Permission("settings.manage"));
-    map.insert("partner_facility_update_status", CommandPolicy::Permission("settings.manage"));
-    map.insert("partner_facility_delete", CommandPolicy::Permission("settings.manage"));
+    map.insert(
+        "partner_facility_create",
+        CommandPolicy::Permission("settings.manage"),
+    );
+    map.insert(
+        "partner_facility_update_status",
+        CommandPolicy::Permission("settings.manage"),
+    );
+    map.insert(
+        "partner_facility_delete",
+        CommandPolicy::Permission("settings.manage"),
+    );
 
     map.insert("explorer_get_default_dir", CommandPolicy::SessionOnly);
     map.insert("explorer_read_dir", CommandPolicy::SessionOnly);
@@ -205,26 +238,56 @@ pub fn get_command_policy_map() -> HashMap<&'static str, CommandPolicy> {
     map.insert("explorer_rename_path", CommandPolicy::SessionOnly);
     map.insert("explorer_copy_file", CommandPolicy::SessionOnly);
     map.insert("explorer_delete_path", CommandPolicy::SessionOnly);
-    map.insert("explorer_reveal_in_file_manager", CommandPolicy::SessionOnly);
+    map.insert(
+        "explorer_reveal_in_file_manager",
+        CommandPolicy::SessionOnly,
+    );
 
     map.insert("export_disaster_recovery_pack", CommandPolicy::SessionOnly);
     map.insert("preview_disaster_recovery_pack", CommandPolicy::SessionOnly);
     map.insert("restore_disaster_recovery_pack", CommandPolicy::SessionOnly);
 
     map.insert("get_workflow_templates", CommandPolicy::SessionOnly);
-    map.insert("save_workflow_draft", CommandPolicy::Permission("lab.order"));
-    map.insert("publish_workflow_template", CommandPolicy::Permission("lab.result.enter"));
+    map.insert(
+        "save_workflow_draft",
+        CommandPolicy::Permission("lab.order"),
+    );
+    map.insert(
+        "publish_workflow_template",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
     map.insert("export_workflow_template", CommandPolicy::SessionOnly);
-    map.insert("import_workflow_template", CommandPolicy::Permission("lab.order"));
-    map.insert("start_workflow_execution", CommandPolicy::Permission("lab.order"));
-    map.insert("complete_workflow_step_execution", CommandPolicy::Permission("lab.result.enter"));
+    map.insert(
+        "import_workflow_template",
+        CommandPolicy::Permission("lab.order"),
+    );
+    map.insert(
+        "start_workflow_execution",
+        CommandPolicy::Permission("lab.order"),
+    );
+    map.insert(
+        "complete_workflow_step_execution",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
     map.insert("get_workflow_execution", CommandPolicy::SessionOnly);
-    map.insert("attach_stage_attachment", CommandPolicy::Permission("lab.result.enter"));
+    map.insert(
+        "attach_stage_attachment",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
     map.insert("get_stage_attachments", CommandPolicy::SessionOnly);
-    map.insert("replace_stage_attachment", CommandPolicy::Permission("lab.result.enter"));
-    map.insert("remove_stage_attachment", CommandPolicy::Permission("lab.result.enter"));
+    map.insert(
+        "replace_stage_attachment",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
+    map.insert(
+        "remove_stage_attachment",
+        CommandPolicy::Permission("lab.result.enter"),
+    );
     map.insert("export_workflow_execution", CommandPolicy::SessionOnly);
-    map.insert("import_workflow_execution", CommandPolicy::Permission("lab.order"));
+    map.insert(
+        "import_workflow_execution",
+        CommandPolicy::Permission("lab.order"),
+    );
     map.insert("export_lab_report_record", CommandPolicy::SessionOnly);
 
     map

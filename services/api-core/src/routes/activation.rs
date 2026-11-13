@@ -18,22 +18,11 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct AdminChallenge {
-    pub admin_user_id: String,
-    pub expires_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[derive(Clone)]
 pub struct AppState {
     pub pool: sqlx::PgPool,
     pub config: Config,
     pub sms_sender: Arc<dyn OtpProvider>,
     pub rate_limiter: RateLimiter,
-    pub admin_challenges: Arc<std::sync::Mutex<std::collections::HashMap<String, AdminChallenge>>>,
-    pub login_failures:
-        Arc<std::sync::Mutex<std::collections::HashMap<String, (u32, std::time::Instant)>>>,
-    pub account_lockouts:
-        Arc<std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>>>,
 }
 
 pub fn router(state: AppState) -> Router {
@@ -79,17 +68,27 @@ pub async fn request_otp(
     let phone_hash = hash_string(&normalized_phone);
     let ip_str = addr.ip().to_string();
 
-    if let Err(ra) =
-        state
-            .rate_limiter
-            .check_rate_limit(&phone_hash, 3, std::time::Duration::from_secs(3600))
+    if let Err(ra) = state
+        .rate_limiter
+        .check_rate_limit_shared(
+            &state.pool,
+            &phone_hash,
+            3,
+            std::time::Duration::from_secs(3600),
+        )
+        .await
     {
         return Err(ApiError::RateLimitExceeded { retry_after: ra });
     }
-    if let Err(ra) =
-        state
-            .rate_limiter
-            .check_rate_limit(&ip_str, 10, std::time::Duration::from_secs(3600))
+    if let Err(ra) = state
+        .rate_limiter
+        .check_rate_limit_shared(
+            &state.pool,
+            &ip_str,
+            10,
+            std::time::Duration::from_secs(3600),
+        )
+        .await
     {
         return Err(ApiError::RateLimitExceeded { retry_after: ra });
     }
@@ -215,25 +214,26 @@ pub async fn verify_otp(
     );
 
     if !valid {
-        let new_attempts = attempts + 1;
-        sqlx::query("UPDATE otp_challenge SET attempts = $1 WHERE phone_hash = $2")
-            .bind(new_attempts)
+        sqlx::query("UPDATE otp_challenge SET attempts = attempts + 1 WHERE phone_hash = $1 AND consumed = 0 AND attempts < 5")
             .bind(&phone_hash)
             .execute(&state.pool)
             .await?;
         return Err(ApiError::BadRequest("Invalid OTP code".into()));
     }
 
-    sqlx::query("UPDATE otp_challenge SET consumed = 1 WHERE phone_hash = $1")
-        .bind(&phone_hash)
-        .execute(&state.pool)
-        .await?;
-
     let plain_token = uuid::Uuid::new_v4().to_string();
     let token_hash = hash_string(&plain_token);
     let expires_at_token = (Utc::now() + Duration::seconds(600)).to_rfc3339();
     let created_at = Utc::now().to_rfc3339();
 
+    let mut tx = state.pool.begin().await?;
+    let consumed = sqlx::query("UPDATE otp_challenge SET consumed = 1 WHERE phone_hash = $1 AND consumed = 0 AND attempts < 5 AND expires_at::timestamptz > NOW()")
+        .bind(&phone_hash).execute(&mut *tx).await?;
+    if consumed.rows_affected() != 1 {
+        return Err(ApiError::BadRequest(
+            "OTP code already consumed or expired".into(),
+        ));
+    }
     sqlx::query(
         r#"
         INSERT INTO verification_token (token_hash, phone_hash, expires_at, used, created_at)
@@ -244,8 +244,9 @@ pub async fn verify_otp(
     .bind(&phone_hash)
     .bind(&expires_at_token)
     .bind(&created_at)
-    .execute(&state.pool)
+    .execute(&mut *tx)
     .await?;
+    tx.commit().await?;
 
     Ok(Json(OtpVerifyResponse {
         verification_token: plain_token,

@@ -1,10 +1,16 @@
-use crate::models::partner_facility::{PartnerFacility, PartnerFacilityContacts, FacilityType, FacilityStatus};
+use crate::models::partner_facility::{
+    FacilityStatus, FacilityType, PartnerFacility, PartnerFacilityContacts,
+};
 use sqlx::SqlitePool;
 
 pub struct PartnerFacilityRepository;
 
 impl PartnerFacilityRepository {
-    pub async fn list(pool: &SqlitePool, workspace_id: &str, branch_id: &str) -> Result<Vec<PartnerFacility>, sqlx::Error> {
+    pub async fn list(
+        pool: &SqlitePool,
+        workspace_id: &str,
+        branch_id: &str,
+    ) -> Result<Vec<PartnerFacility>, sqlx::Error> {
         let rows = sqlx::query(
             r#"
             SELECT id, workspace_id, branch_id, partner_business_id, name, type,
@@ -36,7 +42,8 @@ impl PartnerFacilityRepository {
             let created_at: String = r.get("created_at");
             let updated_at: String = r.get("updated_at");
 
-            let is_linked = partner_business_id.is_some() && !partner_business_id.as_deref().unwrap_or("").is_empty();
+            let is_linked = partner_business_id.is_some()
+                && !partner_business_id.as_deref().unwrap_or("").is_empty();
 
             results.push(PartnerFacility {
                 id,
@@ -109,7 +116,11 @@ impl PartnerFacilityRepository {
         Ok(())
     }
 
-    pub async fn update_status(pool: &SqlitePool, id: &str, status: &str) -> Result<(), sqlx::Error> {
+    pub async fn update_status(
+        pool: &SqlitePool,
+        id: &str,
+        status: &str,
+    ) -> Result<(), sqlx::Error> {
         let now = chrono::Utc::now().to_rfc3339();
         sqlx::query("UPDATE partner_facility SET status = ?, updated_at = ? WHERE id = ?")
             .bind(status)

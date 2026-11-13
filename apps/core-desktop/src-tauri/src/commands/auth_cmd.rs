@@ -1,6 +1,6 @@
+use serde::Deserialize;
 use tauri::State;
 use zeroize::Zeroizing;
-use serde::Deserialize;
 
 use crate::auth::session::ApproverInfo;
 use crate::auth::{AuthEngine, AuthError, AuthErrorResponse};
@@ -12,12 +12,19 @@ pub async fn auth_status(
 ) -> Result<serde_json::Value, AuthErrorResponse> {
     let session_guard = state.auth_state.session.read().await;
     let session_info = if let Some(ref s) = *session_guard {
-        let user = crate::repositories::user_repo::UserRepository::get_by_id(&state.pool, &s.user_id)
-            .await
-            .ok()
-            .flatten();
-        let display_name = user.as_ref().map(|u| u.full_name.clone()).unwrap_or_default();
-        let must_change = user.as_ref().map(|u| u.must_change_credentials != 0).unwrap_or(false);
+        let user =
+            crate::repositories::user_repo::UserRepository::get_by_id(&state.pool, &s.user_id)
+                .await
+                .ok()
+                .flatten();
+        let display_name = user
+            .as_ref()
+            .map(|u| u.full_name.clone())
+            .unwrap_or_default();
+        let must_change = user
+            .as_ref()
+            .map(|u| u.must_change_credentials != 0)
+            .unwrap_or(false);
 
         Some(serde_json::json!({
             "userId": s.user_id,
@@ -183,7 +190,13 @@ pub async fn auth_step_up(
     })?;
 
     engine
-        .step_up(&permission, Some(method_str), &actual_secret, approver_user_id, target)
+        .step_up(
+            &permission,
+            Some(method_str),
+            &actual_secret,
+            approver_user_id,
+            target,
+        )
         .await
         .map_err(|e| e.to_response())
 }
@@ -432,7 +445,11 @@ mod tests {
             )
             .unwrap(),
         );
-        let (otp_client, activation_client) = crate::activation::client::ActivationClientFactory::create_clients(Some("http://localhost".to_string()), None);
+        let (otp_client, activation_client) =
+            crate::activation::client::ActivationClientFactory::create_clients(
+                Some("http://localhost".to_string()),
+                None,
+            );
         let _state = AppState {
             pool: pool.clone(),
             lan_state,
@@ -455,4 +472,3 @@ mod tests {
         assert_eq!(business.unwrap().name, "Test Pharmacy");
     }
 }
-

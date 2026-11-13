@@ -1,13 +1,12 @@
-use sqlx::{SqliteConnection, Connection};
+use crate::sync::types::{AckStatus, ChangeAck, OutboxChange};
+use sqlx::{Connection, SqliteConnection};
 use uuid::Uuid;
-use crate::sync::types::{ChangeAck, AckStatus, OutboxChange};
 
 pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::Error> {
-    let bootstrap_done: Option<i64> = sqlx::query_scalar(
-        "SELECT bootstrap_done FROM sync_state LIMIT 1"
-    )
-    .fetch_optional(&mut *conn)
-    .await?;
+    let bootstrap_done: Option<i64> =
+        sqlx::query_scalar("SELECT bootstrap_done FROM sync_state LIMIT 1")
+            .fetch_optional(&mut *conn)
+            .await?;
 
     if let Some(1) = bootstrap_done {
         return Ok(());
@@ -16,11 +15,10 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
     let mut tx = conn.begin().await?;
 
     // 1. Business rows (allowlist: exclude logo_url, appearance_mode, tier)
-    let businesses: Vec<(String, String, String, i64, Option<String>)> = sqlx::query_as(
-        "SELECT id, workspace_id, branch_id, version, deleted_at FROM business"
-    )
-    .fetch_all(&mut *tx)
-    .await?;
+    let businesses: Vec<(String, String, String, i64, Option<String>)> =
+        sqlx::query_as("SELECT id, workspace_id, branch_id, version, deleted_at FROM business")
+            .fetch_all(&mut *tx)
+            .await?;
 
     for (id, workspace_id, branch_id, version, deleted_at) in businesses {
         let payload = sqlx::query_scalar::<_, String>(
@@ -39,7 +37,11 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
         .await?;
 
         let change_id = Uuid::new_v4().to_string();
-        let op = if deleted_at.is_some() { "delete" } else { "upsert" };
+        let op = if deleted_at.is_some() {
+            "delete"
+        } else {
+            "upsert"
+        };
         sqlx::query(
             "INSERT OR IGNORE INTO sync_outbox (id, workspace_id, branch_id, entity, entity_id, op, payload, version, status)
              VALUES (?, ?, ?, 'business', ?, ?, ?, ?, 'pending')"
@@ -57,7 +59,7 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
 
     // 2. Inventory item rows
     let items: Vec<(String, String, String, i64, Option<String>)> = sqlx::query_as(
-        "SELECT id, workspace_id, branch_id, version, deleted_at FROM inventory_item"
+        "SELECT id, workspace_id, branch_id, version, deleted_at FROM inventory_item",
     )
     .fetch_all(&mut *tx)
     .await?;
@@ -76,7 +78,11 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
         .await?;
 
         let change_id = Uuid::new_v4().to_string();
-        let op = if deleted_at.is_some() { "delete" } else { "upsert" };
+        let op = if deleted_at.is_some() {
+            "delete"
+        } else {
+            "upsert"
+        };
         sqlx::query(
             "INSERT OR IGNORE INTO sync_outbox (id, workspace_id, branch_id, entity, entity_id, op, payload, version, status)
              VALUES (?, ?, ?, 'inventory_item', ?, ?, ?, ?, 'pending')"
@@ -93,11 +99,10 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
     }
 
     // 3. Price rows
-    let prices: Vec<(String, String, String, i64, Option<String>)> = sqlx::query_as(
-        "SELECT id, workspace_id, branch_id, version, deleted_at FROM price"
-    )
-    .fetch_all(&mut *tx)
-    .await?;
+    let prices: Vec<(String, String, String, i64, Option<String>)> =
+        sqlx::query_as("SELECT id, workspace_id, branch_id, version, deleted_at FROM price")
+            .fetch_all(&mut *tx)
+            .await?;
 
     for (id, workspace_id, branch_id, version, deleted_at) in prices {
         let payload = sqlx::query_scalar::<_, String>(
@@ -112,7 +117,11 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
         .await?;
 
         let change_id = Uuid::new_v4().to_string();
-        let op = if deleted_at.is_some() { "delete" } else { "upsert" };
+        let op = if deleted_at.is_some() {
+            "delete"
+        } else {
+            "upsert"
+        };
         sqlx::query(
             "INSERT OR IGNORE INTO sync_outbox (id, workspace_id, branch_id, entity, entity_id, op, payload, version, status)
              VALUES (?, ?, ?, 'price', ?, ?, ?, ?, 'pending')"
@@ -129,11 +138,10 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
     }
 
     // 4. Price History rows
-    let histories: Vec<(String, String, String, i64)> = sqlx::query_as(
-        "SELECT id, workspace_id, branch_id, version FROM price_history"
-    )
-    .fetch_all(&mut *tx)
-    .await?;
+    let histories: Vec<(String, String, String, i64)> =
+        sqlx::query_as("SELECT id, workspace_id, branch_id, version FROM price_history")
+            .fetch_all(&mut *tx)
+            .await?;
 
     for (id, workspace_id, branch_id, version) in histories {
         let payload = sqlx::query_scalar::<_, String>(
@@ -162,11 +170,10 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
     }
 
     // 5. Daily summary rows
-    let summaries: Vec<(String, String, String, i64)> = sqlx::query_as(
-        "SELECT id, workspace_id, branch_id, version FROM daily_summary"
-    )
-    .fetch_all(&mut *tx)
-    .await?;
+    let summaries: Vec<(String, String, String, i64)> =
+        sqlx::query_as("SELECT id, workspace_id, branch_id, version FROM daily_summary")
+            .fetch_all(&mut *tx)
+            .await?;
 
     for (id, workspace_id, branch_id, version) in summaries {
         let payload = sqlx::query_scalar::<_, String>(
@@ -202,7 +209,10 @@ pub async fn enqueue_bootstrap(conn: &mut SqliteConnection) -> Result<(), sqlx::
     Ok(())
 }
 
-pub async fn next_batch(conn: &mut SqliteConnection, limit: i64) -> Result<Vec<OutboxChange>, sqlx::Error> {
+pub async fn next_batch(
+    conn: &mut SqliteConnection,
+    limit: i64,
+) -> Result<Vec<OutboxChange>, sqlx::Error> {
     let mut tx = conn.begin().await?;
 
     let rows: Vec<OutboxChange> = sqlx::query_as(
@@ -219,7 +229,7 @@ pub async fn next_batch(conn: &mut SqliteConnection, limit: i64) -> Result<Vec<O
         let ids: Vec<&str> = rows.iter().map(|r| r.id.as_str()).collect();
         for id in ids {
             sqlx::query(
-                "UPDATE sync_outbox SET status = 'inflight', attempts = attempts + 1 WHERE id = ?"
+                "UPDATE sync_outbox SET status = 'inflight', attempts = attempts + 1 WHERE id = ?",
             )
             .bind(id)
             .execute(&mut *tx)
@@ -238,7 +248,7 @@ pub async fn ack(conn: &mut SqliteConnection, results: Vec<ChangeAck>) -> Result
         match ack.status {
             AckStatus::Applied => {
                 let info: Option<(String, String, String)> = sqlx::query_as(
-                    "SELECT entity, entity_id, created_at FROM sync_outbox WHERE id = ?"
+                    "SELECT entity, entity_id, created_at FROM sync_outbox WHERE id = ?",
                 )
                 .bind(&ack.change_id)
                 .fetch_optional(&mut *tx)
@@ -263,12 +273,16 @@ pub async fn ack(conn: &mut SqliteConnection, results: Vec<ChangeAck>) -> Result
                 }
             }
             AckStatus::Stale | AckStatus::Rejected => {
-                let reason = ack.reason.unwrap_or_else(|| "Rejected/Stale by server".into());
-                sqlx::query("UPDATE sync_outbox SET status = 'failed', last_error = ? WHERE id = ?")
-                    .bind(reason)
-                    .bind(&ack.change_id)
-                    .execute(&mut *tx)
-                    .await?;
+                let reason = ack
+                    .reason
+                    .unwrap_or_else(|| "Rejected/Stale by server".into());
+                sqlx::query(
+                    "UPDATE sync_outbox SET status = 'failed', last_error = ? WHERE id = ?",
+                )
+                .bind(reason)
+                .bind(&ack.change_id)
+                .execute(&mut *tx)
+                .await?;
             }
         }
     }
@@ -281,12 +295,15 @@ pub async fn ack(conn: &mut SqliteConnection, results: Vec<ChangeAck>) -> Result
     Ok(())
 }
 
-pub async fn requeue_stale_inflight(conn: &mut SqliteConnection, older_than_secs: i64) -> Result<(), sqlx::Error> {
+pub async fn requeue_stale_inflight(
+    conn: &mut SqliteConnection,
+    older_than_secs: i64,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         "UPDATE sync_outbox
          SET status = 'pending'
          WHERE status = 'inflight'
-           AND datetime(created_at) <= datetime('now', '-' || ? || ' seconds')"
+           AND datetime(created_at) <= datetime('now', '-' || ? || ' seconds')",
     )
     .bind(older_than_secs)
     .execute(conn)
@@ -295,19 +312,20 @@ pub async fn requeue_stale_inflight(conn: &mut SqliteConnection, older_than_secs
 }
 
 pub async fn pending_count(conn: &mut SqliteConnection) -> Result<i64, sqlx::Error> {
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sync_outbox_compacted"
-    )
-    .fetch_one(conn)
-    .await?;
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_outbox_compacted")
+        .fetch_one(conn)
+        .await?;
     Ok(count)
 }
 
-pub async fn purge_done(conn: &mut SqliteConnection, older_than_days: i64) -> Result<(), sqlx::Error> {
+pub async fn purge_done(
+    conn: &mut SqliteConnection,
+    older_than_days: i64,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         "DELETE FROM sync_outbox
          WHERE status = 'done'
-           AND datetime(created_at) <= datetime('now', '-' || ? || ' days')"
+           AND datetime(created_at) <= datetime('now', '-' || ? || ' days')",
     )
     .bind(older_than_days)
     .execute(conn)

@@ -1,9 +1,7 @@
-use tauri::{AppHandle, State};
 use crate::auth::{AuthEngine, AuthErrorResponse};
 use crate::db::AppState;
-use crate::services::explorer_service::{
-    self, ExplorerDirectoryContent
-};
+use crate::services::explorer_service::{self, ExplorerDirectoryContent};
+use tauri::{AppHandle, State};
 
 #[tauri::command]
 pub async fn explorer_get_default_dir(

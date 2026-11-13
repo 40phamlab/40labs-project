@@ -30,12 +30,17 @@ fn validate_logo_content(bytes: &[u8], file_name: &str) -> Result<(), String> {
 
     match ext.as_str() {
         "png" if !is_png => return Err("Invalid PNG image format or corrupted file".to_string()),
-        "jpg" | "jpeg" if !is_jpeg => return Err("Invalid JPEG image format or corrupted file".to_string()),
+        "jpg" | "jpeg" if !is_jpeg => {
+            return Err("Invalid JPEG image format or corrupted file".to_string())
+        }
         "webp" if !is_webp => return Err("Invalid WebP image format or corrupted file".to_string()),
         "svg" if !is_svg => return Err("Invalid SVG image format or corrupted file".to_string()),
         _ => {
             if !is_png && !is_jpeg && !is_webp && !is_svg {
-                return Err("Unsupported or invalid image format. Supported formats: PNG, JPEG, WebP, SVG.".to_string());
+                return Err(
+                    "Unsupported or invalid image format. Supported formats: PNG, JPEG, WebP, SVG."
+                        .to_string(),
+                );
             }
         }
     }
@@ -118,17 +123,26 @@ pub async fn upload_business_logo(
         b
     } else if let Some(path_str) = source_path {
         let path = std::path::Path::new(&path_str);
-        if path.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+        if path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir))
+        {
             return Err(AuthError::PolicyViolation("Path traversal detected".into()).to_response());
         }
         if !path.is_absolute() || !path.is_file() {
-            return Err(AuthError::PolicyViolation("Source path must be an absolute file".into()).to_response());
+            return Err(
+                AuthError::PolicyViolation("Source path must be an absolute file".into())
+                    .to_response(),
+            );
         }
         tokio::fs::read(path)
             .await
             .map_err(|e| AuthError::InternalError(e.to_string()).to_response())?
     } else {
-        return Err(AuthError::PolicyViolation("Either bytes or source_path must be provided".into()).to_response());
+        return Err(AuthError::PolicyViolation(
+            "Either bytes or source_path must be provided".into(),
+        )
+        .to_response());
     };
 
     validate_logo_content(&file_bytes, &file_name)

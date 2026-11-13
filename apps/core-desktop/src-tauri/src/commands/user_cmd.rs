@@ -293,7 +293,11 @@ pub async fn user_set_active(
         workspace_id: ctx.workspace_id.clone(),
         branch_id: ctx.branch_id.clone(),
         created_at: now.clone(),
-        action: if active { "user_unblock".to_string() } else { "user_set_active".to_string() },
+        action: if active {
+            "user_unblock".to_string()
+        } else {
+            "user_set_active".to_string()
+        },
         performed_by_user_id: Some(ctx.user_id.clone()),
         target_entity_type: "AppUser".to_string(),
         target_entity_id: user_id.clone(),
@@ -350,7 +354,7 @@ pub async fn user_block(
 
     if target_user.role == "sudo" {
         let active_sudo_count: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM app_user WHERE role = 'sudo' AND active = 1 AND id != ?"
+            "SELECT COUNT(*) FROM app_user WHERE role = 'sudo' AND active = 1 AND id != ?",
         )
         .bind(&user_id)
         .fetch_one(&state.pool)
@@ -358,7 +362,10 @@ pub async fn user_block(
         .map_err(|e| AuthError::DatabaseError(e.to_string()).to_response())?;
 
         if active_sudo_count.0 <= 0 {
-            return Err(AuthError::PolicyViolation("Cannot block the last active SUDO user".into()).to_response());
+            return Err(AuthError::PolicyViolation(
+                "Cannot block the last active SUDO user".into(),
+            )
+            .to_response());
         }
     }
 

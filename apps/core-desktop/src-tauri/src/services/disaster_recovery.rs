@@ -32,8 +32,25 @@ const MAX_TOTAL_EXTRACT_BYTES: u64 = 2 * 1024 * 1024 * 1024; // 2 GB total
 const MAX_FILE_COUNT: usize = 10_000;
 
 const PROHIBITED_EXTENSIONS: &[&str] = &[
-    "exe", "bat", "cmd", "sh", "ps1", "dll", "so", "dylib", "vbs", "js", "mjs", "jar", "msi",
-    "scr", "pif", "application", "com", "hta", "cpl",
+    "exe",
+    "bat",
+    "cmd",
+    "sh",
+    "ps1",
+    "dll",
+    "so",
+    "dylib",
+    "vbs",
+    "js",
+    "mjs",
+    "jar",
+    "msi",
+    "scr",
+    "pif",
+    "application",
+    "com",
+    "hta",
+    "cpl",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,7 +192,9 @@ fn decrypt_core_pack(password: &str, encrypted_data: &[u8]) -> Result<Vec<u8>, S
 
     let header = &encrypted_data[..HEADER_SIZE];
     if &header[0..15] != MAGIC_BYTES {
-        return Err("Invalid file format. The file is not a valid 40Labs .core backup.".to_string());
+        return Err(
+            "Invalid file format. The file is not a valid 40Labs .core backup.".to_string(),
+        );
     }
 
     let version = header[15];
@@ -225,14 +244,21 @@ fn decrypt_core_pack(password: &str, encrypted_data: &[u8]) -> Result<Vec<u8>, S
 
 /// Compute SHA-256 hash of a file
 fn compute_file_sha256(path: &Path) -> Result<String, String> {
-    let mut file = File::open(path)
-        .map_err(|e| format!("Failed to open file for SHA-256 calculation ({}): {e}", path.display()))?;
+    let mut file = File::open(path).map_err(|e| {
+        format!(
+            "Failed to open file for SHA-256 calculation ({}): {e}",
+            path.display()
+        )
+    })?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 65536];
     loop {
-        let n = file
-            .read(&mut buffer)
-            .map_err(|e| format!("Error reading file during SHA-256 ({}): {e}", path.display()))?;
+        let n = file.read(&mut buffer).map_err(|e| {
+            format!(
+                "Error reading file during SHA-256 ({}): {e}",
+                path.display()
+            )
+        })?;
         if n == 0 {
             break;
         }
@@ -253,16 +279,22 @@ fn sanitize_zip_path(raw_path: &str) -> Result<PathBuf, String> {
     let path = Path::new(raw_path);
 
     if path.is_absolute() {
-        return Err(format!("Absolute paths are prohibited in backup archive: '{raw_path}'"));
+        return Err(format!(
+            "Absolute paths are prohibited in backup archive: '{raw_path}'"
+        ));
     }
 
     for component in path.components() {
         match component {
             std::path::Component::ParentDir => {
-                return Err(format!("Path traversal ('..') detected in backup archive: '{raw_path}'"));
+                return Err(format!(
+                    "Path traversal ('..') detected in backup archive: '{raw_path}'"
+                ));
             }
             std::path::Component::Prefix(_) | std::path::Component::RootDir => {
-                return Err(format!("Invalid path component in backup archive: '{raw_path}'"));
+                return Err(format!(
+                    "Invalid path component in backup archive: '{raw_path}'"
+                ));
             }
             _ => {}
         }
@@ -332,11 +364,10 @@ async fn query_record_counts(pool: &SqlitePool) -> Result<HashMap<String, u64>, 
 
 /// Query current schema migration version
 async fn query_schema_version(pool: &SqlitePool) -> Result<i64, String> {
-    let res: Result<(i64,), _> = sqlx::query_as(
-        "SELECT MAX(version) FROM _sqlx_migrations WHERE success = 1",
-    )
-    .fetch_one(pool)
-    .await;
+    let res: Result<(i64,), _> =
+        sqlx::query_as("SELECT MAX(version) FROM _sqlx_migrations WHERE success = 1")
+            .fetch_one(pool)
+            .await;
 
     match res {
         Ok((ver,)) => Ok(ver),
@@ -398,7 +429,8 @@ pub async fn export_disaster_recovery_pack_impl(
     let total_records: u64 = record_counts.values().sum();
 
     // 2. Take clean SQLite snapshot using VACUUM INTO
-    let temp_dir = std::env::temp_dir().join(format!("40labs_backup_export_{}", uuid::Uuid::new_v4()));
+    let temp_dir =
+        std::env::temp_dir().join(format!("40labs_backup_export_{}", uuid::Uuid::new_v4()));
     fs::create_dir_all(&temp_dir)
         .map_err(|e| format!("Failed to create temporary export directory: {e}"))?;
 
@@ -429,7 +461,8 @@ pub async fn export_disaster_recovery_pack_impl(
                             stack.push(path);
                         } else if path.is_file() {
                             if let Ok(rel) = path.strip_prefix(root) {
-                                let rel_str = format!("files/{}", rel.to_string_lossy().replace('\\', "/"));
+                                let rel_str =
+                                    format!("files/{}", rel.to_string_lossy().replace('\\', "/"));
                                 if let Ok(meta) = fs::metadata(&path) {
                                     if let Ok(sha256) = compute_file_sha256(&path) {
                                         file_entries.push(BackupFileEntry {
@@ -452,7 +485,10 @@ pub async fn export_disaster_recovery_pack_impl(
     if let Some(logo_path_str) = logo_url {
         let logo_p = Path::new(&logo_path_str);
         if logo_p.exists() && logo_p.is_file() {
-            let zip_rel = format!("files/logo_{}", logo_p.file_name().unwrap_or_default().to_string_lossy());
+            let zip_rel = format!(
+                "files/logo_{}",
+                logo_p.file_name().unwrap_or_default().to_string_lossy()
+            );
             if !files_to_zip.iter().any(|(_, r)| r == &zip_rel) {
                 let logo_size = fs::metadata(logo_p).map(|m| m.len()).unwrap_or(u64::MAX);
                 if logo_size < MAX_FILE_SIZE_BYTES {
@@ -516,7 +552,9 @@ pub async fn export_disaster_recovery_pack_impl(
         }
     }
 
-    let zip_cursor = zip.finish().map_err(|e| format!("Failed to finalize zip archive: {e}"))?;
+    let zip_cursor = zip
+        .finish()
+        .map_err(|e| format!("Failed to finalize zip archive: {e}"))?;
     let zip_plaintext = zip_cursor.into_inner();
 
     // Clean temp dir
@@ -679,7 +717,9 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
 
     // Extract files safely
     for i in 0..zip.len() {
-        let mut zip_file = zip.by_index(i).map_err(|e| format!("Zip extraction error at index {i}: {e}"))?;
+        let mut zip_file = zip
+            .by_index(i)
+            .map_err(|e| format!("Zip extraction error at index {i}: {e}"))?;
         let raw_name = zip_file.name().to_string();
 
         if zip_file.is_dir() {
@@ -697,20 +737,33 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
         let uncompressed_size = zip_file.size();
         if uncompressed_size > MAX_FILE_SIZE_BYTES {
             let _ = fs::remove_dir_all(&staging_dir);
-            return Err(format!("File '{raw_name}' in backup exceeds maximum permitted file size limit."));
+            return Err(format!(
+                "File '{raw_name}' in backup exceeds maximum permitted file size limit."
+            ));
         }
 
         total_extracted_bytes += uncompressed_size;
         if total_extracted_bytes > MAX_TOTAL_EXTRACT_BYTES {
             let _ = fs::remove_dir_all(&staging_dir);
-            return Err("Backup archive extracted size exceeds total maximum size limit (2 GB).".to_string());
+            return Err(
+                "Backup archive extracted size exceeds total maximum size limit (2 GB)."
+                    .to_string(),
+            );
         }
 
-        let mut out_file = File::create(&target_path)
-            .map_err(|e| format!("Failed to create staging file ({}): {e}", target_path.display()))?;
+        let mut out_file = File::create(&target_path).map_err(|e| {
+            format!(
+                "Failed to create staging file ({}): {e}",
+                target_path.display()
+            )
+        })?;
 
-        std::io::copy(&mut zip_file, &mut out_file)
-            .map_err(|e| format!("Failed to write staging file ({}): {e}", target_path.display()))?;
+        std::io::copy(&mut zip_file, &mut out_file).map_err(|e| {
+            format!(
+                "Failed to write staging file ({}): {e}",
+                target_path.display()
+            )
+        })?;
     }
 
     // 2. Read and validate manifest in staging
@@ -728,7 +781,9 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
     let staged_db_path = staging_dir.join("database.sqlite");
     if !staged_db_path.exists() {
         let _ = fs::remove_dir_all(&staging_dir);
-        return Err("Restoration failed: 'database.sqlite' missing from backup archive.".to_string());
+        return Err(
+            "Restoration failed: 'database.sqlite' missing from backup archive.".to_string(),
+        );
     }
 
     // 3. Open staged DB to verify integrity and run pending migrations
@@ -763,7 +818,10 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
     if !fk_violations.is_empty() {
         staged_pool.close().await;
         let _ = fs::remove_dir_all(&staging_dir);
-        return Err(format!("Backup database contains {} foreign key violations.", fk_violations.len()));
+        return Err(format!(
+            "Backup database contains {} foreign key violations.",
+            fk_violations.len()
+        ));
     }
 
     // Check schema version and run migrations on staging DB if needed
@@ -780,7 +838,8 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
             "Backup database schema version ({}) is older than current ({current_app_schema}). Running migrations on staging database...",
             manifest.schema_version
         );
-        static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../../../infra/db/sqlite-schema/migrations");
+        static MIGRATOR: sqlx::migrate::Migrator =
+            sqlx::migrate!("../../../infra/db/sqlite-schema/migrations");
         MIGRATOR
             .run(&staged_pool)
             .await
@@ -830,8 +889,9 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
         let _ = fs::remove_file(&wal_path);
         let _ = fs::remove_file(&shm_path);
 
-        fs::copy(&staged_db_path, &live_db_path)
-            .map_err(|e| format!("Failed to overwrite live database with restored database: {e}"))?;
+        fs::copy(&staged_db_path, &live_db_path).map_err(|e| {
+            format!("Failed to overwrite live database with restored database: {e}")
+        })?;
 
         // Restore files into Documents folder
         let staged_files_dir = staging_dir.join("files");
@@ -839,8 +899,9 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
             if let Some(ref docs) = doc_root {
                 fs::create_dir_all(docs)
                     .map_err(|e| format!("Failed to prepare documents directory: {e}"))?;
-                copy_recursively(&staged_files_dir, docs)
-                    .map_err(|e| format!("Failed to copy restored files to Documents folder: {e}"))?;
+                copy_recursively(&staged_files_dir, docs).map_err(|e| {
+                    format!("Failed to copy restored files to Documents folder: {e}")
+                })?;
             }
         }
         Ok(())
@@ -851,7 +912,9 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
     let _ = fs::remove_dir_all(&staging_dir);
 
     if let Err(swap_err) = swap_res {
-        tracing::error!("Restoration swap failed: {swap_err}. Attempting rollback from safety backup...");
+        tracing::error!(
+            "Restoration swap failed: {swap_err}. Attempting rollback from safety backup..."
+        );
         if let Err(rb_err) = rollback_from_safety(&live_db_path, doc_root.as_deref(), &safety_dir) {
             tracing::error!("CRITICAL: Rollback failed: {rb_err}");
             return Err(format!("Restoration failed ({swap_err}) and rollback failed ({rb_err}). Please inspect safety backup at {}", safety_dir.display()));
@@ -868,9 +931,13 @@ pub async fn restore_disaster_recovery_pack<R: tauri::Runtime>(
     let new_pool = match new_pool_res {
         Ok(p) => p,
         Err(e) => {
-            tracing::error!("Failed to re-initialize database pool after restore: {e}. Rolling back...");
+            tracing::error!(
+                "Failed to re-initialize database pool after restore: {e}. Rolling back..."
+            );
             let _ = rollback_from_safety(&live_db_path, doc_root.as_deref(), &safety_dir);
-            return Err(format!("Failed to connect to restored database ({e}). Rolled back to previous state."));
+            return Err(format!(
+                "Failed to connect to restored database ({e}). Rolled back to previous state."
+            ));
         }
     };
 
@@ -921,14 +988,23 @@ fn copy_recursively(src: &Path, dst: &Path) -> Result<(), String> {
         if ty.is_dir() {
             copy_recursively(&src_p, &dst_p)?;
         } else {
-            fs::copy(&src_p, &dst_p)
-                .map_err(|e| format!("Failed to copy file ({} -> {}): {e}", src_p.display(), dst_p.display()))?;
+            fs::copy(&src_p, &dst_p).map_err(|e| {
+                format!(
+                    "Failed to copy file ({} -> {}): {e}",
+                    src_p.display(),
+                    dst_p.display()
+                )
+            })?;
         }
     }
     Ok(())
 }
 
-fn rollback_from_safety(live_db_path: &Path, doc_root: Option<&Path>, safety_dir: &Path) -> Result<(), String> {
+fn rollback_from_safety(
+    live_db_path: &Path,
+    doc_root: Option<&Path>,
+    safety_dir: &Path,
+) -> Result<(), String> {
     let safety_db = safety_dir.join("40labs.db");
     if safety_db.exists() {
         fs::copy(&safety_db, live_db_path)
@@ -999,7 +1075,8 @@ mod tests {
     async fn test_database_export_and_preview_integration() {
         use crate::db::init_db_pool_with_url;
 
-        let test_dir = std::env::temp_dir().join(format!("40labs_dr_test_{}", uuid::Uuid::new_v4()));
+        let test_dir =
+            std::env::temp_dir().join(format!("40labs_dr_test_{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&test_dir).unwrap();
 
         let db_path = test_dir.join("live.db");
@@ -1060,13 +1137,10 @@ mod tests {
         assert!(archive_path.exists());
 
         // Preview
-        let preview = preview_disaster_recovery_pack(
-            &pool,
-            &archive_path.to_string_lossy(),
-            password,
-        )
-        .await
-        .expect("Preview should succeed");
+        let preview =
+            preview_disaster_recovery_pack(&pool, &archive_path.to_string_lossy(), password)
+                .await
+                .expect("Preview should succeed");
 
         assert_eq!(preview.business_id, "AFYA-9999");
         assert_eq!(preview.business_name, "Afya Disaster Recovery Pharmacy");

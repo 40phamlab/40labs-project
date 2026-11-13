@@ -5,11 +5,7 @@ use axum::{
 };
 use std::sync::Arc;
 
-use super::{
-    auth::auth_middleware,
-    handlers::*,
-    pairing, LanServerState,
-};
+use super::{auth::auth_middleware, handlers::*, pairing, LanServerState};
 
 pub fn create_router(state: Arc<LanServerState>) -> Router {
     let protected_routes = Router::new()

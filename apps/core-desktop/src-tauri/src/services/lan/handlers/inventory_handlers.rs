@@ -30,7 +30,10 @@ pub async fn get_stock_handler(
     .await
     .map_err(|e| {
         tracing::warn!(error = %e, "Failed to list inventory");
-        (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal server error".to_string(),
+        )
     })?;
 
     let search = params.get("search").map(|s| s.to_lowercase());
@@ -75,7 +78,10 @@ pub async fn get_stock_item_handler(
             .await
             .map_err(|e| {
                 tracing::warn!(error = %e, "Failed to get inventory item");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             })?
             .ok_or_else(|| (StatusCode::NOT_FOUND, "Stock item not found".to_string()))?;
 
@@ -88,7 +94,14 @@ pub async fn post_stock_receipt_handler(
     headers: HeaderMap,
     Json(payload): Json<AddStockRequest>,
 ) -> Result<(StatusCode, Json<Value>), (StatusCode, String)> {
-    if let Some(cached) = check_idempotency(&state.pool, &device.workspace_id, &headers, "/stock/receipts").await? {
+    if let Some(cached) = check_idempotency(
+        &state.pool,
+        &device.workspace_id,
+        &headers,
+        "/stock/receipts",
+    )
+    .await?
+    {
         return Ok(cached);
     }
 
@@ -118,7 +131,10 @@ pub async fn post_stock_receipt_handler(
             if e.contains("validation") || e.contains("invalid") {
                 (StatusCode::UNPROCESSABLE_ENTITY, e)
             } else {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal server error".to_string(),
+                )
             }
         })?;
 
