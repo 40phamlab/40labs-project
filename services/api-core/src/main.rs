@@ -87,9 +87,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let id = uuid::Uuid::new_v4().to_string();
 
             let res = sqlx::query(
-                "INSERT INTO admin_users (id, email, password_hash, totp_secret_enc, role) \
-                 VALUES ($1, $2, $3, NULL, $4) \
-                 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, totp_secret_enc = NULL, totp_last_step = NULL, role = EXCLUDED.role \
+                "INSERT INTO admin_users (id, email, password_hash, totp_secret_enc, totp_enrolled_at, role) \
+                 VALUES ($1, $2, $3, NULL, NULL, $4) \
+                 ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, totp_secret_enc = NULL, totp_enrolled_at = NULL, totp_last_step = NULL, role = EXCLUDED.role \
                  RETURNING id"
             )
             .bind(id)

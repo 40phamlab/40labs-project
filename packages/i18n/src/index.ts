@@ -1,7 +1,6 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import './types';
-import { formatDate } from './formatters';
 
 import swCommon from './locales/sw/common.json';
 import swNav from './locales/sw/nav.json';

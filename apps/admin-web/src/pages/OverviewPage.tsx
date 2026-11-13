@@ -4,34 +4,14 @@ import { Building2, ShieldCheck, Clock, RefreshCcw, TrendingUp, AlertTriangle, A
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { KPITile } from '../_copied/components/KPITile';
 import { apiFetch } from '../lib/api';
-
-interface OverviewData {
-  kpis: {
-    registered_businesses: number;
-    verified_percentage: number;
-    pending_count: number;
-    active_businesses: number;
-    platform_sales_today: number;
-    open_infra_alerts: number;
-  };
-  signups_per_day: Array<{ date: string; count: number }>;
-  platform_daily_sales: Array<{ date: string; revenue: number }>;
-  needs_attention: Array<{
-    type: string;
-    id: string;
-    name: string;
-    description: string;
-    time: string;
-    link: string;
-  }>;
-}
+import type { AdminOverviewResponse } from '@40labs/types';
 
 export function OverviewPage() {
   const navigate = useNavigate();
 
-  const { data, isLoading, error, refetch } = useQuery<OverviewData>({
+  const { data, isLoading, error, refetch } = useQuery<AdminOverviewResponse>({
     queryKey: ['admin-overview'],
-    queryFn: () => apiFetch<OverviewData>('/admin/v1/overview'),
+    queryFn: () => apiFetch<AdminOverviewResponse>('/admin/v1/overview'),
     refetchInterval: 60000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -69,14 +49,8 @@ export function OverviewPage() {
     );
   }
 
-  const kpis = data?.kpis || {
-    registered_businesses: 0,
-    verified_percentage: 0,
-    pending_count: 0,
-    active_businesses: 0,
-    platform_sales_today: 0,
-    open_infra_alerts: 0,
-  };
+  if (!data) return null;
+  const kpis = data.kpis;
 
   const signups = data?.signups_per_day || [];
   const sales = data?.platform_daily_sales || [];

@@ -3,6 +3,7 @@ info:
   title: 40Labs Core API
   version: 0.1.0
   description: API reference for services/api-core (Rust/Axum) backend powering pharmacy, dispensary, and sync operations in Tanzania.
+x-admin-api-reference: ../../../docs/backend/ADMIN_WEB_API_STATUS.md
 servers:
   - url: http://localhost:3000
     description: Local development server
@@ -275,6 +276,11 @@ paths:
         '401': { description: Invalid, expired, or revoked refresh token }
 components:
   securitySchemes:
+    AdminSession:
+      type: apiKey
+      in: cookie
+      name: admin_session
+      description: Opaque HttpOnly cookie issued after administrator TOTP or recovery-code verification
     BearerAuth:
       type: http
       scheme: bearer

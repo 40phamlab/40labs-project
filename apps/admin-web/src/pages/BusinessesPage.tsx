@@ -284,7 +284,7 @@ export function BusinessesPage() {
                   >
                     <td className="p-4 font-mono text-xs text-action-primary font-medium">{item.business_id}</td>
                     <td className="p-4 font-medium text-text-primary group-hover:text-action-primary transition-colors">
-                      {item.name}
+                      {item.name || '—'}
                     </td>
                     <td className="p-4 text-text-muted">{item.region || '-'}</td>
                     <td className="p-4 font-mono text-xs text-text-muted">{item.tmda_number || '-'}</td>

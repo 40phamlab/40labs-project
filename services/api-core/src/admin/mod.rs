@@ -12,6 +12,7 @@ pub mod analytics;
 pub mod auth;
 pub mod businesses;
 pub mod infra;
+pub mod management;
 pub mod sync;
 
 #[derive(Clone, Debug)]
@@ -36,12 +37,13 @@ pub enum AdminResource {
     Sync,
     Infrastructure,
     Logs,
+    AdminUsers,
 }
 
 /// Central, default-deny role policy. Unknown roles and unmapped routes never gain access.
 pub fn role_allows(role: &str, action: AdminAction, resource: AdminResource) -> bool {
     use AdminAction::{Manage, Read, Write};
-    use AdminResource::{Analytics, Auth, Businesses, Infrastructure, Logs, Sync};
+    use AdminResource::{AdminUsers, Analytics, Auth, Businesses, Infrastructure, Logs, Sync};
     match role {
         "super_admin" => true,
         "admin" => match (resource, action) {
@@ -51,6 +53,7 @@ pub fn role_allows(role: &str, action: AdminAction, resource: AdminResource) -> 
             | (Sync, Read | Write)
             | (Infrastructure, Read) => true,
             (Logs, Read) => true,
+            (AdminUsers, Read) => true,
             _ => false,
         },
         "reviewer" => matches!(
@@ -74,7 +77,7 @@ fn route_permission(
     path: &str,
 ) -> Option<(AdminResource, AdminAction)> {
     use AdminAction::{Read, Write};
-    use AdminResource::{Analytics, Auth, Businesses, Infrastructure, Logs, Sync};
+    use AdminResource::{AdminUsers, Analytics, Auth, Businesses, Infrastructure, Logs, Sync};
     let segments: Vec<_> = path.trim_matches('/').split('/').collect();
     let prefix_len = if segments.starts_with(&["admin", "v1"]) {
         2
@@ -86,6 +89,10 @@ fn route_permission(
         ("GET", ["me"]) => Some((Auth, Read)),
         ("POST", ["auth", "logout" | "recovery-codes", ..]) => Some((Auth, Write)),
         ("GET", ["businesses"]) | ("GET", ["businesses", _, ..]) => Some((Businesses, Read)),
+        ("GET", ["workspaces"]) | ("GET", ["workspaces", _, "branches"]) => Some((Businesses, Read)),
+        ("GET", ["admin-users"]) => Some((AdminUsers, Read)),
+        ("PATCH", ["admin-users", _]) => Some((AdminUsers, AdminAction::Manage)),
+        ("GET", ["audit-log"]) => Some((Logs, Read)),
         ("POST", ["businesses", _, "verification"]) => Some((Businesses, Write)),
         ("GET", ["overview"] | ["analytics", ..]) => Some((Analytics, Read)),
         ("GET", ["sync", ..]) => Some((Sync, Read)),
@@ -162,6 +169,28 @@ mod permission_tests {
             route_permission(&Method::GET, "/admin/v1/infra/logs"),
             Some((AdminResource::Logs, AdminAction::Read))
         );
+        assert_eq!(
+            route_permission(&Method::PATCH, "/admin/v1/admin-users/u1"),
+            Some((AdminResource::AdminUsers, AdminAction::Manage))
+        );
+        assert_eq!(
+            route_permission(&Method::GET, "/admin/v1/audit-log"),
+            Some((AdminResource::Logs, AdminAction::Read))
+        );
+        assert_eq!(
+            route_permission(&Method::GET, "/admin/v1/workspaces/w1/branches"),
+            Some((AdminResource::Businesses, AdminAction::Read))
+        );
+        assert!(!role_allows(
+            "admin",
+            AdminAction::Manage,
+            AdminResource::AdminUsers
+        ));
+        assert!(role_allows(
+            "super_admin",
+            AdminAction::Manage,
+            AdminResource::AdminUsers
+        ));
         assert_eq!(
             route_permission(&Method::DELETE, "/admin/v1/businesses/b1"),
             None
@@ -266,6 +295,7 @@ pub fn router(state: AppState) -> Router {
         .merge(analytics::router(state.clone()))
         .merge(sync::router(state.clone()))
         .merge(infra::router(state.clone()))
+        .merge(management::router(state.clone()))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
             admin_auth_middleware,

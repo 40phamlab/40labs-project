@@ -12,41 +12,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { apiFetch } from '../lib/api';
-
-interface RevenueResponse {
-  range: string;
-  group: string;
-  revenue_data: Array<{
-    bucket: string;
-    revenue: number;
-    region: string;
-    tier: string;
-  }>;
-  tier_distribution: Record<string, number>;
-}
-
-interface ProductsResponse {
-  metric: string;
-  limit: number;
-  products: Array<{
-    medicine_id: string;
-    units?: number;
-    revenue?: number;
-    stockouts?: number;
-  }>;
-}
-
-interface GrowthResponse {
-  signups_per_week: Array<{
-    week: string;
-    signups: number;
-  }>;
-  activation_rate_pct: number;
-  total_registered: number;
-  activated_businesses: number;
-  verified_count: number;
-  unverified_count: number;
-}
+import type { AdminGrowthResponse, AdminProductsResponse, AdminRevenueResponse } from '@40labs/types';
 
 export function AnalyticsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -67,9 +33,9 @@ export function AnalyticsPage() {
     isLoading: revenueLoading,
     error: revenueError,
     refetch: refetchRevenue,
-  } = useQuery<RevenueResponse>({
+  } = useQuery<AdminRevenueResponse>({
     queryKey: ['analytics-revenue', range, group],
-    queryFn: () => apiFetch<RevenueResponse>(`/admin/v1/analytics/revenue?range=${range}&group=${group}`),
+    queryFn: () => apiFetch<AdminRevenueResponse>(`/admin/v1/analytics/revenue?range=${encodeURIComponent(range)}&group=${encodeURIComponent(group)}`),
     enabled: tab === 'revenue',
   });
 
@@ -78,9 +44,9 @@ export function AnalyticsPage() {
     isLoading: productsLoading,
     error: productsError,
     refetch: refetchProducts,
-  } = useQuery<ProductsResponse>({
+  } = useQuery<AdminProductsResponse>({
     queryKey: ['analytics-products', metric],
-    queryFn: () => apiFetch<ProductsResponse>(`/admin/v1/analytics/products?metric=${metric}&limit=20`),
+    queryFn: () => apiFetch<AdminProductsResponse>(`/admin/v1/analytics/products?metric=${encodeURIComponent(metric)}&limit=20`),
     enabled: tab === 'products',
   });
 
@@ -89,9 +55,9 @@ export function AnalyticsPage() {
     isLoading: growthLoading,
     error: growthError,
     refetch: refetchGrowth,
-  } = useQuery<GrowthResponse>({
+  } = useQuery<AdminGrowthResponse>({
     queryKey: ['analytics-growth', range],
-    queryFn: () => apiFetch<GrowthResponse>(`/admin/v1/analytics/growth?range=${range}`),
+    queryFn: () => apiFetch<AdminGrowthResponse>(`/admin/v1/analytics/growth?range=${encodeURIComponent(range)}`),
     enabled: tab === 'growth',
   });
 

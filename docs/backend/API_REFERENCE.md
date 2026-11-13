@@ -1,5 +1,7 @@
 # 40Labs API Core reference
 
+The Admin Web API's current route-by-route contracts, authorization matrix, and unavailable operations are documented in [ADMIN_WEB_API_STATUS.md](ADMIN_WEB_API_STATUS.md).
+
 This reference describes the API currently mounted by `services/api-core`. It is an implementation inventory, not a claim that every planned MVP domain is available. The service currently exposes activation, device credentials, device cloud sync, infrastructure probes, and the platform admin console. Core Desktop's operational workflows are local SQLite/Tauri APIs; they do not currently have corresponding cloud REST endpoints.
 
 ## Conventions

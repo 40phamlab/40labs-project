@@ -144,6 +144,12 @@ pub fn decrypt_secret(encrypted_b64: &str, key_hex: &str) -> Result<String, Stri
 pub fn generate_totp_secret() -> (String, String) {
     let secret = Secret::generate_secret();
     let secret_base32 = secret.to_encoded().to_string();
+    let url = totp_enrollment_url(&secret_base32);
+    (secret_base32, url)
+}
+
+fn totp_enrollment_url(secret_base32: &str) -> String {
+    let secret = Secret::Encoded(secret_base32.to_string());
     let totp = TOTP::new(
         Algorithm::SHA1,
         6,
@@ -154,8 +160,7 @@ pub fn generate_totp_secret() -> (String, String) {
         "".into(),
     )
     .unwrap();
-    let url = totp.get_url();
-    (secret_base32, url)
+    totp.get_url()
 }
 
 pub fn verify_totp(secret_base32: &str, code: &str) -> bool {
@@ -234,9 +239,13 @@ async fn recovery_login_handler(
         Ok(tx) => tx,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     };
-    let user_id: Option<(String,)> = sqlx::query_as(
+    let user_id: Result<Option<(String,)>, _> = sqlx::query_as(
         "UPDATE admin_recovery_codes SET consumed_at = NOW() WHERE admin_user_id = (SELECT c.admin_user_id FROM admin_login_challenges c JOIN admin_users u ON u.id = c.admin_user_id WHERE c.id = $1 AND c.consumed_at IS NULL AND c.expires_at > NOW() AND u.disabled_at IS NULL) AND code_hash = $2 AND consumed_at IS NULL RETURNING admin_user_id"
-    ).bind(&payload.challenge_id).bind(recovery_code_hash(&payload.code)).fetch_optional(&mut *tx).await.unwrap_or(None);
+    ).bind(&payload.challenge_id).bind(recovery_code_hash(&payload.code)).fetch_optional(&mut *tx).await;
+    let user_id = match user_id {
+        Ok(user_id) => user_id,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not verify recovery code"}}))).into_response(),
+    };
     let user_id = match user_id {
         Some((id,)) => id,
         None => return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({"error":{"code":"UNAUTHORIZED","message":"Invalid recovery code or challenge"}}))).into_response(),
@@ -401,16 +410,16 @@ async fn login_handler(
         return (StatusCode::TOO_MANY_REQUESTS, Json(serde_json::json!({ "error": { "code": "RATE_LIMIT", "message": "Rate limit exceeded" } }))).into_response();
     }
 
-    let user = sqlx::query_as::<_, (String, String, Option<String>, String, Option<chrono::DateTime<chrono::Utc>>)>(
-        "SELECT id, email, totp_secret_enc, password_hash, disabled_at FROM admin_users WHERE email = $1"
+    let user = sqlx::query_as::<_, (String, String, Option<String>, String, Option<chrono::DateTime<chrono::Utc>>, Option<chrono::DateTime<chrono::Utc>>)>(
+        "SELECT id, email, totp_secret_enc, password_hash, disabled_at, totp_enrolled_at FROM admin_users WHERE email = $1"
     )
     .bind(&email)
     .fetch_optional(&state.pool)
     .await;
 
-    let (user_id, totp_secret_enc, password_hash, disabled_at) = match user {
-        Ok(Some(u)) => (u.0, u.2, u.3, u.4),
-        _ => {
+    let (user_id, totp_secret_enc, password_hash, disabled_at, totp_enrolled_at) = match user {
+        Ok(Some(u)) => (u.0, u.2, u.3, u.4, u.5),
+        Ok(None) => {
             let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$W8c9vV9...d";
             let _ = verify_password(&payload.password, dummy_hash);
             log_ops_event(
@@ -425,6 +434,7 @@ async fn login_handler(
             .await;
             return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({ "error": { "code": "UNAUTHORIZED", "message": "Invalid credentials" } }))).into_response();
         }
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Could not load administrator account" } }))).into_response(),
     };
 
     if disabled_at.is_some() {
@@ -456,28 +466,27 @@ async fn login_handler(
         return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({ "error": { "code": "UNAUTHORIZED", "message": "Invalid credentials" } }))).into_response();
     }
 
-    let enrollment_required = totp_secret_enc.is_none();
+    let enrollment_required = totp_enrolled_at.is_none();
     let otpauth_url = if enrollment_required {
-        let (secret_b32, url) = generate_totp_secret();
-        let enc = match encrypt_secret(&secret_b32, &state.config.totp_enc_key) {
-            Ok(e) => e,
-            Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Failed to encrypt TOTP secret" } }))).into_response(),
-        };
-        if sqlx::query(
-            "UPDATE admin_users SET totp_secret_enc = $1 WHERE id = $2 AND disabled_at IS NULL",
-        )
-        .bind(&enc)
-        .bind(&user_id)
-        .execute(&state.pool)
-        .await
-        .is_err()
-        {
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Failed to initialize MFA" } }))).into_response();
+        match totp_secret_enc {
+            Some(encrypted) => match decrypt_secret(&encrypted, &state.config.totp_enc_key) {
+                Ok(secret) => Some(totp_enrollment_url(&secret)),
+                Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Failed to initialize MFA enrollment" } }))).into_response(),
+            },
+            None => {
+                let (secret_b32, url) = generate_totp_secret();
+                let enc = match encrypt_secret(&secret_b32, &state.config.totp_enc_key) {
+                    Ok(e) => e,
+                    Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Failed to encrypt TOTP secret" } }))).into_response(),
+                };
+                if sqlx::query("UPDATE admin_users SET totp_secret_enc = $1, totp_enrolled_at = NULL WHERE id = $2 AND disabled_at IS NULL")
+                    .bind(&enc).bind(&user_id).execute(&state.pool).await.is_err() {
+                    return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Failed to initialize MFA" } }))).into_response();
+                }
+                Some(url)
+            }
         }
-        Some(url)
-    } else {
-        None
-    };
+    } else { None };
     let challenge_id = uuid::Uuid::new_v4().to_string();
     let expires_at = chrono::Utc::now() + chrono::Duration::minutes(5);
     if sqlx::query(
@@ -535,9 +544,13 @@ async fn totp_handler(
         return (StatusCode::TOO_MANY_REQUESTS, Json(serde_json::json!({ "error": { "code": "RATE_LIMIT", "message": "Rate limit exceeded" } }))).into_response();
     }
 
-    let challenge_user_id: Option<(String,)> = sqlx::query_as(
+    let challenge_user_id: Result<Option<(String,)>, _> = sqlx::query_as(
         "SELECT admin_user_id FROM admin_login_challenges WHERE id = $1 AND consumed_at IS NULL AND expires_at > NOW()"
-    ).bind(&payload.challenge_id).fetch_optional(&state.pool).await.unwrap_or(None);
+    ).bind(&payload.challenge_id).fetch_optional(&state.pool).await;
+    let challenge_user_id = match challenge_user_id {
+        Ok(user_id) => user_id,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not validate TOTP challenge"}}))).into_response(),
+    };
     let admin_user_id = match challenge_user_id {
         Some((user_id,)) => user_id,
         None => {
@@ -662,7 +675,7 @@ async fn totp_handler(
         return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({ "error": { "code": "UNAUTHORIZED", "message": "Invalid or expired challenge" } }))).into_response();
     }
 
-    let accepted = sqlx::query("UPDATE admin_users SET totp_last_step = $1 WHERE id = $2 AND disabled_at IS NULL AND (totp_last_step IS NULL OR totp_last_step < $1)")
+    let accepted = sqlx::query("UPDATE admin_users SET totp_last_step = $1, totp_enrolled_at = COALESCE(totp_enrolled_at, NOW()) WHERE id = $2 AND disabled_at IS NULL AND (totp_last_step IS NULL OR totp_last_step < $1)")
         .bind(step).bind(&admin_user_id).execute(&mut *tx).await;
     if !matches!(accepted, Ok(ref result) if result.rows_affected() == 1) {
         return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({ "error": { "code": "UNAUTHORIZED", "message": "TOTP code was already used or is no longer valid" } }))).into_response();
@@ -727,32 +740,35 @@ async fn totp_handler(
 
 #[axum::debug_handler]
 async fn logout_handler(State(state): State<AppState>, headers: HeaderMap) -> impl IntoResponse {
+    let mut tx = match state.pool.begin().await {
+        Ok(tx) => tx,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not end admin session"}}))).into_response(),
+    };
     if let Some(cookie_val) = headers.get(header::COOKIE) {
         if let Ok(cookie_str) = cookie_val.to_str() {
             for cookie in cookie_str.split(';') {
                 let parts: Vec<&str> = cookie.trim().splitn(2, '=').collect();
                 if parts.len() == 2 && parts[0] == "admin_session" {
                     let session_id = parts[1];
-                    let _ =
-                        sqlx::query("UPDATE admin_sessions SET revoked_at = NOW() WHERE id = $1")
-                            .bind(session_id)
-                            .execute(&state.pool)
-                            .await;
+                    let user_id: Result<Option<(String,)>, _> = sqlx::query_as("UPDATE admin_sessions SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL RETURNING admin_user_id")
+                        .bind(session_id).fetch_optional(&mut *tx).await;
+                    match user_id {
+                        Ok(Some((user_id,))) => {
+                            if sqlx::query("INSERT INTO admin_audit_log (id,admin_user_id,action,target_type,target_id,payload) VALUES ($1,$2,'admin_logout','admin_session',$3,'{}'::jsonb)")
+                                .bind(uuid::Uuid::new_v4().to_string()).bind(user_id).bind(session_id).execute(&mut *tx).await.is_err() {
+                                return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not record admin logout"}}))).into_response();
+                            }
+                        }
+                        Ok(None) => {}
+                        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not revoke admin session"}}))).into_response(),
+                    }
                 }
             }
         }
     }
-
-    log_ops_event(
-        &state.pool,
-        "info",
-        "auth",
-        "admin_logout",
-        None,
-        None,
-        None,
-    )
-    .await;
+    if tx.commit().await.is_err() {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not commit admin logout"}}))).into_response();
+    }
 
     let cookie_val = session_cookie_header("", 0, &state.config.app_env);
     let mut resp_headers = HeaderMap::new();
@@ -811,16 +827,28 @@ async fn revoke_session_handler(
     Extension(claims): Extension<AdminClaims>,
     axum::extract::Path(session_id): axum::extract::Path<String>,
 ) -> impl IntoResponse {
+    let mut tx = match state.pool.begin().await {
+        Ok(tx) => tx,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not revoke session"}}))).into_response(),
+    };
     let res = sqlx::query(
-        "UPDATE admin_sessions SET revoked_at = NOW() WHERE id = $1 AND admin_user_id = $2",
+        "UPDATE admin_sessions SET revoked_at = NOW() WHERE id = $1 AND admin_user_id = $2 AND revoked_at IS NULL",
     )
     .bind(&session_id)
     .bind(&claims.user_id)
-    .execute(&state.pool)
+    .execute(&mut *tx)
     .await;
 
     match res {
-        Ok(_) => (StatusCode::OK, Json(serde_json::json!({ "success": true }))).into_response(),
+        Ok(result) if result.rows_affected() == 1 => {
+            if sqlx::query("INSERT INTO admin_audit_log (id,admin_user_id,action,target_type,target_id,payload) VALUES ($1,$2,'admin_session_revoked','admin_session',$3,'{}'::jsonb)")
+                .bind(uuid::Uuid::new_v4().to_string()).bind(&claims.user_id).bind(&session_id).execute(&mut *tx).await.is_err() {
+                return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not record session revocation"}}))).into_response();
+            }
+            if tx.commit().await.is_err() { return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not commit session revocation"}}))).into_response(); }
+            (StatusCode::OK, Json(serde_json::json!({ "success": true }))).into_response()
+        }
+        Ok(_) => (StatusCode::NOT_FOUND, Json(serde_json::json!({ "error": { "code": "NOT_FOUND", "message": "Session not found" } }))).into_response(),
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": { "code": "INTERNAL", "message": "Failed to revoke session" } }))).into_response(),
     }
 }

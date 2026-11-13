@@ -3,19 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Building2, PackageSearch, RefreshCw, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import type { AdminBusiness } from '@40labs/types';
-
-interface StockItem {
-  medicine_id: string;
-  batch_number: string;
-  expiry_date: string;
-  buy_price: number;
-  sell_price: number;
-  quantity: number;
-  low_stock_threshold: number;
-}
-
-type Decision = 'verified' | 'rejected' | 'suspended';
+import type { AdminBusiness, AdminBusinessActivityResponse, AdminBusinessStockResponse, AdminBusinessSyncResponse, AdminVerificationDecision } from '@40labs/types';
 
 export function BusinessDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
@@ -31,30 +19,23 @@ export function BusinessDetailPage() {
     queryFn: () => apiFetch<AdminBusiness>(`/admin/v1/businesses/${encodeURIComponent(id)}`),
     enabled: Boolean(id),
   });
-  const { data: stock } = useQuery<{
-    items: StockItem[];
-    total: number;
-    summary: { item_count: number; low_stock_count: number; expiring_soon_count: number };
-  }>({
+  const { data: stock } = useQuery<AdminBusinessStockResponse>({
     queryKey: ['admin-business-stock', id],
     queryFn: () => apiFetch(`/admin/v1/businesses/${encodeURIComponent(id)}/stock`),
     enabled: Boolean(id) && tab === 'stock',
   });
-  const { data: sync } = useQuery<{
-    devices: Array<{ device_id: string; last_seen_at: string | null; outbox_pending: number; app_version: string | null }>;
-    changes: Array<{ change_id: string; entity: string; entity_id: string; version: number; received_at: string }>;
-  }>({
+  const { data: sync } = useQuery<AdminBusinessSyncResponse>({
     queryKey: ['admin-business-sync', id],
     queryFn: () => apiFetch(`/admin/v1/businesses/${encodeURIComponent(id)}/sync`),
     enabled: Boolean(id) && tab === 'sync',
   });
-  const { data: activity } = useQuery<{ activity: Array<{ action: string; admin: string; payload: Record<string, unknown> | null; created_at: string }> }>({
+  const { data: activity } = useQuery<AdminBusinessActivityResponse>({
     queryKey: ['admin-business-activity', id],
     queryFn: () => apiFetch(`/admin/v1/businesses/${encodeURIComponent(id)}/activity`),
     enabled: Boolean(id) && tab === 'activity',
   });
   const decisionMutation = useMutation({
-    mutationFn: ({ decision, reason: decisionReason }: { decision: Decision; reason?: string }) =>
+    mutationFn: ({ decision, reason: decisionReason }: { decision: AdminVerificationDecision; reason?: string }) =>
       apiFetch<{ success: boolean; status: string }>(`/admin/v1/businesses/${encodeURIComponent(id)}/verification`, {
         method: 'POST',
         body: JSON.stringify({ decision, reason: decisionReason }),
@@ -75,7 +56,7 @@ export function BusinessDetailPage() {
     },
   });
 
-  const decide = (decision: Decision) => {
+  const decide = (decision: AdminVerificationDecision) => {
     const decisionReason = reason.trim();
     if (decision !== 'verified' && !decisionReason) {
       setDecisionError('Enter a reason before rejecting or suspending this business.');
@@ -114,7 +95,7 @@ export function BusinessDetailPage() {
         <>
           <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-border bg-surface-primary p-6">
             <div>
-              <h1 className="text-title-page text-text-primary">{business.name}</h1>
+              <h1 className="text-title-page text-text-primary">{business.name || 'Business'}</h1>
               <p className="mt-1 font-mono text-xs text-text-muted">{business.business_id}</p>
               <p className="mt-3 text-sm text-text-secondary">{business.region || 'Region not provided'} · TMDA {business.tmda_number || 'not provided'}</p>
             </div>

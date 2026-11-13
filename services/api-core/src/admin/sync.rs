@@ -22,12 +22,19 @@ pub fn router(state: AppState) -> Router {
 async fn revoke_device_handler(
     State(state): State<AppState>,
     axum::extract::Path(device_id): axum::extract::Path<String>,
+    axum::Extension(claims): axum::Extension<super::AdminClaims>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let result = sqlx::query("UPDATE device_enrollments SET revoked_at=COALESCE(revoked_at,NOW()),token_version=token_version+1,refresh_token_hash='',refresh_expires_at=NOW() WHERE device_id=$1 AND revoked_at IS NULL")
-        .bind(&device_id).execute(&state.pool).await.map_err(|_|axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    let mut tx = state.pool.begin().await.map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    let result = sqlx::query("UPDATE device_enrollments SET revoked_at=NOW(),token_version=token_version+1,refresh_token_hash='',refresh_expires_at=NOW() WHERE device_id=$1 AND revoked_at IS NULL")
+        .bind(&device_id).execute(&mut *tx).await.map_err(|_|axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
     if result.rows_affected() != 1 {
         return Err(axum::http::StatusCode::NOT_FOUND);
     }
+    sqlx::query("INSERT INTO admin_audit_log (id, admin_user_id, action, target_type, target_id, payload) VALUES ($1, $2, 'device_revoked', 'device', $3, $4)")
+        .bind(uuid::Uuid::new_v4().to_string()).bind(&claims.user_id).bind(&device_id)
+        .bind(serde_json::json!({"revoked":true})).execute(&mut *tx).await
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    tx.commit().await.map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(
         serde_json::json!({"device_id":device_id,"revoked":true}),
     ))
@@ -47,7 +54,7 @@ async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
         (
             String,
             String,
-            String,
+            Option<String>,
             Option<chrono::DateTime<chrono::Utc>>,
             Option<i32>,
             Option<String>,
@@ -56,11 +63,11 @@ async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
         ),
     >(
         r#"
-        SELECT d.device_id, d.workspace_id, COALESCE(b.business_id, d.workspace_id),
+        SELECT d.device_id, d.workspace_id, b.business_id,
                COALESCE(d.last_seen_at, d.last_seen), COALESCE(d.outbox_pending, d.pending_count),
                d.app_version, b.name, b.address_region
         FROM sync_devices d
-        LEFT JOIN business_registry b ON d.workspace_id = b.workspace_id
+        LEFT JOIN business_registry b ON d.workspace_id = b.workspace_id AND d.branch_id = b.branch_id
         ORDER BY COALESCE(d.last_seen_at, d.last_seen) DESC
         "#,
     )
@@ -69,7 +76,7 @@ async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
 
     let devices = match rows {
         Ok(r) => r,
-        Err(_) => vec![],
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not load synchronization devices"}}))).into_response(),
     };
 
     let now = chrono::Utc::now();
@@ -93,10 +100,10 @@ async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
                     "device_id": dev_id,
                     "workspace_id": ws_id,
                     "business_id": biz_id,
-                    "business_name": biz_name.unwrap_or_else(|| "Unknown Business".into()),
-                    "region": region.unwrap_or_else(|| "Unknown".into()),
+                    "business_name": biz_name,
+                    "region": region,
                     "last_seen_at": last_seen.map(|t| t.to_rfc3339()),
-                    "outbox_pending": pending.unwrap_or(0),
+                    "outbox_pending": pending,
                     "app_version": app_ver,
                     "status": status
                 })
@@ -104,7 +111,7 @@ async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
         )
         .collect();
 
-    Json(serde_json::json!({ "devices": list }))
+    Json(serde_json::json!({ "devices": list })).into_response()
 }
 
 async fn changes_handler(
@@ -122,7 +129,7 @@ async fn changes_handler(
         r#"
         SELECT c.change_id, c.entity, c.entity_id, c.device_id, c.workspace_id, c.version, c.received_at, b.name
         FROM sync_changes c
-        LEFT JOIN business_registry b ON c.workspace_id = b.workspace_id
+        LEFT JOIN business_registry b ON c.workspace_id = b.workspace_id AND c.branch_id = b.branch_id
         WHERE ($1::text IS NULL OR c.entity = $1)
           AND ($2::text IS NULL OR b.business_id = $2 OR c.workspace_id = $2)
         ORDER BY c.received_at DESC
@@ -134,14 +141,17 @@ async fn changes_handler(
     .bind(page_size)
     .bind(offset)
     .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    .await;
+    let rows = match rows {
+        Ok(rows) => rows,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not load synchronization changes"}}))).into_response(),
+    };
 
-    let total: i64 = sqlx::query_scalar(
+    let total: Result<i64, sqlx::Error> = sqlx::query_scalar(
         r#"
         SELECT COUNT(*)
         FROM sync_changes c
-        LEFT JOIN business_registry b ON c.workspace_id = b.workspace_id
+        LEFT JOIN business_registry b ON c.workspace_id = b.workspace_id AND c.branch_id = b.branch_id
         WHERE ($1::text IS NULL OR c.entity = $1)
           AND ($2::text IS NULL OR b.business_id = $2 OR c.workspace_id = $2)
         "#,
@@ -149,8 +159,11 @@ async fn changes_handler(
     .bind(entity_filter.as_deref())
     .bind(biz_filter.as_deref())
     .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+    .await;
+    let total = match total {
+        Ok(total) => total,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not count synchronization changes"}}))).into_response(),
+    };
 
     let data: Vec<_> = rows
         .into_iter()
@@ -162,7 +175,7 @@ async fn changes_handler(
                     "entity_id": entity_id,
                     "device_id": dev_id,
                     "workspace_id": ws_id,
-                    "business_name": biz_name.unwrap_or_else(|| "Unknown Business".into()),
+                    "business_name": biz_name,
                     "version": version,
                     "received_at": received_at.to_rfc3339()
                 })
@@ -175,7 +188,7 @@ async fn changes_handler(
         "page": page,
         "page_size": page_size,
         "total": total
-    }))
+    })).into_response()
 }
 
 async fn failures_handler(State(state): State<AppState>) -> impl IntoResponse {
@@ -189,8 +202,11 @@ async fn failures_handler(State(state): State<AppState>) -> impl IntoResponse {
         "#,
     )
     .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    .await;
+    let rows = match rows {
+        Ok(rows) => rows,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not load synchronization failures"}}))).into_response(),
+    };
 
     let mut grouped: std::collections::HashMap<String, serde_json::Value> =
         std::collections::HashMap::new();
@@ -217,5 +233,5 @@ async fn failures_handler(State(state): State<AppState>) -> impl IntoResponse {
 
     let list: Vec<_> = grouped.into_values().collect();
 
-    Json(serde_json::json!({ "failures": list }))
+    Json(serde_json::json!({ "failures": list })).into_response()
 }

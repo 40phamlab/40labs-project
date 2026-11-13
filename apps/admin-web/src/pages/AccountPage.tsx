@@ -1,11 +1,12 @@
 // PHASE: Admin-A
 import { useEffect, useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../lib/api';
-import type { AdminSession, AdminUserMe } from '@40labs/types';
+import type { AdminAuditListResponse, AdminSession, AdminUserListResponse, AdminUserMe } from '@40labs/types';
 
 export function AccountPage() {
-  const [tab, setTab] = useState<'profile' | 'totp' | 'sessions'>('profile');
+  const [tab, setTab] = useState<'profile' | 'totp' | 'sessions' | 'users' | 'audit'>('profile');
+  const queryClient = useQueryClient();
   const [nowMs, setNowMs] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 60000);
@@ -28,6 +29,23 @@ export function AccountPage() {
     onSuccess: () => {
       refetchSessions();
     },
+  });
+
+  const isSuperAdmin = user?.role === 'super_admin';
+  const adminUsersQuery = useQuery<AdminUserListResponse>({
+    queryKey: ['admin-users'],
+    queryFn: () => apiFetch<AdminUserListResponse>('/admin/v1/admin-users?page=1&limit=100'),
+    enabled: tab === 'users' && isSuperAdmin,
+  });
+  const auditQuery = useQuery<AdminAuditListResponse>({
+    queryKey: ['admin-audit-log'],
+    queryFn: () => apiFetch<AdminAuditListResponse>('/admin/v1/audit-log?page=1&limit=50'),
+    enabled: tab === 'audit' && isSuperAdmin,
+  });
+  const updateAdminMutation = useMutation({
+    mutationFn: ({ id, role, disabled }: { id: string; role?: string; disabled?: boolean }) =>
+      apiFetch(`/admin/v1/admin-users/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ role, disabled }) }),
+    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['admin-users'] }); },
   });
 
   const [actionError, setActionError] = useState('');
@@ -58,7 +76,7 @@ export function AccountPage() {
       {actionError && <p role="alert" className="rounded-lg border border-danger-border bg-danger-bg p-3 text-sm text-danger">{actionError}</p>}
 
       <div className="flex space-x-2 border-b border-border">
-        {(['profile', 'totp', 'sessions'] as const).map((t) => (
+        {(['profile', 'totp', 'sessions', ...(isSuperAdmin ? ['users', 'audit'] as const : [])] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -167,6 +185,25 @@ export function AccountPage() {
               </div>
             )}
             {revokeMutation.error && <p role="alert" className="text-sm text-danger">Could not revoke session: {(revokeMutation.error as Error).message}</p>}
+          </div>
+        )}
+
+        {tab === 'users' && isSuperAdmin && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-text-primary">Administrative users and roles</h2>
+            {adminUsersQuery.isLoading ? <p className="text-sm text-text-muted">Loading administrative users…</p> : adminUsersQuery.error ? <div role="alert" className="text-sm text-danger">Could not load administrative users: {(adminUsersQuery.error as Error).message}</div> : (
+              <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead><tr className="border-b border-border text-xs text-text-muted"><th className="pb-3">Email</th><th className="pb-3">Role</th><th className="pb-3">Status</th><th className="pb-3">Action</th></tr></thead><tbody className="divide-y divide-border">
+                {adminUsersQuery.data?.items.map((admin) => <tr key={admin.id}><td className="py-3">{admin.email}</td><td className="py-3"><select aria-label={`Role for ${admin.email}`} value={admin.role} disabled={admin.id === user?.id || updateAdminMutation.isPending} onChange={(event) => updateAdminMutation.mutate({ id: admin.id, role: event.target.value })} className="rounded border border-border bg-surface-primary px-2 py-1"><option value="super_admin">super_admin</option><option value="admin">admin</option><option value="reviewer">reviewer</option><option value="viewer">viewer</option></select></td><td className="py-3">{admin.disabled_at ? 'Disabled' : 'Enabled'}</td><td className="py-3"><button type="button" disabled={admin.id === user?.id || updateAdminMutation.isPending} onClick={() => updateAdminMutation.mutate({ id: admin.id, disabled: !admin.disabled_at })} className="rounded px-2 py-1 text-xs text-danger hover:bg-danger-bg">{admin.disabled_at ? 'Enable' : 'Disable'}</button></td></tr>)}
+              </tbody></table></div>
+            )}
+            {updateAdminMutation.error && <p role="alert" className="text-sm text-danger">Could not update administrative user: {(updateAdminMutation.error as Error).message}</p>}
+            <p className="text-xs text-text-muted">New account creation is not available through the administrative API.</p>
+          </div>
+        )}
+
+        {tab === 'audit' && isSuperAdmin && (
+          <div className="space-y-4"><h2 className="text-base font-semibold text-text-primary">Administrative audit records</h2>
+            {auditQuery.isLoading ? <p className="text-sm text-text-muted">Loading audit records…</p> : auditQuery.error ? <div role="alert" className="text-sm text-danger">Could not load audit records: {(auditQuery.error as Error).message}</div> : !auditQuery.data?.data.length ? <p className="text-sm text-text-muted">No administrative audit records.</p> : <div className="divide-y divide-border">{auditQuery.data.data.map((entry) => <div key={entry.id} className="py-3"><div className="flex flex-wrap justify-between gap-2 text-sm"><strong>{entry.action}</strong><span className="text-text-muted">{entry.admin_email ?? 'Unknown admin'} · {new Date(entry.created_at).toLocaleString()}</span></div><div className="mt-1 text-xs text-text-muted">{entry.target_type}: {entry.target_id}</div>{entry.payload && <pre className="mt-2 overflow-x-auto rounded bg-surface-hover p-2 text-xs">{JSON.stringify(entry.payload, null, 2)}</pre>}</div>)}</div>}
           </div>
         )}
       </div>

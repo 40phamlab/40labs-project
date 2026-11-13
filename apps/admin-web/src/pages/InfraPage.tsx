@@ -3,57 +3,7 @@ import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-q
 import { useNavigate } from 'react-router-dom';
 import { Server, Activity, FileText, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Smartphone, Copy, Check } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-
-interface HealthCheckItem {
-  check: string;
-  status: 'ok' | 'degraded' | 'down';
-  latency_ms: number;
-  detail: string;
-  checked_at: string;
-  uptime_24h: number;
-}
-
-interface StateChangeItem {
-  level: string;
-  source: string;
-  message: string;
-  ts: string;
-}
-
-interface HealthResponse {
-  overall: 'ok' | 'degraded' | 'down';
-  last_checked: string | null;
-  checks: HealthCheckItem[];
-  state_changes: StateChangeItem[];
-}
-
-interface DeviceItem {
-  device_id: string;
-  workspace_id: string;
-  business_id: string;
-  business_name: string;
-  region: string;
-  last_seen_at: string | null;
-  outbox_pending: number;
-  app_version: string | null;
-  status: 'healthy' | 'stale' | 'offline';
-}
-
-interface LogItem {
-  id: string;
-  ts: string;
-  level: string;
-  source: string;
-  message: string;
-  business_id: string | null;
-  device_id: string | null;
-  meta: any;
-}
-
-interface LogsResponse {
-  data: LogItem[];
-  next_cursor: string | null;
-}
+import type { AdminDevice, AdminInfraHealthResponse, AdminInfraLogsResponse } from '@40labs/types';
 
 export function InfraPage() {
   const navigate = useNavigate();
@@ -72,20 +22,20 @@ export function InfraPage() {
 
   const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
-  const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery<HealthResponse>({
+  const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery<AdminInfraHealthResponse>({
     queryKey: ['admin-infra-health'],
-    queryFn: () => apiFetch<HealthResponse>('/admin/v1/infra/health'),
+    queryFn: () => apiFetch<AdminInfraHealthResponse>('/admin/v1/infra/health'),
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
   });
-  const { data: devicesData, isLoading: devicesLoading, error: devicesError } = useQuery<{ devices: DeviceItem[] }>({
+  const { data: devicesData, isLoading: devicesLoading, error: devicesError } = useQuery<{ devices: AdminDevice[] }>({
     queryKey: ['admin-infra-devices'],
-    queryFn: () => apiFetch<{ devices: DeviceItem[] }>('/admin/v1/infra/devices'),
+    queryFn: () => apiFetch<{ devices: AdminDevice[] }>('/admin/v1/infra/devices'),
     enabled: activeTab === 'devices',
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
   });
-  const logsQuery = useInfiniteQuery<LogsResponse, Error, InfiniteData<LogsResponse, string | null>, readonly unknown[], string | null>({
+  const logsQuery = useInfiniteQuery<AdminInfraLogsResponse, Error, InfiniteData<AdminInfraLogsResponse, string | null>, readonly unknown[], string | null>({
     queryKey: ['admin-infra-logs', selectedLevels, sourceFilter, businessFilter, searchQuery, timeRange],
     initialPageParam: null,
     queryFn: ({ pageParam }) => {
@@ -96,14 +46,14 @@ export function InfraPage() {
       if (searchQuery.trim()) params.set('q', searchQuery.trim());
       if (timeRange) params.set('since', timeRange);
       if (pageParam) params.set('cursor', pageParam);
-      return apiFetch<LogsResponse>(`/admin/v1/infra/logs?${params.toString()}`);
+      return apiFetch<AdminInfraLogsResponse>(`/admin/v1/infra/logs?${params.toString()}`);
     },
     getNextPageParam: (lastPage) => lastPage.next_cursor || undefined,
     enabled: activeTab === 'logs',
     refetchInterval: isLive ? 5000 : false,
     refetchIntervalInBackground: false,
   });
-  const logsData: LogsResponse | undefined = logsQuery.data
+  const logsData: AdminInfraLogsResponse | undefined = logsQuery.data
     ? { data: logsQuery.data.pages.flatMap((page) => page.data), next_cursor: logsQuery.data.pages[logsQuery.data.pages.length - 1]?.next_cursor || null }
     : undefined;
   const logsLoading = logsQuery.isLoading;

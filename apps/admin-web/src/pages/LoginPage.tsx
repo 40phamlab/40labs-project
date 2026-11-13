@@ -2,18 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/api';
-
-interface LoginResponse {
-  mfa_required: boolean;
-  challenge_id: string;
-  enrollment_required?: boolean;
-  otpauth_url?: string;
-}
-
-interface TotpResponse {
-  success: boolean;
-  role: string;
-}
+import type { AdminLoginResponse, AdminTotpResponse } from '@40labs/types';
 
 export function LoginPage() {
   const [step, setStep] = useState<'credentials' | 'totp'>('credentials');
@@ -32,7 +21,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await apiFetch<LoginResponse>('/admin/v1/auth/login', {
+      const res = await apiFetch<AdminLoginResponse>('/admin/v1/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
@@ -54,7 +43,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      await apiFetch<TotpResponse>('/admin/v1/auth/totp', {
+      await apiFetch<AdminTotpResponse>('/admin/v1/auth/totp', {
         method: 'POST',
         body: JSON.stringify({ challenge_id: challengeId, code }),
       });

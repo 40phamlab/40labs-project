@@ -96,25 +96,24 @@ pub async fn run_health_checks(
 
     // 4. Sync failures check
     let failures_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sync_changes WHERE received_at >= NOW() - INTERVAL '1 hour'",
+        "SELECT COUNT(*) FROM ops_events WHERE source = 'sync' AND level IN ('WARN','ERROR') AND ts >= NOW() - INTERVAL '1 hour'",
     )
     .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+    .await?;
     let (fail_status, fail_detail) = if failures_count < 5 {
         (
             "ok",
-            format!("{} recent sync events in last hour", failures_count),
+            format!("{} sync failures in last hour", failures_count),
         )
     } else if failures_count <= 50 {
         (
             "degraded",
-            format!("Elevated sync activity: {} events", failures_count),
+            format!("Elevated sync failures: {}", failures_count),
         )
     } else {
         (
             "down",
-            format!("High sync volume/failures: {} events", failures_count),
+            format!("High sync failure count: {}", failures_count),
         )
     };
     save_check_result(state, "sync_failures", fail_status, 15, &fail_detail).await?;
@@ -179,8 +178,7 @@ async fn save_check_result(
     )
     .bind(check_name)
     .fetch_optional(&state.pool)
-    .await
-    .unwrap_or(None);
+    .await?;
 
     let id = Uuid::new_v4().to_string();
     sqlx::query(
@@ -232,10 +230,18 @@ async fn health_handler(State(state): State<AppState>) -> impl IntoResponse {
 
     let checks = match rows {
         Ok(r) => r,
-        Err(_) => vec![],
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not load infrastructure health"}}))).into_response(),
     };
 
-    let mut overall = "ok";
+    let uptime_rows = sqlx::query_as::<_, (String, i64, i64)>(
+        "SELECT check_name, COUNT(*) FILTER (WHERE status = 'ok'), COUNT(*) FROM infra_health_checks WHERE checked_at >= NOW() - INTERVAL '24 hours' GROUP BY check_name",
+    ).fetch_all(&state.pool).await;
+    let uptime: std::collections::HashMap<String, Option<f64>> = match uptime_rows {
+        Ok(rows) => rows.into_iter().map(|(name, ok, total)| (name, (total > 0).then(|| ok as f64 * 100.0 / total as f64))).collect(),
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not calculate infrastructure uptime"}}))).into_response(),
+    };
+
+    let mut overall = if checks.is_empty() { "unknown" } else { "ok" };
     let mut last_checked = None;
 
     let mut check_list = Vec::new();
@@ -249,12 +255,14 @@ async fn health_handler(State(state): State<AppState>) -> impl IntoResponse {
             last_checked = Some(checked_at);
         }
 
+        let uptime_24h = uptime.get(&name).copied().flatten();
         check_list.push(serde_json::json!({
             "check": name,
             "status": status,
             "latency_ms": latency,
             "detail": detail.unwrap_or_default(),
             "checked_at": checked_at.to_rfc3339(),
+            "uptime_24h": uptime_24h,
         }));
     }
 
@@ -262,8 +270,11 @@ async fn health_handler(State(state): State<AppState>) -> impl IntoResponse {
         "SELECT level, source, message, ts FROM ops_events WHERE source = 'probe' ORDER BY ts DESC LIMIT 20"
     )
     .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    .await;
+    let events = match events {
+        Ok(events) => events,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not load infrastructure state changes"}}))).into_response(),
+    };
 
     let state_changes: Vec<_> = events
         .into_iter()
@@ -298,6 +309,9 @@ async fn history_handler(
 ) -> impl IntoResponse {
     let check_name = query.check.as_deref().unwrap_or("db");
     let hours = query.hours.unwrap_or(24);
+    if !(1..=720).contains(&hours) {
+        return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"error":{"code":"VALIDATION","message":"hours must be between 1 and 720"}}))).into_response();
+    }
 
     let rows = sqlx::query_as::<_, (i32, String, chrono::DateTime<chrono::Utc>)>(
         "SELECT latency_ms, status, checked_at FROM infra_health_checks WHERE check_name = $1 AND checked_at >= NOW() - make_interval(hours => $2) ORDER BY checked_at ASC"
@@ -305,8 +319,11 @@ async fn history_handler(
     .bind(check_name)
     .bind(hours as i32)
     .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
+    .await;
+    let rows = match rows {
+        Ok(rows) => rows,
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not load infrastructure health history"}}))).into_response(),
+    };
 
     let history: Vec<_> = rows
         .into_iter()
@@ -332,7 +349,7 @@ async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
         (
             String,
             String,
-            String,
+            Option<String>,
             Option<chrono::DateTime<chrono::Utc>>,
             Option<i32>,
             Option<String>,
@@ -340,10 +357,10 @@ async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
             Option<String>,
         ),
     >(
-        "SELECT d.device_id, d.workspace_id, COALESCE(b.business_id, d.workspace_id), \
+        "SELECT d.device_id, d.workspace_id, b.business_id, \
          COALESCE(d.last_seen_at, d.last_seen), COALESCE(d.outbox_pending, d.pending_count), \
          d.app_version, b.name, b.address_region \
-         FROM sync_devices d LEFT JOIN business_registry b ON d.workspace_id = b.workspace_id \
+         FROM sync_devices d LEFT JOIN business_registry b ON d.workspace_id = b.workspace_id AND d.branch_id = b.branch_id \
          ORDER BY COALESCE(d.last_seen_at, d.last_seen) DESC",
     )
     .fetch_all(&state.pool)
@@ -355,9 +372,9 @@ async fn devices_handler(State(state): State<AppState>) -> impl IntoResponse {
                 let age_seconds = last_seen.map(|seen| (now - seen).num_seconds()).unwrap_or(i64::MAX);
                 let status = if age_seconds < 3600 { "healthy" } else if age_seconds < 172800 { "stale" } else { "offline" };
                 serde_json::json!({ "device_id": device_id, "workspace_id": workspace_id, "business_id": business_id,
-                    "last_seen_at": last_seen.map(|seen| seen.to_rfc3339()), "outbox_pending": pending.unwrap_or(0),
-                    "app_version": app_version, "business_name": business_name.unwrap_or_else(|| "Unknown Business".into()),
-                    "region": region.unwrap_or_else(|| "Unknown".into()), "status": status })
+                    "last_seen_at": last_seen.map(|seen| seen.to_rfc3339()), "outbox_pending": pending,
+                    "app_version": app_version, "business_name": business_name,
+                    "region": region, "status": status })
             }).collect();
             Json(serde_json::json!({ "devices": devices })).into_response()
         }
@@ -409,14 +426,16 @@ async fn logs_handler(
 ) -> impl IntoResponse {
     let limit = query.limit.unwrap_or(50).clamp(1, 100);
 
-    let since_dt = query.since.as_deref().and_then(|s| match s {
-        "1h" => Some(chrono::Utc::now() - chrono::Duration::hours(1)),
-        "24h" => Some(chrono::Utc::now() - chrono::Duration::hours(24)),
-        "7d" => Some(chrono::Utc::now() - chrono::Duration::days(7)),
-        _ => chrono::DateTime::parse_from_rfc3339(s)
-            .ok()
-            .map(|dt| dt.with_timezone(&chrono::Utc)),
-    });
+    let since_dt = match query.since.as_deref() {
+        None => None,
+        Some("1h") => Some(chrono::Utc::now() - chrono::Duration::hours(1)),
+        Some("24h") => Some(chrono::Utc::now() - chrono::Duration::hours(24)),
+        Some("7d") => Some(chrono::Utc::now() - chrono::Duration::days(7)),
+        Some(value) => match chrono::DateTime::parse_from_rfc3339(value) {
+            Ok(dt) => Some(dt.with_timezone(&chrono::Utc)),
+            Err(_) => return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"error":{"code":"VALIDATION","message":"since must be 1h, 24h, 7d, or an RFC3339 timestamp"}}))).into_response(),
+        },
+    };
 
     let (cursor_ts, cursor_id) = match query.cursor.as_deref() {
         Some(c) => {
@@ -425,9 +444,12 @@ async fn logs_handler(
                 let dt = chrono::DateTime::parse_from_rfc3339(parts[0])
                     .ok()
                     .map(|d| d.with_timezone(&chrono::Utc));
-                (dt, Some(parts[1].to_string()))
+                match dt {
+                    Some(dt) if !parts[1].is_empty() => (Some(dt), Some(parts[1].to_string())),
+                    _ => return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"error":{"code":"VALIDATION","message":"cursor must contain an RFC3339 timestamp and id"}}))).into_response(),
+                }
             } else {
-                (None, None)
+                return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"error":{"code":"VALIDATION","message":"cursor must contain an RFC3339 timestamp and id"}}))).into_response();
             }
         }
         None => (None, None),
@@ -437,6 +459,9 @@ async fn logs_handler(
         .level
         .as_deref()
         .map(|l| l.split(',').map(|s| s.trim().to_uppercase()).collect());
+    if levels.as_ref().is_some_and(|values| values.iter().any(|level| !["INFO", "WARN", "ERROR"].contains(&level.as_str()))) {
+        return (axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"error":{"code":"VALIDATION","message":"level supports INFO, WARN, and ERROR"}}))).into_response();
+    }
     let source = query.source.clone();
     let biz_id = query.business_id.clone();
     let search_q = query.q.clone().map(|s| redact_text(&s));
@@ -480,7 +505,7 @@ async fn logs_handler(
 
     let mut rows = match rows {
         Ok(r) => r,
-        Err(_) => vec![],
+        Err(_) => return (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":"Could not load infrastructure logs"}}))).into_response(),
     };
 
     let mut next_cursor = None;

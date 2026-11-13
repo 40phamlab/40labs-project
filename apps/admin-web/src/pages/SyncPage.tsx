@@ -1,74 +1,40 @@
 import * as React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw, Smartphone, History, AlertOctagon, Filter } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-
-interface DeviceItem {
-  device_id: string;
-  workspace_id: string;
-  business_id: string;
-  business_name: string;
-  region: string;
-  last_seen_at: string | null;
-  outbox_pending: number;
-  app_version: string | null;
-  status: 'healthy' | 'stale' | 'offline';
-}
-
-interface ChangeItem {
-  change_id: string;
-  entity: string;
-  entity_id: string;
-  device_id: string;
-  workspace_id: string;
-  business_name: string;
-  version: number;
-  received_at: string;
-}
-
-interface ChangesResponse {
-  data: ChangeItem[];
-  page: number;
-  page_size: number;
-  total: number;
-}
-
-interface FailureItem {
-  business_id: string;
-  count: number;
-  failures: Array<{
-    message: string;
-    device_id: string | null;
-    ts: string;
-    meta: any;
-  }>;
-}
+import type { AdminDevice, AdminSyncChangesResponse, AdminSyncFailuresResponse, AdminUserMe } from '@40labs/types';
 
 export function SyncPage() {
+  const queryClient = useQueryClient();
+  const { data: currentAdmin } = useQuery<AdminUserMe>({ queryKey: ['admin-me'], queryFn: () => apiFetch<AdminUserMe>('/admin/v1/me'), staleTime: 5 * 60_000 });
   const [activeTab, setActiveTab] = React.useState<'devices' | 'changes' | 'failures'>('devices');
   const [entityFilter, setEntityFilter] = React.useState('');
   const [businessFilter, setBusinessFilter] = React.useState('');
 
-  const { data: devicesData, isLoading: devicesLoading, error: devicesError, refetch: refetchDevices } = useQuery<{ devices: DeviceItem[] }>({
+  const { data: devicesData, isLoading: devicesLoading, error: devicesError, refetch: refetchDevices } = useQuery<{ devices: AdminDevice[] }>({
     queryKey: ['sync-devices'],
-    queryFn: () => apiFetch<{ devices: DeviceItem[] }>('/admin/v1/sync/devices'),
+    queryFn: () => apiFetch<{ devices: AdminDevice[] }>('/admin/v1/sync/devices'),
     refetchInterval: 15000,
   });
 
-  const { data: changesData, isLoading: changesLoading, error: changesError, refetch: refetchChanges } = useQuery<ChangesResponse>({
+  const { data: changesData, isLoading: changesLoading, error: changesError, refetch: refetchChanges } = useQuery<AdminSyncChangesResponse>({
     queryKey: ['sync-changes', entityFilter, businessFilter],
     queryFn: () => {
       const params = new URLSearchParams();
       if (entityFilter) params.set('entity', entityFilter);
       if (businessFilter) params.set('business_id', businessFilter);
-      return apiFetch<ChangesResponse>(`/admin/v1/sync/changes?${params.toString()}`);
+      return apiFetch<AdminSyncChangesResponse>(`/admin/v1/sync/changes?${params.toString()}`);
     },
   });
 
-  const { data: failuresData, isLoading: failuresLoading, error: failuresError, refetch: refetchFailures } = useQuery<{ failures: FailureItem[] }>({
+  const { data: failuresData, isLoading: failuresLoading, error: failuresError, refetch: refetchFailures } = useQuery<AdminSyncFailuresResponse>({
     queryKey: ['sync-failures'],
-    queryFn: () => apiFetch<{ failures: FailureItem[] }>('/admin/v1/sync/failures'),
+    queryFn: () => apiFetch<AdminSyncFailuresResponse>('/admin/v1/sync/failures'),
     refetchInterval: 15000,
+  });
+  const revokeDevice = useMutation({
+    mutationFn: (deviceId: string) => apiFetch(`/admin/v1/sync/devices/${encodeURIComponent(deviceId)}/revoke`, { method: 'POST' }),
+    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['sync-devices'] }); },
   });
 
   const renderChip = (status: string) => {
@@ -174,6 +140,7 @@ export function SyncPage() {
                       <th className="px-6 py-3">Outbox Pending</th>
                       <th className="px-6 py-3">Last Seen</th>
                       <th className="px-6 py-3">Status</th>
+                      {['super_admin', 'admin'].includes(currentAdmin?.role ?? '') && <th className="px-6 py-3">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
@@ -188,12 +155,14 @@ export function SyncPage() {
                         <td className="px-6 py-4 font-mono text-xs text-text-secondary">{d.outbox_pending}</td>
                         <td className="px-6 py-4 text-xs text-text-secondary">{formatDate(d.last_seen_at)}</td>
                         <td className="px-6 py-4">{renderChip(d.status)}</td>
+                        {['super_admin', 'admin'].includes(currentAdmin?.role ?? '') && <td className="px-6 py-4"><button type="button" disabled={revokeDevice.isPending} onClick={() => { if (window.confirm(`Revoke device ${d.device_id}?`)) revokeDevice.mutate(d.device_id); }} className="rounded px-2 py-1 text-xs text-danger hover:bg-danger-bg disabled:opacity-50">Revoke</button></td>}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
+            {revokeDevice.error && <p role="alert" className="m-4 text-sm text-danger">Could not revoke device: {(revokeDevice.error as Error).message}</p>}
           </div>
         </div>
       )}

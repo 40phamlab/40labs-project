@@ -1,79 +1,19 @@
 use crate::routes::activation::AppState;
-use axum::{
-    extract::{Query, State},
-    response::IntoResponse,
-    routing::get,
-    Json, Router,
-};
+use axum::{extract::{Query, State}, http::StatusCode, response::{IntoResponse, Response}, routing::get, Json, Router};
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, Instant};
 
-/*
-  =============================================================================
-  ANALYTICS HEAVIEST QUERIES & EXPLAIN PLANS
-  =============================================================================
-
-  1. Revenue Timeline & Tier Distribution Query:
-     EXPLAIN ANALYZE
-     SELECT TO_CHAR(d.summary_date, 'YYYY-MM-DD') AS bucket,
-            COALESCE(SUM(d.revenue_total), 0) AS revenue,
-            COALESCE(b.address_region, 'Unknown') AS region,
-            COALESCE(b.tier, 'free') AS tier
-     FROM cloud_daily_summaries d
-     LEFT JOIN business_registry b ON d.workspace_id = b.workspace_id
-     WHERE d.summary_date >= CURRENT_DATE - INTERVAL '30 days'
-     GROUP BY bucket, region, tier
-     ORDER BY bucket ASC;
-
-     Plan Output Summary:
-     -> Sort (cost=... actual time=...)
-        -> HashAggregate (cost=... actual time=...)
-           -> Hash Join (cost=... actual time=...)
-              -> Seq Scan on cloud_daily_summaries d (filtered by summary_date >= ...)
-              -> Seq Scan on business_registry b
-     (Optimized with idx_cloud_daily_summaries_date_workspace and idx_business_registry_workspace_region)
-
-  2. Products Aggregation (Units / Revenue / Stockouts) Query:
-     EXPLAIN ANALYZE
-     SELECT i.medicine_id,
-            COALESCE(SUM(i.quantity), 0) AS total_units,
-            COALESCE(SUM(i.quantity * i.sell_price), 0) AS total_revenue,
-            COUNT(CASE WHEN i.quantity <= i.low_stock_threshold THEN 1 END) AS stockout_count
-     FROM cloud_inventory_items i
-     WHERE i.deleted_at IS NULL
-     GROUP BY i.medicine_id
-     ORDER BY total_units DESC
-     LIMIT 20;
-
-     Plan Output Summary:
-     -> Limit (cost=... actual time=...)
-        -> Sort (cost=... actual time=...)
-           -> HashAggregate (cost=... actual time=...)
-              -> Seq Scan on cloud_inventory_items i (filtered by deleted_at IS NULL)
-     (Optimized with idx_cloud_inventory_items_medicine)
-  =============================================================================
-*/
-
-fn analytics_cache() -> &'static Mutex<HashMap<String, (Instant, serde_json::Value)>> {
-    static CACHE: OnceLock<Mutex<HashMap<String, (Instant, serde_json::Value)>>> = OnceLock::new();
-    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+fn db_error(message: &'static str) -> Response {
+    (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error":{"code":"INTERNAL","message":message}}))).into_response()
 }
 
-fn get_cached(key: &str) -> Option<serde_json::Value> {
-    let cache = analytics_cache().lock().unwrap();
-    if let Some((instant, val)) = cache.get(key) {
-        if instant.elapsed() < Duration::from_secs(60) {
-            return Some(val.clone());
-        }
-    }
-    None
+fn validation_error(message: &'static str) -> Response {
+    (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error":{"code":"VALIDATION","message":message}}))).into_response()
 }
 
-fn set_cached(key: String, val: serde_json::Value) {
-    let mut cache = analytics_cache().lock().unwrap();
-    cache.insert(key, (Instant::now(), val));
+macro_rules! db_or_return {
+    ($query:expr, $message:literal) => {
+        match $query.await { Ok(value) => value, Err(_) => return db_error($message) }
+    };
 }
 
 pub fn router(state: AppState) -> Router {
@@ -85,354 +25,77 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-async fn overview_handler(State(state): State<AppState>) -> impl IntoResponse {
-    let cache_key = "overview_handler_v1".to_string();
-    if let Some(cached) = get_cached(&cache_key) {
-        return Json(cached).into_response();
-    }
-
-    let registered_businesses: i64 =
-        sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM business_registry")
-            .fetch_one(&state.pool)
-            .await
-            .unwrap_or(0);
-
-    let verified_count: i64 = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM business_verification WHERE status = 'verified'",
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
-
-    let pending_count: i64 = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE v.status IS NULL OR v.status = 'pending'"
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
-
-    let verified_percentage = if registered_businesses > 0 {
-        (verified_count as f64 / registered_businesses as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    let active_businesses: i64 = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(DISTINCT business_id) FROM business_registry WHERE updated_at >= NOW() - INTERVAL '24 hours' OR created_at >= NOW() - INTERVAL '24 hours'"
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
-
-    let platform_sales_today: i64 = sqlx::query_scalar::<_, i64>(
-        "SELECT COALESCE(SUM(revenue_total), 0) FROM cloud_daily_summaries WHERE summary_date = CURRENT_DATE"
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
-
-    let open_infra_alerts: i64 = 0;
-
-    let signups_rows = sqlx::query_as::<_, (String, i64)>(
-        "SELECT TO_CHAR(created_at::timestamptz, 'YYYY-MM-DD') AS dt, COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - INTERVAL '30 days' GROUP BY dt ORDER BY dt ASC"
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
-
-    let sales_rows = sqlx::query_as::<_, (String, i64)>(
-        "SELECT TO_CHAR(summary_date, 'YYYY-MM-DD') AS dt, COALESCE(SUM(revenue_total), 0) FROM cloud_daily_summaries WHERE summary_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY dt ORDER BY dt ASC"
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
-
-    let pending_verifications = sqlx::query_as::<_, (String, String, String)>(
-        "SELECT b.business_id, COALESCE(b.name, 'Unnamed'), COALESCE(b.created_at, NOW()::text) \
-         FROM business_registry b \
-         LEFT JOIN business_verification v ON b.business_id = v.business_id \
-         WHERE v.status IS NULL OR v.status = 'pending' \
-         ORDER BY b.created_at ASC \
-         LIMIT 5",
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
-
-    let mut needs_attention = Vec::new();
-    for (bid, name, created) in pending_verifications {
-        needs_attention.push(serde_json::json!({
-            "type": "pending_verification",
-            "id": bid,
-            "name": name,
-            "description": "Pending verification review",
-            "time": created,
-            "link": format!("/businesses/{}", bid)
-        }));
-    }
-
-    let response_json = serde_json::json!({
-        "kpis": {
-            "registered_businesses": registered_businesses,
-            "verified_percentage": verified_percentage,
-            "pending_count": pending_count,
-            "active_businesses": active_businesses,
-            "platform_sales_today": platform_sales_today,
-            "open_infra_alerts": open_infra_alerts
-        },
-        "signups_per_day": signups_rows.into_iter().map(|(dt, c)| serde_json::json!({ "date": dt, "count": c })).collect::<Vec<_>>(),
-        "platform_daily_sales": sales_rows.into_iter().map(|(dt, s)| serde_json::json!({ "date": dt, "revenue": s })).collect::<Vec<_>>(),
+async fn overview_handler(State(state): State<AppState>) -> Response {
+    let registered: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry").fetch_one(&state.pool), "Could not load business totals");
+    let verified: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'verified'").fetch_one(&state.pool), "Could not load verification totals");
+    let pending: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE v.status IS NULL OR v.status = 'pending'").fetch_one(&state.pool), "Could not load pending verifications");
+    let active: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM sync_changes c JOIN business_registry b ON b.workspace_id = c.workspace_id AND b.branch_id = c.branch_id WHERE c.received_at >= NOW() - INTERVAL '24 hours'").fetch_one(&state.pool), "Could not load active business totals");
+    let sales: i64 = db_or_return!(sqlx::query_scalar("SELECT COALESCE(SUM(revenue_total), 0) FROM cloud_daily_summaries WHERE summary_date = CURRENT_DATE").fetch_one(&state.pool), "Could not load today's platform sales");
+    let alerts: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM (SELECT DISTINCT ON (check_name) status FROM infra_health_checks ORDER BY check_name, checked_at DESC) latest WHERE status IN ('degraded','down')").fetch_one(&state.pool), "Could not load infrastructure alerts");
+    let signups: Vec<(String, i64)> = db_or_return!(sqlx::query_as("SELECT TO_CHAR(created_at::timestamptz, 'YYYY-MM-DD'), COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - INTERVAL '30 days' GROUP BY 1 ORDER BY 1").fetch_all(&state.pool), "Could not load signup history");
+    let daily_sales: Vec<(String, i64)> = db_or_return!(sqlx::query_as("SELECT TO_CHAR(summary_date, 'YYYY-MM-DD'), COALESCE(SUM(revenue_total),0) FROM cloud_daily_summaries WHERE summary_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY 1 ORDER BY 1").fetch_all(&state.pool), "Could not load sales history");
+    let attention: Vec<(String, String, String)> = db_or_return!(sqlx::query_as("SELECT b.business_id, COALESCE(b.name, 'Unnamed Business'), COALESCE(b.created_at, NOW()::text) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE v.status IS NULL OR v.status = 'pending' ORDER BY b.created_at ASC LIMIT 5").fetch_all(&state.pool), "Could not load pending business reviews");
+    let needs_attention: Vec<_> = attention.into_iter().map(|(id, name, time)| serde_json::json!({"type":"pending_verification","id":id,"name":name,"description":"Pending verification review","time":time,"link":format!("/businesses/{id}")})).collect();
+    Json(serde_json::json!({
+        "kpis": {"registered_businesses": registered, "verified_percentage": if registered == 0 { 0.0 } else { verified as f64 * 100.0 / registered as f64 }, "pending_count": pending, "active_businesses": active, "platform_sales_today": sales, "open_infra_alerts": alerts},
+        "signups_per_day": signups.into_iter().map(|(date,count)| serde_json::json!({"date":date,"count":count})).collect::<Vec<_>>(),
+        "platform_daily_sales": daily_sales.into_iter().map(|(date,revenue)| serde_json::json!({"date":date,"revenue":revenue})).collect::<Vec<_>>(),
         "needs_attention": needs_attention
-    });
-
-    set_cached(cache_key, response_json.clone());
-    Json(response_json).into_response()
+    })).into_response()
 }
 
 #[derive(Deserialize)]
-pub struct RevenueQuery {
-    pub range: Option<String>, // 7d | 30d | 90d
-    pub group: Option<String>, // day | week | region
-}
+pub struct RevenueQuery { pub range: Option<String>, pub group: Option<String> }
 
-async fn revenue_handler(
-    State(state): State<AppState>,
-    Query(query): Query<RevenueQuery>,
-) -> impl IntoResponse {
+async fn revenue_handler(State(state): State<AppState>, Query(query): Query<RevenueQuery>) -> Response {
     let range = query.range.as_deref().unwrap_or("30d");
     let group = query.group.as_deref().unwrap_or("day");
-    let cache_key = format!("revenue_{}_{}", range, group);
-
-    if let Some(cached) = get_cached(&cache_key) {
-        return Json(cached).into_response();
-    }
-
-    let days = match range {
-        "7d" => 7,
-        "90d" => 90,
-        _ => 30,
-    };
-
-    let rows = sqlx::query_as::<_, (String, i64, String, String)>(
-        r#"
-        SELECT TO_CHAR(d.summary_date, 'YYYY-MM-DD') AS bucket,
-               COALESCE(SUM(d.revenue_total), 0) AS revenue,
-               COALESCE(b.address_region, 'Unknown') AS region,
-               COALESCE(b.tier, 'free') AS tier
-        FROM cloud_daily_summaries d
-        LEFT JOIN business_registry b ON d.workspace_id = b.workspace_id
-        WHERE d.summary_date >= CURRENT_DATE - make_interval(days => $1)
-        GROUP BY bucket, region, tier
-        ORDER BY bucket ASC
-        "#,
-    )
-    .bind(days as i32)
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
-
-    // Tier distribution aggregate
-    let tier_rows = sqlx::query_as::<_, (String, i64)>(
-        r#"
-        SELECT COALESCE(b.tier, 'free') AS tier, COUNT(*) AS count
-        FROM business_registry b
-        GROUP BY tier
-        "#,
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
-
-    let tier_distribution: HashMap<String, i64> = tier_rows.into_iter().collect();
-
-    let data: Vec<_> = rows
-        .into_iter()
-        .map(|(bucket, revenue, region, tier)| {
-            serde_json::json!({
-                "bucket": bucket,
-                "revenue": revenue,
-                "region": region,
-                "tier": tier
-            })
-        })
-        .collect();
-
-    let response_json = serde_json::json!({
-        "range": range,
-        "group": group,
-        "revenue_data": data,
-        "tier_distribution": tier_distribution
-    });
-
-    set_cached(cache_key, response_json.clone());
-    Json(response_json).into_response()
+    let days = match range { "7d" => 7, "30d" => 30, "90d" => 90, _ => return validation_error("range must be 7d, 30d, or 90d") };
+    if !["day", "week", "region"].contains(&group) { return validation_error("group must be day, week, or region"); }
+    let rows: Vec<(String, i64, String, String)> = db_or_return!(sqlx::query_as(
+        "SELECT CASE WHEN $2 = 'region' THEN COALESCE(b.address_region, 'Unknown') WHEN $2 = 'week' THEN TO_CHAR(DATE_TRUNC('week', d.summary_date::timestamp), 'YYYY-MM-DD') ELSE TO_CHAR(d.summary_date, 'YYYY-MM-DD') END, COALESCE(SUM(d.revenue_total),0), COALESCE(b.address_region,'Unknown'), COALESCE(b.tier,'free') FROM cloud_daily_summaries d LEFT JOIN business_registry b ON b.workspace_id = d.workspace_id AND b.branch_id = d.branch_id WHERE d.summary_date >= CURRENT_DATE - make_interval(days => $1) GROUP BY 1,3,4 ORDER BY 1"
+    ).bind(days).bind(group).fetch_all(&state.pool), "Could not calculate platform revenue");
+    let tiers: Vec<(String, i64)> = db_or_return!(sqlx::query_as("SELECT COALESCE(tier,'free'), COUNT(*) FROM business_registry GROUP BY 1 ORDER BY 1").fetch_all(&state.pool), "Could not calculate tier distribution");
+    let revenue_data: Vec<_> = rows.into_iter().map(|(bucket,revenue,region,tier)| serde_json::json!({"bucket":bucket,"revenue":revenue,"region":region,"tier":tier})).collect();
+    let tier_distribution: std::collections::HashMap<_,_> = tiers.into_iter().collect();
+    Json(serde_json::json!({"range":range,"group":group,"revenue_data":revenue_data,"tier_distribution":tier_distribution})).into_response()
 }
 
 #[derive(Deserialize)]
-pub struct ProductsQuery {
-    pub metric: Option<String>, // units | revenue | stockouts
-    pub limit: Option<i64>,
-}
+pub struct ProductsQuery { pub metric: Option<String>, pub limit: Option<i64> }
 
-async fn products_handler(
-    State(state): State<AppState>,
-    Query(query): Query<ProductsQuery>,
-) -> impl IntoResponse {
+async fn products_handler(State(state): State<AppState>, Query(query): Query<ProductsQuery>) -> Response {
     let metric = query.metric.as_deref().unwrap_or("units");
-    let limit = query.limit.unwrap_or(20).clamp(1, 50);
-    let cache_key = format!("products_{}_{}", metric, limit);
-
-    if let Some(cached) = get_cached(&cache_key) {
-        return Json(cached).into_response();
-    }
-
+    if !["units", "revenue", "stockouts"].contains(&metric) { return validation_error("metric must be units, revenue, or stockouts"); }
+    let limit = query.limit.unwrap_or(20);
+    if !(1..=50).contains(&limit) { return validation_error("limit must be between 1 and 50"); }
     let rows: Vec<serde_json::Value> = match metric {
-        "revenue" => {
-            sqlx::query_as::<_, (String, i64, i64)>(
-                r#"
-                SELECT medicine_id,
-                       COALESCE(SUM(quantity), 0) AS units,
-                       COALESCE(SUM(quantity * sell_price), 0) AS revenue
-                FROM cloud_inventory_items
-                WHERE deleted_at IS NULL
-                GROUP BY medicine_id
-                ORDER BY revenue DESC
-                LIMIT $1
-                "#,
-            )
-            .bind(limit)
-            .fetch_all(&state.pool)
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(med, units, rev)| serde_json::json!({ "medicine_id": med, "units": units, "revenue": rev }))
-            .collect()
-        }
         "stockouts" => {
-            sqlx::query_as::<_, (String, i32)>(
-                r#"
-                SELECT medicine_id,
-                       COUNT(CASE WHEN quantity <= low_stock_threshold THEN 1 END) AS stockout_count
-                FROM cloud_inventory_items
-                WHERE deleted_at IS NULL
-                GROUP BY medicine_id
-                ORDER BY stockout_count DESC
-                LIMIT $1
-                "#,
-            )
-            .bind(limit)
-            .fetch_all(&state.pool)
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(med, count)| serde_json::json!({ "medicine_id": med, "stockouts": count }))
-            .collect()
+            let rows: Vec<(String,i64)> = db_or_return!(sqlx::query_as("SELECT medicine_id, COUNT(*) FILTER (WHERE quantity <= low_stock_threshold) FROM cloud_inventory_items WHERE deleted_at IS NULL GROUP BY medicine_id ORDER BY 2 DESC, medicine_id LIMIT $1").bind(limit).fetch_all(&state.pool), "Could not calculate product stockouts");
+            rows.into_iter().map(|(medicine_id,stockouts)| serde_json::json!({"medicine_id":medicine_id,"stockouts":stockouts})).collect()
         }
-        _ => { // units
-            sqlx::query_as::<_, (String, i64, i64)>(
-                r#"
-                SELECT medicine_id,
-                       COALESCE(SUM(quantity), 0) AS units,
-                       COALESCE(SUM(quantity * sell_price), 0) AS revenue
-                FROM cloud_inventory_items
-                WHERE deleted_at IS NULL
-                GROUP BY medicine_id
-                ORDER BY units DESC
-                LIMIT $1
-                "#,
-            )
-            .bind(limit)
-            .fetch_all(&state.pool)
-            .await
-            .unwrap_or_default()
-            .into_iter()
-            .map(|(med, units, rev)| serde_json::json!({ "medicine_id": med, "units": units, "revenue": rev }))
-            .collect()
+        "revenue" => {
+            let rows: Vec<(String,i64,i64)> = db_or_return!(sqlx::query_as("SELECT medicine_id, COALESCE(SUM(quantity),0), COALESCE(SUM(quantity * sell_price),0) FROM cloud_inventory_items WHERE deleted_at IS NULL GROUP BY medicine_id ORDER BY 3 DESC, medicine_id LIMIT $1").bind(limit).fetch_all(&state.pool), "Could not calculate product inventory value");
+            rows.into_iter().map(|(medicine_id,units,revenue)| serde_json::json!({"medicine_id":medicine_id,"units":units,"revenue":revenue})).collect()
+        }
+        _ => {
+            let rows: Vec<(String,i64,i64)> = db_or_return!(sqlx::query_as("SELECT medicine_id, COALESCE(SUM(quantity),0), COALESCE(SUM(quantity * sell_price),0) FROM cloud_inventory_items WHERE deleted_at IS NULL GROUP BY medicine_id ORDER BY 2 DESC, medicine_id LIMIT $1").bind(limit).fetch_all(&state.pool), "Could not calculate product stock");
+            rows.into_iter().map(|(medicine_id,units,revenue)| serde_json::json!({"medicine_id":medicine_id,"units":units,"revenue":revenue})).collect()
         }
     };
-
-    let response_json = serde_json::json!({
-        "metric": metric,
-        "limit": limit,
-        "products": rows
-    });
-
-    set_cached(cache_key, response_json.clone());
-    Json(response_json).into_response()
+    Json(serde_json::json!({"metric":metric,"limit":limit,"products":rows})).into_response()
 }
 
 #[derive(Deserialize)]
-pub struct GrowthQuery {
-    pub range: Option<String>,
-}
+pub struct GrowthQuery { pub range: Option<String> }
 
-async fn growth_handler(
-    State(state): State<AppState>,
-    Query(_query): Query<GrowthQuery>,
-) -> impl IntoResponse {
-    let cache_key = "growth_handler_v1".to_string();
-    if let Some(cached) = get_cached(&cache_key) {
-        return Json(cached).into_response();
-    }
-
-    let signups_rows = sqlx::query_as::<_, (String, i64)>(
-        r#"
-        SELECT TO_CHAR(DATE_TRUNC('week', created_at::timestamptz), 'YYYY-MM-DD') AS week_bucket,
-               COUNT(*) AS signups
-        FROM business_registry
-        WHERE created_at IS NOT NULL
-        GROUP BY week_bucket
-        ORDER BY week_bucket ASC
-        "#,
-    )
-    .fetch_all(&state.pool)
-    .await
-    .unwrap_or_default();
-
-    let total_registered: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry")
-        .fetch_one(&state.pool)
-        .await
-        .unwrap_or(0);
-
-    let activated_count: i64 = sqlx::query_scalar(
-        r#"
-        SELECT COUNT(DISTINCT b.business_id)
-        FROM business_registry b
-        JOIN cloud_daily_summaries d ON b.workspace_id = d.workspace_id
-        "#,
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
-
-    let activation_rate = if total_registered > 0 {
-        (activated_count as f64 / total_registered as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    let verified_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'verified'")
-            .fetch_one(&state.pool)
-            .await
-            .unwrap_or(0);
-
-    let unverified_count = total_registered - verified_count;
-
-    let signups_per_week: Vec<_> = signups_rows
-        .into_iter()
-        .map(|(wk, c)| serde_json::json!({ "week": wk, "signups": c }))
-        .collect();
-
-    let response_json = serde_json::json!({
-        "signups_per_week": signups_per_week,
-        "activation_rate_pct": activation_rate,
-        "total_registered": total_registered,
-        "activated_businesses": activated_count,
-        "verified_count": verified_count,
-        "unverified_count": unverified_count
-    });
-
-    set_cached(cache_key, response_json.clone());
-    Json(response_json).into_response()
+async fn growth_handler(State(state): State<AppState>, Query(query): Query<GrowthQuery>) -> Response {
+    let range = query.range.as_deref().unwrap_or("90d");
+    let days = match range { "7d" => 7, "30d" => 30, "90d" => 90, _ => return validation_error("range must be 7d, 30d, or 90d") };
+    let signups: Vec<(String,i64)> = db_or_return!(sqlx::query_as("SELECT TO_CHAR(DATE_TRUNC('week', created_at::timestamptz), 'YYYY-MM-DD'), COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - make_interval(days => $1) GROUP BY 1 ORDER BY 1").bind(days).fetch_all(&state.pool), "Could not load business signup history");
+    let total: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry").fetch_one(&state.pool), "Could not count businesses");
+    let activated: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM business_registry b JOIN cloud_daily_summaries d ON d.workspace_id = b.workspace_id AND d.branch_id = b.branch_id WHERE d.summary_date >= CURRENT_DATE - make_interval(days => $1)").bind(days).fetch_one(&state.pool), "Could not count activated businesses");
+    let verified: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'verified'").fetch_one(&state.pool), "Could not count verified businesses");
+    let percent = if total == 0 { 0.0 } else { activated as f64 * 100.0 / total as f64 };
+    Json(serde_json::json!({"range":range,"signups_per_week":signups.into_iter().map(|(week,signups)| serde_json::json!({"week":week,"signups":signups})).collect::<Vec<_>>(),"activation_rate_pct":percent,"total_registered":total,"activated_businesses":activated,"verified_count":verified,"unverified_count":total.saturating_sub(verified)})).into_response()
 }

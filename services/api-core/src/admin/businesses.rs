@@ -39,7 +39,7 @@ pub struct ListQuery {
 #[derive(Serialize, Debug)]
 pub struct BusinessListItem {
     pub business_id: String,
-    pub name: String,
+    pub name: Option<String>,
     pub region: Option<String>,
     pub tmda_number: Option<String>,
     pub tier: String,
@@ -61,33 +61,43 @@ async fn list_businesses(
     State(state): State<AppState>,
     Query(query): Query<ListQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let page = query.page.unwrap_or(1).max(1);
-    let limit = query.limit.unwrap_or(25).max(1).min(100);
+    let page = query.page.unwrap_or(1);
+    let limit = query.limit.unwrap_or(25);
+    if page < 1 || !(1..=100).contains(&limit) {
+        return Err((StatusCode::BAD_REQUEST, Json(serde_json::json!({
+            "error": { "code": "VALIDATION", "message": "page must be positive and limit must be between 1 and 100" }
+        }))));
+    }
     let offset = (page - 1) * limit;
 
     let status_filter = query.status.as_deref().unwrap_or("all");
+    if !["all", "pending", "verified", "rejected", "suspended"].contains(&status_filter) {
+        return Err((StatusCode::BAD_REQUEST, Json(serde_json::json!({
+            "error": { "code": "VALIDATION", "message": "status must be all, pending, verified, rejected, or suspended" }
+        }))));
+    }
     let search_q = query.q.as_deref().unwrap_or("").trim();
     let region_filter = query.region.as_deref();
     let tier_filter = query.tier.as_deref();
     let sort_col = query.sort.as_deref().unwrap_or("created_at");
     let sort_dir = query.direction.as_deref().unwrap_or("desc").to_uppercase();
-    let sort_dir = if sort_dir != "ASC" && sort_dir != "DESC" {
-        "DESC".to_string()
-    } else {
-        sort_dir
-    };
+    if sort_dir != "ASC" && sort_dir != "DESC" {
+        return Err((StatusCode::BAD_REQUEST, Json(serde_json::json!({
+            "error": { "code": "VALIDATION", "message": "direction must be asc or desc" }
+        }))));
+    }
 
     let mut qb = sqlx::QueryBuilder::new(
         r#"
         SELECT
             b.business_id,
-            COALESCE(b.name, 'Unnamed Business') AS name,
+            b.name,
             b.address_region AS region,
             b.tmda_number,
             COALESCE(b.tier, 'free') AS tier,
             COALESCE(v.status, 'pending') AS verification_status,
-            COALESCE(b.updated_at, b.created_at::timestamptz, NOW()) AS last_sync,
-            COALESCE(b.created_at, NOW()::text) AS created_at
+            (SELECT MAX(c.received_at) FROM sync_changes c WHERE c.workspace_id = b.workspace_id AND c.branch_id = b.branch_id) AS last_sync,
+            b.created_at
         FROM business_registry b
         LEFT JOIN business_verification v ON b.business_id = v.business_id
         WHERE 1=1
@@ -175,12 +185,12 @@ async fn list_businesses(
     let rows = match qb
         .build_query_as::<(
             String,
-            String,
             Option<String>,
             Option<String>,
+            Option<String>,
             String,
             String,
-            chrono::DateTime<chrono::Utc>,
+            Option<chrono::DateTime<chrono::Utc>>,
             String,
         )>()
         .fetch_all(&state.pool)
@@ -201,7 +211,7 @@ async fn list_businesses(
             tmda_number: row.3,
             tier: row.4,
             verification_status: row.5,
-            last_sync: Some(row.6.to_rfc3339()),
+            last_sync: row.6.map(|timestamp| timestamp.to_rfc3339()),
             created_at: row.7,
         })
         .collect();
@@ -229,7 +239,7 @@ async fn get_business(
         _,
         (
             String,
-            String,
+            Option<String>,
             Option<String>,
             Option<String>,
             String,
@@ -241,7 +251,7 @@ async fn get_business(
         r#"
         SELECT
             b.business_id,
-            COALESCE(b.name, 'Unnamed Business'),
+            b.name,
             b.address_region,
             b.tmda_number,
             COALESCE(b.tier, 'free'),
@@ -269,11 +279,15 @@ async fn get_business(
             "created_at": r.7,
         }))
         .into_response(),
-        _ => (
+        Ok(None) => (
             StatusCode::NOT_FOUND,
-            Json(serde_json::json!({ "error": "Business not found" })),
+            Json(serde_json::json!({ "error": {"code":"NOT_FOUND", "message":"Business not found"} })),
         )
             .into_response(),
+        Err(_) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": {"code":"INTERNAL", "message":"Could not load business details"} })),
+        ).into_response(),
     }
 }
 
@@ -397,7 +411,7 @@ async fn get_sync(
     let devices = match devices {
         Ok(devices) => devices.into_iter().map(|(device_id, last_seen, pending, app_version)| {
             serde_json::json!({ "device_id": device_id, "last_seen_at": last_seen.map(|t| t.to_rfc3339()),
-                "outbox_pending": pending.unwrap_or(0), "app_version": app_version })
+                "outbox_pending": pending, "app_version": app_version })
         }).collect::<Vec<_>>(),
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
             "error": { "code": "INTERNAL", "message": "Could not load business devices" }

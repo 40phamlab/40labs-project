@@ -196,7 +196,7 @@ async fn legacy_postgres_bootstrap_is_adopted_without_data_loss() {
         .fetch_all(&pool)
         .await
         .unwrap();
-        assert_eq!(ledger, (0..=9).collect::<Vec<i64>>());
+        assert_eq!(ledger, (0..=10).collect::<Vec<i64>>());
         let preserved: String = sqlx::query_scalar(
             "SELECT workspace_id FROM business_registry WHERE business_id='legacy-business'",
         )
