@@ -19,6 +19,7 @@ export interface AuthStatusResponse {
   } | null;
   onboardingState?: string;
   idleLockMinutes?: number;
+  registrationRecoveryPending?: boolean;
 }
 
 export interface AuthApi {
@@ -44,6 +45,8 @@ export interface AuthApi {
   recoveryRegenerate(password: string): Promise<Array<string>>;
   recoveryGenerateInitial(): Promise<Array<string>>;
   registrationCommit(payload: Record<string, unknown>): Promise<{ businessId?: string; business_id?: string; workspaceId?: string; workspace_id?: string; branchId?: string; branch_id?: string; recoveryCodes?: string[] }>;
+  registrationResumeResult(): Promise<{ businessId: string; workspaceId: string; branchId: string; recoveryCodes: string[] } | null>;
+  registrationResultAck(): Promise<void>;
   registrationDiagnostic(stage: 'terms_hash', outcome: 'started' | 'succeeded' | 'failed'): Promise<void>;
   otpRequest(phone: string): Promise<void>;
   otpVerify(phone: string, code: string): Promise<string>;
@@ -100,6 +103,8 @@ export const tauriAuthApi: AuthApi = {
     branch_id?: string;
     recoveryCodes?: string[];
   }>('registration_commit', { payload }, REGISTRATION_COMMIT_TIMEOUT_MS),
+  registrationResumeResult: () => invokeCommand<{ businessId: string; workspaceId: string; branchId: string; recoveryCodes: string[] } | null>('registration_resume_result'),
+  registrationResultAck: () => invokeCommand<void>('registration_result_ack'),
   registrationDiagnostic: (stage, outcome) => invokeCommand<void>('registration_diagnostic', { stage, outcome }),
   otpRequest: (phone) => invokeCommand<void>('otp_request', { phone }),
   otpVerify: (phone, code) => invokeCommand<string>('otp_verify', { phone, code }),
@@ -115,6 +120,8 @@ export const tauriAuthApi: AuthApi = {
 };
 
 export const mockAuthApi: AuthApi = {
+  registrationResumeResult: async () => null,
+  registrationResultAck: async () => undefined,
   registrationDiagnostic: async () => undefined,
   status: async () => ({ ...mockState }),
   login: async (username, password) => {

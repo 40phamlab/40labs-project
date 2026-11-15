@@ -25,8 +25,18 @@ pub fn run() {
     tracing::info!("keystore: security keystore initialized successfully");
     let auth_state = Arc::new(AuthState::new(Arc::new(RealClock)));
 
-    let api_base_url =
-        std::env::var("API_BASE_URL").unwrap_or_else(|_| "http://127.0.0.1:3000".into());
+    let api_base_url = std::env::var("API_BASE_URL").unwrap_or_else(|_| {
+        activation::client::ActivationClientFactory::default_api_base_url().into()
+    })
+    .trim()
+    .trim_end_matches('/')
+    .to_owned();
+    if api_base_url.is_empty() {
+        panic!("API_BASE_URL must not be empty");
+    }
+    if !cfg!(debug_assertions) && !api_base_url.starts_with("https://") {
+        panic!("API_BASE_URL must use HTTPS in release builds");
+    }
     let pubkey_hex = std::env::var("ACTIVATION_PUBKEY").ok();
     let (otp_client, activation_client) =
         activation::client::ActivationClientFactory::create_clients(
@@ -66,6 +76,7 @@ pub fn run() {
                 pool,
                 lan_state,
                 auth_state,
+                registration_keychain: keystore.clone(),
                 keystore,
                 otp_client,
                 activation_client,
@@ -153,6 +164,8 @@ pub fn run() {
             commands::auth_cmd::business_set_idle_lock,
             commands::registration_cmd::recovery_redeem,
             commands::registration_cmd::registration_commit,
+            commands::registration_cmd::registration_resume_result,
+            commands::registration_cmd::registration_result_ack,
             commands::registration_cmd::registration_diagnostic,
             commands::registration_cmd::cloud_device_credentials_refresh,
             commands::registration_cmd::otp_request,

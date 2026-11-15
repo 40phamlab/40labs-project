@@ -97,6 +97,7 @@ pub struct AppState {
     pub lan_state: Arc<LanServerState>,
     pub auth_state: Arc<AuthState>,
     pub keystore: Arc<Keystore>,
+    pub registration_keychain: Arc<dyn crate::security::keystore::RegistrationKeychain>,
     pub otp_client: Arc<dyn crate::activation::OtpClient>,
     pub activation_client: Arc<dyn crate::activation::ActivationClient>,
 }

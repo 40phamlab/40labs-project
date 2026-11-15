@@ -9,6 +9,7 @@ import { LockScreen } from './lock/LockScreen';
 import { CreatePinScreen } from './pin/CreatePinScreen';
 import { ForcedPasswordChangeScreen } from './credentials/ForcedPasswordChangeScreen';
 import { RecoveryCodesScreen } from './recovery/RecoveryCodesScreen';
+import { RegistrationRecoveryScreen } from './RegistrationRecoveryScreen';
 import { SetupWizardScreen } from './SetupWizardScreen';
 import { StepUpProvider } from './stepup/StepUpProvider';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -169,6 +170,11 @@ export const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   // 3. No session -> Login
   if (!status.session) {
+    if (status.registrationRecoveryPending) {
+      return renderTitleBarWrapper(
+        <RegistrationRecoveryScreen onComplete={() => queryClient.invalidateQueries({ queryKey: ['auth_status'] })} />,
+      );
+    }
     return renderTitleBarWrapper(
       <LoginScreen
         businessName={status.business.name}

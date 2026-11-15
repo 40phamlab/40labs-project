@@ -8,6 +8,8 @@ Business onboarding and activation follows a 3-step cryptographic flow:
 
 The activation grant is now version 2 and expires within five minutes. Core Desktop validates the Ed25519 signature, issuer, audience, expiry and scope values before using the returned IDs. It exchanges the grant at `POST /v1/devices/enroll` and securely stores the returned signed device credentials in the OS keychain. API Core no longer accepts unsigned Base64 JSON bearer tokens. Full contract and key rotation instructions are in [DEVICE_AUTH.md](DEVICE_AUTH.md).
 
+Core Desktop resolves the activation verification public key from `GET /api/v1/activation/public-key` over the configured API HTTPS origin when no pinned `ACTIVATION_PUBKEY` is supplied. The endpoint returns only the Ed25519 public key and the expected issuer, audience, and grant version; the private signing key remains server-only.
+
 ## Administrative authentication and authorization
 
 Admin Web uses password plus TOTP at `POST /admin/v1/auth/login` and `POST /admin/v1/auth/totp`. Login challenges are stored in PostgreSQL, expire after five minutes and can be consumed once. TOTP acceptance records the accepted time step atomically; the same step cannot be used again. Recovery codes can be regenerated through authenticated `POST /admin/v1/auth/recovery-codes/regenerate` (shown once) and used at public `POST /admin/v1/auth/recovery` with a valid password challenge. Each recovery code is high entropy, stored as a SHA-256 digest, and consumed once.

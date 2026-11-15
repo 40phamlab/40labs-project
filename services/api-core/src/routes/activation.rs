@@ -27,10 +27,49 @@ pub struct AppState {
 
 pub fn router(state: AppState) -> Router {
     Router::new()
+        .route(
+            "/api/v1/activation/public-key",
+            axum::routing::get(activation_public_key),
+        )
         .route("/api/v1/activation/otp/request", post(request_otp))
         .route("/api/v1/activation/otp/verify", post(verify_otp))
         .route("/api/v1/activation/register", post(register_business))
         .with_state(state)
+}
+
+#[derive(Serialize)]
+struct ActivationPublicKeyResponse {
+    public_key_hex: String,
+    issuer: &'static str,
+    audience: &'static str,
+    version: i32,
+}
+
+fn activation_public_key_hex(signing_key: &str) -> Result<String, &'static str> {
+    let bytes = hex::decode(signing_key).map_err(|_| "Invalid activation signing key")?;
+    let seed: [u8; 32] = bytes
+        .get(..32)
+        .ok_or("Invalid activation signing key")?
+        .try_into()
+        .map_err(|_| "Invalid activation signing key")?;
+    Ok(hex::encode(
+        ed25519_dalek::SigningKey::from_bytes(&seed)
+            .verifying_key()
+            .to_bytes(),
+    ))
+}
+
+async fn activation_public_key(
+    State(state): State<AppState>,
+) -> Result<Json<ActivationPublicKeyResponse>, ApiError> {
+    let public_key_hex = activation_public_key_hex(&state.config.activation_signing_key)
+        .map_err(|_| ApiError::Internal("Invalid activation signing key".into()))?;
+    Ok(Json(ActivationPublicKeyResponse {
+        public_key_hex,
+        issuer: crate::grant::ACTIVATION_GRANT_ISSUER,
+        audience: crate::grant::ACTIVATION_GRANT_AUDIENCE,
+        version: 2,
+    }))
 }
 
 #[derive(Deserialize)]
@@ -256,6 +295,7 @@ pub async fn verify_otp(
 #[derive(Deserialize)]
 pub struct RegisterPayload {
     pub verification_token: String,
+    pub owner_phone: String,
     pub business_name: String,
     pub owner_first_name: String,
     pub owner_last_name: String,
@@ -280,9 +320,19 @@ fn valid_email(value: &str) -> bool {
             && value.len() <= 254 && !value.chars().any(char::is_whitespace))
 }
 
+fn owner_phone_matches_verification(phone: &str, verified_phone_hash: &str) -> bool {
+    normalize_tz_phone(phone)
+        .map(|normalized| hash_string(&normalized) == verified_phone_hash)
+        .unwrap_or(false)
+}
+
 #[cfg(test)]
 mod registration_validation_tests {
-    use super::{valid_email, valid_registration_text};
+    use super::{
+        activation_public_key_hex, owner_phone_matches_verification, valid_email,
+        valid_registration_text,
+    };
+    use crate::otp::hash_string;
 
     #[test]
     fn registration_text_rejects_empty_oversized_and_control_values() {
@@ -298,6 +348,26 @@ mod registration_validation_tests {
         assert!(!valid_email("not-an-email"));
         assert!(!valid_email("owner@.example"));
         assert!(!valid_email("owner@example.com\n"));
+    }
+
+    #[test]
+    fn owner_phone_must_match_the_phone_verified_by_otp() {
+        let verified = hash_string("255712345678");
+        assert!(owner_phone_matches_verification("0712 345-678", &verified));
+        assert!(!owner_phone_matches_verification("0712 345-679", &verified));
+        assert!(!owner_phone_matches_verification(
+            "+233712345678",
+            &verified
+        ));
+    }
+
+    #[test]
+    fn activation_public_key_matches_the_development_signing_key_contract() {
+        assert_eq!(
+            activation_public_key_hex(&"00".repeat(32)).unwrap(),
+            "3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29",
+        );
+        assert!(activation_public_key_hex("not-hex").is_err());
     }
 }
 
@@ -347,6 +417,12 @@ pub async fn register_business(
         Some(r) => r,
         None => return Err(ApiError::BadRequest("Invalid verification token".into())),
     };
+
+    if !owner_phone_matches_verification(&payload.owner_phone, &phone_hash) {
+        return Err(ApiError::BadRequest(
+            "Owner verification does not match phone".into(),
+        ));
+    }
 
     if used == 1 {
         return Err(ApiError::BadRequest(

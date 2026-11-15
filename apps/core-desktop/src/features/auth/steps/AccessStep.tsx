@@ -2,6 +2,7 @@ import * as React from 'react';
 import { authApi } from '../../../api/authApi';
 import { Button } from '@40labs/ui-components';
 import { Check, Copy, Download, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { useLanguageStore } from '../../../stores/useLanguageStore';
 
 export interface AccessStepProps {
   businessId: string;
@@ -16,6 +17,7 @@ export const AccessStep: React.FC<AccessStepProps> = ({
   recoveryCodes,
   onCompleteSignIn,
 }) => {
+  const { language } = useLanguageStore();
   const [showPassword, setShowPassword] = React.useState(false);
   const [copiedPass, setCopiedPass] = React.useState(false);
   const [copiedCodes, setCopiedCodes] = React.useState(false);
@@ -52,10 +54,22 @@ export const AccessStep: React.FC<AccessStepProps> = ({
     setSigningIn(true);
     setError(null);
     try {
+      await authApi.registrationResultAck();
       await authApi.login(credentials.username, credentials.password);
+      const status = await authApi.status();
+      if (!status.deviceBound || !status.business || status.session?.role !== 'sudo') {
+        throw new Error('REGISTRATION_AUTH_STATE_INCOMPLETE');
+      }
       onCompleteSignIn();
     } catch (err: any) {
-      setError('Kuingia otomatiki kimeshindwa. Tafadhali ingia kwa kutumia jina la mtumiaji.');
+      const stateIncomplete = err instanceof Error && err.message === 'REGISTRATION_AUTH_STATE_INCOMPLETE';
+      setError(stateIncomplete
+        ? (language === 'sw'
+          ? 'Biashara au akaunti ya mmiliki haikuthibitishwa. Usajili wako umehifadhiwa; ingia kwa kutumia jina la mtumiaji.'
+          : 'The business or owner account could not be verified. Registration is saved; sign in with your username.')
+        : (language === 'sw'
+          ? 'Kuingia otomatiki kumeshindikana. Jaribu tena au ingia kwa kutumia jina la mtumiaji.'
+          : 'Automatic sign-in failed. Retry or sign in with your username.'));
       setSigningIn(false);
     }
   };

@@ -10,6 +10,22 @@ servers:
   - url: https://api.40labs.co.tz
     description: Cloud production server
 paths:
+  /api/v1/activation/public-key:
+    get:
+      summary: Get activation grant verification key
+      responses:
+        '200':
+          description: Public verification key and grant contract
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [public_key_hex, issuer, audience, version]
+                properties:
+                  public_key_hex: { type: string }
+                  issuer: { type: string, example: 40labs-api-core }
+                  audience: { type: string, example: 40labs-desktop-device-enrollment }
+                  version: { type: integer, example: 2 }
   /healthz:
     get:
       summary: Liveness check
@@ -113,6 +129,7 @@ paths:
               type: object
               required:
                 - verification_token
+                - owner_phone
                 - business_name
                 - owner_first_name
                 - owner_last_name
@@ -123,6 +140,9 @@ paths:
               properties:
                 verification_token:
                   type: string
+                owner_phone:
+                  type: string
+                  example: "+255712345678"
                 business_name:
                   type: string
                   example: "Afya Bora Pharmacy"

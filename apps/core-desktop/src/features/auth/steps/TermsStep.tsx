@@ -8,6 +8,7 @@ import { ShieldCheck, Loader2 } from 'lucide-react';
 import { getTermsTextSha256, TERMS_VERSION } from '../components/termsContent';
 import type { RegistrationCredentials } from './AccountStep';
 import { authApi } from '../../../api/authApi';
+import { normalizeRegistrationError } from '../api/registrationErrors';
 
 const normalizePhone = (value: string) => {
   const digits = value.replace(/\D/g, '');
@@ -116,11 +117,16 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
         throw new Error(t('auth.error.registrationIncomplete', language));
       }
       onCommitSuccess({ businessId, recoveryCodes: res.recoveryCodes });
-    } catch (err: any) {
+    } catch (err: unknown) {
       const registrationTimeout = err instanceof Error
         && err.message.includes('Tauri IPC timeout for command: registration_commit');
       if (registrationTimeout) {
         try {
+          const pending = await authApi.registrationResumeResult();
+          if (pending?.businessId && pending.recoveryCodes?.length) {
+            onCommitSuccess({ businessId: pending.businessId, recoveryCodes: pending.recoveryCodes });
+            return;
+          }
           const status = await authApi.status();
           if (status.deviceBound && status.business) {
             onRegistrationStored();
@@ -134,12 +140,24 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
         setCommitting(false);
         return;
       }
-      const errorCode = err && typeof err === 'object' && typeof err.code === 'string' ? err.code : null;
-      setError(
-        err instanceof Error && err.message
-          ? err.message
-          : t(errorCode === 'POLICY_VIOLATION' ? 'auth.error.registrationValidation' : 'auth.error.registrationFailed', language),
-      );
+      const normalized = normalizeRegistrationError(err, language);
+      if (normalized.code === 'REGISTRATION_ALREADY_COMPLETED') {
+        try {
+          const pending = await authApi.registrationResumeResult();
+          if (pending?.businessId && pending.recoveryCodes?.length) {
+            onCommitSuccess({ businessId: pending.businessId, recoveryCodes: pending.recoveryCodes });
+            return;
+          }
+          const status = await authApi.status();
+          if (status.deviceBound && status.business) {
+            onRegistrationStored();
+            return;
+          }
+        } catch {
+          // Keep the registration screen available if local state cannot be verified.
+        }
+      }
+      setError(normalized.message);
       setCommitting(false);
     }
   };
@@ -147,6 +165,11 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
   const handleCheckRegistrationStatus = async () => {
     setCommitting(true);
     try {
+      const pending = await authApi.registrationResumeResult();
+      if (pending?.businessId && pending.recoveryCodes?.length) {
+        onCommitSuccess({ businessId: pending.businessId, recoveryCodes: pending.recoveryCodes });
+        return;
+      }
       const status = await authApi.status();
       if (status.deviceBound && status.business) {
         onRegistrationStored();

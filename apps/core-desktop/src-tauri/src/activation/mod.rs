@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RegisterRequest {
     pub verification_token: String,
+    pub owner_phone: String,
     pub business_name: String,
     pub owner_first_name: String,
     pub owner_last_name: String,
@@ -56,4 +57,34 @@ pub trait ActivationClient: Send + Sync {
         device_id: &str,
         refresh_token: &str,
     ) -> Result<DeviceCredentials, String>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RegisterRequest, RegisterResponse};
+
+    #[test]
+    fn registration_json_uses_the_api_snake_case_contract() {
+        let request = RegisterRequest {
+            verification_token: "opaque-token".into(),
+            owner_phone: "+255712345678".into(),
+            business_name: "Afya".into(),
+            owner_first_name: "Asha".into(),
+            owner_last_name: "Test".into(),
+            owner_email: None,
+            terms_accepted: true,
+            terms_version: "1.0".into(),
+            terms_locale: "sw-TZ".into(),
+            terms_text_sha256: "a".repeat(64),
+        };
+        let value = serde_json::to_value(request).unwrap();
+        assert_eq!(value["owner_phone"], "+255712345678");
+        assert_eq!(value["verification_token"], "opaque-token");
+        assert!(value.get("ownerPhone").is_none());
+
+        let response: RegisterResponse = serde_json::from_value(serde_json::json!({
+            "business_id": "AFYA-TEST01", "workspace_id": "ws-1", "branch_id": "br-1", "activation_grant": "grant"
+        })).unwrap();
+        assert_eq!(response.business_id, "AFYA-TEST01");
+    }
 }

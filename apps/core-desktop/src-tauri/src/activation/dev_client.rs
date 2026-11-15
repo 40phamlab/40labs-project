@@ -10,6 +10,13 @@ impl DevActivationClient {
         }
         Ok(Self)
     }
+
+    pub fn new_debug() -> Result<Self, String> {
+        if std::env::var("DEV_ACTIVATION").ok().as_deref() == Some("0") {
+            return Err("Dev activation client explicitly disabled".into());
+        }
+        Ok(Self)
+    }
 }
 
 #[async_trait]

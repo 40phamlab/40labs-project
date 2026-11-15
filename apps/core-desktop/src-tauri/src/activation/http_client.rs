@@ -8,7 +8,15 @@ use std::time::Duration;
 pub struct HttpActivationClient {
     base_url: String,
     client: Client,
-    public_key: VerifyingKey,
+    public_key: Option<VerifyingKey>,
+}
+
+#[derive(Deserialize)]
+struct ActivationPublicKeyResponse {
+    public_key_hex: String,
+    issuer: String,
+    audience: String,
+    version: i32,
 }
 
 #[derive(Deserialize)]
@@ -30,22 +38,13 @@ const DEFAULT_ED25519_PUBKEY_HEX: &str =
 
 impl HttpActivationClient {
     pub fn new(base_url: String, pubkey_hex: Option<&str>) -> Result<Self, String> {
-        let hex_str = match pubkey_hex {
-            Some(key) => key,
-            None if cfg!(debug_assertions) => DEFAULT_ED25519_PUBKEY_HEX,
-            None => {
-                return Err(
-                    "ACTIVATION_PUBKEY must be configured outside development builds".into(),
-                )
-            }
-        };
-        let bytes = hex::decode(hex_str).map_err(|e| e.to_string())?;
-        if bytes.len() != 32 {
-            return Err("Invalid public key length".into());
-        }
-        let mut key_bytes = [0u8; 32];
-        key_bytes.copy_from_slice(&bytes);
-        let public_key = VerifyingKey::from_bytes(&key_bytes).map_err(|e| e.to_string())?;
+        let configured_key = pubkey_hex
+            .map(str::to_owned)
+            .or_else(|| cfg!(debug_assertions).then(|| DEFAULT_ED25519_PUBKEY_HEX.to_string()));
+        let public_key = configured_key
+            .as_deref()
+            .map(parse_public_key)
+            .transpose()?;
 
         let client = Client::builder()
             .connect_timeout(Duration::from_secs(5))
@@ -60,7 +59,7 @@ impl HttpActivationClient {
         })
     }
 
-    fn verify_grant(&self, grant: &str) -> Result<GrantClaims, String> {
+    fn verify_grant(&self, grant: &str, public_key: &VerifyingKey) -> Result<GrantClaims, String> {
         let parts: Vec<&str> = grant.split('.').collect();
         if parts.len() != 2 {
             return Err("Invalid activation grant format".into());
@@ -77,7 +76,7 @@ impl HttpActivationClient {
         sig_arr.copy_from_slice(&sig_bytes);
         let signature = Signature::from_bytes(&sig_arr);
 
-        self.public_key
+        public_key
             .verify(&json_bytes, &signature)
             .map_err(|e| format!("Signature verification failed: {}", e))?;
 
@@ -100,12 +99,68 @@ impl HttpActivationClient {
 
         Ok(claims)
     }
+
+    async fn resolve_public_key(&self) -> Result<VerifyingKey, String> {
+        if let Some(key) = &self.public_key {
+            return Ok(*key);
+        }
+        let url = format!("{}/api/v1/activation/public-key", self.base_url);
+        let response = self
+            .client
+            .get(&url)
+            .send()
+            .await
+            .map_err(|_| "API unavailable while loading activation trust key")?;
+        if !response.status().is_success() {
+            return Err("API rejected activation trust-key request".into());
+        }
+        let data: ActivationPublicKeyResponse = response
+            .json()
+            .await
+            .map_err(|_| "Invalid activation trust-key response")?;
+        if data.issuer != "40labs-api-core"
+            || data.audience != "40labs-desktop-device-enrollment"
+            || data.version != 2
+        {
+            return Err("Unsupported activation trust-key contract".into());
+        }
+        parse_public_key(&data.public_key_hex)
+    }
+}
+
+fn parse_public_key(hex_str: &str) -> Result<VerifyingKey, String> {
+    let bytes = hex::decode(hex_str).map_err(|_| "Invalid activation public key encoding")?;
+    let key_bytes: [u8; 32] = bytes
+        .try_into()
+        .map_err(|_| "Invalid activation public key length")?;
+    VerifyingKey::from_bytes(&key_bytes).map_err(|_| "Invalid activation public key".into())
 }
 
 fn base64_url_decode(input: &str) -> Result<Vec<u8>, String> {
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
     use base64::Engine;
     URL_SAFE_NO_PAD.decode(input).map_err(|e| e.to_string())
+}
+
+fn classify_registration_http_error(status: reqwest::StatusCode, body: &str) -> &'static str {
+    let message = serde_json::from_str::<serde_json::Value>(body)
+        .ok()
+        .and_then(|value| {
+            value
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_ascii_lowercase)
+        })
+        .unwrap_or_default();
+    if message.contains("verification token") || message.contains("owner verification") {
+        "INVALID_VERIFICATION"
+    } else if status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+        "API_UNAVAILABLE"
+    } else if status.is_client_error() {
+        "INVALID_REGISTRATION_DATA"
+    } else {
+        "ACTIVATION_REJECTED"
+    }
 }
 
 #[derive(Deserialize)]
@@ -184,17 +239,15 @@ impl ActivationClient for HttpActivationClient {
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!(
-                "Registration failed ({}): {}",
-                status,
-                body.chars().take(300).collect::<String>()
-            ));
+            let code = classify_registration_http_error(status, &body);
+            return Err(format!("REGISTRATION_CODE:{code}"));
         }
 
         let data: RegisterResponse = res.json().await.map_err(|e| e.to_string())?;
 
         // CRITICAL: verify grant signature BEFORE any local write!
-        let grant = self.verify_grant(&data.activation_grant)?;
+        let public_key = self.resolve_public_key().await?;
+        let grant = self.verify_grant(&data.activation_grant, &public_key)?;
         if grant.business_id != data.business_id
             || grant.workspace_id != data.workspace_id
             || grant.branch_id != data.branch_id
@@ -219,7 +272,22 @@ impl ActivationClient for HttpActivationClient {
             .await
             .map_err(|e| e.to_string())?;
         if !res.status().is_success() {
-            return Err(format!("Device enrollment failed ({})", res.status()));
+            let status = res.status();
+            let body = res.text().await.unwrap_or_default();
+            let message = serde_json::from_str::<serde_json::Value>(&body)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("message")
+                        .and_then(|message| message.as_str())
+                        .map(str::to_owned)
+                })
+                .unwrap_or(body);
+            return Err(format!(
+                "Device enrollment failed ({}): {}",
+                status,
+                message.chars().take(200).collect::<String>()
+            ));
         }
         res.json().await.map_err(|e| e.to_string())
     }
@@ -270,10 +338,14 @@ mod tests {
         let payload_b64 = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
         let grant = format!("{}.{}", payload_b64, hex::encode(sig.to_bytes()));
 
-        assert!(client.verify_grant(&grant).is_ok());
+        assert!(client
+            .verify_grant(&grant, client.public_key.as_ref().unwrap())
+            .is_ok());
 
         let tampered_grant = format!("{}X.{}", payload_b64, hex::encode(sig.to_bytes()));
-        assert!(client.verify_grant(&tampered_grant).is_err());
+        assert!(client
+            .verify_grant(&tampered_grant, client.public_key.as_ref().unwrap())
+            .is_err());
     }
 
     #[test]
@@ -292,6 +364,33 @@ mod tests {
         let payload_b64 = URL_SAFE_NO_PAD.encode(payload_json.as_bytes());
         let grant = format!("{}.{}", payload_b64, hex::encode(signature.to_bytes()));
 
-        assert!(client.verify_grant(&grant).is_ok());
+        assert!(client
+            .verify_grant(&grant, client.public_key.as_ref().unwrap())
+            .is_ok());
+    }
+
+    #[test]
+    fn registration_http_errors_are_reduced_to_safe_categories() {
+        assert_eq!(
+            classify_registration_http_error(
+                reqwest::StatusCode::BAD_REQUEST,
+                r#"{"error":"BAD_REQUEST","message":"Invalid verification token"}"#,
+            ),
+            "INVALID_VERIFICATION",
+        );
+        assert_eq!(
+            classify_registration_http_error(
+                reqwest::StatusCode::BAD_REQUEST,
+                r#"{"message":"Invalid registration details"}"#
+            ),
+            "INVALID_REGISTRATION_DATA",
+        );
+        assert_eq!(
+            classify_registration_http_error(
+                reqwest::StatusCode::SERVICE_UNAVAILABLE,
+                "sensitive upstream body"
+            ),
+            "API_UNAVAILABLE",
+        );
     }
 }

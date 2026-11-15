@@ -4,11 +4,19 @@ use std::sync::Arc;
 pub struct ActivationClientFactory;
 
 impl ActivationClientFactory {
+    pub fn default_api_base_url() -> &'static str {
+        if cfg!(debug_assertions) {
+            "http://127.0.0.1:3000"
+        } else {
+            "https://api.40labs.co.tz"
+        }
+    }
+
     pub fn create_clients(
         base_url: Option<String>,
         pubkey_hex: Option<String>,
     ) -> (Arc<dyn OtpClient>, Arc<dyn ActivationClient>) {
-        let url = base_url.unwrap_or_else(|| "http://127.0.0.1:3000".into());
+        let url = base_url.unwrap_or_else(|| Self::default_api_base_url().into());
 
         #[cfg(debug_assertions)]
         {

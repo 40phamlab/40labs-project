@@ -21,6 +21,7 @@
 | `GET` | `/healthz` | Health | None | **LIVE** | [API_INDEX.md](API_INDEX.md) |
 | `GET` | `/readyz` | Health | None | **LIVE** | [API_INDEX.md](API_INDEX.md) |
 | `GET` | `/healthz/sms` | Health | Bearer (Signing Key) | **LIVE** | [API_INDEX.md](API_INDEX.md) |
+| `GET` | `/api/v1/activation/public-key` | Activation | None (HTTPS) | **LIVE** | [API_AUTH.md](API_AUTH.md) |
 | `POST` | `/api/v1/activation/otp/request` | Activation | None (Rate Limited) | **LIVE** | [API_AUTH.md](API_AUTH.md#post-apiv1activationotprequest) |
 | `POST` | `/api/v1/activation/otp/verify` | Activation | None | **LIVE** | [API_AUTH.md](API_AUTH.md#post-apiv1activationotpverify) |
 | `POST` | `/api/v1/activation/register` | Activation | None | **LIVE** | [API_AUTH.md](API_AUTH.md#post-apiv1activationregister) |

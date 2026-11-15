@@ -24,6 +24,17 @@ pub struct AuthContext {
     pub branch_id: String,
 }
 
+struct LoginElapsedTimer(std::time::Instant);
+
+impl Drop for LoginElapsedTimer {
+    fn drop(&mut self) {
+        tracing::info!(
+            elapsed_ms = self.0.elapsed().as_millis() as u64,
+            "auth login completed"
+        );
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StepUpTier {
     SelfTier,
@@ -242,6 +253,7 @@ impl AuthEngine {
         username: &str,
         password: &Zeroizing<String>,
     ) -> Result<(), AuthError> {
+        let _login_timer = LoginElapsedTimer(std::time::Instant::now());
         let norm_username =
             policy::validate_username(username).map_err(|_| AuthError::InvalidCredentials {
                 retry_after_secs: None,
@@ -271,7 +283,12 @@ impl AuthEngine {
                 (Some(u), Some(c))
             }
             None => {
+                let verify_started = std::time::Instant::now();
                 let _ = hashing::verify_password(password.as_str(), hashing::get_dummy_hash());
+                tracing::info!(
+                    elapsed_ms = verify_started.elapsed().as_millis() as u64,
+                    "auth login verify_password completed"
+                );
                 (None, None)
             }
         };
@@ -322,7 +339,12 @@ impl AuthEngine {
                 });
             }
 
+            let verify_started = std::time::Instant::now();
             let valid = hashing::verify_password(password.as_str(), &c.password_hash);
+            tracing::info!(
+                elapsed_ms = verify_started.elapsed().as_millis() as u64,
+                "auth login verify_password completed"
+            );
             if !valid {
                 let new_fails = c.failed_password_attempts + 1;
                 let lockout_duration = match new_fails {

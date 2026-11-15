@@ -31,7 +31,11 @@ export async function invokeCommand<T>(
       );
       return await Promise.race([invokePromise, timeoutPromise]);
     } catch (error) {
-      console.error(`[40Labs IPC Error] Command "${command}" failed:`, error);
+      if (command === 'registration_commit') {
+        console.error('[40Labs IPC Error] Registration command failed; see protected native registration diagnostics.');
+      } else {
+        console.error(`[40Labs IPC Error] Command "${command}" failed.`);
+      }
       throw error;
     } finally {
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);

@@ -10,6 +10,12 @@ use crate::AppState;
 pub async fn auth_status(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, AuthErrorResponse> {
+    auth_status_inner(&state).await
+}
+
+pub(crate) async fn auth_status_inner(
+    state: &AppState,
+) -> Result<serde_json::Value, AuthErrorResponse> {
     let session_guard = state.auth_state.session.read().await;
     let session_info = if let Some(ref s) = *session_guard {
         let user =
@@ -78,11 +84,17 @@ pub async fn auth_status(
         val["hasRecoveryCodes"] = serde_json::json!(has_recovery_codes);
         val
     });
+    let registration_recovery_pending = state
+        .registration_keychain
+        .load_pending_registration_result()
+        .map(|result| result.is_some())
+        .unwrap_or(false);
 
     Ok(serde_json::json!({
         "deviceBound": bound_device.is_some(),
         "business": business,
         "session": session_with_pin,
+        "registrationRecoveryPending": registration_recovery_pending,
     }))
 }
 
@@ -450,11 +462,13 @@ mod tests {
                 Some("http://localhost".to_string()),
                 None,
             );
+        let keystore = Arc::new(crate::security::keystore::Keystore::init().unwrap());
         let _state = AppState {
             pool: pool.clone(),
             lan_state,
             auth_state,
-            keystore: Arc::new(crate::security::keystore::Keystore::init().unwrap()),
+            registration_keychain: keystore.clone(),
+            keystore,
             otp_client,
             activation_client,
         };

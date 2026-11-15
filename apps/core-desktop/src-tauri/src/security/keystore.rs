@@ -12,6 +12,17 @@ const MASTER_SECRET_ENTRY: &str = "master-secret-v1";
 #[allow(dead_code)]
 const DEVICE_KEY_ENTRY: &str = "device-private-key-v1";
 
+pub trait RegistrationKeychain: Send + Sync {
+    fn cloud_device_id(&self) -> Result<String, KeystoreError>;
+    fn store_cloud_device_credentials(
+        &self,
+        credentials: &crate::activation::DeviceCredentials,
+    ) -> Result<(), KeystoreError>;
+    fn store_pending_registration_result(&self, value: &str) -> Result<(), KeystoreError>;
+    fn load_pending_registration_result(&self) -> Result<Option<String>, KeystoreError>;
+    fn clear_pending_registration_result(&self) -> Result<(), KeystoreError>;
+}
+
 #[allow(dead_code)]
 pub const DB_KEY_V1_CONSTANT: &str = "db_key_v1";
 
@@ -184,6 +195,45 @@ impl Keystore {
     #[allow(dead_code)]
     fn load_or_create_device_key() -> Result<([u8; 32], SecretStatus), KeystoreError> {
         load_or_create_secret(DEVICE_KEY_ENTRY, ".dev-device-key")
+    }
+}
+
+impl RegistrationKeychain for Keystore {
+    fn cloud_device_id(&self) -> Result<String, KeystoreError> {
+        Keystore::cloud_device_id()
+    }
+
+    fn store_cloud_device_credentials(
+        &self,
+        credentials: &crate::activation::DeviceCredentials,
+    ) -> Result<(), KeystoreError> {
+        Keystore::store_cloud_credentials(credentials)
+    }
+
+    fn store_pending_registration_result(&self, value: &str) -> Result<(), KeystoreError> {
+        keyring::Entry::new(SERVICE_NAME, "pending-registration-result-v1")
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?
+            .set_password(value)
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))
+    }
+
+    fn load_pending_registration_result(&self) -> Result<Option<String>, KeystoreError> {
+        let entry = keyring::Entry::new(SERVICE_NAME, "pending-registration-result-v1")
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
+        match entry.get_password() {
+            Ok(value) => Ok(Some(value)),
+            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(error) => Err(KeystoreError::KeychainError(error.to_string())),
+        }
+    }
+
+    fn clear_pending_registration_result(&self) -> Result<(), KeystoreError> {
+        let entry = keyring::Entry::new(SERVICE_NAME, "pending-registration-result-v1")
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
+        match entry.delete_password() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(error) => Err(KeystoreError::KeychainError(error.to_string())),
+        }
     }
 }
 
