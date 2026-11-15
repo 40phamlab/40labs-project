@@ -138,12 +138,18 @@ fn resolve_dev_database_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
         .unwrap_or_else(|_| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     let mut current = start_dir.as_path();
+    let db_filename = if let Some(profile) = crate::security::keystore::resolve_labs_profile() {
+        format!("40labs-dev-{}.db", profile)
+    } else {
+        "40labs-dev.db".to_string()
+    };
+
     while let Some(parent) = current.parent() {
         if current.join("pnpm-workspace.yaml").exists()
             || current.join("turbo.json").exists()
             || current.join(".git").exists()
         {
-            return Ok(current.join("dev-data").join("40labs-dev.db"));
+            return Ok(current.join("dev-data").join(db_filename));
         }
         current = parent;
     }
@@ -154,7 +160,7 @@ fn resolve_dev_database_path() -> Result<PathBuf, Box<dyn std::error::Error>> {
         .and_then(|p| p.parent())
         .unwrap_or(&start_dir)
         .join("dev-data")
-        .join("40labs-dev.db"))
+        .join(db_filename))
 }
 
 fn resolve_prod_database_path() -> Result<PathBuf, Box<dyn std::error::Error>> {

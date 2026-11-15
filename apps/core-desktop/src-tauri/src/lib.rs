@@ -51,7 +51,12 @@ pub fn run() {
         .setup(move |app| {
             match app.path().app_log_dir() {
                 Ok(log_dir) => {
-                    let registration_log = log_dir.join("registration.log");
+                    let log_filename = if let Some(profile) = crate::security::keystore::resolve_labs_profile() {
+                        format!("registration-{}.log", profile)
+                    } else {
+                        "registration.log".to_string()
+                    };
+                    let registration_log = log_dir.join(log_filename);
                     if let Err(error) = crate::debug::configure_registration_log(registration_log) {
                         tracing::warn!(error = %error, "Could not configure registration diagnostic log");
                     }

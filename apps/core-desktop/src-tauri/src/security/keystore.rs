@@ -5,8 +5,51 @@ use rand::RngCore;
 use sha2::Sha256;
 use zeroize::Zeroizing;
 
-#[allow(dead_code)]
-const SERVICE_NAME: &str = "com.40labs.core-desktop";
+pub fn resolve_labs_profile_with_cfg(debug: bool) -> Option<String> {
+    if !debug {
+        return None;
+    }
+    if let Ok(profile) = std::env::var("LABS_PROFILE") {
+        let profile = profile.trim().to_lowercase();
+        if !profile.is_empty() {
+            let valid = profile.len() <= 16
+                && profile
+                    .chars()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-');
+            if valid {
+                return Some(profile);
+            } else {
+                tracing::warn!(
+                    profile = %profile,
+                    "Invalid LABS_PROFILE environment variable: must match [a-z0-9-]{{1,16}}. Falling back to default."
+                );
+            }
+        }
+    }
+    None
+}
+
+pub fn resolve_labs_profile() -> Option<String> {
+    resolve_labs_profile_with_cfg(cfg!(debug_assertions))
+}
+
+pub fn service_name() -> String {
+    let base = "com.40labs.core-desktop";
+    if let Some(profile) = resolve_labs_profile() {
+        format!("{}-{}", base, profile)
+    } else {
+        base.to_string()
+    }
+}
+
+fn dev_filename(base: &str) -> String {
+    if let Some(profile) = resolve_labs_profile() {
+        format!("{}-{}", base, profile)
+    } else {
+        base.to_string()
+    }
+}
+
 #[allow(dead_code)]
 const MASTER_SECRET_ENTRY: &str = "master-secret-v1";
 #[allow(dead_code)]
@@ -76,7 +119,7 @@ impl std::fmt::Debug for Keystore {
 
 impl Keystore {
     pub fn cloud_device_id() -> Result<String, KeystoreError> {
-        let entry = keyring::Entry::new(SERVICE_NAME, "cloud-device-id-v1")
+        let entry = keyring::Entry::new(&service_name(), "cloud-device-id-v1")
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
         match entry.get_password() {
             Ok(id) if !id.is_empty() => Ok(id),
@@ -99,14 +142,14 @@ impl Keystore {
     ) -> Result<(), KeystoreError> {
         let value = serde_json::to_string(credentials)
             .map_err(|e| KeystoreError::SerializationError(e.to_string()))?;
-        keyring::Entry::new(SERVICE_NAME, "cloud-device-credentials-v1")
+        keyring::Entry::new(&service_name(), "cloud-device-credentials-v1")
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))?
             .set_password(&value)
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))
     }
 
     pub fn load_cloud_credentials<T: serde::de::DeserializeOwned>() -> Result<T, KeystoreError> {
-        let value = keyring::Entry::new(SERVICE_NAME, "cloud-device-credentials-v1")
+        let value = keyring::Entry::new(&service_name(), "cloud-device-credentials-v1")
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))?
             .get_password()
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
@@ -189,12 +232,12 @@ impl Keystore {
 
     #[allow(dead_code)]
     fn load_or_create_master_secret() -> Result<([u8; 32], SecretStatus), KeystoreError> {
-        load_or_create_secret(MASTER_SECRET_ENTRY, ".dev-keystore")
+        load_or_create_secret(MASTER_SECRET_ENTRY, &dev_filename(".dev-keystore"))
     }
 
     #[allow(dead_code)]
     fn load_or_create_device_key() -> Result<([u8; 32], SecretStatus), KeystoreError> {
-        load_or_create_secret(DEVICE_KEY_ENTRY, ".dev-device-key")
+        load_or_create_secret(DEVICE_KEY_ENTRY, &dev_filename(".dev-device-key"))
     }
 }
 
@@ -211,14 +254,14 @@ impl RegistrationKeychain for Keystore {
     }
 
     fn store_pending_registration_result(&self, value: &str) -> Result<(), KeystoreError> {
-        keyring::Entry::new(SERVICE_NAME, "pending-registration-result-v1")
+        keyring::Entry::new(&service_name(), "pending-registration-result-v1")
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))?
             .set_password(value)
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))
     }
 
     fn load_pending_registration_result(&self) -> Result<Option<String>, KeystoreError> {
-        let entry = keyring::Entry::new(SERVICE_NAME, "pending-registration-result-v1")
+        let entry = keyring::Entry::new(&service_name(), "pending-registration-result-v1")
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
         match entry.get_password() {
             Ok(value) => Ok(Some(value)),
@@ -228,7 +271,7 @@ impl RegistrationKeychain for Keystore {
     }
 
     fn clear_pending_registration_result(&self) -> Result<(), KeystoreError> {
-        let entry = keyring::Entry::new(SERVICE_NAME, "pending-registration-result-v1")
+        let entry = keyring::Entry::new(&service_name(), "pending-registration-result-v1")
             .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
         match entry.delete_password() {
             Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
@@ -241,7 +284,7 @@ fn load_or_create_secret(
     entry_name: &str,
     dev_filename: &str,
 ) -> Result<([u8; 32], SecretStatus), KeystoreError> {
-    let entry_res = keyring::Entry::new(SERVICE_NAME, entry_name);
+    let entry_res = keyring::Entry::new(&service_name(), entry_name);
 
     match entry_res {
         Ok(entry) => match entry.get_password() {
@@ -339,6 +382,28 @@ fn load_or_create_dev_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_labs_profile_isolation_and_release_ignore() {
+        std::env::set_var("LABS_PROFILE", "test-profile");
+        assert_eq!(resolve_labs_profile_with_cfg(false), None);
+
+        std::env::set_var("LABS_PROFILE", "alpha");
+        assert_eq!(resolve_labs_profile_with_cfg(true), Some("alpha".into()));
+        assert_eq!(service_name(), "com.40labs.core-desktop-alpha");
+        assert_eq!(dev_filename(".dev-keystore"), ".dev-keystore-alpha");
+
+        std::env::set_var("LABS_PROFILE", "INVALID_PROFILE!");
+        assert_eq!(resolve_labs_profile_with_cfg(true), None);
+        assert_eq!(service_name(), "com.40labs.core-desktop");
+
+        std::env::set_var("LABS_PROFILE", "verylongprofilenamethatiswaytoolong");
+        assert_eq!(resolve_labs_profile_with_cfg(true), None);
+
+        std::env::remove_var("LABS_PROFILE");
+        assert_eq!(resolve_labs_profile_with_cfg(true), None);
+        assert_eq!(service_name(), "com.40labs.core-desktop");
+    }
 
     #[test]
     fn test_from_raw_keys_deterministic() {
