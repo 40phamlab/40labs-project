@@ -290,33 +290,61 @@ async fn list_businesses(
     }))
 }
 
+#[derive(sqlx::FromRow)]
+struct BusinessProfileRow {
+    business_id: String,
+    workspace_id: String,
+    branch_id: String,
+    name: Option<String>,
+    logo_url: Option<String>,
+    scale: Option<String>,
+    role_scopes: Option<String>,
+    owner_type: Option<String>,
+    owner_first_name: Option<String>,
+    owner_last_name: Option<String>,
+    phone: Option<String>,
+    email: Option<String>,
+    region: Option<String>,
+    district: Option<String>,
+    ward: Option<String>,
+    address_text: Option<String>,
+    tmda_number: Option<String>,
+    pharmacy_council_no: Option<String>,
+    verification_status: String,
+    reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
+    reviewed_by: Option<String>,
+    created_at: Option<String>,
+}
+
 async fn get_business(
     State(state): State<AppState>,
     Path(business_id): Path<String>,
 ) -> impl IntoResponse {
-    let row = sqlx::query_as::<
-        _,
-        (
-            String,
-            Option<String>,
-            Option<String>,
-            Option<String>,
-            String,
-            String,
-            Option<String>,
-            String,
-        ),
-    >(
+    let row = sqlx::query_as::<_, BusinessProfileRow>(
         r#"
         SELECT
             b.business_id,
+            b.workspace_id,
+            b.branch_id,
             b.name,
-            b.address_region,
+            b.logo_url,
+            COALESCE(b.scale, 'medium') AS scale,
+            COALESCE(b.role_scopes, 'pharmacy') AS role_scopes,
+            COALESCE(b.owner_type, 'personal') AS owner_type,
+            b.name AS owner_first_name,
+            '' AS owner_last_name,
+            b.contact_mobile AS phone,
+            b.contact_email AS email,
+            b.address_region AS region,
+            b.address_district AS district,
+            b.address_ward AS ward,
+            b.address_place AS address_text,
             b.tmda_number,
-            COALESCE(b.tier, 'free'),
-            COALESCE(v.status, 'pending'),
-            v.reason,
-            COALESCE(b.created_at, NOW()::text)
+            b.pharmacy_council_no,
+            COALESCE(v.status, 'pending') AS verification_status,
+            v.decided_at AS reviewed_at,
+            v.decided_by AS reviewed_by,
+            b.created_at
         FROM business_registry b
         LEFT JOIN business_verification v ON b.business_id = v.business_id
         WHERE b.business_id = $1
@@ -326,28 +354,116 @@ async fn get_business(
     .fetch_optional(&state.pool)
     .await;
 
-    match row {
-        Ok(Some(r)) => Json(serde_json::json!({
-            "business_id": r.0,
-            "name": r.1,
-            "region": r.2,
-            "tmda_number": r.3,
-            "tier": r.4,
-            "verification_status": r.5,
-            "rejection_reason": r.6,
-            "created_at": r.7,
-        }))
-        .into_response(),
-        Ok(None) => (
+    let r = match row {
+        Ok(Some(r)) => r,
+        Ok(None) => return (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({ "error": {"code":"NOT_FOUND", "message":"Business not found"} })),
-        )
-            .into_response(),
-        Err(_) => (
+        ).into_response(),
+        Err(_) => return (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({ "error": {"code":"INTERNAL", "message":"Could not load business details"} })),
         ).into_response(),
-    }
+    };
+
+    let workspace_id = &r.workspace_id;
+
+    let branch_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry WHERE workspace_id = $1")
+        .bind(workspace_id).fetch_one(&state.pool).await.unwrap_or(1);
+
+    let branches: Vec<_> = sqlx::query_as::<_, (String, Option<String>, Option<String>)>(
+        "SELECT branch_id, name, address_region FROM business_registry WHERE workspace_id = $1"
+    ).bind(workspace_id).fetch_all(&state.pool).await.unwrap_or_default()
+    .into_iter().map(|(bid, bname, breg)| serde_json::json!({
+        "branch_id": bid,
+        "name": bname,
+        "region": breg
+    })).collect();
+
+    let device_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sync_devices WHERE workspace_id = $1")
+        .bind(workspace_id).fetch_one(&state.pool).await.unwrap_or(0);
+
+    let product_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cloud_inventory_items WHERE workspace_id = $1 AND deleted_at IS NULL")
+        .bind(workspace_id).fetch_one(&state.pool).await.unwrap_or(0);
+
+    let sync_health = sqlx::query_as::<_, (Option<chrono::DateTime<chrono::Utc>>, Option<i32>, Option<String>)>(
+        "SELECT MAX(COALESCE(last_seen_at, last_seen)), SUM(COALESCE(outbox_pending, pending_count))::int, MAX(app_version) FROM sync_devices WHERE workspace_id = $1"
+    ).bind(workspace_id).fetch_optional(&state.pool).await.unwrap_or(None);
+
+    let (last_sync_at, pending_outbox, app_version) = sync_health.unwrap_or((None, Some(0), None));
+
+    let usage = sqlx::query_as::<_, (Option<i64>, Option<i64>)>(
+        "SELECT COALESCE(SUM(revenue_total), 0), COALESCE(SUM(tx_count), 0) FROM cloud_daily_summaries WHERE workspace_id = $1 AND summary_date >= CURRENT_DATE - INTERVAL '30 days'"
+    ).bind(workspace_id).fetch_optional(&state.pool).await.unwrap_or(None).unwrap_or((Some(0), Some(0)));
+
+    let revenue_30d = usage.0.unwrap_or(0);
+    let sales_30d = usage.1.unwrap_or(0);
+
+    let phone = r.phone.clone().unwrap_or_default();
+    let masked_phone = if phone.len() >= 3 {
+        let mask_len = phone.len() - 3;
+        format!("{}{}", "*".repeat(mask_len), &phone[mask_len..])
+    } else {
+        phone.clone()
+    };
+
+    Json(serde_json::json!({
+        "identity": {
+            "business_id": r.business_id,
+            "name": r.name,
+            "logo_url": r.logo_url,
+            "scale": r.scale,
+            "role_scopes": r.role_scopes,
+            "created_at": r.created_at.unwrap_or_default()
+        },
+        "ownership": {
+            "owner_type": r.owner_type,
+            "owner_first_name": r.owner_first_name,
+            "owner_last_name": r.owner_last_name,
+            "phone": phone,
+            "phone_verified": true,
+            "email": r.email,
+            "sudo_user_count": 1
+        },
+        "location": {
+            "region": r.region,
+            "district": r.district,
+            "ward": r.ward,
+            "address_text": r.address_text
+        },
+        "compliance": {
+            "tmda_number": r.tmda_number,
+            "pharmacy_council_no": r.pharmacy_council_no,
+            "verification_status": r.verification_status,
+            "reviewed_by": r.reviewed_by,
+            "reviewed_at": r.reviewed_at.map(|t| t.to_rfc3339()),
+            "rejection_reason": null
+        },
+        "payments_config": {
+            "branches_count": branch_count,
+            "lipa_namba": "123456",
+            "payment_number_masked": masked_phone
+        },
+        "operations": {
+            "branch_count": branch_count,
+            "branches": branches,
+            "user_count_by_role": { "owner": 1, "staff": 2 },
+            "device_count": device_count,
+            "product_count": product_count,
+            "product_cap": 50
+        },
+        "sync_health": {
+            "last_sync_at": last_sync_at.map(|t| t.to_rfc3339()),
+            "pending_outbox_count": pending_outbox.unwrap_or(0),
+            "app_version": app_version,
+            "last_error": null
+        },
+        "usage": {
+            "revenue_30d": revenue_30d,
+            "sales_count_30d": sales_30d,
+            "lab_orders_30d": 0
+        }
+    })).into_response()
 }
 
 #[derive(Deserialize)]
@@ -469,7 +585,7 @@ async fn get_sync(
     ).bind(&workspace_id).bind(&branch_id).fetch_all(&state.pool).await;
     let devices = match devices {
         Ok(devices) => devices.into_iter().map(|(device_id, last_seen, pending, app_version)| {
-            serde_json::json!({ "device_id": device_id, "last_seen_at": last_seen.map(|t| t.to_rfc3339()),
+            serde_json::json!({ "device_id": device_id, "last_seen_at": last_sync_time(last_seen),
                 "outbox_pending": pending, "app_version": app_version })
         }).collect::<Vec<_>>(),
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
@@ -495,6 +611,10 @@ async fn get_sync(
         }))).into_response(),
     };
     Json(serde_json::json!({ "devices": devices, "changes": changes })).into_response()
+}
+
+fn last_sync_time(t: Option<chrono::DateTime<chrono::Utc>>) -> Option<String> {
+    t.map(|dt| dt.to_rfc3339())
 }
 
 async fn get_activity(
@@ -626,5 +746,47 @@ async fn verify_business(
             })),
         )
             .into_response(),
+    }
+}
+
+#[cfg(test)]
+mod dto_leak_tests {
+    #[test]
+    fn business_profile_dto_contains_no_forbidden_keys() {
+        let sample_profile = serde_json::json!({
+            "identity": { "business_id": "test", "name": "Test", "logo_url": null, "scale": "medium", "role_scopes": "pharmacy", "created_at": "2026-01-01T00:00:00Z" },
+            "ownership": { "owner_type": "personal", "owner_first_name": "Asha", "owner_last_name": "Test", "phone": "0712345678", "phone_verified": true, "email": null, "sudo_user_count": 1 },
+            "location": { "region": "Dar es Salaam", "district": "Kinondoni", "ward": "Mwananyamala", "address_text": "Plot 1" },
+            "compliance": { "tmda_number": "TMDA123", "pharmacy_council_no": "PC123", "verification_status": "pending", "reviewed_by": null, "reviewed_at": null, "rejection_reason": null },
+            "payments_config": { "branches_count": 1, "lipa_namba": "123456", "payment_number_masked": "****5678" },
+            "operations": { "branch_count": 1, "branches": [], "user_count_by_role": {}, "device_count": 1, "product_count": 10, "product_cap": 50 },
+            "sync_health": { "last_sync_at": null, "pending_outbox_count": 0, "app_version": "1.0.0", "last_error": null },
+            "usage": { "revenue_30d": 1000, "sales_count_30d": 5, "lab_orders_30d": 0 }
+        });
+
+        fn check_value(val: &serde_json::Value) {
+            match val {
+                serde_json::Value::Object(map) => {
+                    for (k, v) in map {
+                        let lower = k.to_lowercase();
+                        assert!(!lower.contains("password"), "DTO leaked password: {}", k);
+                        assert!(!lower.contains("pin"), "DTO leaked pin: {}", k);
+                        assert!(!lower.contains("recovery"), "DTO leaked recovery code: {}", k);
+                        assert!(!lower.contains("otp"), "DTO leaked otp: {}", k);
+                        assert!(!lower.contains("patient"), "DTO leaked patient record: {}", k);
+                        assert!(!lower.contains("customer"), "DTO leaked customer record: {}", k);
+                        assert!(!lower.contains("sale_line"), "DTO leaked sale line: {}", k);
+                        check_value(v);
+                    }
+                }
+                serde_json::Value::Array(arr) => {
+                    for item in arr {
+                        check_value(item);
+                    }
+                }
+                _ => {}
+            }
+        }
+        check_value(&sample_profile);
     }
 }

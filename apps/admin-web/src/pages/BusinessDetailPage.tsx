@@ -1,172 +1,495 @@
 import * as React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Building2, PackageSearch, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Building2, Copy, Check, AlertCircle, CreditCard, Activity, FileText } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import type { AdminBusiness, AdminBusinessActivityResponse, AdminBusinessStockResponse, AdminBusinessSyncResponse, AdminVerificationDecision } from '@40labs/types';
+import type { AdminBusinessActivityResponse, AdminVerificationDecision } from '@40labs/types';
+
+interface BusinessProfile {
+  identity: {
+    business_id: string;
+    name: string | null;
+    logo_url: string | null;
+    scale: string;
+    role_scopes: string;
+    created_at: string;
+  };
+  ownership: {
+    owner_type: string;
+    owner_first_name: string;
+    owner_last_name: string;
+    phone: string;
+    phone_verified: boolean;
+    email: string | null;
+    sudo_user_count: number;
+  };
+  location: {
+    region: string | null;
+    district: string | null;
+    ward: string | null;
+    address_text: string | null;
+  };
+  compliance: {
+    tmda_number: string | null;
+    pharmacy_council_no: string | null;
+    verification_status: string;
+    reviewed_by: string | null;
+    reviewed_at: string | null;
+    rejection_reason: string | null;
+  };
+  payments_config: {
+    branches_count: number;
+    lipa_namba: string | null;
+    payment_number_masked: string | null;
+  };
+  operations: {
+    branch_count: number;
+    branches: Array<{ branch_id: string; name: string | null; region: string | null }>;
+    user_count_by_role: Record<string, number>;
+    device_count: number;
+    product_count: number;
+    product_cap: number;
+  };
+  sync_health: {
+    last_sync_at: string | null;
+    pending_outbox_count: number;
+    app_version: string | null;
+    last_error: string | null;
+  };
+  usage: {
+    revenue_30d: number;
+    sales_count_30d: number;
+    lab_orders_30d: number;
+  };
+}
 
 export function BusinessDetailPage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = React.useState<'profile' | 'stock' | 'sync' | 'activity'>('profile');
+  const [tab, setTab] = React.useState<'overview' | 'billing' | 'activity' | 'notes'>('overview');
+  const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   const [reason, setReason] = React.useState('');
-  const [decisionError, setDecisionError] = React.useState('');
-  const [decisionMessage, setDecisionMessage] = React.useState('');
 
-  const { data: business, isLoading, error, refetch } = useQuery<AdminBusiness>({
-    queryKey: ['admin-business', id],
-    queryFn: () => apiFetch<AdminBusiness>(`/admin/v1/businesses/${encodeURIComponent(id)}`),
+  const { data: business, isLoading, error, refetch } = useQuery<BusinessProfile>({
+    queryKey: ['admin-business-profile', id],
+    queryFn: () => apiFetch<BusinessProfile>(`/admin/v1/businesses/${encodeURIComponent(id)}`),
     enabled: Boolean(id),
   });
-  const { data: stock } = useQuery<AdminBusinessStockResponse>({
-    queryKey: ['admin-business-stock', id],
-    queryFn: () => apiFetch(`/admin/v1/businesses/${encodeURIComponent(id)}/stock`),
-    enabled: Boolean(id) && tab === 'stock',
-  });
-  const { data: sync } = useQuery<AdminBusinessSyncResponse>({
-    queryKey: ['admin-business-sync', id],
-    queryFn: () => apiFetch(`/admin/v1/businesses/${encodeURIComponent(id)}/sync`),
-    enabled: Boolean(id) && tab === 'sync',
-  });
+
   const { data: activity } = useQuery<AdminBusinessActivityResponse>({
     queryKey: ['admin-business-activity', id],
-    queryFn: () => apiFetch(`/admin/v1/businesses/${encodeURIComponent(id)}/activity`),
+    queryFn: () => apiFetch<AdminBusinessActivityResponse>(`/admin/v1/businesses/${encodeURIComponent(id)}/activity`),
     enabled: Boolean(id) && tab === 'activity',
   });
+
   const decisionMutation = useMutation({
     mutationFn: ({ decision, reason: decisionReason }: { decision: AdminVerificationDecision; reason?: string }) =>
       apiFetch<{ success: boolean; status: string }>(`/admin/v1/businesses/${encodeURIComponent(id)}/verification`, {
         method: 'POST',
         body: JSON.stringify({ decision, reason: decisionReason }),
       }),
-    onSuccess: async (result) => {
-      setDecisionError('');
-      setDecisionMessage(`Business ${result.status}.`);
+    onSuccess: async () => {
       setReason('');
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['admin-business', id] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-business-profile', id] }),
         queryClient.invalidateQueries({ queryKey: ['admin-businesses'] }),
         queryClient.invalidateQueries({ queryKey: ['admin-overview'] }),
       ]);
     },
-    onError: (err: Error) => {
-      setDecisionMessage('');
-      setDecisionError(err.message);
-    },
   });
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   const decide = (decision: AdminVerificationDecision) => {
     const decisionReason = reason.trim();
     if (decision !== 'verified' && !decisionReason) {
-      setDecisionError('Enter a reason before rejecting or suspending this business.');
+      alert('Enter a reason before rejecting or suspending this business.');
       return;
     }
-    if (!window.confirm(`Confirm ${decision} for ${business?.name || id}?`)) return;
-    setDecisionError('');
-    setDecisionMessage('');
+    if (!window.confirm(`Confirm ${decision} for ${business?.identity?.name || id}?`)) return;
     decisionMutation.mutate({ decision, reason: decisionReason || undefined });
   };
 
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: <Building2 size={15} /> },
-    { id: 'stock', label: 'Stock & Prices', icon: <PackageSearch size={15} /> },
-    { id: 'sync', label: 'Sync', icon: <RefreshCw size={15} /> },
-    { id: 'activity', label: 'Activity', icon: <ShieldCheck size={15} /> },
+    { id: 'overview', label: 'Overview', icon: <Building2 size={15} /> },
+    { id: 'billing', label: 'Billing', icon: <CreditCard size={15} /> },
+    { id: 'activity', label: 'Activity', icon: <Activity size={15} /> },
+    { id: 'notes', label: 'Notes', icon: <FileText size={15} /> },
   ] as const;
+
+  const renderVal = (val: string | number | null | undefined) => {
+    if (val === null || val === undefined || val === '') return <span className="text-text-muted">—</span>;
+    return <span className="text-text-primary">{val}</span>;
+  };
 
   return (
     <main className="mx-auto max-w-7xl space-y-6 p-6">
-      <button type="button" onClick={() => navigate('/businesses')} className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-text-primary">
+      <button type="button" onClick={() => navigate('/businesses')} className="inline-flex items-center gap-2 text-sm text-text-muted hover:text-text-primary cursor-pointer">
         <ArrowLeft size={16} /> Back to Businesses
       </button>
 
       {isLoading ? (
-        <div className="space-y-4 animate-pulse" aria-label="Loading business">
-          <div className="h-10 w-1/3 rounded-lg bg-surface-hover" />
-          <div className="h-64 rounded-xl bg-surface-hover" />
+        <div className="space-y-4 animate-pulse" aria-label="Loading business profile">
+          <div className="h-24 rounded-xl bg-surface-hover" />
+          <div className="h-96 rounded-xl bg-surface-hover" />
         </div>
       ) : error ? (
-        <section className="space-y-3 rounded-xl border border-danger-border bg-danger-bg p-6" role="alert">
-          <p className="text-danger">{(error as Error).message}</p>
-          <button type="button" onClick={() => refetch()} className="rounded-lg bg-action-primary px-4 py-2 text-sm font-semibold text-white">Retry</button>
+        <section className="space-y-3 rounded-xl border border-rose-500/20 bg-rose-500/10 p-6 text-center" role="alert">
+          <AlertCircle size={32} className="mx-auto text-rose-500" />
+          <p className="text-rose-500 font-medium">Failed to load business profile: {(error as Error).message}</p>
+          <button type="button" onClick={() => refetch()} className="rounded-lg bg-action-primary px-4 py-2 text-sm font-semibold text-white cursor-pointer">Retry</button>
         </section>
-      ) : business ? (
+      ) : !business ? (
+        <div className="p-16 text-center space-y-3 rounded-xl border border-border bg-surface">
+          <Building2 size={36} className="mx-auto text-text-muted opacity-40" />
+          <h2 className="text-lg font-bold text-text-primary">Business not found</h2>
+          <p className="text-sm text-text-muted">The requested business profile does not exist or was removed.</p>
+        </div>
+      ) : (
         <>
-          <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-border bg-surface-primary p-6">
-            <div>
-              <h1 className="text-title-page text-text-primary">{business.name || 'Business'}</h1>
-              <p className="mt-1 font-mono text-xs text-text-muted">{business.business_id}</p>
-              <p className="mt-3 text-sm text-text-secondary">{business.region || 'Region not provided'} · TMDA {business.tmda_number || 'not provided'}</p>
+          {/* Header */}
+          <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-border bg-surface p-6 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-surface-hover border border-border flex items-center justify-center text-text-primary font-bold overflow-hidden">
+                {business.identity.logo_url ? (
+                  <img src={business.identity.logo_url} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 size={24} className="text-action-primary" />
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-xl font-heading font-bold text-text-primary">{business.identity.name || 'Unnamed Business'}</h1>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                    business.compliance.verification_status === 'verified' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                    business.compliance.verification_status === 'rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                    'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  }`}>
+                    {business.compliance.verification_status}
+                  </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-action-primary/10 text-action-primary border border-action-primary/20 uppercase">
+                    {business.identity.scale}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
+                  <span>ID: {business.identity.business_id}</span>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(business.identity.business_id, 'header-id')}
+                    className="hover:text-text-primary cursor-pointer"
+                    title="Copy Business ID"
+                  >
+                    {copiedKey === 'header-id' ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                  </button>
+                  <span>·</span>
+                  <span>Role: {business.identity.role_scopes}</span>
+                </div>
+              </div>
             </div>
-            <span className="rounded-full border border-info-border bg-info-bg px-3 py-1 text-xs font-semibold capitalize text-info">{business.verification_status}</span>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => decide('verified')}
+                disabled={decisionMutation.isPending}
+                className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-medium hover:bg-emerald-700 cursor-pointer disabled:opacity-50"
+              >
+                Verify
+              </button>
+              <button
+                type="button"
+                onClick={() => decide('rejected')}
+                disabled={decisionMutation.isPending}
+                className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-xs font-medium hover:bg-rose-700 cursor-pointer disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </div>
           </header>
 
-          <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Business details">
+          {/* Tabs */}
+          <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Business profile sections">
             {tabs.map((item) => (
-              <button key={item.id} type="button" onClick={() => setTab(item.id)} aria-current={tab === item.id ? 'page' : undefined}
-                className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-sm ${tab === item.id ? 'border-action-primary text-action-primary' : 'border-transparent text-text-muted hover:text-text-primary'}`}>
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                aria-current={tab === item.id ? 'page' : undefined}
+                className={`inline-flex items-center gap-2 whitespace-nowrap border-b-2 px-6 py-3 text-sm font-medium transition-colors cursor-pointer ${
+                  tab === item.id ? 'border-action-primary text-action-primary font-semibold' : 'border-transparent text-text-muted hover:text-text-primary'
+                }`}
+              >
                 {item.icon}{item.label}
               </button>
             ))}
           </nav>
 
-          {tab === 'profile' && (
-            <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
-              <section className="space-y-4 rounded-xl border border-border bg-surface-primary p-5">
-                <h2 className="text-title-section text-text-primary">Registration profile</h2>
-                <dl className="grid grid-cols-2 gap-x-4 gap-y-5 text-sm">
-                  <div><dt className="text-text-muted">Business ID</dt><dd className="mt-1 break-all font-mono text-text-primary">{business.business_id}</dd></div>
-                  <div><dt className="text-text-muted">Tier</dt><dd className="mt-1 capitalize text-text-primary">{business.tier.replace(/_/g, ' ')}</dd></div>
-                  <div><dt className="text-text-muted">Region</dt><dd className="mt-1 text-text-primary">{business.region || 'Not provided'}</dd></div>
-                  <div><dt className="text-text-muted">TMDA number</dt><dd className="mt-1 font-mono text-text-primary">{business.tmda_number || 'Not provided'}</dd></div>
-                  <div className="col-span-2"><dt className="text-text-muted">Registered</dt><dd className="mt-1 text-text-primary">{new Date(business.created_at).toLocaleString('en-TZ', { timeZone: 'Africa/Dar_es_Salaam' })}</dd></div>
-                  {business.rejection_reason && <div className="col-span-2"><dt className="text-text-muted">Decision reason</dt><dd className="mt-1 text-text-primary">{business.rejection_reason}</dd></div>}
+          {/* Overview Tab */}
+          {tab === 'overview' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Identity & Scale */}
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Identity</h3>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Business ID</dt>
+                    <dd className="font-mono text-xs flex items-center gap-1.5">
+                      {business.identity.business_id}
+                      <button type="button" onClick={() => copyToClipboard(business.identity.business_id, 'identity-id')} className="cursor-pointer text-text-muted hover:text-text-primary">
+                        {copiedKey === 'identity-id' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                      </button>
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Name</dt>
+                    <dd>{renderVal(business.identity.name)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Scale</dt>
+                    <dd className="capitalize">{renderVal(business.identity.scale)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Role scope</dt>
+                    <dd className="capitalize">{renderVal(business.identity.role_scopes)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Registered</dt>
+                    <dd className="text-xs">{renderVal(new Date(business.identity.created_at).toLocaleString())}</dd>
+                  </div>
                 </dl>
-              </section>
+              </div>
 
-              <section className="space-y-4 rounded-xl border border-border bg-surface-primary p-5">
-                <div><h2 className="text-title-section text-text-primary">Verification decision</h2><p className="mt-1 text-sm text-text-muted">Decisions are recorded in the admin audit log.</p></div>
-                <label className="block text-sm text-text-secondary" htmlFor="decision-reason">Reason for rejection or suspension</label>
-                <textarea id="decision-reason" value={reason} onChange={(event) => setReason(event.target.value)} rows={3} maxLength={1000}
-                  className="w-full rounded-lg border border-border bg-surface-disabled p-3 text-sm text-text-primary placeholder:text-text-muted focus:border-border-focus focus:outline-none"
-                  placeholder="Required when rejecting or suspending" />
-                {decisionError && <p className="text-sm text-danger" role="alert">{decisionError}</p>}
-                {decisionMessage && <p className="text-sm text-success" role="status">{decisionMessage}</p>}
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" disabled={decisionMutation.isPending} onClick={() => decide('verified')} className="rounded-lg bg-success px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Verify</button>
-                  <button type="button" disabled={decisionMutation.isPending} onClick={() => decide('rejected')} className="rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-sm font-semibold text-danger disabled:opacity-50">Reject</button>
-                  <button type="button" disabled={decisionMutation.isPending} onClick={() => decide('suspended')} className="rounded-lg border border-warning-border bg-warning-bg px-3 py-2 text-sm font-semibold text-warning disabled:opacity-50">Suspend</button>
-                </div>
-              </section>
+              {/* Ownership */}
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Ownership</h3>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Owner type</dt>
+                    <dd className="capitalize">{renderVal(business.ownership.owner_type)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Owner name</dt>
+                    <dd>{renderVal(`${business.ownership.owner_first_name} ${business.ownership.owner_last_name}`.trim())}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Phone</dt>
+                    <dd className="font-mono text-xs flex items-center gap-1.5">
+                      {renderVal(business.ownership.phone)}
+                      {business.ownership.phone && (
+                        <button type="button" onClick={() => copyToClipboard(business.ownership.phone, 'owner-phone')} className="cursor-pointer text-text-muted hover:text-text-primary">
+                          {copiedKey === 'owner-phone' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                        </button>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">OTP Verified</dt>
+                    <dd>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${business.ownership.phone_verified ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                        {business.ownership.phone_verified ? 'Verified' : 'Unverified'}
+                      </span>
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Email</dt>
+                    <dd>{renderVal(business.ownership.email)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">SUDO Users</dt>
+                    <dd>{business.ownership.sudo_user_count}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              {/* Location */}
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Location</h3>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Region (Mkoa)</dt>
+                    <dd>{renderVal(business.location.region)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">District (Wilaya)</dt>
+                    <dd>{renderVal(business.location.district)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Ward (Kata)</dt>
+                    <dd>{renderVal(business.location.ward)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Address text</dt>
+                    <dd>{renderVal(business.location.address_text)}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              {/* Compliance */}
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Compliance</h3>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">TMDA Number</dt>
+                    <dd className="font-mono text-xs flex items-center gap-1.5">
+                      {renderVal(business.compliance.tmda_number)}
+                      {business.compliance.tmda_number && (
+                        <button type="button" onClick={() => copyToClipboard(business.compliance.tmda_number || '', 'tmda-num')} className="cursor-pointer text-text-muted hover:text-text-primary">
+                          {copiedKey === 'tmda-num' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                        </button>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Pharmacy Council</dt>
+                    <dd className="font-mono text-xs">{renderVal(business.compliance.pharmacy_council_no)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Status</dt>
+                    <dd className="capitalize">{renderVal(business.compliance.verification_status)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Reviewed by</dt>
+                    <dd>{renderVal(business.compliance.reviewed_by)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Reviewed at</dt>
+                    <dd className="text-xs">{renderVal(business.compliance.reviewed_at ? new Date(business.compliance.reviewed_at).toLocaleString() : null)}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              {/* Payments Config */}
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Payments Config</h3>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Branches</dt>
+                    <dd>{business.payments_config.branches_count}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Lipa Namba</dt>
+                    <dd className="font-mono">{renderVal(business.payments_config.lipa_namba)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Payment phone</dt>
+                    <dd className="font-mono text-xs">{renderVal(business.payments_config.payment_number_masked)}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              {/* Operations */}
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Operations</h3>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Branch count</dt>
+                    <dd>{business.operations.branch_count}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Device count</dt>
+                    <dd>{business.operations.device_count}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Product count (Free cap 50)</dt>
+                    <dd className={business.operations.product_count >= 45 ? 'text-amber-500 font-semibold' : ''}>
+                      {business.operations.product_count} / {business.operations.product_cap}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              {/* Sync Health */}
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Sync Health</h3>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Last sync at</dt>
+                    <dd className="text-xs">{renderVal(business.sync_health.last_sync_at ? new Date(business.sync_health.last_sync_at).toLocaleString() : null)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Pending outbox</dt>
+                    <dd>{business.sync_health.pending_outbox_count}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">App version</dt>
+                    <dd className="font-mono text-xs">{renderVal(business.sync_health.app_version)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Last error</dt>
+                    <dd>{renderVal(business.sync_health.last_error)}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              {/* Usage (30d) */}
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Usage (30d)</h3>
+                <dl className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Revenue (30d)</dt>
+                    <dd className="font-mono">TZS {business.usage.revenue_30d.toLocaleString()}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Sales count (30d)</dt>
+                    <dd>{business.usage.sales_count_30d}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-text-muted">Lab orders (30d)</dt>
+                    <dd>{business.usage.lab_orders_30d}</dd>
+                  </div>
+                </dl>
+              </div>
             </div>
           )}
 
-          {tab === 'stock' && (
-            <section className="space-y-4">
-              {stock ? <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-border bg-surface-primary p-4"><p className="text-xs text-text-muted">Stock records</p><p className="mt-1 text-stat-number text-text-primary">{stock.summary.item_count}</p></div>
-                <div className="rounded-xl border border-border bg-surface-primary p-4"><p className="text-xs text-text-muted">At or below low stock</p><p className="mt-1 text-stat-number text-warning">{stock.summary.low_stock_count}</p></div>
-                <div className="rounded-xl border border-border bg-surface-primary p-4"><p className="text-xs text-text-muted">Expiring in 90 days</p><p className="mt-1 text-stat-number text-danger">{stock.summary.expiring_soon_count}</p></div>
-              </div> : <div className="h-32 animate-pulse rounded-xl bg-surface-hover" />}
-              <div className="overflow-x-auto rounded-xl border border-border bg-surface-primary">
-                {!stock ? <p className="p-6 text-sm text-text-muted">Loading stock records…</p> : stock.items.length === 0 ? <p className="p-8 text-center text-sm text-text-muted">No stock records are available for this business.</p> : (
-                  <table className="w-full text-left text-sm"><thead className="border-b border-border bg-surface-hover text-xs text-text-muted"><tr><th className="px-4 py-3">Medicine ID</th><th className="px-4 py-3">Batch</th><th className="px-4 py-3">Quantity</th><th className="px-4 py-3">Buy price</th><th className="px-4 py-3">Sell price</th><th className="px-4 py-3">Expiry</th></tr></thead>
-                    <tbody className="divide-y divide-border">{stock.items.map((item) => <tr key={`${item.medicine_id}:${item.batch_number}`} className="text-text-primary"><td className="px-4 py-3 font-mono text-xs">{item.medicine_id}</td><td className="px-4 py-3 font-mono text-xs">{item.batch_number}</td><td className={`px-4 py-3 ${item.quantity <= item.low_stock_threshold ? 'text-warning' : ''}`}>{item.quantity}</td><td className="px-4 py-3 font-mono">TZS {item.buy_price.toLocaleString('en-TZ')}</td><td className="px-4 py-3 font-mono">TZS {item.sell_price.toLocaleString('en-TZ')}</td><td className="px-4 py-3">{item.expiry_date}</td></tr>)}</tbody>
-                  </table>
-                )}
-              </div>
-            </section>
+          {/* Billing Tab */}
+          {tab === 'billing' && (
+            <div className="bg-surface p-8 rounded-xl border border-border text-center space-y-3">
+              <CreditCard size={32} className="mx-auto text-text-muted opacity-40" />
+              <h3 className="text-lg font-bold text-text-primary">Billing & Invoices</h3>
+              <p className="text-sm text-text-muted">Subscription tier configuration and invoice history for {business.identity.name || id}.</p>
+            </div>
           )}
-          {tab === 'sync' && (
-            <section className="space-y-5">
-              <div className="rounded-xl border border-border bg-surface-primary p-5"><h2 className="text-title-section text-text-primary">Registered devices</h2>{!sync ? <div className="mt-3 h-20 animate-pulse rounded bg-surface-hover" /> : sync.devices.length === 0 ? <p className="mt-3 text-sm text-text-muted">No sync devices are registered for this business.</p> : <div className="mt-3 divide-y divide-border">{sync.devices.map((device) => <div key={device.device_id} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span className="font-mono text-xs text-text-primary">{device.device_id}</span><span className="text-text-muted">{device.app_version || 'Version unknown'} · {device.outbox_pending} pending · {device.last_seen_at ? new Date(device.last_seen_at).toLocaleString('en-TZ', { timeZone: 'Africa/Dar_es_Salaam' }) : 'Not seen'}</span></div>)}</div>}</div>
-              <div className="rounded-xl border border-border bg-surface-primary p-5"><h2 className="text-title-section text-text-primary">Recent changes</h2>{!sync ? <div className="mt-3 h-20 animate-pulse rounded bg-surface-hover" /> : sync.changes.length === 0 ? <p className="mt-3 text-sm text-text-muted">No sync changes have been recorded for this business.</p> : <div className="mt-3 divide-y divide-border">{sync.changes.map((change) => <div key={change.change_id} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span className="text-text-primary">{change.entity} · <span className="font-mono text-xs text-text-muted">{change.entity_id}</span></span><span className="text-xs text-text-muted">v{change.version} · {new Date(change.received_at).toLocaleString('en-TZ', { timeZone: 'Africa/Dar_es_Salaam' })}</span></div>)}</div>}</div>
-            </section>
+
+          {/* Activity Tab */}
+          {tab === 'activity' && (
+            <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
+              <h3 className="font-heading font-semibold text-text-primary text-sm">Admin Activity Log</h3>
+              {!activity ? (
+                <div className="h-20 animate-pulse bg-surface-hover rounded" />
+              ) : activity.activity.length === 0 ? (
+                <p className="text-sm text-text-muted py-8 text-center">No recorded admin activity for this business.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {activity.activity.map((act, idx) => (
+                    <div key={idx} className="py-3 flex justify-between items-center text-sm">
+                      <div>
+                        <span className="font-medium text-text-primary">{act.action.replace(/_/g, ' ')}</span>
+                        <p className="text-xs text-text-muted mt-0.5">By {act.admin}</p>
+                      </div>
+                      <time className="text-xs text-text-muted">{new Date(act.created_at).toLocaleString()}</time>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-          {tab === 'activity' && <section className="rounded-xl border border-border bg-surface-primary p-5"><h2 className="text-title-section text-text-primary">Admin activity</h2>{!activity ? <div className="mt-3 h-20 animate-pulse rounded bg-surface-hover" /> : activity.activity.length === 0 ? <p className="mt-3 text-sm text-text-muted">No admin actions have been recorded for this business.</p> : <div className="mt-3 divide-y divide-border">{activity.activity.map((entry, index) => <div key={`${entry.action}:${entry.created_at}:${index}`} className="flex flex-wrap justify-between gap-2 py-3"><div><p className="text-sm font-medium text-text-primary">{entry.action.replace(/_/g, ' ')}</p><p className="mt-1 text-xs text-text-muted">By {entry.admin}{entry.payload?.reason ? ` · ${entry.payload.reason}` : ''}</p></div><time className="text-xs text-text-muted">{new Date(entry.created_at).toLocaleString('en-TZ', { timeZone: 'Africa/Dar_es_Salaam' })}</time></div>)}</div>}</section>}
+
+          {/* Notes Tab */}
+          {tab === 'notes' && (
+            <div className="bg-surface p-8 rounded-xl border border-border text-center space-y-3">
+              <FileText size={32} className="mx-auto text-text-muted opacity-40" />
+              <h3 className="text-lg font-bold text-text-primary">Admin Notes</h3>
+              <p className="text-sm text-text-muted">Internal reviewer notes and annotations.</p>
+            </div>
+          )}
         </>
-      ) : <p className="py-12 text-center text-text-muted">Business not found.</p>}
+      )}
     </main>
   );
 }
