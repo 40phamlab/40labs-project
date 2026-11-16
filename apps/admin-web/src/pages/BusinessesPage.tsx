@@ -275,6 +275,17 @@ export function BusinessesPage() {
             <option value="class_3">Class 3</option>
             <option value="class_4_enterprise">Enterprise</option>
           </select>
+
+          <button
+            type="button"
+            onClick={() => {
+              const queryStr = searchParams.toString();
+              window.open(`/admin/v1/businesses/export.csv${queryStr ? `?${queryStr}` : ''}`, '_blank');
+            }}
+            className="px-4 py-2 bg-surface hover:bg-surface-hover border border-border text-text-primary rounded-lg text-sm font-medium transition-colors cursor-pointer whitespace-nowrap"
+          >
+            Export CSV
+          </button>
         </div>
       </div>
 

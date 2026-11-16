@@ -1,4 +1,3 @@
-use crate::admin::auth::verify_totp;
 use crate::admin::AdminClaims;
 use crate::routes::activation::AppState;
 use axum::{
@@ -19,40 +18,6 @@ pub fn router(state: AppState) -> Router {
         .route("/invoices/:invoice_id/void", post(void_invoice))
         .route("/billing/overview", get(get_billing_overview))
         .with_state(state)
-}
-
-async fn verify_admin_totp(
-    pool: &sqlx::PgPool,
-    config: &crate::config::Config,
-    admin_user_id: &str,
-    code: &str,
-) -> Result<bool, sqlx::Error> {
-    let row: Option<(Option<String>,)> =
-        sqlx::query_as("SELECT totp_secret_enc FROM admin_users WHERE id = $1")
-            .bind(admin_user_id)
-            .fetch_optional(pool)
-            .await?;
-
-    let Some((Some(enc),)) = row else {
-        return Ok(false);
-    };
-
-    let key_bytes = match hex::decode(&config.totp_enc_key) {
-        Ok(b) => b,
-        Err(_) => return Ok(false),
-    };
-    if key_bytes.len() != 32 {
-        return Ok(false);
-    }
-    let mut key = [0u8; 32];
-    key.copy_from_slice(&key_bytes);
-
-    let decrypted = match crate::admin::auth::decrypt_secret(&enc, &config.totp_enc_key) {
-        Ok(s) => s,
-        Err(_) => return Ok(false),
-    };
-
-    Ok(verify_totp(&decrypted, code))
 }
 
 async fn ensure_billing_account(pool: &sqlx::PgPool, business_id: &str) -> Result<(String, String), sqlx::Error> {
@@ -194,7 +159,7 @@ async fn change_billing_plan(
         return (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": {"code": "REASON_REQUIRED", "message": "Reason is required to change billing plan"} }))).into_response();
     }
 
-    let totp_ok = match verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
+    let totp_ok = match crate::admin::auth::verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
         Ok(ok) => ok,
         Err(_) => false,
     };
@@ -256,7 +221,7 @@ async fn generate_invoice(
     Extension(claims): Extension<AdminClaims>,
     Json(payload): Json<GenerateInvoiceRequest>,
 ) -> impl IntoResponse {
-    let totp_ok = match verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
+    let totp_ok = match crate::admin::auth::verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
         Ok(ok) => ok,
         Err(_) => false,
     };
@@ -335,7 +300,7 @@ async fn mark_invoice_paid(
         return (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": {"code": "INVALID_METHOD", "message": "Invalid payment method"} }))).into_response();
     }
 
-    let totp_ok = match verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
+    let totp_ok = match crate::admin::auth::verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
         Ok(ok) => ok,
         Err(_) => false,
     };
@@ -396,7 +361,7 @@ async fn void_invoice(
         return (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": {"code": "REASON_REQUIRED", "message": "Reason is required to void invoice"} }))).into_response();
     }
 
-    let totp_ok = match verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
+    let totp_ok = match crate::admin::auth::verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
         Ok(ok) => ok,
         Err(_) => false,
     };

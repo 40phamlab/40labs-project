@@ -186,6 +186,37 @@ pub fn verify_totp(secret_base32: &str, code: &str) -> bool {
     totp.check_current(code).unwrap_or(false)
 }
 
+pub async fn verify_admin_totp(
+    pool: &sqlx::PgPool,
+    config: &crate::config::Config,
+    admin_user_id: &str,
+    code: &str,
+) -> Result<bool, sqlx::Error> {
+    let row: Option<(Option<String>,)> =
+        sqlx::query_as("SELECT totp_secret_enc FROM admin_users WHERE id = $1")
+            .bind(admin_user_id)
+            .fetch_optional(pool)
+            .await?;
+
+    let Some((Some(enc),)) = row else {
+        return Ok(false);
+    };
+
+    let key_bytes = match hex::decode(&config.totp_enc_key) {
+        Ok(b) => b,
+        Err(_) => return Ok(false),
+    };
+    if key_bytes.len() != 32 {
+        return Ok(false);
+    }
+    let decrypted = match decrypt_secret(&enc, &config.totp_enc_key) {
+        Ok(s) => s,
+        Err(_) => return Ok(false),
+    };
+
+    Ok(verify_totp(&decrypted, code))
+}
+
 fn matching_totp_step(secret_base32: &str, code: &str, now: u64) -> Option<u64> {
     let secret = Secret::Encoded(secret_base32.to_string()).to_bytes().ok()?;
     let totp = TOTP::new(

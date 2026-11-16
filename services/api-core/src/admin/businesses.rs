@@ -13,8 +13,12 @@ use serde::{Deserialize, Serialize};
 pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/businesses/counts", get(get_business_counts))
+        .route("/businesses/export.csv", get(export_businesses_csv))
         .route("/businesses", get(list_businesses))
         .route("/businesses/:business_id", get(get_business))
+        .route("/businesses/:business_id/status", post(update_business_status))
+        .route("/businesses/:business_id/notes", get(list_notes).post(create_note))
+        .route("/businesses/:business_id/activity-timeline", get(get_activity_timeline))
         .route("/businesses/:business_id/stock", get(get_stock))
         .route("/businesses/:business_id/sync", get(get_sync))
         .route("/businesses/:business_id/activity", get(get_activity))
@@ -290,11 +294,94 @@ async fn list_businesses(
     }))
 }
 
+async fn export_businesses_csv(
+    State(state): State<AppState>,
+    Query(query): Query<ListQuery>,
+) -> impl IntoResponse {
+    let status_filter = query.status.as_deref().unwrap_or("all");
+    let search_q = query.q.as_deref().unwrap_or("").trim();
+    let region_filter = query.region.as_deref();
+    let tier_filter = query.tier.as_deref();
+
+    let mut qb = sqlx::QueryBuilder::new(
+        r#"
+        SELECT
+            b.business_id,
+            b.name,
+            b.address_region,
+            b.address_district,
+            b.tmda_number,
+            COALESCE(b.tier, 'free') AS tier,
+            COALESCE(v.status, 'pending') AS status,
+            b.created_at
+        FROM business_registry b
+        LEFT JOIN business_verification v ON b.business_id = v.business_id
+        WHERE 1=1
+        "#,
+    );
+
+    if status_filter != "all" {
+        qb.push(" AND COALESCE(v.status, 'pending') = ");
+        qb.push_bind(status_filter);
+    }
+    if !search_q.is_empty() {
+        qb.push(" AND (b.business_id ILIKE ");
+        qb.push_bind(format!("%{}%", search_q));
+        qb.push(" OR b.name ILIKE ");
+        qb.push_bind(format!("%{}%", search_q));
+        qb.push(" OR b.tmda_number ILIKE ");
+        qb.push_bind(format!("%{}%", search_q));
+        qb.push(")");
+    }
+    if let Some(reg) = region_filter {
+        if !reg.is_empty() {
+            qb.push(" AND b.address_region = ");
+            qb.push_bind(reg);
+        }
+    }
+    if let Some(tr) = tier_filter {
+        if !tr.is_empty() {
+            qb.push(" AND b.tier = ");
+            qb.push_bind(tr);
+        }
+    }
+    qb.push(" ORDER BY b.created_at DESC");
+
+    let rows = match qb.build_query_as::<(String, Option<String>, Option<String>, Option<String>, Option<String>, String, String, String)>()
+        .fetch_all(&state.pool)
+        .await {
+            Ok(r) => r,
+            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        };
+
+    let mut csv = "Business ID,Name,Region,District,TMDA Number,Tier,Status,Created At\n".to_string();
+    for r in rows {
+        csv.push_str(&format!(
+            "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
+            r.0,
+            r.1.as_deref().unwrap_or(""),
+            r.2.as_deref().unwrap_or(""),
+            r.3.as_deref().unwrap_or(""),
+            r.4.as_deref().unwrap_or(""),
+            r.5,
+            r.6,
+            r.7
+        ));
+    }
+
+    (
+        StatusCode::OK,
+        [(axum::http::header::CONTENT_TYPE, "text/csv; charset=utf-8"),
+         (axum::http::header::CONTENT_DISPOSITION, "attachment; filename=\"businesses_export.csv\"")],
+        csv,
+    ).into_response()
+}
+
 #[derive(sqlx::FromRow)]
 struct BusinessProfileRow {
     business_id: String,
     workspace_id: String,
-    branch_id: String,
+    _branch_id: String,
     name: Option<String>,
     logo_url: Option<String>,
     scale: Option<String>,
@@ -407,6 +494,55 @@ async fn get_business(
         phone.clone()
     };
 
+    // Server-side alerts calculation
+    let mut alerts = Vec::new();
+    let now = chrono::Utc::now();
+
+    if r.verification_status == "pending" {
+        if let Some(ref cat) = r.created_at {
+            if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(cat) {
+                if now.signed_duration_since(dt.with_timezone(&chrono::Utc)) > chrono::Duration::hours(48) {
+                    alerts.push("pending_over_48h");
+                }
+            } else if let Ok(dt) = chrono::NaiveDateTime::parse_from_str(cat, "%Y-%m-%d %H:%M:%S%.f") {
+                let utc_dt = chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(dt, chrono::Utc);
+                if now.signed_duration_since(utc_dt) > chrono::Duration::hours(48) {
+                    alerts.push("pending_over_48h");
+                }
+            }
+        }
+    }
+
+    if let Some(ref lsync) = last_sync_at {
+        if now.signed_duration_since(*lsync) > chrono::Duration::hours(24) {
+            alerts.push("no_sync_over_24h");
+        }
+    } else {
+        alerts.push("no_sync_over_24h");
+    }
+
+    let overdue_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM invoice WHERE business_id = $1 AND status = 'issued' AND due_at < NOW()"
+    )
+    .bind(&business_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+    if overdue_count > 0 {
+        alerts.push("overdue_invoice");
+    }
+
+    let tier = sqlx::query_scalar::<_, Option<String>>("SELECT tier FROM business_registry WHERE business_id = $1")
+        .bind(&business_id).fetch_optional(&state.pool).await.unwrap_or(None).flatten().unwrap_or_else(|| "free".to_string());
+
+    if tier == "free" && product_count >= 45 {
+        alerts.push("free_tier_high_products");
+    }
+
+    if tier == "free" && revenue_30d >= 250000 {
+        alerts.push("free_tier_upgrade_candidate");
+    }
+
     Json(serde_json::json!({
         "identity": {
             "business_id": r.business_id,
@@ -462,8 +598,214 @@ async fn get_business(
             "revenue_30d": revenue_30d,
             "sales_count_30d": sales_30d,
             "lab_orders_30d": 0
-        }
+        },
+        "alerts": alerts
     })).into_response()
+}
+
+#[derive(Deserialize, Debug)]
+pub struct UpdateStatusRequest {
+    pub action: String,
+    pub reason: Option<String>,
+    pub totp_code: String,
+}
+
+async fn update_business_status(
+    State(state): State<AppState>,
+    Path(business_id): Path<String>,
+    Extension(claims): Extension<AdminClaims>,
+    Json(payload): Json<UpdateStatusRequest>,
+) -> impl IntoResponse {
+    if !["verify", "reject", "suspend", "reactivate"].contains(&payload.action.as_str()) {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": {"code": "INVALID_ACTION", "message": "Invalid status action"} }))).into_response();
+    }
+    let reason = payload.reason.as_deref().map(str::trim).filter(|r| !r.is_empty());
+    if (payload.action == "reject" || payload.action == "suspend") && reason.is_none() {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": {"code": "REASON_REQUIRED", "message": "Reason is required to reject or suspend a business"} }))).into_response();
+    }
+
+    let totp_ok = match crate::admin::auth::verify_admin_totp(&state.pool, &state.config, &claims.user_id, &payload.totp_code).await {
+        Ok(ok) => ok,
+        Err(_) => false,
+    };
+    if !totp_ok {
+        return (StatusCode::UNAUTHORIZED, Json(serde_json::json!({ "error": {"code": "INVALID_TOTP", "message": "Invalid TOTP code for step-up verification"} }))).into_response();
+    }
+
+    let target_status = match payload.action.as_str() {
+        "verify" => "verified",
+        "reject" => "rejected",
+        "suspend" => "suspended",
+        "reactivate" => "verified",
+        _ => "pending",
+    };
+
+    let mut tx = match state.pool.begin().await {
+        Ok(tx) => tx,
+        Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": {"code": "INTERNAL", "message": "Could not begin transaction"} }))).into_response(),
+    };
+
+    let audit_id = uuid::Uuid::new_v4().to_string();
+    if sqlx::query(
+        "INSERT INTO admin_audit_log (id, admin_user_id, action, target_type, target_id, payload) \
+         VALUES ($1, $2, $3, 'business', $4, $5)"
+    )
+    .bind(&audit_id)
+    .bind(&claims.user_id)
+    .bind(format!("business_status_{}", payload.action))
+    .bind(&business_id)
+    .bind(serde_json::json!({ "action": payload.action, "reason": reason }))
+    .execute(&mut *tx)
+    .await.is_err() {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": {"code": "INTERNAL", "message": "Could not write audit log"} }))).into_response();
+    }
+
+    let _ = sqlx::query(
+        "INSERT INTO business_verification (business_id, status, reason, decided_by, decided_at) \
+         VALUES ($1, $2, $3, $4, NOW()) \
+         ON CONFLICT (business_id) DO UPDATE SET status = $2, reason = $3, decided_by = $4, decided_at = NOW()"
+    )
+    .bind(&business_id)
+    .bind(target_status)
+    .bind(reason)
+    .bind(&claims.user_id)
+    .execute(&mut *tx)
+    .await;
+
+    if payload.action == "suspend" {
+        let _ = sqlx::query("UPDATE billing_account SET billing_status = 'suspended' WHERE business_id = $1")
+            .bind(&business_id)
+            .execute(&mut *tx)
+            .await;
+    } else if payload.action == "reactivate" {
+        let _ = sqlx::query("UPDATE billing_account SET billing_status = 'active' WHERE business_id = $1")
+            .bind(&business_id)
+            .execute(&mut *tx)
+            .await;
+    }
+
+    if tx.commit().await.is_err() {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": {"code": "INTERNAL", "message": "Could not update business status"} }))).into_response();
+    }
+
+    Json(serde_json::json!({ "success": true, "status": target_status })).into_response()
+}
+
+async fn list_notes(
+    State(state): State<AppState>,
+    Path(business_id): Path<String>,
+) -> impl IntoResponse {
+    let rows = sqlx::query_as::<_, (String, String, String, String, chrono::DateTime<chrono::Utc>)>(
+        "SELECT id, business_id, author, body, created_at FROM admin_note WHERE business_id = $1 ORDER BY created_at DESC"
+    )
+    .bind(&business_id)
+    .fetch_all(&state.pool)
+    .await;
+
+    match rows {
+        Ok(list) => {
+            let notes: Vec<_> = list.into_iter().map(|n| serde_json::json!({
+                "id": n.0,
+                "business_id": n.1,
+                "author": n.2,
+                "body": n.3,
+                "created_at": n.4.to_rfc3339()
+            })).collect();
+            Json(serde_json::json!({ "notes": notes })).into_response()
+        }
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": {"code": "INTERNAL", "message": "Could not load notes"} }))).into_response(),
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CreateNoteRequest {
+    pub body: String,
+}
+
+async fn create_note(
+    State(state): State<AppState>,
+    Path(business_id): Path<String>,
+    Extension(claims): Extension<AdminClaims>,
+    Json(payload): Json<CreateNoteRequest>,
+) -> impl IntoResponse {
+    if payload.body.trim().is_empty() {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": {"code": "BODY_REQUIRED", "message": "Note body cannot be empty"} }))).into_response();
+    }
+
+    let note_id = format!("note_{}", uuid::Uuid::new_v4());
+    let res = sqlx::query(
+        "INSERT INTO admin_note (id, business_id, author, body) VALUES ($1, $2, $3, $4)"
+    )
+    .bind(&note_id)
+    .bind(&business_id)
+    .bind(&claims.email)
+    .bind(payload.body.trim())
+    .execute(&state.pool)
+    .await;
+
+    match res {
+        Ok(_) => Json(serde_json::json!({ "success": true, "id": note_id })).into_response(),
+        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": {"code": "INTERNAL", "message": "Could not create note"} }))).into_response(),
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TimelineQuery {
+    pub type_filter: Option<String>,
+}
+
+async fn get_activity_timeline(
+    State(state): State<AppState>,
+    Path(business_id): Path<String>,
+    Query(query): Query<TimelineQuery>,
+) -> impl IntoResponse {
+    let type_f = query.type_filter.as_deref().unwrap_or("all");
+    let mut events = Vec::new();
+
+    let audit_rows = sqlx::query_as::<_, (String, String, Option<serde_json::Value>, chrono::DateTime<chrono::Utc>)>(
+        "SELECT action, COALESCE((SELECT email FROM admin_users WHERE id = admin_audit_log.admin_user_id), 'System'), payload, created_at \
+         FROM admin_audit_log WHERE target_id = $1 OR target_type = 'business' ORDER BY created_at DESC LIMIT 50"
+    )
+    .bind(&business_id)
+    .fetch_all(&state.pool)
+    .await
+    .unwrap_or_default();
+
+    for (action, admin, payload, ts) in audit_rows {
+        if type_f == "all" || type_f == "audit" {
+            events.push(serde_json::json!({
+                "type": "audit",
+                "title": action.replace('_', " "),
+                "actor": admin,
+                "payload": payload,
+                "timestamp": ts.to_rfc3339()
+            }));
+        }
+    }
+
+    let inv_rows = sqlx::query_as::<_, (String, i64, String, chrono::DateTime<chrono::Utc>)>(
+        "SELECT id, amount_tzs, status, issued_at FROM invoice WHERE business_id = $1 ORDER BY issued_at DESC LIMIT 20"
+    )
+    .bind(&business_id)
+    .fetch_all(&state.pool)
+    .await
+    .unwrap_or_default();
+
+    for (inv_id, amount, status, ts) in inv_rows {
+        if type_f == "all" || type_f == "invoice" {
+            events.push(serde_json::json!({
+                "type": "invoice",
+                "title": format!("Invoice {} issued (TZS {}) - Status: {}", inv_id, amount, status),
+                "actor": "Billing Engine",
+                "payload": { "invoice_id": inv_id, "amount_tzs": amount, "status": status },
+                "timestamp": ts.to_rfc3339()
+            }));
+        }
+    }
+
+    events.sort_by(|a, b| b["timestamp"].as_str().unwrap_or("").cmp(a["timestamp"].as_str().unwrap_or("")));
+
+    Json(serde_json::json!({ "events": events })).into_response()
 }
 
 #[derive(Deserialize)]

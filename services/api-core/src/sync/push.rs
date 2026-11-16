@@ -61,6 +61,18 @@ async fn push_handler(
         ));
     }
 
+    let suspended: Option<(String,)> = sqlx::query_as(
+        "SELECT 1 FROM business_verification WHERE business_id = $1 AND status = 'suspended' \
+         UNION SELECT 1 FROM billing_account WHERE business_id = $1 AND billing_status = 'suspended'"
+    )
+    .bind(&claims.business_id)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if suspended.is_some() {
+        return Err(ApiError::BusinessSuspended("Business is suspended".into()));
+    }
+
     let mut tx = state.pool.begin().await?;
     let telemetry = sqlx::query(
         "UPDATE sync_devices SET last_seen=NOW(), last_seen_at=NOW(), app_version=COALESCE($1,app_version) WHERE device_id=$2 AND workspace_id=$3 AND business_id=$4 AND branch_id=$5"

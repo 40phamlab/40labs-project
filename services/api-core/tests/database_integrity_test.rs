@@ -214,6 +214,30 @@ async fn legacy_postgres_bootstrap_is_adopted_without_data_loss() {
 }
 
 #[tokio::test]
+async fn admin_audit_log_is_verifiably_append_only() {
+    let pool = isolated_pool().await;
+    let audit_id = uuid::Uuid::new_v4().to_string();
+    sqlx::query("INSERT INTO admin_audit_log (id, admin_user_id, action, target_type, target_id, payload) VALUES ($1, 'admin-1', 'test_action', 'business', 'b-1', '{}'::jsonb)")
+        .bind(&audit_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let update_res = sqlx::query("UPDATE admin_audit_log SET action = 'tampered' WHERE id = $1")
+        .bind(&audit_id)
+        .execute(&pool)
+        .await;
+    assert!(update_res.is_err(), "UPDATE on admin_audit_log must fail");
+
+    let delete_res = sqlx::query("DELETE FROM admin_audit_log WHERE id = $1")
+        .bind(&audit_id)
+        .execute(&pool)
+        .await;
+    assert!(delete_res.is_err(), "DELETE on admin_audit_log must fail");
+    pool.close().await;
+}
+
+#[tokio::test]
 async fn failed_postgres_migration_rolls_back_ddl_and_tracking_row() {
     use sqlx::migrate::Migrator;
 

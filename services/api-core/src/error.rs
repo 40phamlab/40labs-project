@@ -30,6 +30,8 @@ pub enum ApiError {
     Sms(#[from] crate::sms::SmsError),
     #[error("Internal error: {0}")]
     Internal(String),
+    #[error("Business suspended: {0}")]
+    BusinessSuspended(String),
 }
 
 #[derive(Serialize)]
@@ -84,6 +86,12 @@ impl IntoResponse for ApiError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "INTERNAL_ERROR",
                 "An internal error occurred".to_string(),
+                None,
+            ),
+            ApiError::BusinessSuspended(m) => (
+                StatusCode::FORBIDDEN,
+                "business_suspended",
+                m,
                 None,
             ),
         };
