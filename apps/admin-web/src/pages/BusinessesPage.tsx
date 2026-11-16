@@ -1,9 +1,33 @@
 import * as React from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Building2, AlertCircle } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import type { AdminBusinessListResponse } from '@40labs/types';
+
+interface BusinessItem {
+  business_id: string;
+  name: string | null;
+  region: string | null;
+  district?: string | null;
+  tmda_number: string | null;
+  tier: string;
+  status: string;
+  verification_status: string;
+  owner_name?: string | null;
+  owner_phone?: string | null;
+  role_scopes?: string | null;
+  last_sync_at?: string | null;
+  last_sync: string | null;
+  created_at: string;
+}
+
+interface BusinessListResponse {
+  items: BusinessItem[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
 
 export function BusinessesPage() {
   const navigate = useNavigate();
@@ -20,9 +44,15 @@ export function BusinessesPage() {
   const [searchState, setSearchState] = React.useState({ query: q, value: q });
   const searchInput = searchState.query === q ? searchState.value : q;
   const queryString = searchParams.toString();
-  const { data, isLoading: loading, error, refetch: fetchBusinesses } = useQuery<AdminBusinessListResponse>({
+
+  const { data: counts } = useQuery<Record<string, number>>({
+    queryKey: ['admin-business-counts'],
+    queryFn: () => apiFetch<Record<string, number>>('/admin/v1/businesses/counts'),
+  });
+
+  const { data, isLoading: loading, error, refetch: fetchBusinesses } = useQuery<BusinessListResponse>({
     queryKey: ['admin-businesses', queryString],
-    queryFn: () => apiFetch<AdminBusinessListResponse>(`/admin/v1/businesses${queryString ? `?${queryString}` : ''}`),
+    queryFn: () => apiFetch<BusinessListResponse>(`/admin/v1/businesses${queryString ? `?${queryString}` : ''}`),
   });
 
   // Debounced search effect
@@ -71,10 +101,10 @@ export function BusinessesPage() {
   };
 
   const formatDateTime = (dateStr?: string | null) => {
-    if (!dateStr) return '-';
+    if (!dateStr) return '—';
     try {
       const d = new Date(dateStr);
-      const formatted = d.toLocaleString('en-TZ', {
+      return d.toLocaleString('en-TZ', {
         timeZone: 'Africa/Dar_es_Salaam',
         year: 'numeric',
         month: 'short',
@@ -82,8 +112,6 @@ export function BusinessesPage() {
         hour: '2-digit',
         minute: '2-digit',
       });
-      const relative = getRelativeTime(d);
-      return <span title={relative}>{formatted}</span>;
     } catch {
       return dateStr;
     }
@@ -106,6 +134,31 @@ export function BusinessesPage() {
     return `${diffDays}d ago`;
   };
 
+  const formatLastSync = (dateStr?: string | null) => {
+    if (!dateStr) return <span className="text-text-muted">Never synced</span>;
+    try {
+      const d = new Date(dateStr);
+      const diffMs = nowMs - d.getTime();
+      const isOld = diffMs > 24 * 60 * 60 * 1000;
+      const formatted = d.toLocaleString('en-TZ', {
+        timeZone: 'Africa/Dar_es_Salaam',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const relative = getRelativeTime(d);
+      return (
+        <span title={formatted} className={isOld ? 'text-amber-500 font-medium' : 'text-text-muted'}>
+          {relative}
+        </span>
+      );
+    } catch {
+      return <span className="text-text-muted">{dateStr}</span>;
+    }
+  };
+
   const formatTier = (tier: string) => {
     switch (tier) {
       case 'class_1':
@@ -122,7 +175,7 @@ export function BusinessesPage() {
   };
 
   const renderVerificationChip = (st: string) => {
-    const s = st.toLowerCase();
+    const s = (st || 'pending').toLowerCase();
     let bg = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
     if (s === 'verified') bg = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
     if (s === 'rejected') bg = 'bg-rose-500/10 text-rose-500 border-rose-500/20';
@@ -134,11 +187,13 @@ export function BusinessesPage() {
   };
 
   const tabs = [
-    { id: 'all', label: 'All' },
-    { id: 'pending', label: 'Pending' },
-    { id: 'verified', label: 'Verified' },
-    { id: 'rejected', label: 'Rejected' },
+    { id: 'all', label: `All (${counts?.all ?? 0})` },
+    { id: 'pending', label: `Pending (${counts?.pending ?? 0})` },
+    { id: 'verified', label: `Verified (${counts?.verified ?? 0})` },
+    { id: 'rejected', label: `Rejected (${counts?.rejected ?? 0})` },
   ];
+
+  const limit = data?.limit || 25;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -233,7 +288,8 @@ export function BusinessesPage() {
           </div>
         ) : error ? (
           <div className="p-12 text-center space-y-4">
-            <p className="text-rose-500 font-medium">Error: {error.message}</p>
+            <AlertCircle size={32} className="mx-auto text-rose-500" />
+            <p className="text-rose-500 font-medium">Error loading businesses: {error.message}</p>
             <button
               type="button"
               onClick={() => fetchBusinesses()}
@@ -282,15 +338,28 @@ export function BusinessesPage() {
                     onClick={() => navigate(`/businesses/${item.business_id}`)}
                     className="hover:bg-surface-hover transition-colors cursor-pointer group"
                   >
-                    <td className="p-4 font-mono text-xs text-action-primary font-medium">{item.business_id}</td>
-                    <td className="p-4 font-medium text-text-primary group-hover:text-action-primary transition-colors">
-                      {item.name || '—'}
+                    <td className="p-4 font-mono text-xs text-action-primary font-medium">
+                      <Link to={`/businesses/${item.business_id}`} className="hover:underline">
+                        {item.business_id}
+                      </Link>
                     </td>
-                    <td className="p-4 text-text-muted">{item.region || '-'}</td>
-                    <td className="p-4 font-mono text-xs text-text-muted">{item.tmda_number || '-'}</td>
+                    <td className="p-4 font-medium text-text-primary group-hover:text-action-primary transition-colors">
+                      {item.name ? (
+                        item.name
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <span className="text-text-muted italic">Unnamed business</span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            Incomplete
+                          </span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4 text-text-muted">{item.region || '—'}</td>
+                    <td className="p-4 font-mono text-xs text-text-muted">{item.tmda_number || '—'}</td>
                     <td className="p-4 text-text-muted uppercase text-xs font-semibold">{formatTier(item.tier)}</td>
-                    <td className="p-4">{renderVerificationChip(item.verification_status)}</td>
-                    <td className="p-4 text-text-muted text-xs">{formatDateTime(item.last_sync)}</td>
+                    <td className="p-4">{renderVerificationChip(item.verification_status || item.status)}</td>
+                    <td className="p-4 text-text-muted text-xs">{formatLastSync(item.last_sync_at || item.last_sync)}</td>
                     <td className="p-4 text-text-muted text-xs">{formatDateTime(item.created_at)}</td>
                   </tr>
                 ))}
@@ -303,7 +372,7 @@ export function BusinessesPage() {
         {data && data.total_pages > 1 && (
           <div className="flex items-center justify-between p-4 border-t border-border bg-surface-hover/20 text-sm">
             <span className="text-text-muted">
-              Showing {(page - 1) * data.limit + 1} to {Math.min(page * data.limit, data.total)} of {data.total} businesses
+              Showing {(page - 1) * limit + 1} to {Math.min(page * limit, data.total)} of {data.total} businesses
             </span>
             <div className="flex items-center gap-2">
               <button

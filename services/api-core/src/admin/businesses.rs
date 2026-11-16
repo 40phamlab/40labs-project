@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 pub fn router(state: AppState) -> Router {
     Router::new()
+        .route("/businesses/counts", get(get_business_counts))
         .route("/businesses", get(list_businesses))
         .route("/businesses/:business_id", get(get_business))
         .route("/businesses/:business_id/stock", get(get_stock))
@@ -32,8 +33,10 @@ pub struct ListQuery {
     pub tier: Option<String>,
     pub sort: Option<String>,
     pub direction: Option<String>,
+    pub order: Option<String>,
     pub page: Option<i64>,
     pub limit: Option<i64>,
+    pub page_size: Option<i64>,
 }
 
 #[derive(Serialize, Debug)]
@@ -41,9 +44,15 @@ pub struct BusinessListItem {
     pub business_id: String,
     pub name: Option<String>,
     pub region: Option<String>,
+    pub district: Option<String>,
     pub tmda_number: Option<String>,
     pub tier: String,
+    pub status: String,
     pub verification_status: String,
+    pub owner_name: Option<String>,
+    pub owner_phone: Option<String>,
+    pub role_scopes: Option<String>,
+    pub last_sync_at: Option<String>,
     pub last_sync: Option<String>,
     pub created_at: String,
 }
@@ -53,8 +62,37 @@ pub struct ListResponse {
     pub items: Vec<BusinessListItem>,
     pub total: i64,
     pub page: i64,
+    pub page_size: i64,
     pub limit: i64,
     pub total_pages: i64,
+}
+
+async fn get_business_counts(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    let all: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry")
+        .fetch_one(&state.pool).await
+        .unwrap_or(0);
+    let pending: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE COALESCE(v.status, 'pending') = 'pending'")
+        .fetch_one(&state.pool).await
+        .unwrap_or(0);
+    let verified: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b JOIN business_verification v ON b.business_id = v.business_id WHERE v.status = 'verified'")
+        .fetch_one(&state.pool).await
+        .unwrap_or(0);
+    let rejected: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b JOIN business_verification v ON b.business_id = v.business_id WHERE v.status = 'rejected'")
+        .fetch_one(&state.pool).await
+        .unwrap_or(0);
+    let suspended: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b JOIN business_verification v ON b.business_id = v.business_id WHERE v.status = 'suspended'")
+        .fetch_one(&state.pool).await
+        .unwrap_or(0);
+
+    Ok(Json(serde_json::json!({
+        "all": all,
+        "pending": pending,
+        "verified": verified,
+        "rejected": rejected,
+        "suspended": suspended
+    })))
 }
 
 async fn list_businesses(
@@ -62,7 +100,7 @@ async fn list_businesses(
     Query(query): Query<ListQuery>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     let page = query.page.unwrap_or(1);
-    let limit = query.limit.unwrap_or(25);
+    let limit = query.limit.or(query.page_size).unwrap_or(25);
     if page < 1 || !(1..=100).contains(&limit) {
         return Err((StatusCode::BAD_REQUEST, Json(serde_json::json!({
             "error": { "code": "VALIDATION", "message": "page must be positive and limit must be between 1 and 100" }
@@ -80,7 +118,7 @@ async fn list_businesses(
     let region_filter = query.region.as_deref();
     let tier_filter = query.tier.as_deref();
     let sort_col = query.sort.as_deref().unwrap_or("created_at");
-    let sort_dir = query.direction.as_deref().unwrap_or("desc").to_uppercase();
+    let sort_dir = query.direction.as_deref().or(query.order.as_deref()).unwrap_or("desc").to_uppercase();
     if sort_dir != "ASC" && sort_dir != "DESC" {
         return Err((StatusCode::BAD_REQUEST, Json(serde_json::json!({
             "error": { "code": "VALIDATION", "message": "direction must be asc or desc" }
@@ -93,10 +131,18 @@ async fn list_businesses(
             b.business_id,
             b.name,
             b.address_region AS region,
+            b.address_district AS district,
             b.tmda_number,
             COALESCE(b.tier, 'free') AS tier,
+            COALESCE(v.status, 'pending') AS status,
             COALESCE(v.status, 'pending') AS verification_status,
-            (SELECT MAX(c.received_at) FROM sync_changes c WHERE c.workspace_id = b.workspace_id AND c.branch_id = b.branch_id) AS last_sync,
+            b.name AS owner_name,
+            b.contact_mobile AS owner_phone,
+            b.role_scopes,
+            (SELECT GREATEST(
+                (SELECT MAX(received_at) FROM sync_changes WHERE workspace_id = b.workspace_id AND branch_id = b.branch_id),
+                (SELECT MAX(COALESCE(last_seen_at, last_seen)) FROM sync_devices WHERE workspace_id = b.workspace_id AND (branch_id = b.branch_id OR branch_id = ''))
+            )) AS last_sync_at,
             b.created_at
         FROM business_registry b
         LEFT JOIN business_verification v ON b.business_id = v.business_id
@@ -171,9 +217,10 @@ async fn list_businesses(
         "name" => "b.name",
         "business_id" => "b.business_id",
         "region" => "b.address_region",
+        "district" => "b.address_district",
         "tier" => "b.tier",
         "created_at" => "b.created_at",
-        "last_sync" => "last_sync",
+        "last_sync" | "last_sync_at" => "last_sync_at",
         _ => "b.created_at",
     };
     qb.push(format!(" ORDER BY {} {}", safe_sort, sort_dir));
@@ -188,8 +235,13 @@ async fn list_businesses(
             Option<String>,
             Option<String>,
             Option<String>,
+            Option<String>,
             String,
             String,
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
             Option<chrono::DateTime<chrono::Utc>>,
             String,
         )>()
@@ -208,11 +260,17 @@ async fn list_businesses(
             business_id: row.0,
             name: row.1,
             region: row.2,
-            tmda_number: row.3,
-            tier: row.4,
-            verification_status: row.5,
-            last_sync: row.6.map(|timestamp| timestamp.to_rfc3339()),
-            created_at: row.7,
+            district: row.3,
+            tmda_number: row.4,
+            tier: row.5,
+            status: row.6,
+            verification_status: row.7,
+            owner_name: row.8,
+            owner_phone: row.9,
+            role_scopes: row.10,
+            last_sync_at: row.11.map(|timestamp| timestamp.to_rfc3339()),
+            last_sync: row.11.map(|timestamp| timestamp.to_rfc3339()),
+            created_at: row.12,
         })
         .collect();
 
@@ -226,6 +284,7 @@ async fn list_businesses(
         items,
         total,
         page,
+        page_size: limit,
         limit,
         total_pages,
     }))

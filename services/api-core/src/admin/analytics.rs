@@ -29,18 +29,103 @@ async fn overview_handler(State(state): State<AppState>) -> Response {
     let registered: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry").fetch_one(&state.pool), "Could not load business totals");
     let verified: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'verified'").fetch_one(&state.pool), "Could not load verification totals");
     let pending: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE v.status IS NULL OR v.status = 'pending'").fetch_one(&state.pool), "Could not load pending verifications");
-    let active: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM sync_changes c JOIN business_registry b ON b.workspace_id = c.workspace_id AND b.branch_id = c.branch_id WHERE c.received_at >= NOW() - INTERVAL '24 hours'").fetch_one(&state.pool), "Could not load active business totals");
+    let rejected: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'rejected'").fetch_one(&state.pool), "Could not load rejected verifications");
+    let new_7d: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - INTERVAL '7 days'").fetch_one(&state.pool), "Could not load new signups in 7d");
+    let active_24h: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM sync_changes c JOIN business_registry b ON b.workspace_id = c.workspace_id AND b.branch_id = c.branch_id WHERE c.received_at >= NOW() - INTERVAL '24 hours'").fetch_one(&state.pool), "Could not load active business totals (24h)");
+    let active_7d: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM sync_changes c JOIN business_registry b ON b.workspace_id = c.workspace_id AND b.branch_id = c.branch_id WHERE c.received_at >= NOW() - INTERVAL '7 days'").fetch_one(&state.pool), "Could not load active business totals (7d)");
     let sales: i64 = db_or_return!(sqlx::query_scalar("SELECT COALESCE(SUM(revenue_total), 0) FROM cloud_daily_summaries WHERE summary_date = CURRENT_DATE").fetch_one(&state.pool), "Could not load today's platform sales");
     let alerts: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM (SELECT DISTINCT ON (check_name) status FROM infra_health_checks ORDER BY check_name, checked_at DESC) latest WHERE status IN ('degraded','down')").fetch_one(&state.pool), "Could not load infrastructure alerts");
+
+    let attention_rows: Vec<(String, String, String)> = db_or_return!(sqlx::query_as(
+        r#"
+        SELECT b.business_id, COALESCE(b.name, 'Unnamed Business'), 'Pending verification > 48h' AS reason
+        FROM business_registry b
+        LEFT JOIN business_verification v ON b.business_id = v.business_id
+        WHERE (v.status IS NULL OR v.status = 'pending') AND b.created_at::timestamptz <= NOW() - INTERVAL '48 hours'
+        UNION
+        SELECT b.business_id, COALESCE(b.name, 'Unnamed Business'), 'Verified but no sync > 24h' AS reason
+        FROM business_registry b
+        JOIN business_verification v ON b.business_id = v.business_id
+        WHERE v.status = 'verified' AND NOT EXISTS (
+            SELECT 1 FROM sync_changes c WHERE c.workspace_id = b.workspace_id AND c.branch_id = b.branch_id AND c.received_at >= NOW() - INTERVAL '24 hours'
+        )
+        LIMIT 20
+        "#
+    ).fetch_all(&state.pool), "Could not load attention queue");
+
+    let activity_rows: Vec<(String, String, String, chrono::DateTime<chrono::Utc>, Option<serde_json::Value>)> = db_or_return!(sqlx::query_as(
+        r#"
+        SELECT l.action, l.target_id, COALESCE(b.name, l.target_id), l.created_at, l.payload
+        FROM admin_audit_log l
+        LEFT JOIN business_registry b ON l.target_id = b.business_id
+        ORDER BY l.created_at DESC
+        LIMIT 20
+        "#
+    ).fetch_all(&state.pool), "Could not load recent activity");
+
+    let region_rows: Vec<(String, i64)> = db_or_return!(sqlx::query_as(
+        "SELECT COALESCE(address_region, 'Unknown'), COUNT(*) FROM business_registry GROUP BY 1 ORDER BY 2 DESC"
+    ).fetch_all(&state.pool), "Could not load region distribution");
+
+    let tier_rows: Vec<(String, i64)> = db_or_return!(sqlx::query_as(
+        "SELECT COALESCE(tier, 'free'), COUNT(*) FROM business_registry GROUP BY 1 ORDER BY 1"
+    ).fetch_all(&state.pool), "Could not load tier distribution");
+
+    let reg_30d_rows: Vec<(String, i64)> = db_or_return!(sqlx::query_as(
+        "SELECT TO_CHAR(created_at::timestamptz, 'YYYY-MM-DD'), COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - INTERVAL '30 days' GROUP BY 1 ORDER BY 1"
+    ).fetch_all(&state.pool), "Could not load 30d registrations");
+
+    let attention: Vec<_> = attention_rows.into_iter().map(|(id, name, reason)| serde_json::json!({
+        "id": id,
+        "name": name,
+        "description": reason,
+        "reason": reason,
+        "link": format!("/businesses/{id}")
+    })).collect();
+
+    let recent_activity: Vec<_> = activity_rows.into_iter().map(|(action, target_id, name, created_at, payload)| serde_json::json!({
+        "action": action,
+        "business_id": target_id,
+        "name": name,
+        "timestamp": created_at.to_rfc3339(),
+        "payload": payload
+    })).collect();
+
+    let by_region: Vec<_> = region_rows.into_iter().map(|(region, count)| serde_json::json!({
+        "region": region,
+        "count": count
+    })).collect();
+
+    let by_tier: Vec<_> = tier_rows.into_iter().map(|(tier, count)| serde_json::json!({
+        "tier": tier,
+        "count": count
+    })).collect();
+
+    let registrations_30d: Vec<_> = reg_30d_rows.into_iter().map(|(date, count)| serde_json::json!({
+        "date": date,
+        "count": count
+    })).collect();
+
     let signups: Vec<(String, i64)> = db_or_return!(sqlx::query_as("SELECT TO_CHAR(created_at::timestamptz, 'YYYY-MM-DD'), COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - INTERVAL '30 days' GROUP BY 1 ORDER BY 1").fetch_all(&state.pool), "Could not load signup history");
     let daily_sales: Vec<(String, i64)> = db_or_return!(sqlx::query_as("SELECT TO_CHAR(summary_date, 'YYYY-MM-DD'), COALESCE(SUM(revenue_total),0) FROM cloud_daily_summaries WHERE summary_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY 1 ORDER BY 1").fetch_all(&state.pool), "Could not load sales history");
-    let attention: Vec<(String, String, String)> = db_or_return!(sqlx::query_as("SELECT b.business_id, COALESCE(b.name, 'Unnamed Business'), COALESCE(b.created_at, NOW()::text) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE v.status IS NULL OR v.status = 'pending' ORDER BY b.created_at ASC LIMIT 5").fetch_all(&state.pool), "Could not load pending business reviews");
-    let needs_attention: Vec<_> = attention.into_iter().map(|(id, name, time)| serde_json::json!({"type":"pending_verification","id":id,"name":name,"description":"Pending verification review","time":time,"link":format!("/businesses/{id}")})).collect();
+
     Json(serde_json::json!({
-        "kpis": {"registered_businesses": registered, "verified_percentage": if registered == 0 { 0.0 } else { verified as f64 * 100.0 / registered as f64 }, "pending_count": pending, "active_businesses": active, "platform_sales_today": sales, "open_infra_alerts": alerts},
+        "total": registered,
+        "pending": pending,
+        "verified": verified,
+        "rejected": rejected,
+        "new_7d": new_7d,
+        "active_24h": active_24h,
+        "active_7d": active_7d,
+        "attention": attention,
+        "recent_activity": recent_activity,
+        "by_region": by_region,
+        "by_tier": by_tier,
+        "registrations_30d": registrations_30d,
+        "kpis": {"registered_businesses": registered, "verified_percentage": if registered == 0 { 0.0 } else { verified as f64 * 100.0 / registered as f64 }, "pending_count": pending, "active_businesses": active_24h, "platform_sales_today": sales, "open_infra_alerts": alerts},
         "signups_per_day": signups.into_iter().map(|(date,count)| serde_json::json!({"date":date,"count":count})).collect::<Vec<_>>(),
         "platform_daily_sales": daily_sales.into_iter().map(|(date,revenue)| serde_json::json!({"date":date,"revenue":revenue})).collect::<Vec<_>>(),
-        "needs_attention": needs_attention
+        "needs_attention": attention
     })).into_response()
 }
 
