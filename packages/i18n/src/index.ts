@@ -150,7 +150,8 @@ if (!i18n.isInitialized) {
 
 export { i18n };
 export const t = (key: string, options?: any): string => {
-  return i18n.t(key as any, options) as string;
+  const opts = typeof options === 'string' ? { lng: options } : options;
+  return i18n.t(key as any, opts) as string;
 };
 export type TranslationKey = string;
 export const formatDateTime = (date: Date | string | number, locale = 'sw'): string => {

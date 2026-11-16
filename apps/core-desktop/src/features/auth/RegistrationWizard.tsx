@@ -162,7 +162,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
   };
 
   const currentStepTitle = isCompleted
-    ? 'Imekamilika'
+    ? t('auth.reg.completed', language)
     : t(REGISTRATION_STEPS[currentStep].i18n, language);
 
   const isSkippable = !isCompleted && REGISTRATION_STEPS[currentStep]?.skippable;
@@ -199,7 +199,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
               onClick={handleBack}
               disabled={currentStep === 0}
             >
-              Rudi
+              {t('auth.actions.back', language)}
             </Button>
             {isSkippable && (
               <Button
@@ -208,7 +208,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 className="flex-1 h-[44px]"
                 onClick={handleSkip}
               >
-                Ruka
+                {t('auth.actions.skip', language)}
               </Button>
             )}
             {!isLastStep ? (
@@ -218,7 +218,7 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({ onComple
                 onClick={handleNext}
                 disabled={!isStepValid}
               >
-                Endelea
+                {t('auth.actions.continue', language)}
               </Button>
             ) : null}
           </div>

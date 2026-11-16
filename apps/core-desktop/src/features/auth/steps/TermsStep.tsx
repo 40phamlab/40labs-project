@@ -8,7 +8,7 @@ import { ShieldCheck, Loader2 } from 'lucide-react';
 import { getTermsTextSha256, TERMS_VERSION } from '../components/termsContent';
 import type { RegistrationCredentials } from './AccountStep';
 import { authApi } from '../../../api/authApi';
-import { normalizeRegistrationError } from '../api/registrationErrors';
+import { normalizeRegistrationError, type NormalizedRegistrationError } from '../api/registrationErrors';
 
 const normalizePhone = (value: string) => {
   const digits = value.replace(/\D/g, '');
@@ -45,7 +45,7 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
   const [readToEnd, setReadToEnd] = React.useState(false);
   const [accepted, setAccepted] = React.useState(storeState.termsAccepted);
   const [committing, setCommitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<NormalizedRegistrationError | null>(null);
   const [registrationMayHaveCompleted, setRegistrationMayHaveCompleted] = React.useState(false);
 
   React.useEffect(() => {
@@ -65,7 +65,12 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
 
   const handleCommit = async () => {
     if (!navigator.onLine) {
-      setError(t('auth.error.offline', language));
+      setError({
+        code: 'API_UNAVAILABLE',
+        message: t('auth.error.offline', language),
+        retryable: true,
+        supportCode: 'API_UNAVAILABLE',
+      });
       return;
     }
     setCommitting(true);
@@ -136,7 +141,12 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
           // The command may still hold the local database transaction.
         }
         setRegistrationMayHaveCompleted(true);
-        setError(t('auth.error.registrationPending', language));
+        setError({
+          code: 'REGISTRATION_FAILED',
+          message: t('auth.error.registrationPending', language),
+          retryable: true,
+          supportCode: 'REGISTRATION_PENDING',
+        });
         setCommitting(false);
         return;
       }
@@ -157,7 +167,7 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
           // Keep the registration screen available if local state cannot be verified.
         }
       }
-      setError(normalized.message);
+      setError(normalized);
       setCommitting(false);
     }
   };
@@ -175,9 +185,19 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
         onRegistrationStored();
         return;
       }
-      setError(t('auth.error.registrationStillPending', language));
+      setError({
+        code: 'REGISTRATION_FAILED',
+        message: t('auth.error.registrationStillPending', language),
+        retryable: true,
+        supportCode: 'REGISTRATION_STILL_PENDING',
+      });
     } catch {
-      setError(t('auth.error.registrationStillPending', language));
+      setError({
+        code: 'REGISTRATION_FAILED',
+        message: t('auth.error.registrationStillPending', language),
+        retryable: true,
+        supportCode: 'REGISTRATION_STILL_PENDING',
+      });
     } finally {
       setCommitting(false);
     }
@@ -187,7 +207,7 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-6">
         <Loader2 size={48} className="animate-spin text-emerald-600" />
-        <h2 className="text-lg font-bold font-sora text-foreground">Inasajili biashara yako...</h2>
+        <h2 className="text-lg font-bold font-sora text-foreground">{t('auth.reg.committing', language)}</h2>
       </div>
     );
   }
@@ -196,7 +216,8 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
     <div className="space-y-6">
       {error && (
         <div role="alert" className="space-y-2">
-          <p className="text-xs font-medium text-[#EF4444]">{error}</p>
+          <p className="text-xs font-medium text-[#EF4444]">{error.message}</p>
+          <span className="block text-[10px] text-muted-foreground font-mono">[{error.supportCode}]</span>
           {registrationMayHaveCompleted && (
             <button type="button" onClick={handleCheckRegistrationStatus} className="text-xs font-semibold text-action-primary underline">
               {t('auth.error.checkRegistrationStatus', language)}
@@ -261,7 +282,7 @@ export const TermsStep: React.FC<TermsStepProps> = ({ onValidChange, verificatio
           onClick={handleCommit}
           className="w-full h-[48px] bg-gradient-to-r from-[#16A34A] to-[#15803D] hover:from-[#15803D] hover:to-[#166534] disabled:opacity-50 text-white font-semibold rounded-xl shadow-lg transition-all cursor-pointer flex items-center justify-center font-sora"
         >
-          Maliza na Sajili Biashara
+          {t('auth.actions.finishAndRegister', language)}
         </button>
       </div>
     </div>
