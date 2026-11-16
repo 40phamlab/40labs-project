@@ -137,9 +137,23 @@ async fn enroll_device(
     .fetch_optional(&mut *tx)
     .await?;
     let Some(token_version) = enrollment else {
-        return Err(ApiError::Conflict(
-            "Device is enrolled to another business or its enrollment was revoked".into(),
-        ));
+        let existing = sqlx::query_as::<_, (Option<chrono::DateTime<chrono::Utc>>, String, String, String)>(
+            "SELECT revoked_at, business_id, workspace_id, branch_id FROM device_enrollments WHERE device_id = $1"
+        )
+        .bind(&req.device_id)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+        let is_revoked = existing.as_ref().is_some_and(|(revoked_at, _, _, _)| revoked_at.is_some());
+        if is_revoked {
+            return Err(ApiError::DeviceRevoked(
+                "Device is enrolled to another business or its enrollment was revoked".into(),
+            ));
+        } else {
+            return Err(ApiError::DeviceScopeConflict(
+                "Device is enrolled to another business or its enrollment was revoked".into(),
+            ));
+        }
     };
 
     let sync_device = sqlx::query(
@@ -164,7 +178,7 @@ async fn enroll_device(
     .execute(&mut *tx)
     .await?;
     if sync_device.rows_affected() != 1 {
-        return Err(ApiError::Conflict(
+        return Err(ApiError::DeviceSyncRecordConflict(
             "Device sync record belongs to another business".into(),
         ));
     }

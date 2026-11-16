@@ -294,3 +294,162 @@ async fn postgres_enrolled_device_isolation_and_atomic_sync() {
     );
     pool.close().await;
 }
+
+async fn request_json(
+    app: axum::Router,
+    method: &str,
+    uri: &str,
+    token: Option<&str>,
+    body: serde_json::Value,
+) -> (StatusCode, serde_json::Value) {
+    let mut builder = Request::builder()
+        .method(method)
+        .uri(uri)
+        .header("content-type", "application/json");
+    if let Some(token) = token {
+        builder = builder.header("authorization", format!("Bearer {token}"));
+    }
+    let response = app
+        .oneshot(builder.body(Body::from(body.to_string())).unwrap())
+        .await
+        .unwrap();
+    let status = response.status();
+    let bytes = axum::body::to_bytes(response.into_body(), 16_384)
+        .await
+        .unwrap();
+    let json_val = serde_json::from_slice(&bytes).unwrap_or(serde_json::Value::Null);
+    (status, json_val)
+}
+
+#[tokio::test]
+async fn device_enrollment_conflict_error_codes() {
+    let Ok(url) = std::env::var("API_CORE_TEST_DATABASE_URL") else {
+        panic!("Set API_CORE_TEST_DATABASE_URL to a disposable isolated PostgreSQL database")
+    };
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect(&url)
+        .await
+        .expect("connect isolated test PostgreSQL");
+    api_core::migrations::run(&pool)
+        .await
+        .expect("apply migrations to isolated test PostgreSQL");
+    sqlx::raw_sql("TRUNCATE sync_changes, sync_devices, device_enrollment_grants, device_enrollments, cloud_inventory_items, cloud_prices, cloud_price_history, cloud_daily_summaries, business_registry CASCADE").execute(&pool).await.unwrap();
+
+    let cfg = test_config(url.clone());
+    let app = sync::router(AppState {
+        pool: pool.clone(),
+        config: cfg.clone(),
+        sms_sender: Arc::new(ConsoleOtpProvider::new()) as Arc<dyn OtpProvider>,
+        rate_limiter: RateLimiter::new(),
+    })
+    .merge(api_core::routes::device::router(AppState {
+        pool: pool.clone(),
+        config: cfg.clone(),
+        sms_sender: Arc::new(ConsoleOtpProvider::new()) as Arc<dyn OtpProvider>,
+        rate_limiter: RateLimiter::new(),
+    }));
+
+    // Seed business registry
+    sqlx::query("INSERT INTO business_registry(business_id,workspace_id,branch_id,phone_hash,terms_version,terms_locale,terms_text_sha256,terms_accepted_at,created_at,version) VALUES('biz-a','ws-a','branch-a','ph-a','1','en','hash',NOW()::text,NOW()::text,1),('biz-b','ws-b','branch-b','ph-b','1','en','hash',NOW()::text,NOW()::text,1)").execute(&pool).await.unwrap();
+
+    // Helper to sign grant
+    let sign_test_grant = |business_id: &str, workspace_id: &str, branch_id: &str, phone_hash: &str| {
+        let payload = api_core::grant::ActivationGrantPayload {
+            business_id: business_id.into(),
+            workspace_id: workspace_id.into(),
+            branch_id: branch_id.into(),
+            phone_hash: phone_hash.into(),
+            issued_at: chrono::Utc::now().to_rfc3339(),
+            expires_at: (chrono::Utc::now() + chrono::Duration::minutes(5)).to_rfc3339(),
+            issuer: api_core::grant::ACTIVATION_GRANT_ISSUER.into(),
+            audience: api_core::grant::ACTIVATION_GRANT_AUDIENCE.into(),
+            version: 2,
+        };
+        api_core::grant::sign_grant(&payload, &cfg.activation_signing_key).unwrap()
+    };
+
+    let grant_a = sign_test_grant("biz-a", "ws-a", "branch-a", "ph-a");
+
+    // 1. Test DEVICE_SCOPE_CONFLICT: Enroll device-1 under biz-b, then try to enroll device-1 under biz-a
+    let grant_b = sign_test_grant("biz-b", "ws-b", "branch-b", "ph-b");
+    let resp_b = request_json(app.clone(), "POST", "/v1/devices/enroll", None, json!({
+        "activation_grant": grant_b,
+        "device_id": "device-conflict-1"
+    })).await;
+    assert_eq!(resp_b.0, StatusCode::OK);
+
+    let resp_scope = request_json(app.clone(), "POST", "/v1/devices/enroll", None, json!({
+        "activation_grant": grant_a,
+        "device_id": "device-conflict-1"
+    })).await;
+    assert_eq!(resp_scope.0, StatusCode::CONFLICT);
+    assert_eq!(resp_scope.1["error"], "DEVICE_SCOPE_CONFLICT");
+
+    // 2. Test DEVICE_REVOKED and revoked-wins-over-scope-conflict
+    let grant_a2 = sign_test_grant("biz-a", "ws-a", "branch-a", "ph-a");
+    let resp_a = request_json(app.clone(), "POST", "/v1/devices/enroll", None, json!({
+        "activation_grant": grant_a2,
+        "device_id": "device-revoked-1"
+    })).await;
+    assert_eq!(resp_a.0, StatusCode::OK);
+
+    // Revoke device-revoked-1
+    sqlx::query("UPDATE device_enrollments SET revoked_at=NOW() WHERE device_id='device-revoked-1'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    // Try re-enrolling device-revoked-1 under biz-a (same scope) -> should be DEVICE_REVOKED
+    let grant_a3 = sign_test_grant("biz-a", "ws-a", "branch-a", "ph-a");
+    let resp_revoked = request_json(app.clone(), "POST", "/v1/devices/enroll", None, json!({
+        "activation_grant": grant_a3,
+        "device_id": "device-revoked-1"
+    })).await;
+    assert_eq!(resp_revoked.0, StatusCode::CONFLICT);
+    assert_eq!(resp_revoked.1["error"], "DEVICE_REVOKED");
+
+    // Try re-enrolling device-revoked-1 under biz-b (different scope + revoked) -> Revoked wins over scope conflict -> should be DEVICE_REVOKED
+    let grant_b2 = sign_test_grant("biz-b", "ws-b", "branch-b", "ph-b");
+    let resp_revoked_wins = request_json(app.clone(), "POST", "/v1/devices/enroll", None, json!({
+        "activation_grant": grant_b2,
+        "device_id": "device-revoked-1"
+    })).await;
+    assert_eq!(resp_revoked_wins.0, StatusCode::CONFLICT);
+    assert_eq!(resp_revoked_wins.1["error"], "DEVICE_REVOKED");
+
+    // 3. Test DEVICE_SYNC_RECORD_CONFLICT
+    // Insert a sync_devices row belonging to biz-b for device-sync-1
+    sqlx::query("INSERT INTO sync_devices(device_id,workspace_id,business_id,branch_id) VALUES('device-sync-1', 'ws-b', 'biz-b', 'branch-b')")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let grant_a4 = sign_test_grant("biz-a", "ws-a", "branch-a", "ph-a");
+    let resp_sync_conflict = request_json(app.clone(), "POST", "/v1/devices/enroll", None, json!({
+        "activation_grant": grant_a4,
+        "device_id": "device-sync-1"
+    })).await;
+    assert_eq!(resp_sync_conflict.0, StatusCode::CONFLICT);
+    assert_eq!(resp_sync_conflict.1["error"], "DEVICE_SYNC_RECORD_CONFLICT");
+
+    // 4. Test Grant Unconsumed Property after a 409 failure
+    // Use a fresh grant that causes a 409 (e.g. scope conflict)
+    let grant_fail = sign_test_grant("biz-a", "ws-a", "branch-a", "ph-a");
+    // device-conflict-1 is already enrolled to biz-b, so enrolling it with grant_fail fails with 409
+    let resp_fail = request_json(app.clone(), "POST", "/v1/devices/enroll", None, json!({
+        "activation_grant": grant_fail.clone(),
+        "device_id": "device-conflict-1"
+    })).await;
+    assert_eq!(resp_fail.0, StatusCode::CONFLICT);
+
+    // Because the transaction rolled back, grant_fail should NOT be consumed.
+    // We can now successfully use grant_fail to enroll a brand new un-enrolled device (e.g. device-fresh-1)
+    let resp_success = request_json(app.clone(), "POST", "/v1/devices/enroll", None, json!({
+        "activation_grant": grant_fail,
+        "device_id": "device-fresh-1"
+    })).await;
+    assert_eq!(resp_success.0, StatusCode::OK);
+
+    pool.close().await;
+}

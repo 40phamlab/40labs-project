@@ -18,6 +18,12 @@ pub enum ApiError {
     Unauthorized(String),
     #[error("Conflict: {0}")]
     Conflict(String),
+    #[error("Device scope conflict: {0}")]
+    DeviceScopeConflict(String),
+    #[error("Device revoked: {0}")]
+    DeviceRevoked(String),
+    #[error("Device sync record conflict: {0}")]
+    DeviceSyncRecordConflict(String),
     #[error("Rate limit exceeded")]
     RateLimitExceeded { retry_after: u64 },
     #[error("SMS error: {0}")]
@@ -47,6 +53,9 @@ impl IntoResponse for ApiError {
             ApiError::InvalidPhone(m) => (StatusCode::BAD_REQUEST, "INVALID_PHONE", m, None),
             ApiError::Unauthorized(m) => (StatusCode::UNAUTHORIZED, "UNAUTHORIZED", m, None),
             ApiError::Conflict(m) => (StatusCode::CONFLICT, "CONFLICT", m, None),
+            ApiError::DeviceScopeConflict(m) => (StatusCode::CONFLICT, "DEVICE_SCOPE_CONFLICT", m, None),
+            ApiError::DeviceRevoked(m) => (StatusCode::CONFLICT, "DEVICE_REVOKED", m, None),
+            ApiError::DeviceSyncRecordConflict(m) => (StatusCode::CONFLICT, "DEVICE_SYNC_RECORD_CONFLICT", m, None),
             ApiError::RateLimitExceeded { retry_after } => (
                 StatusCode::TOO_MANY_REQUESTS,
                 "RATE_LIMIT_EXCEEDED",

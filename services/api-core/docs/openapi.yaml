@@ -278,6 +278,18 @@ paths:
       responses:
         '200': { description: Device credentials issued }
         '401': { description: Invalid, expired, or already consumed activation grant }
+        '409':
+          description: Enrollment conflict (DEVICE_SCOPE_CONFLICT, DEVICE_REVOKED, DEVICE_SYNC_RECORD_CONFLICT)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: DEVICE_SCOPE_CONFLICT
+                  message:
+                    type: string
   /v1/devices/refresh:
     post:
       summary: Rotate device credentials
