@@ -163,6 +163,35 @@ fn classify_registration_http_error(status: reqwest::StatusCode, body: &str) -> 
     }
 }
 
+fn classify_enrollment_http_error(status: reqwest::StatusCode, body: &str) -> (String, String) {
+    let json: Option<serde_json::Value> = serde_json::from_str(body).ok();
+    let code = json.as_ref()
+        .and_then(|v| v.get("error"))
+        .and_then(|e| e.as_str())
+        .map(str::to_owned);
+    let message = json.as_ref()
+        .and_then(|v| v.get("message"))
+        .and_then(|m| m.as_str())
+        .map(str::to_owned)
+        .unwrap_or_else(|| body.to_string());
+
+    let mapped_code = match code.as_deref() {
+        Some("DEVICE_SCOPE_CONFLICT") => "DEVICE_SCOPE_CONFLICT".into(),
+        Some("DEVICE_REVOKED") => "DEVICE_REVOKED".into(),
+        Some("DEVICE_SYNC_RECORD_CONFLICT") => "DEVICE_SYNC_RECORD_CONFLICT".into(),
+        _ => {
+            if status == reqwest::StatusCode::UNAUTHORIZED {
+                "ACTIVATION_REJECTED".into()
+            } else if status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                "API_UNAVAILABLE".into()
+            } else {
+                "DEVICE_ENROLLMENT_FAILURE".into()
+            }
+        }
+    };
+    (mapped_code, message)
+}
+
 #[derive(Deserialize)]
 struct OtpReqResp {
     expires_in_secs: i64,
@@ -270,22 +299,22 @@ impl ActivationClient for HttpActivationClient {
             .json(&serde_json::json!({"activation_grant":activation_grant,"device_id":device_id}))
             .send()
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                let code = if e.is_timeout() || e.is_connect() {
+                    "API_UNAVAILABLE"
+                } else {
+                    "DEVICE_ENROLLMENT_FAILURE"
+                };
+                format!("ENROLLMENT_CODE:{code}:000:{}", e)
+            })?;
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            let message = serde_json::from_str::<serde_json::Value>(&body)
-                .ok()
-                .and_then(|value| {
-                    value
-                        .get("message")
-                        .and_then(|message| message.as_str())
-                        .map(str::to_owned)
-                })
-                .unwrap_or(body);
+            let (code, message) = classify_enrollment_http_error(status, &body);
             return Err(format!(
-                "Device enrollment failed ({}): {}",
-                status,
+                "ENROLLMENT_CODE:{}:{}:{}",
+                code,
+                status.as_u16(),
                 message.chars().take(200).collect::<String>()
             ));
         }

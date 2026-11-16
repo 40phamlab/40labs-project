@@ -50,6 +50,43 @@ pub fn registration_event(stage: &'static str, outcome: &'static str, elapsed_ms
     }
 }
 
+pub fn device_fingerprint(device_id: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let hash = Sha256::digest(device_id.as_bytes());
+    hex::encode(hash)[..8].to_string()
+}
+
+pub fn registration_failure_event(
+    stage: &'static str,
+    code: &str,
+    http_status: u16,
+    device_id: &str,
+    elapsed_ms: Option<u128>,
+) {
+    let Some(path) = REGISTRATION_LOG_PATH.get() else {
+        tracing::warn!(stage, outcome = "failed", code, http_status, "Registration diagnostic log is not configured");
+        return;
+    };
+    let _guard = REGISTRATION_LOG_LOCK.lock().ok();
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    let elapsed = elapsed_ms
+        .map(|ms| format!(" elapsed_ms={ms}"))
+        .unwrap_or_default();
+    let fp = device_fingerprint(device_id);
+    let line = format!(
+        "{} registration stage={} outcome=failed code={} http_status={} fingerprint={}{}\n",
+        timestamp, stage, code, http_status, fp, elapsed
+    );
+    match OpenOptions::new().create(true).append(true).open(path) {
+        Ok(mut file) => {
+            if let Err(error) = file.write_all(line.as_bytes()) {
+                tracing::warn!(error = %error, "Could not write registration diagnostic log");
+            }
+        }
+        Err(error) => tracing::warn!(error = %error, "Could not open registration diagnostic log"),
+    }
+}
+
 pub fn init() {
     let _ = tracing_log::LogTracer::init();
 
