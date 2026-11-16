@@ -1,7 +1,7 @@
 // PHASE: Admin-A
 import * as React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Building2, BarChart3, RefreshCw, Server, UserCog } from 'lucide-react';
+import { Home, Building2, CreditCard, BarChart3, RefreshCw, Server, UserCog } from 'lucide-react';
 import { AppShell, AppSidebarNav, type NavItem, type NavigationState } from '@40labs/ui-components';
 import { TitleBar } from './_copied/components/TitleBar';
 import { AuthGuard } from './components/AuthGuard';
@@ -10,12 +10,13 @@ import { AccountPage } from './pages/AccountPage';
 import { BusinessesPage } from './pages/BusinessesPage';
 import { BusinessDetailPage } from './pages/BusinessDetailPage';
 import { OverviewPage } from './pages/OverviewPage';
+import { BillingOverviewPage } from './pages/BillingOverviewPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { InfraPage } from './pages/InfraPage';
 import { SyncPage } from './pages/SyncPage';
 import './App.css';
 
-type ScreenId = 'overview' | 'businesses' | 'analytics' | 'sync' | 'infra' | 'account';
+type ScreenId = 'overview' | 'businesses' | 'billing' | 'analytics' | 'sync' | 'infra' | 'account';
 
 function AdminShellContent() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ function AdminShellContent() {
   const getActiveScreen = (): ScreenId => {
     const path = location.pathname;
     if (path.startsWith('/businesses')) return 'businesses';
+    if (path.startsWith('/billing')) return 'billing';
     if (path.startsWith('/analytics')) return 'analytics';
     if (path.startsWith('/sync')) return 'sync';
     if (path.startsWith('/infra')) return 'infra';
@@ -37,6 +39,7 @@ function AdminShellContent() {
   const NAV_ITEMS: Array<NavItem<ScreenId>> = [
     { id: 'overview', labelKey: 'Overview', route: '/', icon: <Home size={18} /> },
     { id: 'businesses', labelKey: 'Businesses', route: '/businesses', icon: <Building2 size={18} /> },
+    { id: 'billing', labelKey: 'Billing', route: '/billing', icon: <CreditCard size={18} /> },
     { id: 'analytics', labelKey: 'Analytics', route: '/analytics', icon: <BarChart3 size={18} /> },
     { id: 'sync', labelKey: 'Sync', route: '/sync', icon: <RefreshCw size={18} /> },
     { id: 'infra', labelKey: 'Infra', route: '/infra', icon: <Server size={18} /> },
@@ -82,6 +85,7 @@ function AdminShellContent() {
           <Route path="/" element={<OverviewPage />} />
           <Route path="/businesses" element={<BusinessesPage />} />
           <Route path="/businesses/:id" element={<BusinessDetailPage />} />
+          <Route path="/billing" element={<BillingOverviewPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/sync" element={<SyncPage />} />
           <Route path="/infra" element={<InfraPage />} />

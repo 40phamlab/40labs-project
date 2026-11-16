@@ -10,6 +10,7 @@ use axum::{
 
 pub mod analytics;
 pub mod auth;
+pub mod billing;
 pub mod businesses;
 pub mod infra;
 pub mod management;
@@ -88,6 +89,12 @@ fn route_permission(
     match (method.as_str(), suffix) {
         ("GET", ["me"]) => Some((Auth, Read)),
         ("POST", ["auth", "logout" | "recovery-codes", ..]) => Some((Auth, Write)),
+        ("GET", ["businesses", _, "billing"]) => Some((Businesses, Read)),
+        ("POST", ["businesses", _, "billing", "plan"]) => Some((Businesses, Write)),
+        ("POST", ["businesses", _, "invoices"]) => Some((Businesses, Write)),
+        ("POST", ["invoices", _, "mark-paid"]) => Some((Businesses, Write)),
+        ("POST", ["invoices", _, "void"]) => Some((Businesses, Write)),
+        ("GET", ["billing", "overview"]) => Some((Analytics, Read)),
         ("GET", ["businesses"]) | ("GET", ["businesses", _, ..]) => Some((Businesses, Read)),
         ("GET", ["workspaces"]) | ("GET", ["workspaces", _, "branches"]) => Some((Businesses, Read)),
         ("GET", ["admin-users"]) => Some((AdminUsers, Read)),
@@ -291,6 +298,7 @@ fn extract_session_id(headers: &HeaderMap) -> Option<String> {
 pub fn router(state: AppState) -> Router {
     let api_router = Router::new()
         .merge(auth::router(state.clone()))
+        .merge(billing::router(state.clone()))
         .merge(businesses::router(state.clone()))
         .merge(analytics::router(state.clone()))
         .merge(sync::router(state.clone()))
