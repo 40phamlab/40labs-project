@@ -57,6 +57,8 @@ const DEVICE_KEY_ENTRY: &str = "device-private-key-v1";
 
 pub trait RegistrationKeychain: Send + Sync {
     fn cloud_device_id(&self) -> Result<String, KeystoreError>;
+    fn rotate_cloud_device_id(&self) -> Result<String, KeystoreError>;
+    fn has_cloud_credentials(&self) -> Result<bool, KeystoreError>;
     fn store_cloud_device_credentials(
         &self,
         credentials: &crate::activation::DeviceCredentials,
@@ -133,6 +135,27 @@ impl Keystore {
                     .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
                 Ok(id)
             }
+            Err(e) => Err(KeystoreError::KeychainError(e.to_string())),
+        }
+    }
+
+    pub fn rotate_cloud_device_id() -> Result<String, KeystoreError> {
+        let entry = keyring::Entry::new(&service_name(), "cloud-device-id-v1")
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
+        let id = format!("desktop-{}", uuid::Uuid::new_v4().simple());
+        entry
+            .set_password(&id)
+            .map_err(|e| KeystoreError::KeychainError(e.to_string()))?;
+        Ok(id)
+    }
+
+    pub fn has_cloud_credentials() -> Result<bool, KeystoreError> {
+        match keyring::Entry::new(&service_name(), "cloud-device-credentials-v1") {
+            Ok(entry) => match entry.get_password() {
+                Ok(_) => Ok(true),
+                Err(keyring::Error::NoEntry) => Ok(false),
+                Err(e) => Err(KeystoreError::KeychainError(e.to_string())),
+            },
             Err(e) => Err(KeystoreError::KeychainError(e.to_string())),
         }
     }
@@ -244,6 +267,14 @@ impl Keystore {
 impl RegistrationKeychain for Keystore {
     fn cloud_device_id(&self) -> Result<String, KeystoreError> {
         Keystore::cloud_device_id()
+    }
+
+    fn rotate_cloud_device_id(&self) -> Result<String, KeystoreError> {
+        Keystore::rotate_cloud_device_id()
+    }
+
+    fn has_cloud_credentials(&self) -> Result<bool, KeystoreError> {
+        Keystore::has_cloud_credentials()
     }
 
     fn store_cloud_device_credentials(

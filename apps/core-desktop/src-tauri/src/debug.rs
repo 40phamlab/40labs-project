@@ -56,6 +56,36 @@ pub fn device_fingerprint(device_id: &str) -> String {
     hex::encode(hash)[..8].to_string()
 }
 
+pub fn registration_rotation_event(
+    stage: &'static str,
+    outcome: &'static str,
+    old_fp: &str,
+    new_fp: &str,
+    elapsed_ms: Option<u128>,
+) {
+    let Some(path) = REGISTRATION_LOG_PATH.get() else {
+        tracing::warn!(stage, outcome, old_fp, new_fp, "Registration diagnostic log is not configured");
+        return;
+    };
+    let _guard = REGISTRATION_LOG_LOCK.lock().ok();
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    let elapsed = elapsed_ms
+        .map(|ms| format!(" elapsed_ms={ms}"))
+        .unwrap_or_default();
+    let line = format!(
+        "{} registration stage={} outcome={} old_fingerprint={} new_fingerprint={}{}\n",
+        timestamp, stage, outcome, old_fp, new_fp, elapsed
+    );
+    match OpenOptions::new().create(true).append(true).open(path) {
+        Ok(mut file) => {
+            if let Err(error) = file.write_all(line.as_bytes()) {
+                tracing::warn!(error = %error, "Could not write registration diagnostic log");
+            }
+        }
+        Err(error) => tracing::warn!(error = %error, "Could not open registration diagnostic log"),
+    }
+}
+
 pub fn registration_failure_event(
     stage: &'static str,
     code: &str,

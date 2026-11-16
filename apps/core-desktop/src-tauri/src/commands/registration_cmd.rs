@@ -439,12 +439,38 @@ async fn registration_commit_inner(
         ));
     }
 
+    fn parse_enrollment_error(e: &str) -> (&'static str, bool, u16) {
+    if let Some(stripped) = e.strip_prefix("ENROLLMENT_CODE:") {
+        let parts: Vec<&str> = stripped.splitn(3, ':').collect();
+        let code = parts.first().copied().unwrap_or("DEVICE_ENROLLMENT_FAILURE");
+        let status = parts.get(1).and_then(|v| v.parse::<u16>().ok()).unwrap_or(0);
+        let (mc, rt) = match code {
+            "DEVICE_SCOPE_CONFLICT" => ("DEVICE_SCOPE_CONFLICT", false),
+            "DEVICE_REVOKED" => ("DEVICE_REVOKED", false),
+            "DEVICE_SYNC_RECORD_CONFLICT" => ("DEVICE_SYNC_RECORD_CONFLICT", false),
+            "ACTIVATION_REJECTED" => ("ACTIVATION_REJECTED", false),
+            "API_UNAVAILABLE" => ("API_UNAVAILABLE", true),
+            _ => {
+                if status == 409 {
+                    ("DEVICE_ENROLLMENT_FAILURE", false)
+                } else if status >= 500 || status == 429 {
+                    ("API_UNAVAILABLE", true)
+                } else {
+                    ("DEVICE_ENROLLMENT_FAILURE", true)
+                }
+            }
+        };
+        (mc, rt, status)
+    } else {
+        ("DEVICE_ENROLLMENT_FAILURE", true, 0)
+    }
+}
     // Cloud credentials are installed only after the server-issued activation
     // grant has been validated by the HTTP activation client. Local database
     // workflows remain usable offline after this one-time enrollment step.
     crate::debug::registration_event("cloud_device_id", "started", None);
     let stage_started = std::time::Instant::now();
-    let cloud_device_id = state
+    let mut cloud_device_id = state
         .registration_keychain
         .cloud_device_id()
         .map_err(|e| {
@@ -463,46 +489,70 @@ async fn registration_commit_inner(
     );
     crate::debug::registration_event("device_enrollment", "started", None);
     let stage_started = std::time::Instant::now();
-    let cloud_credentials = state
+
+    let mut enroll_res = state
         .activation_client
         .enroll_device(&reg_resp.activation_grant, &cloud_device_id)
-        .await
-        .map_err(|e| {
-            tracing::error!(error = %e, "Registration device enrollment failed");
-            let (mapped_code, retryable, status) = if let Some(stripped) = e.strip_prefix("ENROLLMENT_CODE:") {
-                let parts: Vec<&str> = stripped.splitn(3, ':').collect();
-                let code = parts.first().copied().unwrap_or("DEVICE_ENROLLMENT_FAILURE");
-                let status = parts.get(1).and_then(|v| v.parse::<u16>().ok()).unwrap_or(0);
-                let (mc, rt) = match code {
-                    "DEVICE_SCOPE_CONFLICT" => ("DEVICE_SCOPE_CONFLICT", false),
-                    "DEVICE_REVOKED" => ("DEVICE_REVOKED", false),
-                    "DEVICE_SYNC_RECORD_CONFLICT" => ("DEVICE_SYNC_RECORD_CONFLICT", false),
-                    "ACTIVATION_REJECTED" => ("ACTIVATION_REJECTED", false),
-                    "API_UNAVAILABLE" => ("API_UNAVAILABLE", true),
-                    _ => {
-                        if status == 409 {
-                            ("DEVICE_ENROLLMENT_FAILURE", false)
-                        } else if status >= 500 || status == 429 {
-                            ("API_UNAVAILABLE", true)
-                        } else {
-                            ("DEVICE_ENROLLMENT_FAILURE", true)
-                        }
+        .await;
+
+    if let Err(ref e) = enroll_res {
+        let (mapped_code, _, _) = parse_enrollment_error(e);
+        if mapped_code == "DEVICE_SCOPE_CONFLICT" {
+            let business_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business")
+                .fetch_one(&state.pool)
+                .await
+                .unwrap_or(1);
+            let has_creds = state.registration_keychain.has_cloud_credentials().unwrap_or(true);
+
+            if business_count == 0 && !has_creds {
+                let old_fp = crate::debug::device_fingerprint(&cloud_device_id);
+                crate::debug::registration_event("device_id_rotation", "started", None);
+                let rotation_started = std::time::Instant::now();
+
+                let new_device_id = match state.registration_keychain.rotate_cloud_device_id() {
+                    Ok(id) => id,
+                    Err(ke) => {
+                        tracing::error!(error = %ke, "Registration cloud device ID rotation failed");
+                        crate::debug::registration_event(
+                            "device_id_rotation",
+                            "failed",
+                            Some(rotation_started.elapsed().as_millis()),
+                        );
+                        return Err(registration_error("SECURE_STORAGE_FAILURE", "device_id_rotation", false));
                     }
                 };
-                (mc, rt, status)
-            } else {
-                ("DEVICE_ENROLLMENT_FAILURE", true, 0)
-            };
 
-            crate::debug::registration_failure_event(
-                "device_enrollment",
-                mapped_code,
-                status,
-                &cloud_device_id,
-                Some(stage_started.elapsed().as_millis()),
-            );
-            registration_error(mapped_code, "device_enrollment", retryable)
-        })?;
+                let new_fp = crate::debug::device_fingerprint(&new_device_id);
+                crate::debug::registration_rotation_event(
+                    "device_id_rotation",
+                    "succeeded",
+                    &old_fp,
+                    &new_fp,
+                    Some(rotation_started.elapsed().as_millis()),
+                );
+
+                cloud_device_id = new_device_id;
+
+                enroll_res = state
+                    .activation_client
+                    .enroll_device(&reg_resp.activation_grant, &cloud_device_id)
+                    .await;
+            }
+        }
+    }
+
+    let cloud_credentials = enroll_res.map_err(|e| {
+        tracing::error!(error = %e, "Registration device enrollment failed");
+        let (mapped_code, retryable, status) = parse_enrollment_error(&e);
+        crate::debug::registration_failure_event(
+            "device_enrollment",
+            mapped_code,
+            status,
+            &cloud_device_id,
+            Some(stage_started.elapsed().as_millis()),
+        );
+        registration_error(mapped_code, "device_enrollment", retryable)
+    })?;
     crate::debug::registration_event(
         "device_enrollment",
         "succeeded",
@@ -919,6 +969,7 @@ mod tests {
     struct MockActivation {
         register_error: Option<String>,
         enroll_fails: bool,
+        enroll_results: std::sync::Mutex<Vec<Result<DeviceCredentials, String>>>,
     }
 
     #[async_trait]
@@ -949,6 +1000,10 @@ mod tests {
             _grant: &str,
             device_id: &str,
         ) -> Result<DeviceCredentials, String> {
+            let mut results = self.enroll_results.lock().unwrap();
+            if !results.is_empty() {
+                return results.remove(0);
+            }
             if self.enroll_fails {
                 return Err("upstream unavailable".into());
             }
@@ -975,14 +1030,38 @@ mod tests {
         fail_store: bool,
         fail_pending_store: bool,
         pending: std::sync::Mutex<Option<String>>,
+        device_id: std::sync::Mutex<String>,
+        has_creds: bool,
     }
+
+    impl MockKeychain {
+        fn new(fail_id: bool, fail_store: bool, fail_pending_store: bool) -> Self {
+            Self {
+                fail_id,
+                fail_store,
+                fail_pending_store,
+                pending: std::sync::Mutex::new(None),
+                device_id: std::sync::Mutex::new("desktop-registration-test".into()),
+                has_creds: false,
+            }
+        }
+    }
+
     impl RegistrationKeychain for MockKeychain {
         fn cloud_device_id(&self) -> Result<String, KeystoreError> {
             if self.fail_id {
                 Err(KeystoreError::Unavailable("mock".into()))
             } else {
-                Ok("desktop-registration-test".into())
+                Ok(self.device_id.lock().unwrap().clone())
             }
+        }
+        fn rotate_cloud_device_id(&self) -> Result<String, KeystoreError> {
+            let new_id = format!("desktop-rotated-{}", uuid::Uuid::new_v4().simple());
+            *self.device_id.lock().unwrap() = new_id.clone();
+            Ok(new_id)
+        }
+        fn has_cloud_credentials(&self) -> Result<bool, KeystoreError> {
+            Ok(self.has_creds)
         }
         fn store_cloud_device_credentials(
             &self,
@@ -1045,6 +1124,7 @@ mod tests {
         let mock = Arc::new(MockActivation {
             register_error: register_error.map(str::to_owned),
             enroll_fails,
+            enroll_results: std::sync::Mutex::new(Vec::new()),
         });
         let keystore = Arc::new(Keystore::init().unwrap());
         AppState {
@@ -1052,12 +1132,7 @@ mod tests {
             lan_state,
             auth_state: Arc::new(AuthState::new(Arc::new(RealClock))),
             keystore,
-            registration_keychain: Arc::new(MockKeychain {
-                fail_id,
-                fail_store,
-                fail_pending_store,
-                pending: std::sync::Mutex::new(None),
-            }),
+            registration_keychain: Arc::new(MockKeychain::new(fail_id, fail_store, fail_pending_store)),
             otp_client: mock.clone(),
             activation_client: mock,
         }
@@ -1213,12 +1288,7 @@ mod tests {
                 lan_state,
                 auth_state: Arc::new(AuthState::new(Arc::new(RealClock))),
                 keystore: Arc::new(Keystore::init().unwrap()),
-                registration_keychain: Arc::new(MockKeychain {
-                    fail_id: false,
-                    fail_store: false,
-                    fail_pending_store: false,
-                    pending: std::sync::Mutex::new(None),
-                }),
+                registration_keychain: Arc::new(MockKeychain::new(false, false, false)),
                 otp_client: mock.clone(),
                 activation_client: mock,
             };
@@ -1331,6 +1401,152 @@ mod tests {
                 .unwrap();
         assert_eq!(preserved.0, "Existing Pharmacy");
         assert_eq!(table_count(&state.pool, "owner").await, 1);
+    }
+
+    #[tokio::test]
+    async fn device_scope_conflict_rotates_device_id_and_succeeds_on_retry() {
+        let pool = crate::db::init_db_pool_with_url("sqlite::memory:").await.unwrap();
+        let lan_path = std::env::temp_dir().join(format!("registration-test-{}", uuid::Uuid::new_v4()));
+        let lan_state = Arc::new(LanServerState::new(pool.clone(), 0, &lan_path).unwrap());
+        let mock = Arc::new(MockActivation {
+            register_error: None,
+            enroll_fails: false,
+            enroll_results: std::sync::Mutex::new(vec![
+                Err("ENROLLMENT_CODE:DEVICE_SCOPE_CONFLICT:409:conflict".into()),
+                Ok(DeviceCredentials {
+                    device_id: "desktop-rotated-test".into(),
+                    access_token: "mock-access".into(),
+                    refresh_token: "mock-refresh".into(),
+                    token_type: "Bearer".into(),
+                    expires_in: 900,
+                    refresh_expires_at: "2030-01-01T00:00:00Z".into(),
+                }),
+            ]),
+        });
+        let state = AppState {
+            pool,
+            lan_state,
+            auth_state: Arc::new(AuthState::new(Arc::new(RealClock))),
+            keystore: Arc::new(Keystore::init().unwrap()),
+            registration_keychain: Arc::new(MockKeychain {
+                fail_id: false,
+                fail_store: false,
+                fail_pending_store: false,
+                pending: std::sync::Mutex::new(None),
+                device_id: std::sync::Mutex::new("desktop-registration-test".into()),
+                has_creds: false,
+            }),
+            otp_client: mock.clone(),
+            activation_client: mock,
+        };
+
+        let result = registration_commit_inner(&state, valid_payload()).await.unwrap();
+        assert_eq!(result.business_id, "AFYA-TEST01");
+    }
+
+    #[tokio::test]
+    async fn device_scope_conflict_stops_after_one_rotation_retry_failure() {
+        let pool = crate::db::init_db_pool_with_url("sqlite::memory:").await.unwrap();
+        let lan_path = std::env::temp_dir().join(format!("registration-test-{}", uuid::Uuid::new_v4()));
+        let lan_state = Arc::new(LanServerState::new(pool.clone(), 0, &lan_path).unwrap());
+        let mock = Arc::new(MockActivation {
+            register_error: None,
+            enroll_fails: false,
+            enroll_results: std::sync::Mutex::new(vec![
+                Err("ENROLLMENT_CODE:DEVICE_SCOPE_CONFLICT:409:conflict".into()),
+                Err("ENROLLMENT_CODE:DEVICE_SCOPE_CONFLICT:409:conflict".into()),
+            ]),
+        });
+        let state = AppState {
+            pool,
+            lan_state,
+            auth_state: Arc::new(AuthState::new(Arc::new(RealClock))),
+            keystore: Arc::new(Keystore::init().unwrap()),
+            registration_keychain: Arc::new(MockKeychain {
+                fail_id: false,
+                fail_store: false,
+                fail_pending_store: false,
+                pending: std::sync::Mutex::new(None),
+                device_id: std::sync::Mutex::new("desktop-registration-test".into()),
+                has_creds: false,
+            }),
+            otp_client: mock.clone(),
+            activation_client: mock,
+        };
+
+        let err = registration_commit_inner(&state, valid_payload()).await.unwrap_err();
+        assert_eq!(err.code, "DEVICE_SCOPE_CONFLICT");
+    }
+
+    #[tokio::test]
+    async fn device_revoked_does_not_trigger_rotation() {
+        let pool = crate::db::init_db_pool_with_url("sqlite::memory:").await.unwrap();
+        let lan_path = std::env::temp_dir().join(format!("registration-test-{}", uuid::Uuid::new_v4()));
+        let lan_state = Arc::new(LanServerState::new(pool.clone(), 0, &lan_path).unwrap());
+        let mock = Arc::new(MockActivation {
+            register_error: None,
+            enroll_fails: false,
+            enroll_results: std::sync::Mutex::new(vec![
+                Err("ENROLLMENT_CODE:DEVICE_REVOKED:409:revoked".into()),
+            ]),
+        });
+        let state = AppState {
+            pool,
+            lan_state,
+            auth_state: Arc::new(AuthState::new(Arc::new(RealClock))),
+            keystore: Arc::new(Keystore::init().unwrap()),
+            registration_keychain: Arc::new(MockKeychain {
+                fail_id: false,
+                fail_store: false,
+                fail_pending_store: false,
+                pending: std::sync::Mutex::new(None),
+                device_id: std::sync::Mutex::new("desktop-registration-test".into()),
+                has_creds: false,
+            }),
+            otp_client: mock.clone(),
+            activation_client: mock,
+        };
+
+        let err = registration_commit_inner(&state, valid_payload()).await.unwrap_err();
+        assert_eq!(err.code, "DEVICE_REVOKED");
+    }
+
+    #[tokio::test]
+    async fn existing_business_prevents_rotation() {
+        let pool = crate::db::init_db_pool_with_url("sqlite::memory:").await.unwrap();
+        sqlx::query("INSERT INTO business (id, workspace_id, branch_id, business_id, name, contact_mobile, created_at, updated_at) VALUES ('b1', 'w1', 'br1', 'AFYA-EXIST', 'Existing', '0712345678', '2026-01-01', '2026-01-01')")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let lan_path = std::env::temp_dir().join(format!("registration-test-{}", uuid::Uuid::new_v4()));
+        let lan_state = Arc::new(LanServerState::new(pool.clone(), 0, &lan_path).unwrap());
+        let mock = Arc::new(MockActivation {
+            register_error: None,
+            enroll_fails: false,
+            enroll_results: std::sync::Mutex::new(vec![
+                Err("ENROLLMENT_CODE:DEVICE_SCOPE_CONFLICT:409:conflict".into()),
+            ]),
+        });
+        let state = AppState {
+            pool,
+            lan_state,
+            auth_state: Arc::new(AuthState::new(Arc::new(RealClock))),
+            keystore: Arc::new(Keystore::init().unwrap()),
+            registration_keychain: Arc::new(MockKeychain {
+                fail_id: false,
+                fail_store: false,
+                fail_pending_store: false,
+                pending: std::sync::Mutex::new(None),
+                device_id: std::sync::Mutex::new("desktop-registration-test".into()),
+                has_creds: false,
+            }),
+            otp_client: mock.clone(),
+            activation_client: mock,
+        };
+
+        let err = registration_commit_inner(&state, valid_payload()).await.unwrap_err();
+        assert_eq!(err.code, "DEVICE_SCOPE_CONFLICT");
     }
 }
 
