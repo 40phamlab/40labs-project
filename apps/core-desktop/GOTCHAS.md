@@ -16,4 +16,5 @@ Things that look obviously right but aren't. Add to this file whenever you encou
 12. **Flex Shrink / Min-width Constraints**: Always ensure flex container children include `min-w-0` and `min-h-0` to prevent table and panel blowouts in responsive viewports.
 13. **Landing Animations**: Landing animations must pause on document.hidden; only transform/opacity animate.
 14. **Analytics formulas live in computeStockAnalytics.ts and are the ML baseline — do not change formulas without updating tests.**
+15. - Cloud device id (cloud-device-id-v1) lives in the OS keychain, not the app DB. Wiping SQLite/AppData/containers does NOT reset it; wipe keychain + local DB together (scripts/dev-reset.ps1) and `down -v` the server volume, or enrollment 409s against old device_enrollments rows.
 

@@ -217,11 +217,12 @@ impl OtpClient for HttpActivationClient {
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!(
-                "OTP request failed ({}): {}",
-                status,
-                body.chars().take(300).collect::<String>()
-            ));
+            let json: Option<serde_json::Value> = serde_json::from_str(&body).ok();
+            let err_code = json.as_ref()
+                .and_then(|v| v.get("error").or_else(|| v.get("code")))
+                .and_then(|e| e.as_str())
+                .unwrap_or("UNKNOWN");
+            return Err(format!("OTP request failed ({}): error code {}", status, err_code));
         }
 
         let data: OtpReqResp = res.json().await.map_err(|e| e.to_string())?;
@@ -241,11 +242,12 @@ impl OtpClient for HttpActivationClient {
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            return Err(format!(
-                "OTP verification failed ({}): {}",
-                status,
-                body.chars().take(300).collect::<String>()
-            ));
+            let json: Option<serde_json::Value> = serde_json::from_str(&body).ok();
+            let err_code = json.as_ref()
+                .and_then(|v| v.get("error").or_else(|| v.get("code")))
+                .and_then(|e| e.as_str())
+                .unwrap_or("UNKNOWN");
+            return Err(format!("OTP verification failed ({}): error code {}", status, err_code));
         }
 
         let data: OtpVerifyResp = res.json().await.map_err(|e| e.to_string())?;
@@ -310,12 +312,12 @@ impl ActivationClient for HttpActivationClient {
         if !res.status().is_success() {
             let status = res.status();
             let body = res.text().await.unwrap_or_default();
-            let (code, message) = classify_enrollment_http_error(status, &body);
+            let (code, _message) = classify_enrollment_http_error(status, &body);
             return Err(format!(
                 "ENROLLMENT_CODE:{}:{}:{}",
                 code,
                 status.as_u16(),
-                message.chars().take(200).collect::<String>()
+                code
             ));
         }
         res.json().await.map_err(|e| e.to_string())

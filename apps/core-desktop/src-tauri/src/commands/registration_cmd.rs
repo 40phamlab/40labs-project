@@ -42,13 +42,15 @@ fn registration_error(
 
 fn registration_db_error(stage: &'static str, error: sqlx::Error) -> RegistrationErrorResponse {
     let (kind, code, retryable) = match &error {
+        sqlx::Error::Database(db_err) if stage == "local_commit" && (db_err.message().contains("UNIQUE") || db_err.code().as_deref() == Some("2067") || db_err.code().as_deref() == Some("19")) => {
+            ("constraint_or_schema", "DATABASE_CONSTRAINT_FAILURE", false)
+        }
         _ if stage == "local_commit" => ("database_commit", "TRANSACTION_FAILURE", true),
         sqlx::Error::Database(_) => ("constraint_or_schema", "DATABASE_CONSTRAINT_FAILURE", false),
         sqlx::Error::RowNotFound => ("missing_row", "DATABASE_CONSTRAINT_FAILURE", false),
         sqlx::Error::PoolTimedOut | sqlx::Error::PoolClosed => {
             ("database_unavailable", "TRANSACTION_FAILURE", true)
         }
-        _ if stage == "local_commit" => ("database_operation", "TRANSACTION_FAILURE", true),
         _ => ("database_operation", "TRANSACTION_FAILURE", true),
     };
     tracing::error!(stage, kind, error = %error, "Registration database operation failed");
@@ -384,6 +386,21 @@ async fn registration_commit_inner(
         terms_text_sha256: terms_text_sha256.to_string(),
     };
 
+    let already_registered: Option<(i64,)> =
+        sqlx::query_as("SELECT COUNT(*) FROM bound_device WHERE status = 'active'")
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(|e| registration_db_error("registration_preflight", e))?;
+    if let Some((count,)) = already_registered {
+        if count > 0 {
+            return Err(registration_error(
+                "REGISTRATION_ALREADY_COMPLETED",
+                "registration_preflight",
+                false,
+            ));
+        }
+    }
+
     crate::debug::registration_event("activation_register", "started", None);
     let stage_started = std::time::Instant::now();
     let reg_resp = state
@@ -417,27 +434,6 @@ async fn registration_commit_inner(
         "succeeded",
         Some(stage_started.elapsed().as_millis()),
     );
-
-    let already_registered: Option<(String, String)> =
-        sqlx::query_as("SELECT workspace_id, branch_id FROM business WHERE business_id = ?")
-            .bind(&reg_resp.business_id)
-            .fetch_optional(&state.pool)
-            .await
-            .map_err(|e| registration_db_error("registration_preflight", e))?;
-    if let Some((workspace_id, branch_id)) = already_registered {
-        if workspace_id == reg_resp.workspace_id && branch_id == reg_resp.branch_id {
-            return Err(registration_error(
-                "REGISTRATION_ALREADY_COMPLETED",
-                "registration_preflight",
-                false,
-            ));
-        }
-        return Err(registration_error(
-            "DATABASE_CONSTRAINT_FAILURE",
-            "registration_preflight",
-            false,
-        ));
-    }
 
     fn parse_enrollment_error(e: &str) -> (&'static str, bool, u16) {
     if let Some(stripped) = e.strip_prefix("ENROLLMENT_CODE:") {
