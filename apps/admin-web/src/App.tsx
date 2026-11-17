@@ -14,6 +14,7 @@ import { BillingOverviewPage } from './pages/BillingOverviewPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { InfraPage } from './pages/InfraPage';
 import { SyncPage } from './pages/SyncPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 
 type ScreenId = 'overview' | 'businesses' | 'billing' | 'analytics' | 'sync' | 'infra' | 'account';
@@ -100,12 +101,14 @@ function AdminShellContent() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<AuthGuard />}>
-          <Route path="/*" element={<AdminShellContent />} />
-        </Route>
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<AuthGuard />}>
+            <Route path="/*" element={<AdminShellContent />} />
+          </Route>
+        </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
