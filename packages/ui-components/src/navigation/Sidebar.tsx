@@ -125,7 +125,7 @@ export const SidebarItem = ({
       aria-label={ariaLabelText}
       aria-current={active ? 'page' : undefined}
       className={`
-        w-full h-9 flex items-center gap-2.5 px-2.5 rounded-md text-xs font-medium
+        w-full h-9 flex items-center gap-2 px-2 rounded-md text-xs font-medium
         transition-colors duration-150 outline-none relative group select-none
         focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 ${isFloating ? 'focus-visible:ring-offset-app-bg' : 'focus-visible:ring-offset-sidebar'}
         ${

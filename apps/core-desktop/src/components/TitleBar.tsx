@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { PanelLeft, Minus, Square, X } from 'lucide-react';
-import { useAppShell } from '@40labs/ui-components';
+import { useAppShell, Dropdown } from '@40labs/ui-components';
 import { HamburgerMenu } from './HamburgerMenu';
 import { BranchControl } from './BranchControl';
 import { OpenFileTabs } from './OpenFileTabs';
@@ -29,6 +29,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 }) => {
   const shell = useAppShell();
   const isNavClosed = shell.navState === 'closed';
+  const [isSidebarMenuOpen, setIsSidebarMenuOpen] = React.useState(false);
 
   const setActiveScreen = useNavStore((s) => s.setActiveScreen);
 
@@ -36,7 +37,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
     if (onToggleSidebar) {
       onToggleSidebar();
     } else {
-      shell.toggleSidebar();
+      setIsSidebarMenuOpen((prev) => !prev);
     }
   };
 
@@ -75,6 +76,61 @@ export const TitleBar: React.FC<TitleBarProps> = ({
     }
   };
 
+  const toggleButtonElement = (
+    <button
+      type="button"
+      onClick={handleToggle}
+      className="w-8 h-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer no-drag select-none"
+      data-tauri-drag-region="false"
+      title={isNavClosed ? 'Show sidebar navigation (Ctrl+B)' : 'Toggle sidebar navigation (Ctrl+B)'}
+      aria-label={isNavClosed ? 'Show sidebar navigation' : 'Toggle sidebar navigation'}
+      aria-expanded={isSidebarMenuOpen}
+    >
+      <PanelLeft size={15} className={isNavClosed ? 'text-action-primary' : 'text-current'} />
+    </button>
+  );
+
+  const sidebarMenuContent = (
+    <div className="w-44 py-1 bg-surface-elevated border border-border rounded-md shadow-lg text-xs z-[150]">
+      <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-text-muted border-b border-border-subtle">
+        Sidebar State
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          shell.expandSidebar();
+          setIsSidebarMenuOpen(false);
+        }}
+        className={`w-full px-3 py-2 text-left flex items-center justify-between hover:bg-surface-hover transition-colors ${shell.navState === 'open' ? 'text-action-primary font-semibold bg-surface-selected/50' : 'text-text-primary'}`}
+      >
+        <span>Expanded</span>
+        {shell.navState === 'open' && <span className="w-1.5 h-1.5 rounded-full bg-action-primary" />}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          shell.collapseSidebar();
+          setIsSidebarMenuOpen(false);
+        }}
+        className={`w-full px-3 py-2 text-left flex items-center justify-between hover:bg-surface-hover transition-colors ${shell.navState === 'icon' ? 'text-action-primary font-semibold bg-surface-selected/50' : 'text-text-primary'}`}
+      >
+        <span>Icons Only</span>
+        {shell.navState === 'icon' && <span className="w-1.5 h-1.5 rounded-full bg-action-primary" />}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          shell.hideSidebar();
+          setIsSidebarMenuOpen(false);
+        }}
+        className={`w-full px-3 py-2 text-left flex items-center justify-between hover:bg-surface-hover transition-colors ${shell.navState === 'closed' ? 'text-action-primary font-semibold bg-surface-selected/50' : 'text-text-primary'}`}
+      >
+        <span>Hidden</span>
+        {shell.navState === 'closed' && <span className="w-1.5 h-1.5 rounded-full bg-action-primary" />}
+      </button>
+    </div>
+  );
+
   return (
     <div
       className="h-10 w-full flex items-center justify-between px-2 bg-app-bg select-none shrink-0 z-[110]"
@@ -82,16 +138,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       {/* Left side: Sidebar Toggle, Logo, Hamburger Menu (App Shell Menu), File Tabs, Branch Control */}
       <div className="flex items-center gap-1.5 h-full min-w-0 no-drag shrink-0" data-tauri-drag-region="false">
         {/* Sidebar Toggle Button */}
-        <button
-          type="button"
-          onClick={handleToggle}
-          className="w-8 h-8 flex items-center justify-center rounded-md text-text-muted hover:text-text-primary hover:bg-surface-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus-ring cursor-pointer no-drag select-none"
-          data-tauri-drag-region="false"
-          title={isNavClosed ? 'Show sidebar navigation (Ctrl+B)' : 'Toggle sidebar navigation (Ctrl+B)'}
-          aria-label={isNavClosed ? 'Show sidebar navigation' : 'Toggle sidebar navigation'}
-        >
-          <PanelLeft size={15} className={isNavClosed ? 'text-action-primary' : 'text-current'} />
-        </button>
+        {onToggleSidebar ? (
+          toggleButtonElement
+        ) : (
+          <Dropdown
+            isOpen={isSidebarMenuOpen}
+            onClose={() => setIsSidebarMenuOpen(false)}
+            trigger={toggleButtonElement}
+            placement="bottom-start"
+          >
+            {sidebarMenuContent}
+          </Dropdown>
+        )}
 
         {/* Logo */}
         <div className="flex items-center gap-2 px-2 no-drag" data-tauri-drag-region="false">

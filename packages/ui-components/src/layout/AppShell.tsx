@@ -204,7 +204,7 @@ export function AppShell({
                   ? 'w-0 opacity-0 border-r-0 overflow-hidden pointer-events-none'
                   : navState === 'icon'
                   ? isFloating ? 'w-[var(--sidebar-rail-width)] opacity-100 z-30 md:z-20' : 'w-16 opacity-100 z-30 md:z-20'
-                  : 'w-60 opacity-100 z-40 md:z-20 shadow-2xl md:shadow-none'
+                  : 'w-48 opacity-100 z-40 md:z-20 shadow-2xl md:shadow-none'
               }`}
               aria-hidden={navState === 'closed'}
               data-testid="app-shell-sidebar-container"

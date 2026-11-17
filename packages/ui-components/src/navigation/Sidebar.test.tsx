@@ -3,6 +3,7 @@ import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppSidebarNav, NavItem } from './AppSidebarNav';
+import { AppShell } from '../layout/AppShell';
 
 const sampleNavItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -110,5 +111,63 @@ describe('Sidebar Navigation Component & 3-State Click Rules', () => {
     fireEvent.keyDown(inventoryButton, { key: 'Enter' });
 
     expect(handleNavigate).toHaveBeenCalledWith('inventory');
+  });
+
+  test('supports three sidebar states and all 5 state transitions (Expanded, Icons Only, Hidden)', () => {
+    const { rerender } = render(
+      <AppShell navState="open" sidebar={<AppSidebarNav activeRoute="dashboard" navState="open" onNavigate={() => {}} items={sampleNavItems} />}>
+        <div>Main Content</div>
+      </AppShell>
+    );
+    expect(screen.getByTestId('app-shell-sidebar-container')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+
+    // 1. Expanded → Icons Only
+    rerender(
+      <AppShell navState="icon" sidebar={<AppSidebarNav activeRoute="dashboard" navState="icon" onNavigate={() => {}} items={sampleNavItems} />}>
+        <div>Main Content</div>
+      </AppShell>
+    );
+    expect(screen.getByTestId('app-shell-sidebar-container')).toBeInTheDocument();
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+
+    // 2. Icons Only → Hidden
+    rerender(
+      <AppShell navState="closed" sidebar={<AppSidebarNav activeRoute="dashboard" navState="closed" onNavigate={() => {}} items={sampleNavItems} />}>
+        <div>Main Content</div>
+      </AppShell>
+    );
+    expect(screen.getByTestId('app-shell-sidebar-container')).toHaveClass('w-0');
+
+    // 3. Hidden → Expanded
+    rerender(
+      <AppShell navState="open" sidebar={<AppSidebarNav activeRoute="dashboard" navState="open" onNavigate={() => {}} items={sampleNavItems} />}>
+        <div>Main Content</div>
+      </AppShell>
+    );
+    expect(screen.getByTestId('app-shell-sidebar-container')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+
+    // 4. Hidden → Icons Only
+    rerender(
+      <AppShell navState="closed" sidebar={<AppSidebarNav activeRoute="dashboard" navState="closed" onNavigate={() => {}} items={sampleNavItems} />}>
+        <div>Main Content</div>
+      </AppShell>
+    );
+    rerender(
+      <AppShell navState="icon" sidebar={<AppSidebarNav activeRoute="dashboard" navState="icon" onNavigate={() => {}} items={sampleNavItems} />}>
+        <div>Main Content</div>
+      </AppShell>
+    );
+    expect(screen.getByTestId('app-shell-sidebar-container')).toBeInTheDocument();
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+
+    // 5. Icons Only → Expanded
+    rerender(
+      <AppShell navState="open" sidebar={<AppSidebarNav activeRoute="dashboard" navState="open" onNavigate={() => {}} items={sampleNavItems} />}>
+        <div>Main Content</div>
+      </AppShell>
+    );
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 });
