@@ -44,10 +44,31 @@ export type AdminVerificationDecision = 'verified' | 'rejected' | 'suspended';
 export interface AdminVerificationRequest { decision: AdminVerificationDecision; reason?: string }
 export interface AdminVerificationResponse { success: boolean; status: string }
 export interface AdminOverviewResponse {
-  kpis: { registered_businesses: number; verified_percentage: number; pending_count: number; active_businesses: number; platform_sales_today: number; open_infra_alerts: number };
+  total: number;
+  pending: number;
+  verified: number;
+  rejected: number;
+  suspended: number;
+  new_7d: number;
+  active_24h: number;
+  active_7d: number;
+  kpis: {
+    registered_businesses: number;
+    verified_percentage: number;
+    pending_count: number;
+    suspended_count: number;
+    active_businesses: number;
+    platform_sales_today: number;
+    open_infra_alerts: number;
+  };
   signups_per_day: Array<{ date: string; count: number }>;
   platform_daily_sales: Array<{ date: string; revenue: number }>;
-  needs_attention: Array<{ type: string; id: string; name: string; description: string; time: string; link: string }>;
+  needs_attention: Array<{ type?: string; id: string; name: string; description: string; time?: string; link: string }>;
+  attention: Array<{ id: string; name: string; description: string; link: string }>;
+  recent_activity: Array<{ action: string; business_id: string; name: string; timestamp: string; payload?: Record<string, unknown> | null }>;
+  by_region: Array<{ region: string; count: number }>;
+  by_tier: Array<{ tier: string; count: number }>;
+  registrations_30d: Array<{ date: string; count: number }>;
 }
 export interface AdminRevenueResponse { range: string; group: string; revenue_data: Array<{ bucket: string; revenue: number; region: string; tier: string }>; tier_distribution: Record<string, number> }
 export interface AdminProductsResponse { metric: string; limit: number; products: Array<{ medicine_id: string; units?: number; revenue?: number; stockouts?: number }> }

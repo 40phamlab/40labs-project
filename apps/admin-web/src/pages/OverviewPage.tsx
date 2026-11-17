@@ -37,32 +37,26 @@ interface RegistrationItem {
   count: number;
 }
 
-interface OverviewData extends AdminOverviewResponse {
-  total?: number;
-  pending?: number;
-  verified?: number;
-  rejected?: number;
-  new_7d?: number;
-  active_24h?: number;
-  active_7d?: number;
+type OverviewData = AdminOverviewResponse & {
   attention?: Array<Record<string, unknown>>;
   recent_activity?: ActivityItem[];
   by_region?: RegionItem[];
   by_tier?: TierItem[];
   registrations_30d?: RegistrationItem[];
-}
+};
 
 const COLORS = ['var(--color-action-primary)', 'var(--color-accent)', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export function OverviewPage() {
   const navigate = useNavigate();
 
-  const { data, isLoading, error, refetch } = useQuery<OverviewData>({
+  const { data, isLoading, isRefetching, error, refetch, dataUpdatedAt } = useQuery<OverviewData>({
     queryKey: ['admin-overview'],
     queryFn: () => apiFetch<OverviewData>('/admin/v1/overview'),
     refetchInterval: 60000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+    placeholderData: (previousData) => previousData,
   });
 
   if (isLoading) {
@@ -143,6 +137,25 @@ export function OverviewPage() {
   return (
     <TabContainer>
       <div className="space-y-6">
+        {/* Header with Title, Last Updated, and Refresh */}
+        <div className="flex items-center justify-between bg-surface p-4 rounded-xl border border-border">
+          <div>
+            <h1 className="font-heading font-bold text-text-primary text-lg">Admin Overview</h1>
+            <p className="text-xs text-text-muted">
+              {dataUpdatedAt ? `Last updated: ${new Date(dataUpdatedAt).toLocaleTimeString()}` : 'Live data'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="flex items-center gap-2 px-3 py-1.5 bg-action-primary text-white rounded-lg text-xs font-medium hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCcw size={14} className={isRefetching ? 'animate-spin' : ''} />
+            {isRefetching ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+
         {/* Row 1, KPI cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div onClick={() => navigate('/businesses')} className="cursor-pointer">

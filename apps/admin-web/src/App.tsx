@@ -1,7 +1,6 @@
-// PHASE: Admin-A
 import * as React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Home, Building2, CreditCard, BarChart3, RefreshCw, Server, UserCog } from 'lucide-react';
+import { Home, Building2, CreditCard, BarChart3, RefreshCw, Server, UserCog, ShieldCheck, FileText } from 'lucide-react';
 import { AppShell, AppSidebarNav, type NavItem, type NavigationState } from '@40labs/ui-components';
 import { TitleBar } from './_copied/components/TitleBar';
 import { AuthGuard } from './components/AuthGuard';
@@ -14,10 +13,12 @@ import { BillingOverviewPage } from './pages/BillingOverviewPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { InfraPage } from './pages/InfraPage';
 import { SyncPage } from './pages/SyncPage';
+import { AdminUsersPage } from './pages/AdminUsersPage';
+import { AuditLogPage } from './pages/AuditLogPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 
-type ScreenId = 'overview' | 'businesses' | 'billing' | 'analytics' | 'sync' | 'infra' | 'account';
+type ScreenId = 'overview' | 'businesses' | 'billing' | 'analytics' | 'sync' | 'infra' | 'admin-users' | 'audit-log' | 'account';
 
 function AdminShellContent() {
   const navigate = useNavigate();
@@ -31,6 +32,8 @@ function AdminShellContent() {
     if (path.startsWith('/analytics')) return 'analytics';
     if (path.startsWith('/sync')) return 'sync';
     if (path.startsWith('/infra')) return 'infra';
+    if (path.startsWith('/admin-users')) return 'admin-users';
+    if (path.startsWith('/audit-log')) return 'audit-log';
     if (path.startsWith('/account')) return 'account';
     return 'overview';
   };
@@ -44,6 +47,8 @@ function AdminShellContent() {
     { id: 'analytics', labelKey: 'Analytics', route: '/analytics', icon: <BarChart3 size={18} /> },
     { id: 'sync', labelKey: 'Sync', route: '/sync', icon: <RefreshCw size={18} /> },
     { id: 'infra', labelKey: 'Infra', route: '/infra', icon: <Server size={18} /> },
+    { id: 'admin-users', labelKey: 'Admin Users', route: '/admin-users', icon: <ShieldCheck size={18} /> },
+    { id: 'audit-log', labelKey: 'Audit Log', route: '/audit-log', icon: <FileText size={18} /> },
   ];
 
   const PINNED_BOTTOM_ITEMS: Array<NavItem<ScreenId>> = [
@@ -90,6 +95,8 @@ function AdminShellContent() {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/sync" element={<SyncPage />} />
           <Route path="/infra" element={<InfraPage />} />
+          <Route path="/admin-users" element={<AdminUsersPage />} />
+          <Route path="/audit-log" element={<AuditLogPage />} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

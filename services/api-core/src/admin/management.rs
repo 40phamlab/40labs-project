@@ -6,7 +6,7 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/workspaces", get(list_workspaces))
         .route("/workspaces/:workspace_id/branches", get(list_branches))
-        .route("/admin-users", get(list_admin_users))
+        .route("/admin-users", get(list_admin_users).post(create_admin_user))
         .route("/admin-users/:admin_id", patch(update_admin_user))
         .route("/audit-log", get(list_audit_log))
         .with_state(state)
@@ -98,6 +98,74 @@ async fn update_admin_user(State(state): State<AppState>, Path(admin_id): Path<S
     }
     if tx.commit().await.is_err() { return error(StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL", "Could not commit administrative user update"); }
     Json(serde_json::json!({"id":admin_id,"role":payload.role,"disabled":payload.disabled})).into_response()
+}
+
+#[derive(Deserialize)]
+struct CreateAdminUser {
+    email: String,
+    password: String,
+    role: String,
+}
+
+async fn create_admin_user(
+    State(state): State<AppState>,
+    Extension(claims): Extension<AdminClaims>,
+    Json(payload): Json<CreateAdminUser>,
+) -> Response {
+    if claims.role != "super_admin" {
+        return error(StatusCode::FORBIDDEN, "FORBIDDEN", "Only super_admin can create administrator accounts");
+    }
+    const ROLES: [&str; 4] = ["super_admin", "admin", "reviewer", "viewer"];
+    if !ROLES.contains(&payload.role.as_str()) {
+        return error(StatusCode::BAD_REQUEST, "VALIDATION", "role must be super_admin, admin, reviewer, or viewer");
+    }
+    let email = payload.email.trim().to_lowercase();
+    if email.is_empty() || payload.password.len() < 8 {
+        return error(StatusCode::BAD_REQUEST, "VALIDATION", "Email is required and password must be at least 8 characters");
+    }
+
+    let password_hash = match crate::admin::auth::hash_password(&payload.password) {
+        Ok(h) => h,
+        Err(_) => return error(StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL", "Could not hash password"),
+    };
+
+    let id = uuid::Uuid::new_v4().to_string();
+    let mut tx = match state.pool.begin().await {
+        Ok(tx) => tx,
+        Err(_) => return error(StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL", "Could not begin transaction"),
+    };
+
+    let res = sqlx::query(
+        "INSERT INTO admin_users (id, email, password_hash, role) VALUES ($1, $2, $3, $4)"
+    )
+    .bind(&id)
+    .bind(&email)
+    .bind(&password_hash)
+    .bind(&payload.role)
+    .execute(&mut *tx)
+    .await;
+
+    if res.is_err() {
+        return error(StatusCode::CONFLICT, "CONFLICT", "Admin user with this email already exists or invalid data");
+    }
+
+    if sqlx::query("INSERT INTO admin_audit_log (id,admin_user_id,action,target_type,target_id,payload) VALUES ($1,$2,'admin_user_created','admin_user',$3,$4)")
+        .bind(uuid::Uuid::new_v4().to_string())
+        .bind(&claims.user_id)
+        .bind(&id)
+        .bind(serde_json::json!({"email": email, "role": payload.role}))
+        .execute(&mut *tx)
+        .await
+        .is_err()
+    {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL", "Could not record audit log for admin creation");
+    }
+
+    if tx.commit().await.is_err() {
+        return error(StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL", "Could not commit transaction");
+    }
+
+    Json(serde_json::json!({"id": id, "email": email, "role": payload.role})).into_response()
 }
 
 #[derive(Deserialize)]

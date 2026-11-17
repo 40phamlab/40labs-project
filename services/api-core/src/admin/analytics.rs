@@ -30,12 +30,14 @@ async fn overview_handler(State(state): State<AppState>) -> Response {
     let verified: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'verified'").fetch_one(&state.pool), "Could not load verification totals");
     let pending: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE v.status IS NULL OR v.status = 'pending'").fetch_one(&state.pool), "Could not load pending verifications");
     let rejected: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'rejected'").fetch_one(&state.pool), "Could not load rejected verifications");
+    let suspended: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_verification WHERE status = 'suspended'").fetch_one(&state.pool).await.unwrap_or(0);
     let new_7d: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - INTERVAL '7 days'").fetch_one(&state.pool), "Could not load new signups in 7d");
     let active_24h: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM sync_changes c JOIN business_registry b ON b.workspace_id = c.workspace_id AND b.branch_id = c.branch_id WHERE c.received_at >= NOW() - INTERVAL '24 hours'").fetch_one(&state.pool), "Could not load active business totals (24h)");
     let active_7d: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM sync_changes c JOIN business_registry b ON b.workspace_id = c.workspace_id AND b.branch_id = c.branch_id WHERE c.received_at >= NOW() - INTERVAL '7 days'").fetch_one(&state.pool), "Could not load active business totals (7d)");
     let sales: i64 = sqlx::query_scalar("SELECT COALESCE(SUM(revenue_total), 0)::BIGINT FROM cloud_daily_summaries WHERE summary_date = CURRENT_DATE")
         .fetch_optional(&state.pool).await.ok().flatten().unwrap_or(0);
-    let alerts: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM (SELECT DISTINCT ON (check_name) status FROM infra_health_checks ORDER BY check_name, checked_at DESC) latest WHERE status IN ('degraded','down')").fetch_one(&state.pool), "Could not load infrastructure alerts");
+    let alerts: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM (SELECT DISTINCT ON (check_name) status FROM infra_health_checks ORDER BY check_name, checked_at DESC) latest WHERE status IN ('degraded','down')")
+        .fetch_one(&state.pool).await.unwrap_or(0);
 
     let attention_rows: Vec<(String, String, String)> = db_or_return!(sqlx::query_as(
         r#"
@@ -115,6 +117,7 @@ async fn overview_handler(State(state): State<AppState>) -> Response {
         "pending": pending,
         "verified": verified,
         "rejected": rejected,
+        "suspended": suspended,
         "new_7d": new_7d,
         "active_24h": active_24h,
         "active_7d": active_7d,
@@ -123,7 +126,7 @@ async fn overview_handler(State(state): State<AppState>) -> Response {
         "by_region": by_region,
         "by_tier": by_tier,
         "registrations_30d": registrations_30d,
-        "kpis": {"registered_businesses": registered, "verified_percentage": if registered == 0 { 0.0 } else { verified as f64 * 100.0 / registered as f64 }, "pending_count": pending, "active_businesses": active_24h, "platform_sales_today": sales, "open_infra_alerts": alerts},
+        "kpis": {"registered_businesses": registered, "verified_percentage": if registered == 0 { 0.0 } else { verified as f64 * 100.0 / registered as f64 }, "pending_count": pending, "suspended_count": suspended, "active_businesses": active_24h, "platform_sales_today": sales, "open_infra_alerts": alerts},
         "signups_per_day": signups.into_iter().map(|(date,count)| serde_json::json!({"date":date,"count":count})).collect::<Vec<_>>(),
         "platform_daily_sales": daily_sales.into_iter().map(|(date,revenue)| serde_json::json!({"date":date,"revenue":revenue})).collect::<Vec<_>>(),
         "needs_attention": attention

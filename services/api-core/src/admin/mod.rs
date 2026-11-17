@@ -103,6 +103,7 @@ fn route_permission(
         ("GET", ["businesses"]) | ("GET", ["businesses", _, ..]) => Some((Businesses, Read)),
         ("GET", ["workspaces"]) | ("GET", ["workspaces", _, "branches"]) => Some((Businesses, Read)),
         ("GET", ["admin-users"]) => Some((AdminUsers, Read)),
+        ("POST", ["admin-users"]) => Some((AdminUsers, AdminAction::Manage)),
         ("PATCH", ["admin-users", _]) => Some((AdminUsers, AdminAction::Manage)),
         ("GET", ["audit-log"]) => Some((Logs, Read)),
         ("POST", ["businesses", _, "verification"]) => Some((Businesses, Write)),

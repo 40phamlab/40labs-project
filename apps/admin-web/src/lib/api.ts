@@ -3,7 +3,9 @@
 import type { ApiErrorResponse } from '@40labs/types';
 
 // environments the API origin must be configured explicitly.
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_BASE_URL !== undefined
+  ? import.meta.env.VITE_API_BASE_URL
+  : (import.meta.env.PROD ? '' : 'http://localhost:3000')).replace(/\/$/, '');
 
 export class ApiClientError extends Error {
   constructor(message: string, readonly status: number, readonly code?: string) {
