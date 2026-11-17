@@ -322,6 +322,15 @@ async fn list_businesses(
     }))
 }
 
+fn sanitize_csv_field(val: &str) -> String {
+    let escaped = val.replace('"', "\"\"");
+    if escaped.starts_with('=') || escaped.starts_with('+') || escaped.starts_with('-') || escaped.starts_with('@') {
+        format!("'{}", escaped)
+    } else {
+        escaped
+    }
+}
+
 async fn export_businesses_csv(
     State(state): State<AppState>,
     Query(query): Query<ListQuery>,
@@ -386,14 +395,14 @@ async fn export_businesses_csv(
     for r in rows {
         csv.push_str(&format!(
             "\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\"\n",
-            r.0,
-            r.1.as_deref().unwrap_or(""),
-            r.2.as_deref().unwrap_or(""),
-            r.3.as_deref().unwrap_or(""),
-            r.4.as_deref().unwrap_or(""),
-            r.5,
-            r.6,
-            r.7
+            sanitize_csv_field(&r.0),
+            sanitize_csv_field(r.1.as_deref().unwrap_or("")),
+            sanitize_csv_field(r.2.as_deref().unwrap_or("")),
+            sanitize_csv_field(r.3.as_deref().unwrap_or("")),
+            sanitize_csv_field(r.4.as_deref().unwrap_or("")),
+            sanitize_csv_field(&r.5),
+            sanitize_csv_field(&r.6),
+            sanitize_csv_field(&r.7),
         ));
     }
 
