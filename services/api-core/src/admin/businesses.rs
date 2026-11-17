@@ -59,6 +59,7 @@ pub struct BusinessListItem {
     pub last_sync_at: Option<String>,
     pub last_sync: Option<String>,
     pub created_at: String,
+    pub profile_complete: bool,
 }
 
 #[derive(Serialize, Debug)]
@@ -157,7 +158,8 @@ async fn list_businesses(
                 (SELECT MAX(received_at) FROM sync_changes WHERE workspace_id = b.workspace_id AND branch_id = b.branch_id),
                 (SELECT MAX(COALESCE(last_seen_at, last_seen)) FROM sync_devices WHERE workspace_id = b.workspace_id AND (branch_id = b.branch_id OR branch_id = ''))
             )) AS last_sync_at,
-            b.created_at
+            b.created_at,
+            CASE WHEN b.name IS NOT NULL AND TRIM(b.name) <> '' AND b.address_region IS NOT NULL AND TRIM(b.address_region) <> '' AND b.tmda_number IS NOT NULL AND TRIM(b.tmda_number) <> '' THEN TRUE ELSE FALSE END AS profile_complete
         FROM business_registry b
         LEFT JOIN business_verification v ON b.business_id = v.business_id
         WHERE 1=1
@@ -258,6 +260,7 @@ async fn list_businesses(
             Option<String>,
             Option<chrono::DateTime<chrono::Utc>>,
             String,
+            bool,
         )>()
         .fetch_all(&state.pool)
         .await
@@ -285,6 +288,7 @@ async fn list_businesses(
             last_sync_at: row.11.map(|timestamp| timestamp.to_rfc3339()),
             last_sync: row.11.map(|timestamp| timestamp.to_rfc3339()),
             created_at: row.12,
+            profile_complete: row.13,
         })
         .collect();
 
@@ -425,6 +429,7 @@ struct BusinessProfileRow {
     reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
     reviewed_by: Option<String>,
     created_at: Option<String>,
+    profile_complete: bool,
 }
 
 async fn get_business(
@@ -455,7 +460,8 @@ async fn get_business(
             COALESCE(v.status, 'pending') AS verification_status,
             v.decided_at AS reviewed_at,
             v.decided_by AS reviewed_by,
-            b.created_at
+            b.created_at,
+            CASE WHEN b.name IS NOT NULL AND TRIM(b.name) <> '' AND b.address_region IS NOT NULL AND TRIM(b.address_region) <> '' AND b.tmda_number IS NOT NULL AND TRIM(b.tmda_number) <> '' THEN TRUE ELSE FALSE END AS profile_complete
         FROM business_registry b
         LEFT JOIN business_verification v ON b.business_id = v.business_id
         WHERE b.business_id = $1
@@ -574,7 +580,8 @@ async fn get_business(
             "logo_url": r.logo_url,
             "scale": r.scale,
             "role_scopes": r.role_scopes,
-            "created_at": r.created_at.unwrap_or_default()
+            "created_at": r.created_at.unwrap_or_default(),
+            "profile_complete": r.profile_complete
         },
         "ownership": {
             "owner_type": r.owner_type,
@@ -1057,7 +1064,27 @@ async fn verify_business(
         .fetch_optional(&mut *tx)
         .await;
     match exists {
-        Ok(Some(_)) => {}
+        Ok(Some(_)) => {
+            if status == "verified" {
+                let is_complete: Option<bool> = sqlx::query_scalar(
+                    "SELECT CASE WHEN name IS NOT NULL AND TRIM(name) <> '' AND address_region IS NOT NULL AND TRIM(address_region) <> '' AND tmda_number IS NOT NULL AND TRIM(tmda_number) <> '' THEN TRUE ELSE FALSE END FROM business_registry WHERE business_id = $1"
+                )
+                .bind(&business_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .unwrap_or(Some(false));
+
+                if is_complete != Some(true) {
+                    return (
+                        StatusCode::CONFLICT,
+                        Json(serde_json::json!({
+                            "error": { "code": "INCOMPLETE_PROFILE", "message": "Cannot verify business with incomplete profile (name, region, and TMDA number required)" }
+                        })),
+                    )
+                        .into_response();
+                }
+            }
+        }
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,

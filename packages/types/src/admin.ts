@@ -8,6 +8,7 @@ export interface AdminSession { id: string; expires_at: string; ip?: string | nu
 export interface AdminBusinessListItem {
   business_id: string; name: string | null; region: string | null; tmda_number: string | null;
   tier: string; verification_status: string; last_sync: string | null; created_at: string;
+  profile_complete: boolean; owner_name?: string | null; owner_phone?: string | null;
 }
 export interface AdminBusinessCounts {
   all: number;
@@ -27,6 +28,7 @@ export interface AdminBusinessListResponse {
 export interface AdminBusiness {
   business_id: string; name: string | null; region: string | null; tmda_number: string | null;
   tier: string; verification_status: string; rejection_reason: string | null; created_at: string;
+  profile_complete: boolean;
 }
 export interface AdminBusinessStockResponse {
   items: Array<{ medicine_id: string; batch_number: string; expiry_date: string; buy_price: number; sell_price: number; quantity: number; low_stock_threshold: number }>;

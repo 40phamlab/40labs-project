@@ -19,6 +19,7 @@ interface BusinessItem {
   last_sync_at?: string | null;
   last_sync: string | null;
   created_at: string;
+  profile_complete: boolean;
 }
 
 interface BusinessListResponse {
@@ -171,15 +172,22 @@ export function BusinessesPage() {
     }
   };
 
-  const renderVerificationChip = (st: string) => {
-    const s = (st || 'pending').toLowerCase();
+  const renderVerificationChip = (item: BusinessItem) => {
+    const s = (item.verification_status || item.status || 'pending').toLowerCase();
     let bg = 'bg-amber-500/10 text-amber-500 border-amber-500/20';
     if (s === 'verified') bg = 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
     if (s === 'rejected') bg = 'bg-rose-500/10 text-rose-500 border-rose-500/20';
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${bg}`}>
-        {s.charAt(0).toUpperCase() + s.slice(1)}
-      </span>
+      <div className="flex items-center gap-2">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${bg}`}>
+          {s.charAt(0).toUpperCase() + s.slice(1)}
+        </span>
+        {!item.profile_complete && (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
+            Incomplete
+          </span>
+        )}
+      </div>
     );
   };
 
@@ -352,21 +360,22 @@ export function BusinessesPage() {
                       </Link>
                     </td>
                     <td className="p-4 font-medium text-text-primary group-hover:text-action-primary transition-colors">
-                      {item.name ? (
+                      {item.profile_complete && item.name ? (
                         item.name
                       ) : (
-                        <span className="flex items-center gap-2">
-                          <span className="text-text-muted italic">Unnamed business</span>
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                            Incomplete
-                          </span>
-                        </span>
+                        <div className="space-y-0.5">
+                          <span className="text-amber-500 font-medium italic">Registration incomplete</span>
+                          <div className="text-[11px] text-text-muted flex items-center gap-2">
+                            {item.owner_phone && <span>Phone: {item.owner_phone}</span>}
+                            <span>Created: {formatDateTime(item.created_at)}</span>
+                          </div>
+                        </div>
                       )}
                     </td>
                     <td className="p-4 text-text-muted">{item.region || '—'}</td>
                     <td className="p-4 font-mono text-xs text-text-muted">{item.tmda_number || '—'}</td>
                     <td className="p-4 text-text-muted uppercase text-xs font-semibold">{formatTier(item.tier)}</td>
-                    <td className="p-4">{renderVerificationChip(item.verification_status || item.status)}</td>
+                    <td className="p-4">{renderVerificationChip(item)}</td>
                     <td className="p-4 text-text-muted text-xs">{formatLastSync(item.last_sync_at || item.last_sync)}</td>
                     <td className="p-4 text-text-muted text-xs">{formatDateTime(item.created_at)}</td>
                   </tr>
