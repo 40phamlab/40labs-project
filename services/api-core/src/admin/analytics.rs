@@ -33,7 +33,8 @@ async fn overview_handler(State(state): State<AppState>) -> Response {
     let new_7d: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - INTERVAL '7 days'").fetch_one(&state.pool), "Could not load new signups in 7d");
     let active_24h: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM sync_changes c JOIN business_registry b ON b.workspace_id = c.workspace_id AND b.branch_id = c.branch_id WHERE c.received_at >= NOW() - INTERVAL '24 hours'").fetch_one(&state.pool), "Could not load active business totals (24h)");
     let active_7d: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(DISTINCT b.business_id) FROM sync_changes c JOIN business_registry b ON b.workspace_id = c.workspace_id AND b.branch_id = c.branch_id WHERE c.received_at >= NOW() - INTERVAL '7 days'").fetch_one(&state.pool), "Could not load active business totals (7d)");
-    let sales: i64 = db_or_return!(sqlx::query_scalar("SELECT COALESCE(SUM(revenue_total), 0) FROM cloud_daily_summaries WHERE summary_date = CURRENT_DATE").fetch_one(&state.pool), "Could not load today's platform sales");
+    let sales: i64 = sqlx::query_scalar("SELECT COALESCE(SUM(revenue_total), 0)::BIGINT FROM cloud_daily_summaries WHERE summary_date = CURRENT_DATE")
+        .fetch_optional(&state.pool).await.ok().flatten().unwrap_or(0);
     let alerts: i64 = db_or_return!(sqlx::query_scalar("SELECT COUNT(*) FROM (SELECT DISTINCT ON (check_name) status FROM infra_health_checks ORDER BY check_name, checked_at DESC) latest WHERE status IN ('degraded','down')").fetch_one(&state.pool), "Could not load infrastructure alerts");
 
     let attention_rows: Vec<(String, String, String)> = db_or_return!(sqlx::query_as(
@@ -107,7 +108,7 @@ async fn overview_handler(State(state): State<AppState>) -> Response {
     })).collect();
 
     let signups: Vec<(String, i64)> = db_or_return!(sqlx::query_as("SELECT TO_CHAR(created_at::timestamptz, 'YYYY-MM-DD'), COUNT(*) FROM business_registry WHERE created_at::timestamptz >= NOW() - INTERVAL '30 days' GROUP BY 1 ORDER BY 1").fetch_all(&state.pool), "Could not load signup history");
-    let daily_sales: Vec<(String, i64)> = db_or_return!(sqlx::query_as("SELECT TO_CHAR(summary_date, 'YYYY-MM-DD'), COALESCE(SUM(revenue_total),0) FROM cloud_daily_summaries WHERE summary_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY 1 ORDER BY 1").fetch_all(&state.pool), "Could not load sales history");
+    let daily_sales: Vec<(String, i64)> = sqlx::query_as("SELECT TO_CHAR(summary_date, 'YYYY-MM-DD'), COALESCE(SUM(revenue_total),0)::BIGINT FROM cloud_daily_summaries WHERE summary_date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY 1 ORDER BY 1").fetch_all(&state.pool).await.unwrap_or_default();
 
     Json(serde_json::json!({
         "total": registered,
@@ -138,7 +139,7 @@ async fn revenue_handler(State(state): State<AppState>, Query(query): Query<Reve
     let days = match range { "7d" => 7, "30d" => 30, "90d" => 90, _ => return validation_error("range must be 7d, 30d, or 90d") };
     if !["day", "week", "region"].contains(&group) { return validation_error("group must be day, week, or region"); }
     let rows: Vec<(String, i64, String, String)> = db_or_return!(sqlx::query_as(
-        "SELECT CASE WHEN $2 = 'region' THEN COALESCE(b.address_region, 'Unknown') WHEN $2 = 'week' THEN TO_CHAR(DATE_TRUNC('week', d.summary_date::timestamp), 'YYYY-MM-DD') ELSE TO_CHAR(d.summary_date, 'YYYY-MM-DD') END, COALESCE(SUM(d.revenue_total),0), COALESCE(b.address_region,'Unknown'), COALESCE(b.tier,'free') FROM cloud_daily_summaries d LEFT JOIN business_registry b ON b.workspace_id = d.workspace_id AND b.branch_id = d.branch_id WHERE d.summary_date >= CURRENT_DATE - make_interval(days => $1) GROUP BY 1,3,4 ORDER BY 1"
+        "SELECT CASE WHEN $2 = 'region' THEN COALESCE(b.address_region, 'Unknown') WHEN $2 = 'week' THEN TO_CHAR(DATE_TRUNC('week', d.summary_date::timestamp), 'YYYY-MM-DD') ELSE TO_CHAR(d.summary_date, 'YYYY-MM-DD') END, COALESCE(SUM(d.revenue_total),0)::BIGINT, COALESCE(b.address_region,'Unknown'), COALESCE(b.tier,'free') FROM cloud_daily_summaries d LEFT JOIN business_registry b ON b.workspace_id = d.workspace_id AND b.branch_id = d.branch_id WHERE d.summary_date >= CURRENT_DATE - make_interval(days => $1) GROUP BY 1,3,4 ORDER BY 1"
     ).bind(days).bind(group).fetch_all(&state.pool), "Could not calculate platform revenue");
     let tiers: Vec<(String, i64)> = db_or_return!(sqlx::query_as("SELECT COALESCE(tier,'free'), COUNT(*) FROM business_registry GROUP BY 1 ORDER BY 1").fetch_all(&state.pool), "Could not calculate tier distribution");
     let revenue_data: Vec<_> = rows.into_iter().map(|(bucket,revenue,region,tier)| serde_json::json!({"bucket":bucket,"revenue":revenue,"region":region,"tier":tier})).collect();

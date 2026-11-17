@@ -45,15 +45,12 @@ export function BusinessesPage() {
   const searchInput = searchState.query === q ? searchState.value : q;
   const queryString = searchParams.toString();
 
-  const { data: counts } = useQuery<Record<string, number>>({
-    queryKey: ['admin-business-counts'],
-    queryFn: () => apiFetch<Record<string, number>>('/admin/v1/businesses/counts'),
-  });
-
   const { data, isLoading: loading, error, refetch: fetchBusinesses } = useQuery<BusinessListResponse>({
     queryKey: ['admin-businesses', queryString],
     queryFn: () => apiFetch<BusinessListResponse>(`/admin/v1/businesses${queryString ? `?${queryString}` : ''}`),
   });
+
+  const counts = data?.counts;
 
   // Debounced search effect
   React.useEffect(() => {

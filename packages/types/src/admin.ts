@@ -9,7 +9,21 @@ export interface AdminBusinessListItem {
   business_id: string; name: string | null; region: string | null; tmda_number: string | null;
   tier: string; verification_status: string; last_sync: string | null; created_at: string;
 }
-export interface AdminBusinessListResponse { items: AdminBusinessListItem[]; total: number; page: number; limit: number; total_pages: number }
+export interface AdminBusinessCounts {
+  all: number;
+  pending: number;
+  verified: number;
+  rejected: number;
+  suspended: number;
+}
+export interface AdminBusinessListResponse {
+  items: AdminBusinessListItem[];
+  total: number;
+  counts: AdminBusinessCounts;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
 export interface AdminBusiness {
   business_id: string; name: string | null; region: string | null; tmda_number: string | null;
   tier: string; verification_status: string; rejection_reason: string | null; created_at: string;

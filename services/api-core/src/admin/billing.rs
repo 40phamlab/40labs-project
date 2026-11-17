@@ -80,7 +80,7 @@ async fn get_business_billing(
     };
 
     let revenue_30d: i64 = sqlx::query_scalar(
-        "SELECT COALESCE(SUM(revenue_total), 0) FROM cloud_daily_summaries WHERE workspace_id = $1 AND summary_date >= CURRENT_DATE - INTERVAL '30 days'"
+        "SELECT COALESCE(SUM(revenue_total), 0)::BIGINT FROM cloud_daily_summaries WHERE workspace_id = $1 AND summary_date >= CURRENT_DATE - INTERVAL '30 days'"
     )
     .bind(&workspace_id)
     .fetch_one(&state.pool)

@@ -62,9 +62,19 @@ pub struct BusinessListItem {
 }
 
 #[derive(Serialize, Debug)]
+pub struct BusinessCounts {
+    pub all: i64,
+    pub pending: i64,
+    pub verified: i64,
+    pub rejected: i64,
+    pub suspended: i64,
+}
+
+#[derive(Serialize, Debug)]
 pub struct ListResponse {
     pub items: Vec<BusinessListItem>,
     pub total: i64,
+    pub counts: BusinessCounts,
     pub page: i64,
     pub page_size: i64,
     pub limit: i64,
@@ -278,6 +288,19 @@ async fn list_businesses(
         })
         .collect();
 
+    let all: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry")
+        .fetch_one(&state.pool).await.unwrap_or(0);
+    let pending: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b LEFT JOIN business_verification v ON b.business_id = v.business_id WHERE COALESCE(v.status, 'pending') = 'pending'")
+        .fetch_one(&state.pool).await.unwrap_or(0);
+    let verified: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b JOIN business_verification v ON b.business_id = v.business_id WHERE v.status = 'verified'")
+        .fetch_one(&state.pool).await.unwrap_or(0);
+    let rejected: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b JOIN business_verification v ON b.business_id = v.business_id WHERE v.status = 'rejected'")
+        .fetch_one(&state.pool).await.unwrap_or(0);
+    let suspended: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM business_registry b JOIN business_verification v ON b.business_id = v.business_id WHERE v.status = 'suspended'")
+        .fetch_one(&state.pool).await.unwrap_or(0);
+
+    let counts = BusinessCounts { all, pending, verified, rejected, suspended };
+
     let total_pages = if limit > 0 {
         (total + limit - 1) / limit
     } else {
@@ -287,6 +310,7 @@ async fn list_businesses(
     Ok(Json(ListResponse {
         items,
         total,
+        counts,
         page,
         page_size: limit,
         limit,
@@ -480,7 +504,7 @@ async fn get_business(
     let (last_sync_at, pending_outbox, app_version) = sync_health.unwrap_or((None, Some(0), None));
 
     let usage = sqlx::query_as::<_, (Option<i64>, Option<i64>)>(
-        "SELECT COALESCE(SUM(revenue_total), 0), COALESCE(SUM(tx_count), 0) FROM cloud_daily_summaries WHERE workspace_id = $1 AND summary_date >= CURRENT_DATE - INTERVAL '30 days'"
+        "SELECT COALESCE(SUM(revenue_total), 0)::BIGINT, COALESCE(SUM(tx_count), 0)::BIGINT FROM cloud_daily_summaries WHERE workspace_id = $1 AND summary_date >= CURRENT_DATE - INTERVAL '30 days'"
     ).bind(workspace_id).fetch_optional(&state.pool).await.unwrap_or(None).unwrap_or((Some(0), Some(0)));
 
     let revenue_30d = usage.0.unwrap_or(0);
