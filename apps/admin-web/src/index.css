@@ -45,3 +45,28 @@ button {
   scrollbar-color: var(--color-surface-disabled) var(--color-top-chrome);
   scrollbar-width: thin;
 }
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    overflow: auto !important;
+  }
+  nav, button, .no-print, header {
+    display: none !important;
+  }
+  .print-report-container {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+  }
+  .print-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 24px;
+  }
+}

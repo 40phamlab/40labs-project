@@ -28,6 +28,13 @@ interface BusinessListResponse {
   page: number;
   limit: number;
   total_pages: number;
+  counts?: {
+    all: number;
+    pending: number;
+    verified: number;
+    rejected: number;
+    suspended: number;
+  };
 }
 
 export function BusinessesPage() {

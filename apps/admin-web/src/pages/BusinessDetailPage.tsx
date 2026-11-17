@@ -1,9 +1,9 @@
 import * as React from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Building2, Copy, Check, AlertCircle, CreditCard, Activity, FileText } from 'lucide-react';
 import { apiFetch, ApiClientError } from '../lib/api';
-import type { AdminBusinessActivityResponse, AdminVerificationDecision } from '@40labs/types';
+import type { AdminVerificationDecision } from '@40labs/types';
 
 interface BusinessProfile {
   identity: {
@@ -71,6 +71,10 @@ export function BusinessDetailPage() {
   const [tab, setTab] = React.useState<'overview' | 'billing' | 'activity' | 'notes'>('overview');
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   const [reason, setReason] = React.useState('');
+  const [isExporting, setIsExporting] = React.useState(false);
+  const [exportError, setExportError] = React.useState<string | null>(null);
+  const [exportSuccess, setExportSuccess] = React.useState(false);
+  const [activeSection, setActiveSection] = React.useState<string>('section-identity');
 
   const { data: business, isLoading, error, refetch } = useQuery<BusinessProfile>({
     queryKey: ['admin-business-profile', id],
@@ -111,6 +115,34 @@ export function BusinessDetailPage() {
     const name = business?.identity?.name || id;
     if (!window.confirm(`Confirm ${decision} for ${name}?`)) return;
     decisionMutation.mutate({ decision, reason: decisionReason || undefined });
+  };
+
+  const handleExportPdf = async () => {
+    setIsExporting(true);
+    setExportError(null);
+    setExportSuccess(false);
+    const originalTitle = document.title;
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      document.title = `40Labs-Business-Report-${id}-${dateStr}.pdf`;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      window.print();
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 4000);
+    } catch (err: any) {
+      setExportError(err?.message || 'Failed to export PDF report. Please try again.');
+    } finally {
+      document.title = originalTitle;
+      setIsExporting(false);
+    }
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    setActiveSection(sectionId);
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   const tabs = [
@@ -266,7 +298,7 @@ export function BusinessDetailPage() {
       </header>
 
       {/* Tabs */}
-      <nav className="flex gap-1 overflow-x-auto border-b border-border" aria-label="Business profile sections">
+      <nav className="flex gap-1 overflow-x-auto border-b border-border mt-4 mb-6 pt-2" aria-label="Business profile sections">
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -284,138 +316,286 @@ export function BusinessDetailPage() {
 
       {/* Overview Tab */}
       {tab === 'overview' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Identity & Scale */}
-          <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
-            <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Identity</h3>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Business ID</dt>
-                <dd className="font-mono text-xs flex items-center gap-1.5">
-                  {identity.business_id}
-                  <button type="button" onClick={() => copyToClipboard(identity.business_id, 'identity-id')} className="cursor-pointer text-text-muted hover:text-text-primary">
-                    {copiedKey === 'identity-id' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-                  </button>
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Name</dt>
-                <dd>{renderVal(identity.name)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Scale</dt>
-                <dd className="capitalize">{renderVal(identity.scale)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Role scope</dt>
-                <dd className="capitalize">{renderVal(identity.role_scopes)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Registered</dt>
-                <dd className="text-xs">{renderVal(identity.created_at ? new Date(identity.created_at).toLocaleString() : null)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Last sync</dt>
-                <dd className="text-xs">{renderVal(syncHealth.last_sync_at ? new Date(syncHealth.last_sync_at).toLocaleString() : 'Never synced')}</dd>
-              </div>
-            </dl>
+        <div className="space-y-6">
+          {/* Sticky Section Index */}
+          <div className="sticky top-0 z-20 bg-surface/95 backdrop-blur border-b border-border py-2 px-4 flex items-center gap-4 text-xs font-medium text-text-muted no-print rounded-lg shadow-sm">
+            <span className="text-text-primary font-semibold">Jump to:</span>
+            {[
+              { id: 'section-identity', label: 'Identity' },
+              { id: 'section-ownership', label: 'Ownership' },
+              { id: 'section-location', label: 'Location' },
+              { id: 'section-compliance', label: 'Compliance' },
+              { id: 'section-sync', label: 'Sync' },
+            ].map((sec) => (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => scrollToSection(sec.id)}
+                className={`hover:text-text-primary cursor-pointer transition-colors ${
+                  activeSection === sec.id ? 'text-action-primary font-semibold underline' : ''
+                }`}
+              >
+                {sec.label}
+              </button>
+            ))}
           </div>
 
-          {/* Ownership */}
-          <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
-            <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Ownership</h3>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Owner type</dt>
-                <dd className="capitalize">{renderVal(ownership.owner_type)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Owner name</dt>
-                <dd>{renderVal(`${ownership.owner_first_name || ''} ${ownership.owner_last_name || ''}`.trim())}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Phone</dt>
-                <dd className="font-mono text-xs flex items-center gap-1.5">
-                  {renderVal(ownership.phone)}
-                  {ownership.phone && (
-                    <button type="button" onClick={() => copyToClipboard(ownership.phone || '', 'owner-phone')} className="cursor-pointer text-text-muted hover:text-text-primary">
-                      {copiedKey === 'owner-phone' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-                    </button>
-                  )}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">OTP Verified</dt>
-                <dd>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${ownership.phone_verified ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                    {ownership.phone_verified ? 'Verified' : 'Unverified'}
+          <div className="bg-surface p-8 rounded-xl border border-border space-y-6 print-report-container">
+            {/* Print Header */}
+            <div className="hidden print:block text-center border-b border-border pb-6 mb-6">
+              <h1 className="text-2xl font-bold font-heading text-text-primary">40Labs Business Overview Report</h1>
+              <p className="text-xs text-text-muted mt-1">Generated on {new Date().toLocaleString('en-US', { timeZone: 'Africa/Dar_es_Salaam' })} (Africa/Dar_es_Salaam)</p>
+              <p className="text-xs text-text-muted mt-0.5">Confidential — 40Labs internal. Contains business data only; no patient data.</p>
+            </div>
+
+            {/* Header Summary Strip */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-lg bg-surface-hover border border-border print-section">
+              <div className="space-y-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-lg font-bold font-heading text-text-primary">{businessName}</h2>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${
+                    verificationStatus === 'verified' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                    verificationStatus === 'rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                    'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                  }`}>
+                    {verificationStatus.charAt(0).toUpperCase() + verificationStatus.slice(1)}
                   </span>
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Email</dt>
-                <dd>{renderVal(ownership.email)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">SUDO Users</dt>
-                <dd>{ownership.sudo_user_count ?? '—'}</dd>
-              </div>
-            </dl>
-          </div>
-
-          {/* Location */}
-          <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
-            <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Location</h3>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Region (Mkoa)</dt>
-                <dd>{renderVal(location.region)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">District (Wilaya)</dt>
-                <dd>{renderVal(location.district)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Ward (Kata)</dt>
-                <dd>{renderVal(location.ward)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Address text</dt>
-                <dd>{renderVal(location.address_text)}</dd>
-              </div>
-            </dl>
-          </div>
-
-          {/* Compliance */}
-          <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
-            <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">Compliance</h3>
-            <dl className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <dt className="text-text-muted">TMDA Number</dt>
-                <dd className="font-mono text-xs flex items-center gap-1.5">
-                  {renderVal(compliance.tmda_number)}
-                  {compliance.tmda_number && (
-                    <button type="button" onClick={() => copyToClipboard(compliance.tmda_number || '', 'tmda-num')} className="cursor-pointer text-text-muted hover:text-text-primary">
-                      {copiedKey === 'tmda-num' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
-                    </button>
+                  {identity.scale && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-action-primary/10 text-action-primary border border-action-primary/20 uppercase">
+                      {identity.scale}
+                    </span>
                   )}
-                </dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Pharmacy Council</dt>
-                <dd className="font-mono text-xs">{renderVal(compliance.pharmacy_council_no)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-text-muted">Status</dt>
-                <dd className="capitalize">{renderVal(compliance.verification_status)}</dd>
-              </div>
-              {compliance.rejection_reason && (
-                <div className="flex justify-between">
-                  <dt className="text-text-muted">Rejection reason</dt>
-                  <dd className="text-rose-500">{compliance.rejection_reason}</dd>
                 </div>
-              )}
-            </dl>
+                <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
+                  <span>ID: {identity.business_id}</span>
+                  <button type="button" onClick={() => copyToClipboard(identity.business_id, 'report-id')} className="hover:text-text-primary cursor-pointer no-print">
+                    {copiedKey === 'report-id' ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                  </button>
+                  <span>·</span>
+                  <span>Last Sync: {syncHealth.last_sync_at ? new Date(syncHealth.last_sync_at).toLocaleString() : 'Never synced'}</span>
+                </div>
+              </div>
+              <div>
+                <button
+                  type="button"
+                  disabled={isExporting}
+                  onClick={handleExportPdf}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-action-primary text-white rounded-lg text-xs font-semibold hover:opacity-90 cursor-pointer disabled:opacity-50 no-print shadow-sm"
+                >
+                  {isExporting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Generating PDF...
+                    </>
+                  ) : (
+                    <>
+                      <FileText size={14} /> Export PDF
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {exportError && (
+              <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs flex items-center justify-between no-print">
+                <span>{exportError}</span>
+                <button type="button" onClick={() => setExportError(null)} className="underline font-semibold cursor-pointer">Dismiss</button>
+              </div>
+            )}
+
+            {exportSuccess && (
+              <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 text-xs no-print">
+                Business overview report generated successfully. Check your browser download / print dialogue.
+              </div>
+            )}
+
+            {/* Section 1: Identity */}
+            <section id="section-identity" className="space-y-4 print-section">
+              <div className="border-b border-border pb-2">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">1. Identity & Scale</h3>
+              </div>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Business ID</dt>
+                  <dd className="font-mono text-xs flex items-center gap-1.5">
+                    {identity.business_id}
+                    <button type="button" onClick={() => copyToClipboard(identity.business_id, 'id-copy')} className="cursor-pointer text-text-muted hover:text-text-primary no-print">
+                      {copiedKey === 'id-copy' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                    </button>
+                  </dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Business Name</dt>
+                  <dd>{renderVal(identity.name)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Scale / Tier</dt>
+                  <dd className="capitalize">{renderVal(identity.scale)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Role Scope</dt>
+                  <dd className="capitalize">{renderVal(identity.role_scopes)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Registered Date</dt>
+                  <dd className="text-xs">{renderVal(identity.created_at ? new Date(identity.created_at).toLocaleString() : null)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Last Sync</dt>
+                  <dd className="text-xs">{renderVal(syncHealth.last_sync_at ? new Date(syncHealth.last_sync_at).toLocaleString() : 'Never synced')}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <hr className="border-border my-6" />
+
+            {/* Section 2: Ownership */}
+            <section id="section-ownership" className="space-y-4 print-section">
+              <div className="border-b border-border pb-2">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">2. Ownership & Contact</h3>
+              </div>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Owner Type</dt>
+                  <dd className="capitalize">{renderVal(ownership.owner_type)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Owner Name</dt>
+                  <dd>{renderVal(`${ownership.owner_first_name || ''} ${ownership.owner_last_name || ''}`.trim())}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Phone Number</dt>
+                  <dd className="font-mono text-xs flex items-center gap-1.5">
+                    {renderVal(ownership.phone)}
+                    {ownership.phone && (
+                      <button type="button" onClick={() => copyToClipboard(ownership.phone || '', 'phone-copy')} className="cursor-pointer text-text-muted hover:text-text-primary no-print">
+                        {copiedKey === 'phone-copy' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                      </button>
+                    )}
+                  </dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">OTP Verified</dt>
+                  <dd>
+                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${ownership.phone_verified ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                      {ownership.phone_verified ? 'Verified' : 'Unverified'}
+                    </span>
+                  </dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Email Address</dt>
+                  <dd>{renderVal(ownership.email)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">SUDO Users</dt>
+                  <dd>{ownership.sudo_user_count ?? '—'}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <hr className="border-border my-6" />
+
+            {/* Section 3: Location */}
+            <section id="section-location" className="space-y-4 print-section">
+              <div className="border-b border-border pb-2">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">3. Location</h3>
+              </div>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Region (Mkoa)</dt>
+                  <dd>{renderVal(location.region)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">District (Wilaya)</dt>
+                  <dd>{renderVal(location.district)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Ward (Kata)</dt>
+                  <dd>{renderVal(location.ward)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Address Text</dt>
+                  <dd>{renderVal(location.address_text)}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <hr className="border-border my-6" />
+
+            {/* Section 4: Compliance */}
+            <section id="section-compliance" className="space-y-4 print-section">
+              <div className="border-b border-border pb-2">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">4. Compliance & Regulatory</h3>
+              </div>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">TMDA Number</dt>
+                  <dd className="font-mono text-xs flex items-center gap-1.5">
+                    {renderVal(compliance.tmda_number)}
+                    {compliance.tmda_number && (
+                      <button type="button" onClick={() => copyToClipboard(compliance.tmda_number || '', 'tmda-copy')} className="cursor-pointer text-text-muted hover:text-text-primary no-print">
+                        {copiedKey === 'tmda-copy' ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                      </button>
+                    )}
+                  </dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Pharmacy Council Number</dt>
+                  <dd className="font-mono text-xs">{renderVal(compliance.pharmacy_council_no)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Verification Status</dt>
+                  <dd className="capitalize">{renderVal(compliance.verification_status)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Reviewed By</dt>
+                  <dd>{renderVal(compliance.reviewed_by)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Review Date</dt>
+                  <dd className="text-xs">{renderVal(compliance.reviewed_at ? new Date(compliance.reviewed_at).toLocaleString() : null)}</dd>
+                </div>
+                {compliance.rejection_reason && (
+                  <div className="flex justify-between py-1 border-b border-border/40 md:col-span-2">
+                    <dt className="text-text-muted">Rejection Reason</dt>
+                    <dd className="text-rose-500">{compliance.rejection_reason}</dd>
+                  </div>
+                )}
+              </dl>
+            </section>
+
+            <hr className="border-border my-6" />
+
+            {/* Section 5: Sync & Subscription */}
+            <section id="section-sync" className="space-y-4 print-section">
+              <div className="border-b border-border pb-2">
+                <h3 className="font-heading font-semibold text-text-primary text-sm uppercase tracking-wider">5. Sync & Subscription</h3>
+              </div>
+              <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Subscription Tier</dt>
+                  <dd className="uppercase font-semibold">{renderVal(identity.scale)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Last Sync Timestamp</dt>
+                  <dd className="text-xs">{renderVal(syncHealth.last_sync_at ? new Date(syncHealth.last_sync_at).toLocaleString() : 'Never synced')}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">App Version / Device</dt>
+                  <dd className="font-mono text-xs">{renderVal(syncHealth.app_version)}</dd>
+                </div>
+                <div className="flex justify-between py-1 border-b border-border/40">
+                  <dt className="text-text-muted">Branch Count</dt>
+                  <dd>{renderVal(business.operations?.branch_count ?? business.payments_config?.branches_count)}</dd>
+                </div>
+              </dl>
+            </section>
+
+            {/* Print Footer */}
+            <div className="hidden print:block text-center border-t border-border pt-6 mt-8 text-xs text-text-muted">
+              <p>Confidential — 40Labs internal. Contains business data only; no patient data.</p>
+              <p className="mt-1">Business ID: {identity.business_id} · Page 1 of 1</p>
+            </div>
           </div>
         </div>
       )}
