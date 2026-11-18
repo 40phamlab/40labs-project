@@ -435,10 +435,12 @@ struct BusinessProfileRow {
     tmda_number: Option<String>,
     pharmacy_council_no: Option<String>,
     verification_status: String,
+    rejection_reason: Option<String>,
     reviewed_at: Option<chrono::DateTime<chrono::Utc>>,
     reviewed_by: Option<String>,
     created_at: Option<String>,
     profile_complete: bool,
+    lipa_namba: Option<String>,
 }
 
 async fn get_business(
@@ -467,10 +469,12 @@ async fn get_business(
             b.tmda_number,
             b.pharmacy_council_no,
             COALESCE(v.status, 'pending') AS verification_status,
+            v.reason AS rejection_reason,
             v.decided_at AS reviewed_at,
             v.decided_by AS reviewed_by,
             b.created_at,
-            CASE WHEN b.name IS NOT NULL AND TRIM(b.name) <> '' AND b.address_region IS NOT NULL AND TRIM(b.address_region) <> '' AND b.tmda_number IS NOT NULL AND TRIM(b.tmda_number) <> '' THEN TRUE ELSE FALSE END AS profile_complete
+            CASE WHEN b.name IS NOT NULL AND TRIM(b.name) <> '' AND b.address_region IS NOT NULL AND TRIM(b.address_region) <> '' AND b.tmda_number IS NOT NULL AND TRIM(b.tmda_number) <> '' THEN TRUE ELSE FALSE END AS profile_complete,
+            b.lipa_namba
         FROM business_registry b
         LEFT JOIN business_verification v ON b.business_id = v.business_id
         WHERE b.business_id = $1
@@ -613,11 +617,11 @@ async fn get_business(
             "verification_status": r.verification_status,
             "reviewed_by": r.reviewed_by,
             "reviewed_at": r.reviewed_at.map(|t| t.to_rfc3339()),
-            "rejection_reason": null
+            "rejection_reason": r.rejection_reason
         },
         "payments_config": {
             "branches_count": branch_count,
-            "lipa_namba": "123456",
+            "lipa_namba": r.lipa_namba.unwrap_or_else(|| "123456".to_string()),
             "payment_number_masked": masked_phone
         },
         "operations": {

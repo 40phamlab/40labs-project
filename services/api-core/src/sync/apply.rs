@@ -31,6 +31,12 @@ struct BusinessPayload {
     address_region: Option<String>,
     address_district: Option<String>,
     address_place: Option<String>,
+    address_ward: Option<String>,
+    scale: Option<String>,
+    owner_type: Option<String>,
+    lipa_namba: Option<String>,
+    payment_number: Option<String>,
+    logo_url: Option<String>,
     version: i64,
     updated_at: Option<String>,
     deleted_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -251,11 +257,10 @@ async fn apply_business(
         .map_err(|e| ApiError::BadRequest(format!("Invalid business payload: {}", e)))?;
 
     let current_version: Option<i64> = sqlx::query_scalar(
-        "SELECT version FROM business_registry WHERE workspace_id = $1 AND business_id = $2 AND branch_id = $3 FOR UPDATE"
+        "SELECT version FROM business_registry WHERE workspace_id = $1 AND business_id = $2 FOR UPDATE"
     )
     .bind(&claims.workspace_id)
     .bind(&claims.business_id)
-    .bind(&claims.branch_id)
     .fetch_optional(&mut *conn)
     .await?;
 
@@ -282,8 +287,9 @@ async fn apply_business(
         SET name = $1, tin = $2, tmda_number = $3, pharmacy_council_no = $4,
             role_scopes = $5, contact_mobile = $6, contact_email = $7, contact_whatsapp = $8,
             address_region = $9, address_district = $10, address_place = $11,
-            version = $12, updated_at = NOW(), deleted_at = $13
-        WHERE workspace_id = $14 AND business_id = $15 AND branch_id = $16 AND (version IS NULL OR version < $12)
+            address_ward = $12, scale = $13, owner_type = $14, lipa_namba = $15, payment_number = $16, logo_url = $17,
+            version = $18, updated_at = NOW(), deleted_at = $19
+        WHERE workspace_id = $20 AND business_id = $21 AND (version IS NULL OR version < $18)
         "#,
     )
     .bind(&p.name)
@@ -297,11 +303,16 @@ async fn apply_business(
     .bind(&p.address_region)
     .bind(&p.address_district)
     .bind(&p.address_place)
+    .bind(&p.address_ward)
+    .bind(&p.scale)
+    .bind(&p.owner_type)
+    .bind(&p.lipa_namba)
+    .bind(&p.payment_number)
+    .bind(&p.logo_url)
     .bind(version)
     .bind(p.deleted_at)
     .bind(&claims.workspace_id)
     .bind(&claims.business_id)
-    .bind(&claims.branch_id)
     .execute(&mut *conn)
     .await?;
 
